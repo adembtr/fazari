@@ -29,7 +29,7 @@ const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
   "November", "December"];
 const season = (ep, long) => {
-  if (lang() === "tr") return month(ep, long);
+  if (lang() === "tr") return month(ep, true);          // Turkish short months ("May", "Mar") read as English: always long
   const m = /^(\d{4})-(\d{2})/.exec(ep || "");
   return m && +m[2] >= 1 && +m[2] <= 12 ? `${(long ? MONTHS : MON)[+m[2] - 1]} ${m[1]}` : String(ep || "");
 };
@@ -380,6 +380,8 @@ function show() {
   $("detail").textContent = L("vw.detail", "SPHEREx {det} · {um} µm · {n} images stacked", { det: (f.detectors || []).join("+"), um: fx(f.wavelength_um), n: f.n_images });
   document.querySelectorAll("#seasons .chip").forEach((c) => c.classList.toggle("cur", +c.dataset.i === S.idx && S.mode !== "trail"));
   drawOverlay();
+  // the object's own core saturated in this frame? (flags_view.js shows its "core saturated" line only then)
+  try { document.body.dataset.objSat = satHere(S.meta.measured || {}, S.bin, [f.epoch]) ? "1" : ""; } catch (_) {}
   try { document.dispatchEvent(new CustomEvent("fazari:frame", { detail: { epoch: f.epoch, bin_um: S.bin.wavelength_um, file: f.file, mode: S.mode } })); } catch (_) {}
   S.listeners.forEach((fn) => { try { fn(f); } catch (_) {} });
 }
@@ -565,10 +567,15 @@ async function pairDiff() {
   const fr = S.bin.frames, pr = pairIdx() || [0, fr.length - 1];
   const A = fr[pr[0]], B = fr[pr[1]];
   const own = pr[0] === 0 && pr[1] === fr.length - 1;          // the pipeline's own difference image
-  $("diffKey").innerHTML =
-    `<span class="k"><i class="sw blue"></i><b>${esc(L("vw.diff.blue", "Blue = before"))}</b><small>${esc(L("vw.diff.brighterIn", "brighter in {s}", { s: season(A.epoch) }))}</small></span>` +
-    `<span class="k"><i class="sw white"></i><b>${esc(L("vw.diff.white", "White"))}</b><small>${esc(L("vw.diff.noChange", "no change"))}</small></span>` +
-    `<span class="k"><i class="sw red"></i><b>${esc(L("vw.diff.red", "Red = after"))}</b><small>${esc(L("vw.diff.brighterIn", "brighter in {s}", { s: season(B.epoch) }))}</small></span>`;
+  const ms = S.meta.measured || {};
+  const sat = satHere(ms, S.bin, [A.epoch, B.epoch]);
+  // colour key on one line (the seasons are in the caption below)
+  const key = (cls, txt, tip) => `<span class="k"${tip ? ` title="${esc(tip)}"` : ""}><i class="sw ${cls}"></i>${esc(txt)}</span>`;
+  $("diffKey").innerHTML = key("blue", L("u3.diff.blue", "brighter before"), L("vw.diff.brighterIn", "brighter in {s}", { s: season(A.epoch) })) +
+    key("white", L("u3.diff.white", "no change")) +
+    key("red", L("u3.diff.red", "brighter after"), L("vw.diff.brighterIn", "brighter in {s}", { s: season(B.epoch) })) +
+    (sat ? key("grey", L("u3.diff.grey", "saturated, not measured")) : "");
+  diffSaturation(sat, A, B, ms);
   $("diffCap").textContent = L("vw.diff.cap", "{b} minus {a} at {um} µm", { b: season(B.epoch), a: season(A.epoch), um: loc(S.bin.wavelength_um.toFixed(1)) }) +
     (own ? L("vw.diff.own", " (made by the pipeline). ") : L("vw.diff.browser", " (computed in your browser from these two frames, the same way as the pipeline). ")) +
     L("vw.diff.explain", "Stars that stay the same cancel out. A star that moved leaves blue where it was and red where it went; " +
@@ -591,6 +598,103 @@ async function pairDiff() {
     ctx.putImageData(out, 0, 0);
     cv.hidden = false;
   } catch (e) { console.warn("pair difference", e); cv.hidden = true; }
+}
+
+// A saturated star at the centre: its white core is masked (not data) and the coloured ring around it is
+// only its outer glow differing between seasons. Draw the core as grey "saturated, not measured" and grey
+// the ring too, unless the measurement found real motion or a real brightness change (then the ring is
+// that signal: Barnard's Star shows a red/blue pair). Other stars in the frame are not touched.
+const satRadiusCache = new Map();
+function satRadius(fa, fb, xy, diffUrl) {
+  const key = `${S.base}|${fa.file}|${fb.file}|${xy.map((v) => Math.round(v)).join(",")}|${diffUrl || ""}`;
+  if (!satRadiusCache.has(key)) satRadiusCache.set(key, (async () => {
+    const ims = await Promise.all([loadImg(S.base + fa.file), loadImg(S.base + fb.file)]);
+    const R = 140, cv = document.createElement("canvas");
+    cv.width = cv.height = 2 * R;
+    const cx = cv.getContext("2d", { willReadFrequently: true });
+    let r0 = 0;
+    const px = [];
+    for (const im of ims) {                                  // radius of the white core (mean of each 1-px annulus >= 245)
+      cx.clearRect(0, 0, 2 * R, 2 * R);
+      cx.drawImage(im, xy[0] - R, xy[1] - R, 2 * R, 2 * R, 0, 0, 2 * R, 2 * R);
+      const d = cx.getImageData(0, 0, 2 * R, 2 * R).data, sum = new Float64Array(R), n = new Float64Array(R);
+      px.push(d);
+      for (let y = 0; y < 2 * R; y++) for (let x = 0; x < 2 * R; x++) {
+        const r = Math.floor(Math.hypot(x - R + 0.5, y - R + 0.5));
+        if (r < R && d[4 * (y * 2 * R + x) + 3]) { sum[r] += d[4 * (y * 2 * R + x)]; n[r]++; }
+      }
+      let r = 0;
+      while (r < R && n[r] && sum[r] / n[r] >= 245) r++;
+      r0 = Math.max(r0, r);
+    }
+    if (r0 < 3) return null;
+    // outer edge of the ring: where the mean |difference| of the 1-px annuli falls back near the background
+    const dev = new Float64Array(R), nd = new Float64Array(R), [da, db] = px;
+    for (let y = 0; y < 2 * R; y++) for (let x = 0; x < 2 * R; x++) {
+      const r = Math.floor(Math.hypot(x - R + 0.5, y - R + 0.5)), i = 4 * (y * 2 * R + x);
+      if (r < R && da[i + 3] && db[i + 3]) { dev[r] += Math.abs(db[i] - da[i]); nd[r]++; }
+    }
+    const m = (r) => (nd[r] ? dev[r] / nd[r] : 0);
+    const bg = [...Array(20).keys()].map((k) => m(R - 1 - k)).sort((a, b) => a - b)[10] || 0;
+    let peak = r0, pv = 0;
+    for (let r = r0; r < Math.min(R, r0 * 4 + 40); r++) if (m(r) > pv) { pv = m(r); peak = r; }
+    const thr = bg + Math.max(3, 0.2 * (pv - bg));
+    let r1 = peak, rc = 0;
+    while (r1 < R - 1 && m(r1) > thr) r1++;
+    while (rc < peak && m(rc) <= thr) rc++;               // the masked core: no difference until the ring starts
+    let core = Math.max(r0, rc - 1);
+    if (diffUrl) {                                         // the pipeline's own difference: its masked core is a white disc
+      try {
+        const di = await loadImg(diffUrl);
+        cx.clearRect(0, 0, 2 * R, 2 * R);
+        cx.drawImage(di, xy[0] - R, xy[1] - R, 2 * R, 2 * R, 0, 0, 2 * R, 2 * R);
+        const d = cx.getImageData(0, 0, 2 * R, 2 * R).data, wh = new Float64Array(R), nw = new Float64Array(R);
+        for (let y = 0; y < 2 * R; y++) for (let x = 0; x < 2 * R; x++) {
+          const r = Math.floor(Math.hypot(x - R + 0.5, y - R + 0.5)), i = 4 * (y * 2 * R + x);
+          if (r < R && d[i + 3]) { nw[r]++; if (d[i] > 238 && d[i + 1] > 238 && d[i + 2] > 238) wh[r]++; }
+        }
+        let rw = 0;
+        while (rw < R && nw[rw] && wh[rw] / nw[rw] >= 0.5) rw++;
+        core = Math.max(core, rw);
+      } catch (_) { /* keep the frame estimate */ }
+    }
+    return { r0: core, r1: Math.max(r1 + 5, Math.round(core * 1.5)) };
+  })().catch(() => null));
+  return satRadiusCache.get(key);
+}
+let satToken = 0;
+async function diffSaturation(sat, A, B, ms) {
+  const my = ++satToken;
+  let ov = $("diffSatOv"), note = $("diffSat");
+  if (!ov) {
+    $("diffZoom").insertAdjacentHTML("beforeend", `<svg id="diffSatOv" aria-hidden="true" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;overflow:visible"></svg>`);
+    ov = $("diffSatOv");
+  }
+  if (!note) {
+    $("diffKey").insertAdjacentHTML("afterend", `<p id="diffSat" class="diffsat" hidden></p>`);
+    note = $("diffSat");
+  }
+  ov.innerHTML = ""; note.hidden = true;
+  if (!sat) return;
+  const xy = (measuredPos(B.epoch) || measuredPos(A.epoch) || {}).png_xy_measured || markerXY(B.epoch) || markerXY(A.epoch) || centreXY();
+  const fr = S.bin.frames, own = A === fr[0] && B === fr[fr.length - 1];
+  const rr = await satRadius(A, B, xy, own && S.bin.diff ? S.base + S.bin.diff : null);
+  if (my !== satToken) return;
+  const moved = ok(ms.shift_arcsec) && ok(ms.shift_err_arcsec) && +ms.shift_arcsec > Math.max(1, 3 * ms.shift_err_arcsec);
+  const varies = !!(ms.photometry && (bestChange(ms.photometry) || {}).main);
+  const real = moved || varies;
+  note.hidden = false;
+  note.textContent = real
+    ? (moved ? L("u3.diff.satMove", "The star in the middle is saturated here: its core (grey) is not measured. The red and blue pair around it is its motion, measured from the wings.")
+      : L("u3.diff.satVar", "The star in the middle is saturated here: its core (grey) is not measured. The colour around it is its brightness change, measured in a ring around the core."))
+    : L("u3.diff.satRing", "The star in the middle is saturated here: its core is not measured, and the ring around it is only its outer glow differing between the seasons, not a real change. Both are greyed.");
+  if (!rr) return;
+  const [W, H] = pngSize(), [x, y] = xy, { r0, r1 } = rr;
+  ov.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  ov.innerHTML = `<defs><pattern id="satHatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">` +
+    `<rect width="7" height="7" fill="#4a5163"/><path d="M0 0V7" stroke="#7d8698" stroke-width="2.6"/></pattern></defs>` +
+    (real ? "" : `<circle cx="${x}" cy="${y}" r="${r1}" fill="#5f6678" fill-opacity=".96" stroke="#05070d" stroke-opacity=".5" stroke-width="1"/>`) +
+    `<circle cx="${x}" cy="${y}" r="${r0 + 1}" fill="url(#satHatch)" stroke="#dfe5f2" stroke-width="1.6" stroke-dasharray="5 4"/>`;
 }
 
 // --- URL -----------------------------------------------------------------------------------------
@@ -619,7 +723,42 @@ function bestChange(ph) {
   const sig = c.filter((x) => x.z >= 3 && Math.abs(x.r - 1) >= 0.1).sort((a, b) => b.z - a.z);
   return sig.length ? { main: sig[0], from: sig[0].ref, to: sig[0].to } : c.length ? { flat: true } : null;
 }
-const tile = (k, b, small, cls = "") => `<div class="tile ${cls}"><span class="k">${k}</span><b>${b}</b><small>${small}</small></div>`;
+// a tile without a value ("–") is marked .empty (the UI layer hides it)
+const tile = (k, b, small, cls = "") => `<div class="tile ${cls}${b === "–" ? " empty" : ""}"><span class="k">${k}</span><b>${b}</b><small>${small}</small></div>`;
+/** The result's name: a challenge/catalogue name (Turkish from tr.json), or "Sky field RA … Dec …" in the page language. */
+function targetName(m) {
+  const tg = m && m.target;
+  if (!tg || /^(none|null)$/i.test(tg)) return L("vw.skyField", "Sky field");
+  const f = /^Sky field RA ([\d.]+) Dec ([+\-−]?[\d.]+)$/.exec(String(tg).trim());
+  if (f) return L("u3.vw.skyAt", "Sky field RA {ra}° Dec {dec}°", { ra: loc(f[1]), dec: loc(f[2]) });
+  return tname(tg);
+}
+/** Saturation of the object this result is about: { bins: [µm], where: "target"|"point"|"snap", sep } or null.
+ *  Only cells where we measured that object (detected) count; a free point counts only when the measured
+ *  position is at the picked point (within 6″) or when the measurement moved to a named nearby source (snap). */
+function satOfObject(ms) {
+  const bins = new Set();
+  ((ms.detection || {}).bins || []).forEach((c) => { if (c.detected && c.saturated_frac > 0.5) bins.add(c.wavelength_um); });
+  ((ms.photometry || {}).bins || []).forEach((b) => { if (b.saturated) bins.add(b.wavelength_um); });
+  if (!bins.size || ms.status === "not_detected") return null;
+  const list = [...bins].sort((a, b) => a - b);
+  if (ms.snap && ms.snap.source) return { bins: list, where: "snap", sep: ms.snap.sep_arcsec };
+  if (!S.ref.none) return { bins: list, where: "target" };
+  // a picked sky position: the measured position must be the picked point itself
+  const off = (ms.positions || []).map((p) => (p.png_xy_measured && p.png_xy_gaia && pngArcsec()
+    ? Math.hypot(p.png_xy_measured[0] - p.png_xy_gaia[0], p.png_xy_measured[1] - p.png_xy_gaia[1]) * pngArcsec() : null)).filter((v) => v != null);
+  if (!off.length) return null;
+  const med = off.sort((a, b) => a - b)[off.length >> 1];
+  return med <= 6 ? { bins: list, where: "point" } : null;
+}
+/** Is the measured object saturated in this bin and season pair? (difference panel) */
+function satHere(ms, bin, eps) {
+  const o = satOfObject(ms);
+  if (!o || !bin || !o.bins.some((u) => Math.abs(u - bin.wavelength_um) < 0.05)) return false;
+  const cells = ((ms.detection || {}).bins || []).filter((c) => Math.abs(c.wavelength_um - bin.wavelength_um) < 0.05);
+  if (!cells.length) return true;                                       // photometry flag only
+  return cells.some((c) => c.saturated_frac > 0.5 && (!eps || eps.includes(c.epoch)));
+}
 function renderResult() {
   const m = S.meta, ms = m.measured || {}, pv = m.preview, R = S.ref;
   const nImg = pv ? pv.n_images : ok(m.n_cutouts) ? m.n_cutouts : S.bins.reduce((a, b) => a + b.frames.reduce((s, f) => s + (f.n_images || 0), 0), 0);
@@ -699,7 +838,7 @@ function renderResult() {
     const st = ms.status || "";
     tMeas = tile(esc(L("vw.t.measuredPlain", "Measured")), "–", st === "not_detected" ? esc(L("vw.t.notDet", "not detected above the noise")) : st === "preview" ? esc(L("vw.t.fullFollows", "full result follows")) : esc(ptext(ms.message) || L("vw.t.noMeas", "no measurement")), "hero");
     tRef = tile(R.none ? esc(L("vw.t.compared", "Compared with")) : tPredicts, "–", esc(R.none ? L("vw.t.nothingPicked", "nothing: a picked sky position has no catalogue motion") : L("vw.t.noPred", "no prediction for this result")), "ref");
-    verdict = esc(ptext(ms.message || ""));
+    verdict = pv ? "" : esc(ptext(ms.message || ""));       // a preview: the stage line says it once (no repeat here)
   }
   $("tiles").innerHTML = tMeas + tRef + tImg + tSea;
   $("verdict").innerHTML = verdict;
@@ -709,17 +848,18 @@ function renderResult() {
   pn.innerHTML = note;
   const hb = pn.querySelector("[data-headline]");
   if (hb) hb.onclick = goHeadline;
-  // badge: saturated core, measured from the wings
-  const det = ms.detection || {};
-  const satBins = new Set();
-  (det.bins || []).forEach((c) => { if (c.saturated_frac > 0.5) satBins.add(c.wavelength_um); });
-  ((ms.photometry || {}).bins || []).forEach((b) => { if (b.saturated) satBins.add(b.wavelength_um); });
+  // badge: saturated core, measured from the wings -- only when it is true for the object this result is
+  // about (the target, the star at the picked point, or the nearby star the measurement moved to)
+  const so = satOfObject(ms);
   const sb = $("satBadge");
-  sb.hidden = !satBins.size;
-  if (satBins.size) {
-    sb.innerHTML = esc(L("vw.sat.badge", "Core saturated, measured from the wings"));
+  sb.hidden = !so;
+  if (so) {
+    const name = so.where === "target" ? targetName(m) : "";
+    sb.innerHTML = esc(so.where === "snap" ? L("u3.sat.snap", "The star we measured ({d}″ from your point) is saturated: measured from its wings", { d: loc((+so.sep || 0).toFixed(0)) })
+      : so.where === "point" ? L("u3.sat.point", "The star at your point is saturated: measured from its wings")
+        : L("u3.sat.target", "{name}: core saturated, measured from the wings", { name }));
     sb.title = L("vw.sat.tip", "The star is so bright that its centre fills the detector pixels to the top (the white core) at {um} µm. ",
-      { um: [...satBins].sort((a, b) => a - b).map((v) => loc(v.toFixed(1))).join(lang() === "tr" ? "; " : ", ") }) +
+      { um: so.bins.map((v) => loc(v.toFixed(1))).join(lang() === "tr" ? "; " : ", ") }) +
       (ms.photometry ? L("vw.sat.phot", "Its brightness is measured in a ring around the core.") : L("vw.sat.pos", "Its position is fitted to the unsaturated outer glow (the wings) only."));
   }
 }
@@ -746,7 +886,7 @@ function goHeadline() {
 
 function renderHeader() {
   const m = S.meta, ms = m.measured || {};
-  const name = m.target && !/^(none|null)$/i.test(m.target) ? tname(m.target) : L("vw.skyField", "Sky field");
+  const name = targetName(m);
   $("title").textContent = name;
   document.title = L("vw.docTitle", "{name} · Fazari SPHEREx blink", { name });
   const kind = ms.photometry ? "varies" : (ok(ms.shift_arcsec) || ms.preliminary) && !S.ref.none ? "moves" : S.info ? S.info.kind : null;
@@ -796,7 +936,7 @@ function paintTargets() {
 
 // --- measurement details (the full table, as before) -------------------------------------------------
 function renderMeasure() {
-  const m = S.meta, ms = m.measured || {}, ref = S.ref.label;
+  const m = S.meta, ms = m.measured || {}, ref = S.ref.none ? L("u3.vw.reqPos", "the picked position") : S.ref.label;
   let html = "";
   if (ms.message) html += `<p class="status ${ms.status || ""}">${ptext(ms.message)}</p>`;
   const pre = ms.preliminary;
@@ -932,7 +1072,7 @@ function gameMsg(html, cls) {
 function reveal(hit) {
   S.game.revealed = true;
   S.game.hit = hit;
-  const m = S.meta, ms = m.measured || {}, name = esc(m.target ? tname(m.target) : L("vw.g.theTarget", "the target"));
+  const m = S.meta, ms = m.measured || {}, name = esc(m.target ? targetName(m) : L("vw.g.theTarget", "the target"));
   let msg;
   if (ms.photometry) {
     const pe = pairEpochs(), v = pe ? brightPair(pe[0], pe[1]) : null;
@@ -1136,8 +1276,8 @@ export async function startViewer() {
     fallbackSentence() {
       const box = $("explainSentence");
       if (box.textContent.trim()) return;
-      const t = ok(ms.shift_arcsec) ? L("vw.fb.moved", "{name} moved {s} between {a} and {b}.", { name: tname(m.target), s: arcsec(ms.shift_arcsec, ms.shift_err_arcsec), a: season(ms.from_epoch, true), b: season(ms.to_epoch, true) })
-        : ms.photometry ? L("vw.fb.bright", "{name} changes brightness between the SPHEREx seasons.", { name: tname(m.target) }) : ptext(ms.message || "");
+      const t = ok(ms.shift_arcsec) ? L("vw.fb.moved", "{name} moved {s} between {a} and {b}.", { name: targetName(m), s: arcsec(ms.shift_arcsec, ms.shift_err_arcsec), a: season(ms.from_epoch, true), b: season(ms.to_epoch, true) })
+        : ms.photometry ? L("vw.fb.bright", "{name} changes brightness between the SPHEREx seasons.", { name: targetName(m) }) : ptext(ms.message || "");
       box.innerHTML = t ? `<p>${esc(t)}</p>` : "";
     },
     on(fn) { if (typeof fn === "function") S.listeners.push(fn); },

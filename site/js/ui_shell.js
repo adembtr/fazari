@@ -29,6 +29,7 @@ const EN = {
   "ui.ex.hidePanel": "Hide this panel", "ui.ex.layers": "Star layers",
   "ui.ex.min": "Minimize the result panel", "ui.ex.tab": "Result",
   "ui.pg.collapseAll": "Collapse all", "ui.pg.expandAll": "Expand all",
+  "u3.ans.prelim": "Preliminary answer", "u3.card.opts": "Options",
 };
 const T = (k, p) => { try { const v = I.t(k, p, EN[k] || k); return v && v !== k ? v : fill(EN[k] || k, p); } catch (e) { return fill(EN[k] || k, p); } };
 
@@ -232,10 +233,40 @@ function setupViewer() {
     // other plug-ins add notes after #verdict (e.g. the exoplanet-host note): keep them in the answer card,
     // below the three facts, not inside "How sure"
     const own = new Set(["uiSurePct", "uiSureConf", "uiSureTxt", "verdict"]);
-    pageHooks.push(() => {
-      const ref = document.querySelector("#tiles > .tile.ref");      // "Compared with: –" (no catalogue) adds nothing
-      if (ref) { const b = ref.querySelector("b"); ref.classList.toggle("ui-empty", !!b && /^[–-]?$/.test(b.textContent.trim())); }
+    const tidy = () => {
+      // a tile without a value ("Measured: –", "Compared with: –") adds nothing: hidden (viewer.js marks .empty too)
+      for (const tl of document.querySelectorAll("#tiles > .tile")) { const b = tl.querySelector("b"); tl.classList.toggle("ui-empty", !!b && /^[–-]?$/.test(b.textContent.trim())); }
       for (const n of [...sure.children]) if (!n.classList.contains("k") && !own.has(n.id)) extra.append(n);
+      // "How sure" without anything in it, and the whole facts row when nothing in it is visible: hidden
+      const filled = (id) => { const e = $(id); return !!e && !e.hidden && !!e.textContent.trim(); };
+      sure.classList.toggle("ui-empty", !(filled("uiSurePct") || filled("uiSureConf") || filled("uiSureTxt") || filled("verdict")));
+      requestAnimationFrame(() => safe("facts", () => {
+        facts.classList.remove("ui-none");                 // measure with the row shown, then hide it if nothing in it is visible
+        const any = [...facts.querySelectorAll(".tile, .ui-sure, #pairNote, .badges")].some((e) => e.getClientRects().length && e.offsetHeight > 0);
+        facts.classList.toggle("ui-none", !any);
+      }));
+      // a preview: the answer is preliminary (one honest word in the kicker, no repeat elsewhere)
+      const sb = $("stagebar"), kick = ans.querySelector(".ui-kicker .ui-t");
+      const pre = !!(sb && !sb.hidden && sb.classList.contains("preview"));
+      if (kick && kick.dataset.k !== (pre ? "u3.ans.prelim" : "ui.ans.kicker")) { kick.dataset.k = pre ? "u3.ans.prelim" : "ui.ans.kicker"; kick.textContent = T(kick.dataset.k); }
+    };
+    pageHooks.push(tidy);
+    document.addEventListener("fazari:ui-mode", () => safe("tidy", tidy));
+    // the explorer's quick decision ("does the clicked object move?", preliminary) while a preview is on screen:
+    // it becomes the answer's sentence (shown once), the numbers go to Detailed mode
+    const quick = el("div", { class: "ui-quick", id: "uiQuick", hidden: "" });
+    quick.innerHTML = `<p class="ui-quick-t"></p><p class="ui-quick-s"></p><p class="ui-quick-n"></p>`;
+    lead.prepend(quick);
+    window.addEventListener("message", (e) => {
+      const d = e.data;
+      if (e.origin !== location.origin || !d || d.type !== "fazari-quick" || e.source !== window.parent) return;
+      safe("quick", () => {
+        quick.querySelector(".ui-quick-t").textContent = String(d.text || "");
+        quick.querySelector(".ui-quick-s").textContent = String(d.sure || "");
+        quick.querySelector(".ui-quick-n").textContent = String(d.line2 || "");
+        quick.hidden = !d.text;
+        ans.classList.toggle("ui-has-quick", !!d.text);
+      });
     });
     loadFinder();
   });
@@ -357,6 +388,24 @@ function setupExplore() {
     paint();
   });
 
+  // the place card: Simple shows the name, one coordinate line, one status line and the big button;
+  // the field size, its estimate, Zoom in, Copy link and the engine line sit under one small "Options"
+  safe("cardOpts", () => {
+    const card = $("card"), acts = card && card.querySelector(".actions");
+    if (!acts || $("uiCardOpts")) return;
+    const b = el("button", { type: "button", class: "ui-card-opts ui-shell-own", id: "uiCardOpts", "aria-expanded": "false" });
+    const paint = () => {
+      const open = isOpen("exCardOpts", "closed");
+      card.classList.toggle("ui-opts-open", open);
+      b.setAttribute("aria-expanded", String(open));
+      b.innerHTML = `<span class="ui-t" data-k="u3.card.opts">${T("u3.card.opts")}</span>${CHEV}`;
+    };
+    b.addEventListener("click", () => { saveFold("exCardOpts", !isOpen("exCardOpts", "closed")); paint(); });
+    document.addEventListener("fazari:lang", paint);
+    acts.append(b);
+    paint();
+  });
+
   // the "Finds" list (explore/finds.js): closed in Simple mode, heading stays
   registerFold("exFinds", { find: () => $("findsList"), def: "simple-closed" });
 
@@ -457,6 +506,11 @@ async function main() {
   const pg = (location.pathname.split("/").pop() || "").toLowerCase();
   if ($("stage") && $("tiles")) safe("viewer", setupViewer);
   else if ($("panel") && $("sky")) safe("explore", setupExplore);
+  else if ($("bins") && $("cancel") && $("viewer")) safe("sky", () => {      // sky.html (in-browser engine)
+    H.classList.add("ui-page-sky");
+    const row = document.querySelector(".titlerow");
+    if (row) row.append(modeSwitch());
+  });
   else if (/^(verify|story|asteroids)\.html$/.test(pg) || document.querySelector("main section.blk")) safe("reading", setupReading);
   ensureFolds();
   try { I.onLang(() => { relabel(); paintFinder(); }); } catch (e) { /* ignore */ }

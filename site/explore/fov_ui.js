@@ -3,7 +3,7 @@
 // the local engine gets it as cutout_deg (engine.js), the in-browser engine as sky.html?fov= (main.js
 // blinkUrl). No choice = the engine's default (local 0.4°, browser 0.15°). Choices, defaults and the
 // rough time/size estimate: js/fov.js.
-import { fovFromUrl, fovFor, fillFovSelect, fovEstimateText, setFovInUrl, FOV_PHONE_MAX } from "../js/fov.js";
+import { fovFromUrl, fovFor, fillFovSelect, fovEstimateText, fovTimeText, setFovInUrl, FOV_PHONE_MAX } from "../js/fov.js";
 import { t, onLang } from "../js/i18n.js";
 
 const $ = (id) => document.getElementById(id);
@@ -37,6 +37,13 @@ function render(force = false) {
   est.textContent = fovEstimateText(k, value, { phone: ph && k !== "local", saved })
     + (ph && k !== "local" && !saved ? " " + t("pg.fov.phoneMax", null, `Phones: up to ${FOV_PHONE_MAX}°.`) : "");
   sel.title = t("pg.fov.title");
+  // the expected time, small, inside the big button (the size and details stay in the Field row)
+  const look = $("btnLook");
+  if (look) {
+    let eta = $("lookEta");
+    if (!eta) { eta = document.createElement("small"); eta.id = "lookEta"; eta.className = "look-eta"; look.append(eta); }
+    eta.textContent = fovTimeText(k, value, { phone: ph && k !== "local", saved });
+  }
 }
 
 function init() {

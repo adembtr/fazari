@@ -59,6 +59,6 @@ function slimResult(r) {
     um: r.um, det: r.det, n: r.n, stretch: r.stretch, diff: r.diff, preview: r.preview, prelim: r.prelim,
     frames: r.frames.map((f) => ({ season: f.season, norm: f.norm, n: f.n, detectors: f.detectors, lam: f.lam, lams: f.lams,
                                   mjdMean: f.mjdMean, date: f.date, dateFirst: f.dateFirst, dateLast: f.dateLast, gaiaXY: f.gaiaXY,
-                                  softCorePx: f.softCorePx })),
+                                  softCorePx: f.softCorePx, satAtTarget: !!f.satAtTarget })),
   };
 }

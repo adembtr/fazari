@@ -29,10 +29,13 @@
   .status { margin: 8px 0 2px; }
   .status.ok { color: var(--ok); } .status.warn { color: var(--warn); } .status.err { color: var(--err); }
   .progressrow { display:flex; align-items:center; gap:10px; }
-  .barwrap { flex:1; height: 6px; background:#222838; border-radius: 3px; overflow:hidden; margin: 4px 0; }
-  .barwrap.busy { background: repeating-linear-gradient(90deg, #222838 0 12px, #2b3247 12px 24px); }
+  .barwrap { flex:1; height: 8px; background:#222838; border-radius: 5px; overflow:hidden; margin: 6px 0; }
+  .barwrap.busy { background: repeating-linear-gradient(90deg, #222838 0 12px, #2b3247 12px 24px); background-size: 48px 100%; animation: skbusy 1.2s linear infinite; }
+  @keyframes skbusy { to { background-position: 48px 0; } }
+  #eta { white-space: nowrap; font-variant-numeric: tabular-nums; }
   #cancel { padding: 4px 12px; }
-  #bar { height:100%; width:0; background: var(--acc); transition: width .2s; }
+  #bar { height:100%; width:0; border-radius:5px; background: linear-gradient(90deg, var(--acc), #ffe08a); transition: width .6s linear; }
+  @media (prefers-reduced-motion: reduce) { .barwrap.busy { animation: none; } #bar { transition: none; } }
   .controls { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; }
   .controls label { color: var(--mut); font-size:.9rem; }
   #bins { display:flex; flex-wrap:wrap; gap:6px; margin: 6px 0; }
@@ -53,6 +56,7 @@
   .titlerow h1 { margin:0; }
   @media (max-width: 520px) { body { font-size: 14px; } main { padding: 12px; } }
 </style>
+<link rel="stylesheet" href="css/ui_shell.css"><script src="js/ui_boot.js"></script><!-- ui layer (arayuz) -->
 </head>
 <body>
 <main>
@@ -79,7 +83,8 @@
     <div id="what" class="sub"></div>
     <div class="stagerow"><span id="stage" class="stagebadge" hidden></span><div id="status" class="status">Loading...</div></div>
     <div class="progressrow">
-      <div class="barwrap"><div id="bar"></div></div>
+      <div class="barwrap" role="progressbar" aria-valuemin="0" aria-valuemax="100"><div id="bar"></div></div>
+      <span id="eta" class="small"></span>
       <button id="cancel" type="button" hidden data-i18n="sk.cancel">Cancel</button>
     </div>
     <div id="progress" class="small"></div>
@@ -143,5 +148,6 @@
   <pre id="result" data-state="idle"></pre>
 </main>
 <script type="module" src="js/app.js"></script>
+<script type="module" src="js/ui_shell.js"></script><!-- ui layer (arayuz) -->
 </body>
 </html>

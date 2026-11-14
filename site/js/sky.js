@@ -416,11 +416,23 @@ export class SkySession {
       }
       softCore(fr.norm, fr.sat, G.n);                 // bright star: graded core, not a flat white disc
       fr.softCorePx = fr.sat.reduce((a, v) => a + v, 0);   // pixels shown smoothed (display fill, not data)
+      fr.satAtTarget = satNear(fr.sat, G.n, fr.gaiaXY || [(G.n - 1) / 2, (G.n - 1) / 2], 3);   // the object itself (not any star in the field)
       fillNaN(fr.norm, G.n);
     }
     const first = frames[0], last = frames[frames.length - 1];
     const diff = new Float32Array(N);
     for (let k = 0; k < N; k++) diff[k] = last.norm[k] - first.norm[k];
+    // saturated cores (either season, grown by 2 px over the edge of the glow) are not data: NaN = grey
+    const satAny = new Uint8Array(N);
+    for (let k = 0; k < N; k++) satAny[k] = first.sat[k] || last.sat[k] ? 1 : 0;
+    for (let k = 0; k < N; k++) {
+      if (!satAny[k]) continue;
+      const i = k % G.n, j = (k / G.n) | 0;
+      for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) {
+        const ii = i + di, jj = j + dj;
+        if (ii >= 0 && jj >= 0 && ii < G.n && jj < G.n && di * di + dj * dj <= 5) diff[jj * G.n + ii] = NaN;
+      }
+    }
     return { um, det: bin.det, frames, diff, stretch: st, n: G.n };
   }
 
@@ -615,6 +627,15 @@ function dropSmallBlobs(m, n, minPx) {
     }
     if (blob.length < minPx) for (const k of blob) m[k] = 0;
   }
+}
+
+/** Any saturated pixel within r pixels of xy (grid pixels)? */
+function satNear(sat, n, xy, r) {
+  const [x0, y0] = xy;
+  for (let j = Math.max(0, Math.floor(y0 - r)); j <= Math.min(n - 1, Math.ceil(y0 + r)); j++)
+    for (let i = Math.max(0, Math.floor(x0 - r)); i <= Math.min(n - 1, Math.ceil(x0 + r)); i++)
+      if (sat[j * n + i] && (i - x0) ** 2 + (j - y0) ** 2 <= r * r) return true;
+  return false;
 }
 
 /** Saturated cores for display (as blink.py soft_core): each core (4-neighbour blob of sat) rises

@@ -189,12 +189,12 @@
   .lower { display:grid; grid-template-columns:minmax(0, 5fr) minmax(0, 7fr); gap:14px; margin-top:14px; align-items:start; }
   .card { background:var(--card); border-radius:12px; padding:12px 14px; }
   .card h2 { font-size:1.02rem; margin:0 0 8px; }
-  .key { display:flex; flex-wrap:wrap; gap:8px 16px; margin:0 0 10px; }
-  .key .k { display:flex; align-items:center; gap:8px; font-size:1rem; }
-  .key .k b { font-size:1.05rem; }
-  .key .k small { font-size:.82rem; }
-  .sw { width:30px; height:22px; border-radius:5px; flex:none; border:1px solid #05070d; }
+  .key { display:flex; flex-wrap:wrap; gap:4px 12px; margin:0 0 10px; font-size:.84rem; color:#c9d2e3; }
+  .key .k { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .sw { width:14px; height:14px; border-radius:3px; flex:none; border:1px solid #05070d; }
   .sw.blue { background:#2166ac; } .sw.red { background:#b2182b; } .sw.white { background:#f7f7f7; }
+  .sw.grey { background:repeating-linear-gradient(45deg, #4a5163 0 3px, #7d8698 3px 5px); border-color:#dfe5f2; }
+  .diffsat { margin:0 0 10px; padding:7px 10px; border-radius:8px; font-size:.86rem; line-height:1.4; color:#e3e8f2; background:#1d2232; border-left:4px solid #8a93a6; }
   .diffview { position:relative; aspect-ratio:1 / 1; max-height:520px; width:100%; background:#000; border-radius:8px; overflow:hidden; }
   #diffZoom > img, #diffZoom > canvas { position:absolute; left:0; top:0; width:100%; height:100%; image-rendering:pixelated; }
   .diff small { display:block; margin-top:8px; line-height:1.4; }
@@ -250,7 +250,6 @@
     .compass { width:26px; height:26px; }
     .seg button { padding:6px 10px; }
     .tgt { padding:4px 9px 5px; }
-    .key .k { font-size:.9rem; }
   }
   @media (prefers-reduced-motion: reduce) { .zoom { transition:none; } }
 </style>

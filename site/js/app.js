@@ -61,6 +61,12 @@ function fmtMB(b) { return (b / 1e6).toFixed(1) + " MB"; }
 
 let progressInfo = { checked: 0, accepted: 0, done: 0 };
 let rafPending = false;
+// One bar for the whole run (u3): each step covers [base, base + span] of it (preview 0-15 %, then the
+// wavelengths in equal parts); it never goes backwards. 0 while the images are still being looked up
+// (the striped "busy" bar = honestly unknown). Time left only once the full result has made progress.
+let prog = { base: 0, span: 0, f: 0, tFull: 0 };
+function progStep(base, span) { prog.base = base; prog.span = span; if (base >= 0.15 && !prog.tFull) prog.tFull = performance.now(); }
+function waitText(s) { return s >= 90 ? t("ex.eng.min", { n: Math.round(s / 60) }) : t("ex.eng.sec", { n: Math.max(5, Math.round(s / 5) * 5) }); }
 function renderProgress() {
   rafPending = false;
   if (!run) return;
@@ -68,8 +74,16 @@ function renderProgress() {
   $("progress").textContent = t("sk.progress", { done: progressInfo.done, accepted: progressInfo.accepted, checked: progressInfo.checked,
     mb: loc(fmtMB(netStats.bytes)), req: netStats.requests })
     + (netStats.retries ? t("sk.progress.retries", { n: netStats.retries }) : "") + ` · ${loc(sec)} s`;
-  const p = progressInfo.accepted ? progressInfo.done / progressInfo.accepted : 0;
-  $("bar").style.width = `${Math.round(p * 100)}%`;
+  const p = progressInfo.accepted ? Math.min(1, progressInfo.done / progressInfo.accepted) : 0;
+  prog.f = run.complete ? 1 : Math.max(prog.f, Math.min(0.99, prog.base + prog.span * p));
+  $("bar").style.width = `${(prog.f * 100).toFixed(1)}%`;
+  $("bar").parentElement.setAttribute("aria-valuenow", String(Math.round(prog.f * 100)));
+  let eta = "";
+  if (!run.finished && prog.tFull && prog.f > 0.2) {
+    const el = (performance.now() - prog.tFull) / 1000, rate = (prog.f - 0.15) / el;
+    if (rate > 0) eta = " · " + waitText((1 - prog.f) / rate);
+  }
+  $("eta").textContent = run.finished || !prog.f ? "" : `${Math.round(prog.f * 100)} %` + eta;
 }
 function queueProgress() { if (!rafPending) { rafPending = true; requestAnimationFrame(renderProgress); } }
 function onNet(st) { netStats = st; queueProgress(); }
@@ -188,7 +202,7 @@ function showFrame() {
   $("date").textContent = `${fr.season}  (${fr.dateFirst === fr.dateLast ? fr.dateFirst : t("sk.dateRange", { a: fr.dateFirst, b: fr.dateLast })})`;
   $("detail").textContent = `${num(fr.lam, 2)} µm · SPHEREx ${fr.detectors.join("+")} · ${tn("sk.exposures", fr.n)}`
     + (current.preview ? t("sk.detail.preview") : "")
-    + (fr.softCorePx ? " · " + t("vw.core.smoothed") : "");      // saturated core: display fill, not data
+    + (fr.satAtTarget ? " · " + t("u3.sk.coreHere") : "");      // the object's own core is saturated: display fill, not data
 }
 
 function showDiff() {
@@ -196,7 +210,8 @@ function showDiff() {
   const zoom = Number($("zoom").value);
   const toCanvas = drawToCanvas(cv, divergingImageData(current.diff, current.n, 0.6), current.n, zoom);
   const first = current.frames[0], last = current.frames[current.frames.length - 1];
-  $("diffcap").textContent = t("sk.diffcap", { last: last.season, first: first.season, um: num(current.um, 1) });
+  $("diffcap").textContent = t("sk.diffcap", { last: last.season, first: first.season, um: num(current.um, 1) })
+    + (current.frames.some((f) => f.softCorePx) ? " " + t("u3.sk.diffGrey") : "");
   if ($("mark").checked && first.gaiaXY) {
     const ctx = cv.getContext("2d");
     ctx.lineWidth = 2;
@@ -351,7 +366,7 @@ async function loadBin(um, { show = true, background = false } = {}) {
   if (show) for (const btn of document.querySelectorAll("#bins button")) btn.classList.toggle("on", Number(btn.dataset.um) === um);
   let r = run.results[um];
   if (!r) {
-    if (!background) setStatus(() => t("sk.st.download", { um: num(um, 1), det: b.det }));
+    if (!background) { setStatus(() => t("sk.st.download", { um: num(um, 1), det: b.det })); prog = { base: 0, span: 1, f: 0, tFull: performance.now() }; run.complete = false; }
     progressInfo = { checked: 0, accepted: 0, done: 0 };
     busy(true);
     run.pending ||= {};
@@ -360,6 +375,7 @@ async function loadBin(um, { show = true, background = false } = {}) {
       const out = await run.pending[um];
       if (run !== myRun) return;
       r = run.results[um] = out.result;
+      if (!background) run.complete = true;
       run.astro = out.astrometry;
       const btn = document.querySelector(`#bins button[data-um="${um}"]`);
       if (btn) btn.classList.add("loaded");
@@ -395,6 +411,7 @@ async function previewThenFull(first, avail, myRun) {
   for (const k of [2, 0]) {                                 // 2 per season, then 2..4 (12 in all)
     if (k === 0 && run.preview && run.preview.preview.perSeason >= Math.max(2, Math.min(4, Math.floor(12 / Math.max(nSeasons, 1))))) break;
     setStatus(() => (k ? t("sk.st.quick", { um: num(first, 1), k }) : t("sk.st.more", { um: num(first, 1) })), "warn");
+    progStep(k ? 0 : 0.08, k ? 0.08 : 0.07);
     progressInfo = { checked: 0, accepted: 0, done: 0 };
     let out;
     try {
@@ -419,6 +436,7 @@ async function previewThenFull(first, avail, myRun) {
     const um = bins[i];
     const onScreen = !!(current && current.preview);
     setStatus(() => (onScreen ? t("sk.st.onScreen") : "") + t("sk.st.full", { um: num(um, 1), i: i + 1, n: bins.length }), "warn");
+    progStep(0.15 + 0.85 * i / bins.length, 0.85 / bins.length);
     await loadBin(um, { show: um === first && (!current || current.preview), background: true });
     if (run !== myRun) return;
     if (i === 0) run.times.firstFull = ms();
@@ -443,6 +461,7 @@ async function go(text, opts = {}) {
   $("viewer").hidden = true; $("bins").innerHTML = ""; $("measure").innerHTML = ""; $("fieldnote").textContent = ""; live.clear();
   if ($("spectrum")) $("spectrum").hidden = true;
   run = { ctl: new AbortController(), input: text, finished: false, gaiaField: null, results: {} };
+  prog = { base: 0, span: 0, f: 0, tFull: 0 };
   const myRun = run;
   t0.start = performance.now();
   netStats = { bytes: 0, requests: 0, retries: 0 };
@@ -517,7 +536,7 @@ async function go(text, opts = {}) {
       setStage("full", fullCount());
     }
     if (myRun !== run) return;
-    run.finished = true;
+    run.finished = true; run.complete = true;
     busy(false);
     const nb = Object.keys(run.results).length;
     const imgs = fullCount(), ns = current.frames.length, more = nb < avail.length;
@@ -537,6 +556,7 @@ function fail(e) {
   console.error(e);
   if (run) run.finished = true;
   busy(false);
+  renderProgress();
   const msg = /Failed to fetch|NetworkError|did not answer/.test(e.message)
     ? t("sk.err.net", { msg: e.message }) : e.message;
   setStatus(msg, "err");

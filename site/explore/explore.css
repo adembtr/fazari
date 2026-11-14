@@ -179,6 +179,9 @@ a { color: var(--blue); }
 .primary { display: inline-flex; align-items: center; gap: 8px; border: 0; background: var(--acc); color: var(--acc-ink);
   font-weight: 750; border-radius: 999px; padding: 10px 18px; font-size: 15.5px; box-shadow: 0 4px 18px rgba(255, 201, 77, .35); }
 .primary:hover { filter: brightness(1.07); }
+.primary .look-eta { font-size: 12px; font-weight: 500; opacity: .78; white-space: nowrap; }
+.primary .look-eta:empty { display: none; }
+.primary .look-eta::before { content: "· "; }
 #btnLook { animation: callout 2.2s ease-in-out 3; }
 @keyframes callout { 50% { box-shadow: 0 0 0 7px rgba(255, 201, 77, .28), 0 4px 18px rgba(255, 201, 77, .35); } }
 .secondary { border: 1px solid rgba(255, 201, 77, .6); background: rgba(255, 201, 77, .1); color: #ffe3a3; border-radius: 999px; padding: 9px 14px; font-weight: 600; }
@@ -230,6 +233,18 @@ body.engine-local #engineDot { background: var(--good); }
 .result-bar small { font-size: 12px; color: var(--mut); }
 .result-bar.pending { background: rgba(255, 179, 71, .09); }
 .result-bar.pending b { color: #ffdf9e; }
+/* u3: one line + a bar that fills (local engine job); numbers in the small line (Detailed mode) */
+.result-bar .u3-bar { display: none; }
+.result-bar.pending .u3-bar { display: block; position: relative; height: 8px; margin: 4px 0 2px; border-radius: 6px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.u3-bar i, .job .bar i { display: block; height: 100%; width: 0; border-radius: 6px; background: linear-gradient(90deg, var(--acc), #ffe08a); transition: width .8s linear; position: relative; overflow: hidden; }
+.u3-bar:not(.indet) i::after, .job .bar:not(.indet) i::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .45), transparent); animation: u3shine 1.6s linear infinite; }
+.u3-bar.indet i { width: 35% !important; animation: indet 1.4s ease-in-out infinite; }
+@keyframes u3shine { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.result-bar.u3-fail { background: rgba(255, 120, 90, .08); }
+.result-bar.u3-fail b { color: #ffc2ad; }
+html[data-ui-mode="simple"] .result-bar.pending small, html[data-ui-mode="simple"] .job-msg.u3-tech { display: none; }
+html.ui[data-ui-mode="simple"] .result-bar.u3-done { display: none; }
+@media (prefers-reduced-motion: reduce) { .u3-bar i::after, .job .bar i::after { animation: none; } .u3-bar i, .job .bar i { transition: none; } }
 /* "Preview (12 images)" -> "Full result (N images)" */
 .stage-badge { flex: none; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
 .stage-badge.preview { color: #ffdf9e; border-color: #8a6a1f; background: #33290f; }

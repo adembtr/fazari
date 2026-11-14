@@ -757,6 +757,9 @@ def astrometry(t, infos, epochs, ra_c, dec_c, grid_xy):
         if corr:
             nrej += sum(1 for i in s if not corr[i["file"]][1])
             s = [i for i in s if corr[i["file"]][1]]
+        if not s:      # every fit of this season was rejected by the joint fit: no position for it
+            print(f"  {e}: N=0 (-{nrej})  no exposure left after the joint fit; season has no position")
+            continue
         ra = np.array([i["ra_fit"] for i in s]); dec = np.array([i["dec_fit"] for i in s])
         cosd = math.cos(math.radians(t["dec"]))
         if corr:

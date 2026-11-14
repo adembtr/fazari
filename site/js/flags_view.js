@@ -149,6 +149,7 @@
     let key = null;
     if (mf && typeof mf.soft_core_px === "number") key = mf.soft_core_px > 0 ? "smoothed" : null;
     else { const e = flState === "ok" ? frameEntry() : null; if (e && e.f.available && e.f.share && e.f.share.saturated > 0) key = "white"; }
+    if (document.body.dataset.objSat !== "1") key = null;   // only for the object this result is about (viewer.js), not any star in the field
     el.hidden = !key;
     el.textContent = key === "smoothed" ? T("vw.core.smoothed", "Core saturated: shown smoothed, not measured data.")
       : key === "white" ? T("vw.core.white", "Core saturated: shown white, not measured data.") : "";

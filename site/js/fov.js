@@ -9,12 +9,11 @@
 // In-browser engine: the north-up grid of sky.html (sky.js fovDeg); phones stop at 0.3 (memory).
 // The quick preview keeps its small 0.1 deg field in both engines.
 //
-// The estimate is rough, from timing runs on the team's computer (November 2026):
-//   local, 0.2 deg: ~3.6 MB per exposure (only the rows of the field are read, so the bytes grow
-//     with the field width), ~95 exposures per point, 1.0-1.4 MB/s from the archive, blink.py
-//     ~0.5-1 min (grows with the area); 0.4 deg measured at ~7.2 MB per exposure.
-//   browser, 0.15 deg: 155-203 MB for 72 exposures (2.2-2.8 MB each), full result in 2.5-3 min
-//     when the network is free; the first wavelength after ~40 s.
+// The estimate follows timing runs on the team's computer (14 November 2026, home connection):
+//   local, 0.4 deg (default): 541 MB for 89 images, full result in about 4 min (download ~3.5 min,
+//     blink.py ~0.5 min); bytes grow with the field width (only the rows of the field are read).
+//   browser, 0.15 deg (default), desktop: ~200 MB for 72 images (6 wavelengths), about 2 min;
+//   phone (one wavelength): ~25 MB, 20-40 s.
 import { t, num } from "./i18n.js";
 
 export const FOV_CHOICES = { local: [0.2, 0.3, 0.4, 0.5, 0.6], browser: [0.15, 0.2, 0.3, 0.4, 0.5, 0.6] };
@@ -22,8 +21,8 @@ export const FOV_DEFAULT = { local: 0.4, browser: 0.15 };
 export const FOV_PHONE_MAX = 0.3;
 export const PREVIEW_FOV = 0.1;
 
-const LOCAL = { mbPerImage02: 3.6, images: 95, rate: [0.8, 1.4], blinkMin02: 0.75 };
-const BROWSER = { mbPerImage015: 2.5, images: 72, rate: [0.8, 1.4], cpuMin015: 0.3 };
+const LOCAL = { mb04: 541, min04: 4 };
+const BROWSER = { mb015: 200, min015: 2, phoneMb015: 25, phoneSec015: [20, 40] };
 
 /** ?fov= of a URL search string as a number, or null when absent/invalid. */
 export function fovFromUrl(search = location.search) {
@@ -38,35 +37,39 @@ export function fovFor(kind, fov, { phone = false } = {}) {
   return ch.reduce((a, b) => (Math.abs(b - fov) < Math.abs(a - fov) ? b : a));
 }
 
-/** Rough cost of a full result: {mb, min: [lo, hi], first: [lo, hi] (minutes to the first full blink)}. */
+/** Cost of a full result: {mb, min (central minutes), sec: [lo, hi] (phones)}; time grows with the bytes
+ *  (width) plus a smaller part with the area (processing). */
 export function fovEstimate(kind, fov, { phone = false, saved = false } = {}) {
   if (kind === "local") {
-    const area = (fov / 0.2) ** 2;
-    const blink = LOCAL.blinkMin02 * area;
-    if (saved) return { mb: 0, min: [3, 6], saved: true };       // Barnard, 358 saved cutouts: blink in ~4 min
-    const mb = LOCAL.mbPerImage02 * (fov / 0.2) * LOCAL.images;
-    const dl = [mb / LOCAL.rate[1] / 60, mb / LOCAL.rate[0] / 60];
-    return { mb, min: [dl[0] + blink, dl[1] + blink * 1.5] };
+    if (saved) return { mb: 0, min: 4, saved: true };            // Barnard, 358 saved cutouts: blink in ~4 min
+    const k = fov / 0.4;
+    return { mb: LOCAL.mb04 * k, min: LOCAL.min04 * (0.85 * k + 0.15 * k * k) };
   }
   const k = fov / 0.15;
-  const n = phone ? BROWSER.images / 6 : BROWSER.images;            // phones load one wavelength
-  const mb = BROWSER.mbPerImage015 * k * n;
-  const cpu = BROWSER.cpuMin015 * k * k * (n / BROWSER.images);
-  return { mb, min: [mb / BROWSER.rate[1] / 60 + cpu, mb / BROWSER.rate[0] / 60 + cpu * 2] };
+  if (phone) return { mb: BROWSER.phoneMb015 * k, sec: BROWSER.phoneSec015.map((v) => v * (0.7 * k + 0.3 * k * k)) };
+  return { mb: BROWSER.mb015 * k, min: BROWSER.min015 * (0.7 * k + 0.3 * k * k) };
 }
 
-const roundMin = (m) => (m < 1 ? 1 : m < 10 ? Math.round(m) : Math.round(m / 5) * 5);
-const roundMb = (mb) => (mb < 100 ? Math.round(mb / 10) * 10 : Math.round(mb / 50) * 50);
+const roundMb = (mb) => (mb < 100 ? Math.max(5, Math.round(mb / 5) * 5) : Math.round(mb / 10) * 10);
+/** "about 4 min" / "20–40 s" in the page language. */
+function timeText(e) {
+  if (e.sec) {
+    const lo = Math.round(e.sec[0] / 5) * 5, hi = Math.round(e.sec[1] / 5) * 5;
+    return hi >= 90 ? t("u3.fov.min", { n: Math.round(e.sec[1] / 60) }) : t("u3.fov.secRange", { lo, hi });
+  }
+  return t("u3.fov.min", { n: Math.max(1, Math.round(e.min)) });
+}
 
-/** One honest line for the chosen field, e.g. "Rough guess: about 700 MB, 10-15 min (your connection decides)". */
+/** One line for the chosen field, from measured runs, e.g. "About 540 MB, about 4 min. A quick preview comes first." */
 export function fovEstimateText(kind, fov, opts = {}) {
   const e = fovEstimate(kind, fov, opts);
-  const lo = roundMin(e.min[0]), hi = Math.max(roundMin(e.min[1]), lo + 1);
-  if (e.saved) return t("pg.fov.estSaved", { lo, hi });
+  if (e.saved) return t("u3.fov.saved", { t: timeText(e) });
   const mb = roundMb(e.mb);
   const size = mb >= 1000 ? t("pg.fov.gb", { v: num(mb / 1000, 1) }) : t("pg.fov.mb", { v: mb });
-  return t(kind === "local" ? "pg.fov.estLocal" : opts.phone ? "pg.fov.estPhone" : "pg.fov.estBrowser", { size, lo, hi });
+  return t(kind === "local" ? "u3.fov.local" : opts.phone ? "u3.fov.phone" : "u3.fov.browser", { size, t: timeText(e) });
 }
+/** The time alone, short ("about 4 min"), for the big button. */
+export function fovTimeText(kind, fov, opts = {}) { return timeText(fovEstimate(kind, fov, opts)); }
 
 /** Option label: "0.4°" plus " (default)" for the engine default. */
 export function fovLabel(kind, v) {
