@@ -20,7 +20,10 @@ function clean(text) {
     .replace(/\b(ra|dec|de|alpha|delta)\s*[=:]?\s*/gi, " ")
     .replace(/[−–—]/g, "-")      // unicode minus / dashes
     .replace(/\s+/g, " ")
-    .trim();
+    .trim()
+    // Turkish/European decimal commas, "269,36969 -31,26269": only when there is no dot and the two
+    // numbers are separated by a space (a lone comma between two numbers stays the RA/Dec separator)
+    .replace(/^([+-]?\d+),(\d+) ([+-]?\d+),(\d+)$/, "$1.$2 $3.$4");
 }
 
 /**

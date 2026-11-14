@@ -1149,5 +1149,8 @@
  "vw.nomove.limit": "Yılda ~{v}″'den hızlı her hareket görünürdü.",
  "vw.lg.clicked": "tıkladığın yer",
  "vw.lg.snapped": "ölçtüğümüz kaynak",
- "vw.t.gaiaPm": "Gaia DR3 {v} mas/yıl; bizim ölçüm {a}, {b} ± {e}: {k}σ"
+ "vw.t.gaiaPm": "Gaia DR3 {v} mas/yıl; bizim ölçüm {a}, {b} ± {e}: {k}σ",
+ "ex.cat.astLink": "Körlemesine bulduğumuz bilinen asteroitler →",
+ "v.ast.h": "Körlemesine bulunan bilinen asteroitler",
+ "v.ast.p": "24 ekliptik alanda nereye bakacağımız söylenmeden aradık, sonra bulduklarımızı bilinen asteroitlerle eşleştirdik (SkyBoT, konumlar SPHEREx'in bulunduğu yere taşındı). <b>217 bilinen asteroit bulundu</b>: V&lt;17'de 53'ün 47'si, V&lt;18'de 132'nin 101'i. Medyan konum farkı 0,68″. 47 cisim iz olarak bağlandı; hızları yörünge tahminiyle medyan %0,36 uyuşuyor. <a href=\"asteroids.html\">Tüm asteroit sonuçları</a>."
 }

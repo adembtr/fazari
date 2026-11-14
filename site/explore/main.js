@@ -692,6 +692,7 @@ function openCategory(id, { fly = false } = {}) {
   det.style.setProperty("--c", CAT_COLORS[id] || "#9fb4ff");
   $("catTitle").innerHTML = `<span aria-hidden="true">${c.icon}</span> ${esc(iField(c, "name"))}`;
   $("catDesc").textContent = iField(c, "description");
+  if (id === "ecliptic") $("catDesc").insertAdjacentHTML("beforeend", ` <a href="asteroids.html">${esc(T("ex.cat.astLink"))}</a>`);   // detector C results page
   const disc = $("catDisclaimer");
   disc.hidden = !c.disclaimer;
   disc.innerHTML = c.disclaimer ? `${esc(iField(c, "disclaimer"))}${c.citation ? `<br><small>${T("ex.cat.source")} ${esc(c.citation)}</small>` : ""}` : "";
@@ -739,7 +740,7 @@ function select(p, { fly = false, fov, fill = true } = {}) {
   const pos = markerPos(p);
   state.selected = { ...p, pos };
   // Step 2 of the flow: the coordinate box fills in with the spot you picked.
-  if (fill) $("q").value = `${pos.ra.toFixed(5)} ${pos.dec >= 0 ? "+" : ""}${pos.dec.toFixed(5)}`;
+  if (fill) { $("q").value = `${pos.ra.toFixed(5)} ${pos.dec >= 0 ? "+" : ""}${pos.dec.toFixed(5)}`; unsay(); }
   state.flat?.setSelection(pos);
   if (state.step < 3) setStep(3);
   if (isPhone()) setSheet("peek");
@@ -1067,45 +1068,52 @@ function onSkyClick(e) {
   select({ id: null, name: "Your spot", nameKey: "ex.name.yourSpot", ra: e.ra, dec: e.dec, cat: null, manual: true });
 }
 
-async function runSearch(text) {
+// Search-box message: kept as a render function so a language switch redraws it in the new language;
+// cleared when a spot is picked another way (map click, list), so an old warning never stays up.
+function say(err, render) {
   const msg = $("searchMsg");
+  state.sayMsg = { err, render };
+  msg.className = err ? "msg err" : "msg"; msg.hidden = false;
+  const r = render();
+  if (r.html != null) msg.innerHTML = r.html; else msg.textContent = r.text;
+}
+function unsay() { state.sayMsg = null; const m = $("searchMsg"); if (m) { m.hidden = true; m.textContent = ""; } }
+
+async function runSearch(text) {
   const t = text.trim();
   if (!t) return;
-  msg.className = "msg"; msg.hidden = false;
+  say(false, () => ({ text: "" }));
   const c = parseCoords(t);
   if (c) {
-    msg.textContent = T("ex.q.going", { ra: iLoc(formatRA(c.ra)), dec: iLoc(formatDec(c.dec)), how: T(c.format === "decimal" ? "ex.q.decimal" : "ex.q.sexa") });
+    say(false, () => ({ text: T("ex.q.going", { ra: iLoc(formatRA(c.ra)), dec: iLoc(formatDec(c.dec)), how: T(c.format === "decimal" ? "ex.q.decimal" : "ex.q.sexa") }) }));
     select({ id: null, name: "Your coordinates", nameKey: "ex.name.yourCoords", ra: c.ra, dec: c.dec, cat: null, manual: true }, { fly: true, fov: 1, fill: false });
     return;
   }
   if (looksLikeCoords(t)) {
-    msg.className = "msg err";
-    msg.innerHTML = T("ex.q.bad");
+    say(true, () => ({ html: T("ex.q.bad") }));
     return;
   }
   const local = findLocal(state.points, t);
   if (local) {
-    msg.textContent = T("ex.q.foundIn", { name: pname(local), cat: catName(local.cat) });
+    say(false, () => ({ text: T("ex.q.foundIn", { name: pname(local), cat: catName(local.cat) }) }));
     openCategory(local.cat);
     select(local, { fly: true, fill: false });
     return;
   }
-  msg.textContent = T("ex.q.looking", { q: t });
+  say(false, () => ({ text: T("ex.q.looking", { q: t }) }));
   try {
     const r = await sesame(t);
     if (!r) {
-      msg.className = "msg err";
-      msg.innerHTML = T("ex.q.none", { q: esc(t) });
+      say(true, () => ({ html: T("ex.q.none", { q: esc(t) }) }));
       return;
     }
     const same = r.name.toLowerCase().replace(/\W/g, "") === t.toLowerCase().replace(/\W/g, "");
     const shown = same ? r.name : `${t} (${r.name})`;
     const kind = plainType(r.type);
-    msg.textContent = kind ? T("ex.q.foundKind", { name: iName(shown), kind: typeName(kind) }) : T("ex.q.found", { name: iName(shown) });
+    say(false, () => ({ text: kind ? T("ex.q.foundKind", { name: iName(shown), kind: typeName(kind) }) : T("ex.q.found", { name: iName(shown) }) }));
     select({ id: null, name: shown, ra: r.ra, dec: r.dec, cat: null, manual: true, moved: r.moved, type: kind, pmra: r.pmra, pmdec: r.pmdec }, { fly: true, fov: 1, fill: false });
   } catch (e) {
-    msg.className = "msg err";
-    msg.textContent = T("ex.q.noService");
+    say(true, () => ({ text: T("ex.q.noService") }));
   }
 }
 
@@ -1269,6 +1277,7 @@ function wireUi() {
 // Language switch (js/i18n.js): re-render text only. The selection, the coordinate box, the open
 // category, the view and an open blink panel stay as they are (the viewer in the panel switches itself).
 function relang() {
+  if (state.sayMsg) say(state.sayMsg.err, state.sayMsg.render);
   if (state.engineKnown) setEngine(state.engine); else $("stEngine").textContent = T("ex.st.checking");
   if (state.cats.length) {
     const sheet = document.body.dataset.sheet;

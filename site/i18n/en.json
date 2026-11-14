@@ -1084,5 +1084,8 @@
  "vw.nomove.limit": "Anything faster than ~{v}″/yr would have shown.",
  "vw.lg.clicked": "where you clicked",
  "vw.lg.snapped": "source we measured",
- "vw.t.gaiaPm": "Gaia DR3 {v} mas/yr; ours {a}, {b} ± {e}: {k}σ"
+ "vw.t.gaiaPm": "Gaia DR3 {v} mas/yr; ours {a}, {b} ± {e}: {k}σ",
+ "ex.cat.astLink": "See the known asteroids we found blindly →",
+ "v.ast.h": "Known asteroids found blindly",
+ "v.ast.p": "We searched 24 ecliptic fields without being told where to look, then matched what we found to the known asteroids (SkyBoT, positions moved to where SPHEREx was). <b>217 known asteroids recovered</b>: V&lt;17 47 of 53, V&lt;18 101 of 132. Median position offset 0.68″. 47 objects were linked into tracks; their speed agrees with the orbit prediction to a median 0.36 %. <a href=\"asteroids.html\">All asteroid results</a>."
 }
