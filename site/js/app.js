@@ -12,6 +12,7 @@ import { parseCoords, matchTarget, sesame } from "./resolve.js";
 import { highPmStars } from "./gaia.js";
 import { propagate, offsetArcsec, jyearToMjd } from "./astro.js";
 import { t, tn, num, loc, lang, tname, onLang } from "./i18n.js";
+import { fovFromUrl, fovFor, fillFovSelect, fovEstimateText, setFovInUrl } from "./fov.js";
 
 // Sky index: the real module (skyindex.js) when it is there, else the dev stand-in.
 // To switch for good, change this one line.
@@ -186,7 +187,8 @@ function showFrame() {
   drawOverlay(cv, toCanvas, fr, zoom);
   $("date").textContent = `${fr.season}  (${fr.dateFirst === fr.dateLast ? fr.dateFirst : t("sk.dateRange", { a: fr.dateFirst, b: fr.dateLast })})`;
   $("detail").textContent = `${num(fr.lam, 2)} µm · SPHEREx ${fr.detectors.join("+")} · ${tn("sk.exposures", fr.n)}`
-    + (current.preview ? t("sk.detail.preview") : "");
+    + (current.preview ? t("sk.detail.preview") : "")
+    + (fr.softCorePx ? " · " + t("vw.core.smoothed") : "");      // saturated core: display fill, not data
 }
 
 function showDiff() {
@@ -301,7 +303,7 @@ function writeResult(state, extra = {}) {
     bins: s ? s.bins.map((b) => ({ um: b.um, detector: b.det, seasons_with_candidates: b.nSeasons, available: b.available })) : [],
     loaded: s ? Object.values(run.results).sort((a, b) => a.um - b.um).map((r) => ({ um: r.um, detector: r.det,
       frames: r.frames.map((f) => ({ season: f.season, n: f.n, detectors: f.detectors, lam_um: +f.lam.toFixed(4), lams: f.lams,
-                                     date_first: f.dateFirst, date_last: f.dateLast })) })) : [],
+                                     date_first: f.dateFirst, date_last: f.dateLast, soft_core_px: f.softCorePx || 0 })) })) : [],
     stage: run && run.stage ? run.stage : null,
     times_ms: run && run.times ? run.times : null,
     preview: run && run.preview ? { n_images: imagesIn(run.preview), um: run.preview.um, per_season: run.preview.preview.perSeason,
@@ -470,7 +472,7 @@ async function go(text, opts = {}) {
       throw new Error(t("sk.err.none", { dev: devNote }));
     }
     const cfg = { cap: Number($("cap").value) || PROFILE.cap };
-    if (params.get("fov")) cfg.fovDeg = Math.max(0.05, Math.min(0.3, Number(params.get("fov"))));
+    cfg.fovDeg = skyFov();                                   // the Field selector / ?fov= (default 0.15 deg)
     if (params.get("calib") === "0") cfg.calibrate = false;
     run.engine = new Engine({ useWorker: WORKER, onNet: (st) => { if (run === myRun) onNet(st); }, onStatus: (m) => { if (run === myRun) onStatus(m); } });
     const session = await run.engine.init({ ra, dec, target: r.target, images, config: cfg, cacheBytes: PROFILE.cacheBytes });
@@ -490,7 +492,7 @@ async function go(text, opts = {}) {
     }
     // Gaia high-proper-motion stars in the field, only for positions that are not one of the 5 targets
     if (!r.key) {
-      highPmStars(session.ra0, session.dec0, CONFIG.fovDeg * 0.75, 100, { signal: run.ctl.signal }).then((stars) => {
+      highPmStars(session.ra0, session.dec0, (cfg.fovDeg || CONFIG.fovDeg) * 0.75, 100, { signal: run.ctl.signal }).then((stars) => {
         if (myRun !== run) return;
         fieldStars = stars;
         run.gaiaField = { ok: true, n: stars.length, stars: stars.map((s) => ({ id: s.source_id, pm: s.pm, gmag: s.gmag })) };
@@ -566,6 +568,25 @@ $("allbins").onclick = async () => {
   } catch (e) { fail(e); }
 };
 for (const a of document.querySelectorAll("[data-q]")) a.onclick = (ev) => { ev.preventDefault(); $("q").value = a.dataset.q; go(a.dataset.q); };
+
+// field selector (js/fov.js): ?fov= or the default 0.15 deg; phones at most 0.3 deg. A change keeps the
+// choice in the address bar and runs the point again, like the exposures selector.
+let fovChoice = fovFromUrl();
+function skyFov() { return fovFor("browser", fovChoice, { phone: PROFILE.name === "phone" }); }
+function renderFov() {
+  const ph = PROFILE.name === "phone";
+  fillFovSelect($("fov"), "browser", skyFov(), { phone: ph });
+  $("fovEst").textContent = fovEstimateText("browser", skyFov(), { phone: ph }) + (ph ? " " + t("pg.fov.phoneMax") : "");
+}
+renderFov();
+onLang(renderFov);
+$("fov").onchange = () => {
+  fovChoice = Number($("fov").value);
+  setFovInUrl(fovChoice);
+  renderFov();
+  const v = $("q").value.trim();
+  if (v && run) go(v);
+};
 
 // exposures-per-season selector: profile default, ?cap= overrides
 {

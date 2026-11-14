@@ -209,7 +209,7 @@ function motionPair(ea, eb) {
 function brightPair(ea, eb) {
   const ph = ((S.meta && S.meta.measured) || {}).photometry;
   const pb = ph && (ph.bins || []).find((b) => Math.abs(b.wavelength_um - S.bin.wavelength_um) < 0.05);
-  if (!pb || !(pb.seasons || []).length) return { none: true, why: ((pb && pb.flags) || []).join("; ") || L("vw.why.noPhotWl", "no photometry at this wavelength") };
+  if (!pb || !(pb.seasons || []).length) return { none: true, why: ptext(((pb && pb.flags) || []).join("; ")) || L("vw.why.noPhotWl", "no photometry at this wavelength") };
   const A = pb.seasons.find((x) => x.epoch === ea), B = pb.seasons.find((x) => x.epoch === eb);
   if (!A || !B || !(+A.ratio_to_first > 0) || !ok(B.ratio_to_first)) return { none: true, why: L("vw.why.noPhotPair", "no photometry for this pair of seasons") };
   const rA = +A.ratio_to_first, rB = +B.ratio_to_first, r = rB / rA;
@@ -312,7 +312,14 @@ function ringSvg(u, legend) {
     `<circle cx="${x}" cy="${y}" r="${RING}" fill="none" stroke="#ffb347" stroke-width="${2.4 * u}"/>`;
   const cross = `M${x - 7 * u} ${y}H${x + 7 * u}M${x} ${y - 7 * u}V${y + 7 * u}`;
   let s = ring + `<path d="${cross}" stroke="#05070d" stroke-width="${4 * u}"/><path d="${cross}" stroke="#ffb347" stroke-width="${2 * u}"/>`;
-  legend.push(`<span><i class="lg ring"></i>${S.ref.none ? esc(L("vw.lg.picked", "position you picked")) : esc(L("vw.lg.predicts", "{who} predicts", { who: S.ref.short }))}</span>`);
+  const sn = (S.meta.measured || {}).snap;
+  legend.push(`<span><i class="lg ring"></i>${S.ref.none ? esc(sn ? L("vw.lg.snapped", "source we measured") : L("vw.lg.picked", "position you picked")) : esc(L("vw.lg.predicts", "{who} predicts", { who: S.ref.short }))}</span>`);
+  if (sn && sn.clicked && sn.clicked.png_xy) {          // moved to the nearest source: the clicked point stays as a small mark
+    const [cx, cy] = sn.clicked.png_xy, r = 4.5 * u;
+    s += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#05070d" stroke-width="${3.4 * u}"/>` +
+      `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#7fd4ff" stroke-width="${1.6 * u}"/>`;
+    legend.push(`<span><i class="lg clicked" style="border:2px solid #7fd4ff;border-radius:50%;width:8px;height:8px;display:inline-block"></i>${esc(L("vw.lg.clicked", "where you clicked"))}</span>`);
+  }
   const p = measuredPos(f.epoch);
   if (p) {
     const [mx, my] = p.png_xy_measured;
@@ -647,6 +654,13 @@ function renderResult() {
         const agree = e != null ? (d <= 2 * e ? L("vw.r.within", ", within the error") : L("vw.r.times", ", {k} times the error", { k: loc((d / e).toFixed(1)) })) : "";
         verdict = L("vw.r.cmp", "<b>Measured by us from SPHEREx images</b>, compared with {ref}: {d} apart", { ref: esc(R.label), d: arcsec(d, e) }) +
           (pct != null ? ` (${pct < 1 ? loc(pct.toFixed(1)) : Math.round(pct)} %)` : "") + `${agree}.`;
+      }
+      const gc = (ms.snap || {}).gaia_compare;           // moved to a Gaia DR3 star: its proper motion against ours
+      if (gc) {
+        const pmS = (a) => (a >= 0 ? "+" : "−") + loc(Math.abs(a).toFixed(0));
+        tRef = tile(esc(L("vw.t.compared", "Compared with")), `${loc(Math.hypot(gc.gaia_pmra_mas_yr, gc.gaia_pmdec_mas_yr).toFixed(0))} mas/yr`,
+          esc(L("vw.t.gaiaPm", "Gaia DR3 {v} mas/yr; ours {a}, {b} ± {e}: {k}σ", { v: `${pmS(gc.gaia_pmra_mas_yr)}, ${pmS(gc.gaia_pmdec_mas_yr)}`,
+            a: pmS(gc.pmra_mas_yr), b: pmS(gc.pmdec_mas_yr), e: loc(Math.max(gc.pmra_err_mas_yr, gc.pmdec_err_mas_yr).toFixed(0)), k: loc((+gc.sigma).toFixed(1)) })), "ref");
       }
       mainNote = !!v.headline;
       note = v.headline

@@ -28,6 +28,8 @@ The module is `site/js/i18n.js`. English is the default; `?lang=tr` or the EN | 
        `fazari:lang` event on `document` (`detail.lang`).
    - Classic scripts, and modules that also run in Node: `globalThis.__fzI18n?.t(...)` (absent = English).
 4. The switch: put `<span data-i18n-toggle></span>` where it should appear.
+   A site page inside a frame (the explorer's result panel) follows the page around it; switching in either
+   switches both (direct call, `postMessage({type: "fazari-lang"})` and the shared `fz-lang` storage key).
 
 ## Turkish style
 

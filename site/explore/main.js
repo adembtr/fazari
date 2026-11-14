@@ -5,11 +5,13 @@ import {
   parseCoords, looksLikeCoords, formatRA, formatDec, formatFov, applyPM, nowYear,
   randomSky, eclToEq, galToEq, separation,
 } from "./coords.js";
-import { SURVEYS, SPHEREX_SLICES, CLOSEUP_FOV, surveyUrl, minFov } from "./surveys.js";
+import { SURVEYS, CLOSEUP_SURVEYS, SPHEREX_SLICES, CLOSEUP_FOV, surveyUrl, minFov } from "./surveys.js";
 import { createCloseup } from "./closeup.js";
+import { installTileQueue } from "./tilequeue.js";
+import { createPrefetch } from "./prefetch.js";
 import { findLocal, sesame, plainType, typeName } from "./lookup.js";
 import { detectEngine, engineLabel, runLocalPreviewJob, jobLine, stateText, resultSummary, isLocalHost } from "./engine.js";
-import { t as T, num as iNum, loc as iLoc, field as iField, tname as iName, onLang } from "../js/i18n.js";
+import { t as T, num as iNum, loc as iLoc, field as iField, tname as iName, onLang, ptext as iPtext } from "../js/i18n.js";
 
 // Aladin Lite v3 (CDS, GPL-3). Pinned. The npm build on jsDelivr is the same code CDS publishes;
 // the CDS host is the fallback (its /api/v3/<version>/ path returned 404 in Nov 2026).
@@ -156,6 +158,15 @@ async function startFlat(reason) {
 async function startSky() {
   const intro = $("intro");
   if (params.has("flat") || !hasWebGL2()) return startFlat(params.has("flat") ? "?flat" : "no WebGL2");
+  // Map tiles: a few per server at a time, newest view first, spread over mirrors that hold the same map
+  // (not CDS alasky: 404 in Nov 2026). IRSA answered 2-6x slower than ESA per tile, so it only gets tiles
+  // when ESA is backed up. ?tq=0 turns this off (timing comparisons).
+  if (params.get("tq") !== "0") {
+    installTileQueue({
+      mirrors: [...Object.values(SURVEYS), ...Object.values(CLOSEUP_SURVEYS)].map((s) => s.mirrors.filter((m) => !m.includes("alasky"))),
+      priorMs: { "irsa.ipac.caltech.edu": 2500 },
+    });
+  }
   try {
     const [A, baseUrl] = await Promise.all([loadAladin(), surveyUrl("visible")]);
     await A.init;
@@ -180,6 +191,11 @@ async function startSky() {
       A, al, state, size: skySize, onChange: () => onViewChange(), onLimits: () => applyFovLimit(),
       pix2sky: (x, y) => { try { const q = al.pix2world(x, y); return q && Number.isFinite(q[0]) ? { ra: q[0], dec: q[1] } : null; } catch { return null; } },
     });
+    // Map tiles of the view a zoom or flight ends on are fetched as soon as it starts (prefetch.js).
+    if (params.get("tq") !== "0") {                     // ?tq=0: old behaviour (for timing comparisons)
+      state.prefetch = createPrefetch({ al, size: skySize, layers: prefetchLayers });
+      state.closeup.setPrefetch(state.prefetch);
+    }
     setupOverlays();
     loadExtras();
     al.on("zoomChanged", () => onViewChange());
@@ -190,7 +206,7 @@ async function startSky() {
     const noteMulti = (e) => { if (e.touches.length > 1 || (e.type === "touchend" && e.touches.length)) state.multiTouchAt = performance.now(); };
     for (const t of ["touchstart", "touchmove", "touchend"]) $("sky").addEventListener(t, noteMulti, { capture: true, passive: true });
     // Wheel, trackpad pinch and two-finger pinch zoom toward the cursor / finger midpoint (zoomanchor.js).
-    import("./zoomanchor.js").then((m) => { state.zoomAnchor = m.anchorAladinZoom(al, { limits: () => [minWidthFov(), maxWidthFov()] }); })
+    import("./zoomanchor.js").then((m) => { state.zoomAnchor = m.anchorAladinZoom(al, { limits: () => [minWidthFov(), maxWidthFov()], onTarget: (f, x, y) => state.prefetch?.toward(f, x, y) }); })
       .catch((e) => console.warn("Zoom toward the cursor unavailable", e));
     onViewChange();
     performance.mark("fz-sky");
@@ -400,6 +416,15 @@ function maxWidthFov() {
 function minWidthFov() {
   return state.closeup ? state.closeup.minFov() : minFov($("sky").clientWidth || innerWidth);
 }
+// Maps on screen at field fov near dec (for prefetching): the background, and the close-up map below
+// 0.5 deg (when it fully covers the view, only the close-up map).
+function prefetchLayers(fov, dec) {
+  const ck = state.closeup?.keyFor(fov, dec);
+  const keys = [];
+  if (state.bg !== "spherex" && !(ck && state.bg === "visible" && fov <= CLOSEUP_FOV[1])) keys.push(state.bg);
+  if (ck && !keys.includes(ck)) keys.push(ck);
+  return keys;
+}
 function skySize() {
   const el = $("sky");
   return [el.clientWidth, el.clientHeight];
@@ -415,6 +440,7 @@ function applyFovLimit() {
 
 function zoomTo(fov, secs = 1.2) {
   fov = Math.max(minWidthFov(), Math.min(fov, state.al ? maxWidthFov() : MAX_FOV));
+  if (state.al && state.prefetch) state.prefetch.view(...state.al.getRaDec(), fov);   // start that view's tiles now
   return new Promise((res) => {
     const al = state.al;
     if (!al) {
@@ -444,6 +470,7 @@ async function flyTo(ra, dec, fov) {
   const al = state.al;
   fov = Math.min(fov, al ? maxWidthFov() : MAX_FOV);
   if (!al) { state.flat?.goTo(ra, dec, fov); return; }
+  state.prefetch?.view(ra, dec, Math.max(minWidthFov(), fov));   // the tiles where the flight ends, while it flies
   const id = ++flight;
   const [cra, cdec] = al.getRaDec();
   const cur = al.getFov()[0];
@@ -726,6 +753,8 @@ function select(p, { fly = false, fov, fill = true } = {}) {
   const q = new URLSearchParams();
   if (p.id && !p.manual) q.set("p", p.id);
   else { q.set("ra", pos.ra.toFixed(5)); q.set("dec", pos.dec.toFixed(5)); }
+  const fovQ = new URLSearchParams(location.search).get("fov");   // Field choice (fov_ui.js) stays in the link
+  if (fovQ) q.set("fov", fovQ);
   history.replaceState(null, "", "?" + q.toString());
 }
 
@@ -820,8 +849,10 @@ async function drawFootprints() {
 }
 
 function blinkUrl(p) {
-  if (p.challenge && p.id) return `sky.html?target=${encodeURIComponent(p.id)}`;
-  return `sky.html?ra=${p.pos.ra.toFixed(5)}&dec=${p.pos.dec.toFixed(5)}`;
+  const fov = window.__fzFov ? window.__fzFov() : null;   // Field selector (fov_ui.js); null = engine default
+  const f = fov ? `&fov=${fov}` : "";
+  if (p.challenge && p.id) return `sky.html?target=${encodeURIComponent(p.id)}${f}`;
+  return `sky.html?ra=${p.pos.ra.toFixed(5)}&dec=${p.pos.dec.toFixed(5)}${f}`;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -904,10 +935,10 @@ function stopJob() {
 
 function startLocalJob(p) {
   // Fetch again on the spot whose jobs are still running: keep them (no cancel and restart)
-  const key = `${p.pos.ra.toFixed(6)},${p.pos.dec.toFixed(6)},${p.name}`;
-  if (state.job && state.job.key === key && params.get("force") !== "1") { showPanel(`SPHEREx blink: ${p.name}`); return; }
+  const key = `${p.pos.ra.toFixed(6)},${p.pos.dec.toFixed(6)},${p.name},${window.__fzFov ? window.__fzFov() : ""}`;
+  if (state.job && state.job.key === key && params.get("force") !== "1") { showPanel(() => T("ex.blink.title", { name: pname(p) })); return; }
   const prevCancel = stopJob();
-  showPanel(`SPHEREx blink: ${p.name}`);
+  showPanel(() => T("ex.blink.title", { name: pname(p) }));
   setStage(null);
   window.__fzTimes = { click: Date.now(), engine: "local" };
   const fr = $("blinkFrame");
@@ -932,7 +963,7 @@ function startLocalJob(p) {
   if (p.parallax > 0) req.parallax = p.parallax;              // mas (category points, fast stars): annual parallax term
   if (params.get("force") === "1") req.force = true;         // testing: ignore the engine's result cache
   const shown = { url: null, n: 0 };
-  const job = runLocalPreviewJob(req, ({ full: j, preview: pv }) => {
+  const tick = ({ full: j, preview: pv }) => {
     if (state.job !== job) return;
     const pvDone = pv && pv.state === "done";
     const pvUrl = pvDone ? pv.result_url : pv && pv.partial ? pv.partial.url : null;
@@ -966,8 +997,10 @@ function startLocalJob(p) {
     bits.push(elapsed());
     $("jobDetail").textContent = bits.join(" · ");
     $("jobMsg").textContent = cur !== j ? T("ex.job.after", { line: jobLine(j) || stateText(j.state) })
-      : j.state === "queued" && j.queue ? T("ex.job.full", { line: jobLine(j) }) : (j.message || "");
-  }, { after: prevCancel });
+      : j.state === "queued" && j.queue ? T("ex.job.full", { line: jobLine(j) }) : iPtext(j.message || "");
+  };
+  // state.jobTick: the progress text is drawn again on a language switch (relang)
+  const job = runLocalPreviewJob(req, (d) => { state.jobTick = () => tick(d); tick(d); }, { after: prevCancel });
   job.key = key;
   state.job = job;
   job.promise.then((j) => {
@@ -980,7 +1013,7 @@ function startLocalJob(p) {
       resultSummary(j.result_url).then((r) => {
         if (state.job || $("job").hidden === false) return;
         rbar.hidden = false; rbar.classList.remove("pending");
-        rbar.querySelector("b").textContent = r ? r.text : (j.message || T("ex.job.done"));
+        rbar.querySelector("b").textContent = r ? r.text : (iPtext(j.message) || T("ex.job.done"));
         const post = { left: j.post_pending ? j.post_pending.steps.slice() : [] };   // post-steps still running
         const small = () => T("ex.rb.engine", { when: secs < 2 ? T("ex.rb.cached") : T("ex.rb.ready", { s: secs.toFixed(0) }) })
           + (post.left.length ? T("ex.rb.adding", { steps: post.left.join(", ") }) : "");
@@ -990,9 +1023,9 @@ function startLocalJob(p) {
       });
     } else if (j.state !== "cancelled") {
       if (shown.url) {                                             // keep the preview on screen
-        rbar.querySelector("small").textContent = T("ex.rb.failed", { msg: j.message || T("ex.err.unknown") });
+        rbar.querySelector("small").textContent = T("ex.rb.failed", { msg: iPtext(j.message) || T("ex.err.unknown") });
       } else {
-        jobFailed(p, j.message || T("ex.job.failed"));
+        jobFailed(p, iPtext(j.message) || T("ex.job.failed"));
       }
     }
   }).catch((e) => { if (state.job === job) { state.job = null; jobFailed(p, e.message); } });
@@ -1252,6 +1285,7 @@ function relang() {
   if (state.selected) { renderCard(); if ($("tgFoot").checked) drawFootprints(); }
   if (setStage.last) setStage(...setStage.last);
   if (!$("blink").hidden && panelTitle) $("blinkTitle").textContent = typeof panelTitle === "function" ? panelTitle() : panelTitle;
+  if (state.job && state.jobTick) state.jobTick();          // job progress / preview result bar
   const rb = $("resultBar");
   if (!rb.hidden && rb._fz && !rb.classList.contains("pending")) {
     const fz = rb._fz;
@@ -1272,3 +1306,4 @@ function esc(s) {
 // For tests: window.__explore exposes state and a few actions.
 window.__explore = { MAX_FOV, state, openCategory, select, flyTo, runSearch, surprise, setBackground, openBlink, closeBlink, startLocalJob,
   stopFlight: () => { flight++; state.al?.stopAnimation?.(); } };   // stopFlight: the opening demo (demo.js) ends a flight where it is
+import("./finds.js").then((m) => m.initFinds({ state, select, openBlink, toast })).catch((e) => console.warn("Finds list unavailable", e));   // confirmed results of the local engine (finds.js)

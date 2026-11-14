@@ -4,14 +4,14 @@
 //   BROWSER: sky.html does everything in the page (the public GitHub Pages site).
 //
 // Local API (see local/serve.py):
-//   POST   /api/jobs        {ra, dec, name?, preview?: true}  -> {id, cached, preview: {id, cached} | null}
+//   POST   /api/jobs        {ra, dec, name?, cutout_deg?, preview?: true} -> {id, cached, preview: {id, cached} | null}
 //   GET    /api/jobs/<id>   -> {state: queued|finding|downloading|processing|done|error, mode: full|preview,
 //                               progress: {done, total, bytes}, message, result_url, queue, eta_s, partial?}
 //   DELETE /api/jobs/<id>   cancel
 // The explorer asks for a quick preview first (the engine's fast lane: one wavelength, a few images
 // per season, small regions) and shows it until the full result is done (runLocalPreviewJob).
 
-import { t as T, tn as Tn, num as iNum } from "../js/i18n.js";
+import { t as T, tn as Tn, num as iNum, ptext as iPtext } from "../js/i18n.js";
 
 const LOCAL_HOSTS = /^(localhost|127\.0\.0\.1|\[::1\]|::1)$/;
 
@@ -87,9 +87,10 @@ const TERMINAL = new Set(["done", "error", "cancelled"]);
  * until it is finished) and calls onUpdate({full, preview}) after every poll; preview is null when
  * there is none. Resolves with the final full job. Returns {promise, cancel} (cancel stops both).
  */
-export function runLocalPreviewJob({ ra, dec, name, pmra, pmdec, epoch, parallax, force }, onUpdate,
+export function runLocalPreviewJob({ ra, dec, name, pmra, pmdec, epoch, parallax, force, cutout_deg }, onUpdate,
                                    { interval = 1500, fastInterval = 400, after = null } = {}) {
   const ids = { full: null, preview: null };
+  const fov = cutout_deg || (typeof window !== "undefined" && window.__fzFov ? window.__fzFov() : null);   // explore/fov_ui.js
   let stopped = false, timer = null;
   const get = async (id) => {
     try {
@@ -110,6 +111,7 @@ export function runLocalPreviewJob({ ra, dec, name, pmra, pmdec, epoch, parallax
         ...(pmra != null && pmdec != null && epoch != null ? { pmra, pmdec, epoch } : {}),
         ...(parallax > 0 ? { parallax } : {}),                     // mas, known distance (nearby star)
         ...(force ? { force: true } : {}),
+        ...(fov ? { cutout_deg: fov } : {}),                       // field of the full result (0.2-0.6 deg; else 0.4)
         preview: true,
       }),
     });
@@ -194,6 +196,6 @@ export async function resultSummary(resultUrl) {
       return { text: t + ".", meta: m, n };
     }
     const msg = ms.message || (ms.detection && ms.detection.message);
-    return msg ? { text: msg, meta: m, n } : { text: T("ex.eng.seasons", { n: (m.epochs || []).length }), meta: m, n };
+    return msg ? { text: iPtext(msg), meta: m, n } : { text: T("ex.eng.seasons", { n: (m.epochs || []).length }), meta: m, n };
   } catch { return null; }
 }

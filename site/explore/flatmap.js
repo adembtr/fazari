@@ -80,12 +80,25 @@ export function startFlatMap(host, { points, colors, onPick, onView, ra = 83.8, 
     const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.hypot(w, h) / 2);
     g.addColorStop(0, "#111c40"); g.addColorStop(1, "#05070d");
     ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-    // RA/Dec grid, finer when zoomed in
-    const step = view.fov > 60 ? 15 : view.fov > 20 ? 5 : view.fov > 6 ? 1 : 0.25;
-    const n = Math.round(360 / step);
+    // RA/Dec grid, finer when zoomed in. Only the lines that cross the view, sampled for this field
+    // (drawing the whole sky's grid every frame took up to seconds per redraw at small fields).
+    const f = view.fov;
+    const step = f > 60 ? 15 : f > 20 ? 5 : f > 6 ? 1 : f > 1.5 ? 0.25 : f > 0.4 ? 1 / 12 : 1 / 60;
+    const rad = Math.min(180, f * 0.8 * Math.max(1, h / Math.max(1, w))) + step;   // reaches past the corners
+    const dLo = Math.max(-90, view.dec - rad), dHi = Math.min(90, view.dec + rad);
+    const pole = Math.abs(view.dec) + rad >= 89.9;
+    const raHalf = pole ? 180 : Math.min(180, rad / Math.cos((Math.abs(view.dec) + rad) * R) + step);
+    const raLo = view.ra - raHalf, raSpan = 2 * raHalf;
+    const along = (span) => Math.max(8, Math.min(721, Math.ceil(span / Math.max(1e-6, f / 40))));
     ctx.strokeStyle = "rgba(160,180,230,.13)"; ctx.lineWidth = 1;
-    for (let d = -90 + step; d < 90 - 1e-9; d += step) line(Array.from({ length: 721 }, (_, i) => ({ ra: i / 2, dec: d })));
-    for (let i = 0; i < n; i++) line(Array.from({ length: 181 }, (_, j) => ({ ra: i * step, dec: -90 + j })));
+    const nr = along(raSpan);
+    for (let d = Math.ceil((dLo + 1e-9) / step) * step; d < dHi - 1e-9 && d < 90 - 1e-9; d += step) {
+      if (d <= -90 + 1e-9) continue;
+      line(Array.from({ length: nr + 1 }, (_, i) => ({ ra: raLo + raSpan * i / nr, dec: d })));
+    }
+    const nd = along(dHi - dLo);
+    const r0 = pole ? 0 : Math.floor(raLo / step) * step, r1 = pole ? 360 - 1e-9 : raLo + raSpan;
+    for (let a = r0; a <= r1; a += step) line(Array.from({ length: nd + 1 }, (_, j) => ({ ra: a, dec: dLo + (dHi - dLo) * j / nd })));
     // Milky Way band and plane, ecliptic
     ctx.strokeStyle = "rgba(170,190,255,.16)"; ctx.lineWidth = Math.max(6, Math.min(80, scale() * 0.17)); line(gal);
     ctx.strokeStyle = "#9fc8ff"; ctx.lineWidth = 1.2; ctx.setLineDash([2, 5]); line(gal);

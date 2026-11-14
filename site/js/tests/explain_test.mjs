@@ -64,6 +64,14 @@ const synth = {
   phot_flat: { ...base, target: "V", measured: { status: "brightness", photometry: { bins: [{ wavelength_um: 2, seasons: [
     { epoch: "2025-09", ratio_to_first: 1, ratio_err: 0 }, { epoch: "2026-03", ratio_to_first: 1.02, ratio_err: 0.05 }] }] } } },
   phot_none: { ...base, measured: { status: "brightness", photometry: { bins: [{ wavelength_um: 4, seasons: [], flags: ["no photometry"] }] } } },
+  // measured, but no motion: plain statement with the limit 3 x error / baseline
+  no_motion: { ...base, target: null, gaia: { label: "requested position" },
+    measured: { status: "detected", shift_arcsec: 0.03, shift_err_arcsec: 0.05, pa_deg: 90, dt_years: 1.0 } },
+  // nothing at the click, a Gaia DR3 star 8.2" away measured instead (meta.measured.snap from blink.py)
+  snapped: { ...base, target: "Sky field RA 53.7730 Dec +47.9560", gaia: { label: "Gaia DR3", source_id: "248996193501291904" },
+    measured: { status: "detected", shift_arcsec: 0.098, shift_err_arcsec: 0.046, pa_deg: 167, dt_years: 0.998,
+      gaia_predicted_arcsec: 0.04, gaia_pa_deg: 104,
+      snap: { sep_arcsec: 8.2, gaia_dr3: "248996193501291904", clicked: { png_xy: [360, 410] }, source: { png_xy: [347.8, 406.8] } } } },
 };
 for (const [k, m] of Object.entries(synth)) {
   let s;
@@ -73,6 +81,10 @@ for (const [k, m] of Object.entries(synth)) {
   check(!/discover/i.test(JSON.stringify(s)), `${k}: says discover`);
 }
 check(/candidate/.test(plainSentence(synth.field_candidate).text), "field_candidate: no 'candidate'");
+check(/^The source at the centre did not move: measured shift 0\.03″ ± 0\.05″ in one year\. Anything faster than ~0\.15″\/yr would have shown\.$/
+  .test(plainSentence(synth.no_motion).text), `no_motion: "${plainSentence(synth.no_motion).text}"`);
+check(/^We measured the star 8″ from where you clicked\. This star did not move: measured shift 0\.10″ ± 0\.05″ in one year, as Gaia predicts\. Anything faster than ~0\.14″\/yr would have shown\.$/
+  .test(plainSentence(synth.snapped).text), `snapped: "${plainSentence(synth.snapped).text}"`);
 
 // Turkish (plainSentence(meta, { lang: "tr" }); on the page the language comes from js/i18n.js)
 const EXPECT_TR = {
@@ -107,6 +119,19 @@ for (const [k, m] of Object.entries(synth)) {
   noDiscover(k, s); commaOnly(k, s && s.text); commaOnly(k, s && s.note);
 }
 check(/aday/.test(plainSentence(synth.field_candidate, { lang: "tr" }).text), "field_candidate (tr): no 'aday'");
+check(/^Merkezdeki kaynak hareket etmedi: bir yılda ölçülen kayma 0,03″ ± 0,05″\. Yılda ~0,15″'den hızlı her hareket görünürdü\.$/
+  .test(plainSentence(synth.no_motion, { lang: "tr" }).text), `no_motion (tr): "${plainSentence(synth.no_motion, { lang: "tr" }).text}"`);
+check(/^Tıkladığın yerin 8″ yanındaki yıldızı ölçtük\. Bu yıldız hareket etmedi: bir yılda ölçülen kayma 0,10″ ± 0,05″; Gaia'nın beklediği gibi\. Yılda ~0,14″'den hızlı her hareket görünürdü\.$/
+  .test(plainSentence(synth.snapped, { lang: "tr" }).text), `snapped (tr): "${plainSentence(synth.snapped, { lang: "tr" }).text}"`);
+// the same sentences through site/i18n/{en,tr}.json (the page's js/i18n.js): keys exist and give the same text
+for (const lg of ["en", "tr"]) {
+  const J = JSON.parse(readFileSync(`${SITE}/i18n/${lg}.json`, "utf8"));
+  for (const k of ["vw.snap.star", "vw.snap.source", "vw.nomove", "vw.nomove.limit", "vw.lg.clicked", "vw.lg.snapped", "vw.t.gaiaPm"]) check(J[k], `${lg}.json: no ${k}`);
+  const built = ["snapped", "no_motion"].map((k) => plainSentence(synth[k], { lang: lg }).text);
+  globalThis.__fzI18n = { lang: () => lg, has: (k) => k in J, t: (k, p = {}) => String(J[k]).replace(/\{(\w+)\}/g, (m, q) => (p[q] != null ? String(p[q]) : m)) };
+  ["snapped", "no_motion"].forEach((k, i) => check(plainSentence(synth[k]).text === built[i], `${k} via ${lg}.json: "${plainSentence(synth[k]).text}" vs built-in "${built[i]}"`));
+  delete globalThis.__fzI18n;
+}
 // the page's language (globalThis.__fzI18n from js/i18n.js) is the default
 {
   const bm = JSON.parse(readFileSync(`${SITE}/data/barnard/meta.json`, "utf8"));

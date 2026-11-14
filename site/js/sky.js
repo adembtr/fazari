@@ -415,6 +415,7 @@ export class SkySession {
         fr.norm[k] = fr.sat[k] ? 1 : Number.isFinite(v) ? Math.min(1, Math.max(0, Math.asinh((v - st.lo) / st.soft) / den)) : NaN;
       }
       softCore(fr.norm, fr.sat, G.n);                 // bright star: graded core, not a flat white disc
+      fr.softCorePx = fr.sat.reduce((a, v) => a + v, 0);   // pixels shown smoothed (display fill, not data)
       fillNaN(fr.norm, G.n);
     }
     const first = frames[0], last = frames[frames.length - 1];

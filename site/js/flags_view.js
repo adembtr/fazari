@@ -8,6 +8,7 @@
 // after #faintControls). It follows the frame through the "fazari:frame" event and #frame's src
 // (<data>/frames/<season>_<bin>um.png). The overlay follows the blink frame; in Swipe and Trail
 // (two seasons at once) it is hidden. URL options: flags=1 (overlay on), fsrc=1 (image list open).
+// Also the note under the image when the frame's saturated core is a display fill (#coreNote).
 (function () {
   "use strict";
   const Q = new URLSearchParams(location.search);
@@ -53,7 +54,8 @@
       .framesrc th, .framesrc td { text-align:left; padding:2px 6px 2px 0; white-space:nowrap; }
       .framesrc tr.ep td { color:var(--mut,#9aa3b2); padding-top:6px; white-space:normal; }
       .framesrc tr.on td { color:var(--acc,#ffb347); }
-      .framesrc .src-note { color:var(--mut,#9aa3b2); font-size:.8rem; margin:4px 0 0; }`;
+      .framesrc .src-note { color:var(--mut,#9aa3b2); font-size:.8rem; margin:4px 0 0; }
+      .corenote { margin:6px 0 0; font-size:.82rem; color:var(--acc,#ffb347); }`;
     document.head.appendChild(s);
   }
   function ui() {
@@ -83,6 +85,10 @@
     zoomer.insertBefore(cv, $("candLayer") || null);       // above the frame, below the markers
     $("fl-on").checked = on;
     $("fl-on").onchange = e => { on = e.target.checked; render(); };
+    const cn = document.createElement("p");            // saturated core note, right under the image
+    cn.id = "coreNote"; cn.className = "corenote"; cn.hidden = true;
+    const stage = $("stage");
+    if (stage) stage.parentNode.insertBefore(cn, stage.nextSibling); else mount.appendChild(cn);
     texts();
   }
   function texts() {
@@ -133,10 +139,25 @@
       `${esc(g.label())}${share ? esc(pct(share[g.key])) : ""}</span>`).join("");
   }
   function note(s) { $("fl-note").textContent = s || ""; }
+  // The saturated core of a frame is a display fill, not data: blink.py / preview.py record per frame
+  // how many pixels soft_core smoothed (meta.json frames[].soft_core_px); older frames (no record,
+  // e.g. the published site targets) drew it flat white: inferred from the flag layer's saturated share.
+  function coreNote() {
+    const el = $("coreNote");
+    if (!el) return;
+    const b = bin(), mf = b ? (b.frames || []).find(f => f.epoch === cur.epoch) : null;
+    let key = null;
+    if (mf && typeof mf.soft_core_px === "number") key = mf.soft_core_px > 0 ? "smoothed" : null;
+    else { const e = flState === "ok" ? frameEntry() : null; if (e && e.f.available && e.f.share && e.f.share.saturated > 0) key = "white"; }
+    el.hidden = !key;
+    el.textContent = key === "smoothed" ? T("vw.core.smoothed", "Core saturated: shown smoothed, not measured data.")
+      : key === "white" ? T("vw.core.white", "Core saturated: shown white, not measured data.") : "";
+  }
   let tok = 0;
   async function render() {
     const cv = $("flagcv"), box = $("fl-on");
     if (!cv) return;
+    coreNote();
     const my = ++tok;
     box.disabled = flState === "none";
     if (flState === "none") { cv.style.display = "none"; legend(null); note(T("vw.fl.na", "Flags not available for this result.")); return; }
@@ -242,7 +263,7 @@
     if (started || BASE == null) return;
     started = true;
     ui();
-    fetch(BASE + "meta.json").then(r => r.ok ? r.json() : null).catch(() => null).then(m => { meta = m; lastBin = cur.bin; summary(); table(); });
+    fetch(BASE + "meta.json").then(r => r.ok ? r.json() : null).catch(() => null).then(m => { meta = m; lastBin = cur.bin; summary(); table(); coreNote(); });
     loadFlags();
   }
   function loadFlags() {

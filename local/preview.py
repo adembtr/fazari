@@ -203,7 +203,8 @@ def render(out, groups, b, det, t, job_id, ra_c, dec_c, grid, shape, moving, loc
         gif.append(blink.to_png(blink.gray_rgb(s, satm), lines, out / fn))
         frames.append({"file": fn, "date": dmed.iso[:10], "epoch": e, "n_images": len(g), "detectors": [f"D{det}"],
                        "wavelength_um": round(lam, 3), "date_first": d0, "date_last": d1,
-                       "files": sorted(f"{x[0]['obs_id']}D{det}" for x in g)})
+                       "files": sorted(f"{x[0]['obs_id']}D{det}" for x in g),
+                       "soft_core_px": int(satm.sum())})           # saturated core shown smoothed (blink.soft_core)
     gname, dname = f"blink_{b:.1f}um.gif", f"diff_{b:.1f}um.png"
     gif[0].save(out / gname, save_all=True, append_images=gif[1:], duration=800, loop=0)
     blink.to_png(blink.diverging_rgb(normed[eps[-1]] - normed[eps[0]], 0.6),

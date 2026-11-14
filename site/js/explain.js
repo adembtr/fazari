@@ -50,6 +50,33 @@ function nameTr(n) {
 }
 
 const ok = (v) => v != null && Number.isFinite(+v);
+/** A sentence from site/i18n/<lang>.json through js/i18n.js when the page has it in language L, else the
+ *  built-in English / Turkish text (Node, tests); {name} = a parameter. */
+function tx(L, key, en, tr, p = {}) {
+  try {
+    const g = globalThis.__fzI18n;
+    if (g && g.t && g.lang && g.lang() === L && (!g.has || g.has(key))) { const v = g.t(key, p); if (v && v !== key) return v; }
+  } catch (_) {}
+  return (L === "tr" ? tr : en).replace(/\{(\w+)\}/g, (m, k) => (p[k] != null ? String(p[k]) : m));
+}
+/** "No motion" limit: a motion faster than this (arcsec / yr) would have given a > 3σ shift. */
+export function motionLimit(err, dtYears) {
+  return ok(err) && err > 0 && ok(dtYears) && dtYears > 0.1 ? 3 * err / dtYears : null;
+}
+const rate = (v, L) => { const x = (v >= 1 ? v.toFixed(1) : v.toFixed(2)); return L === "tr" ? dc(x) : x; };
+/** The snapped source (meta.measured.snap): "This star" / "This source", or null. */
+function snapSubject(ms, L) {
+  const sn = ms && ms.snap;
+  if (!sn || !ok(sn.sep_arcsec)) return null;
+  return sn.gaia_dr3 ? (L === "tr" ? "Bu yıldız" : "This star") : (L === "tr" ? "Bu kaynak" : "This source");
+}
+/** "We measured the star 8″ from where you clicked." */
+export function snapSentence(sn, L = "en") {
+  const d = +sn.sep_arcsec, v = d >= 2 ? String(Math.round(d)) : (L === "tr" ? dc(d.toFixed(1)) : d.toFixed(1));
+  return sn.gaia_dr3
+    ? tx(L, "vw.snap.star", "We measured the star {d}″ from where you clicked.", "Tıkladığın yerin {d}″ yanındaki yıldızı ölçtük.", { d: v })
+    : tx(L, "vw.snap.source", "We measured the source {d}″ from where you clicked.", "Tıkladığın yerin {d}″ yanındaki kaynağı ölçtük.", { d: v });
+}
 /** "2025-09" -> "September 2025" / "Eylül 2025" (anything else is returned as it is). */
 export function monthName(ep, lang = "en") {
   const m = /^(\d{4})-(\d{2})/.exec(ep || "");
@@ -136,8 +163,10 @@ function motionSentence(meta, ms, S, L) {
     if (predSig) {
       return `${S}: belirgin bir hareket ölçülmedi (${tt} ${A(s)}${errT}), oysa ${P.nom} ${A(p)}${pTo} kayma bekliyor. Ölçüm burada fazla belirsiz.`;
     }
-    return `${S} ölçülebilir bir hareket göstermedi: ${tt} ${A(s)}${errT}, yani hata payı içinde sıfır` +
-      (P && p != null ? `; ${P.gen} beklediği gibi.` : ".");
+    const limT = motionLimit(e ?? eU, ms.dt_years);
+    return tx("tr", "vw.nomove", "{S} did not move: measured shift {s} {t}{as}.", "{S} hareket etmedi: {t} ölçülen kayma {s}{as}.",
+      { S, s: A(s) + errT, t: tt, as: P && p != null ? `; ${P.gen} beklediği gibi` : "" }) +
+      (limT ? " " + tx("tr", "vw.nomove.limit", "Anything faster than ~{v}″/yr would have shown.", "Yılda ~{v}″'den hızlı her hareket görünürdü.", { v: rate(limT, "tr") }) : "");
   }
   if (sig && predSig) {
     const same = Math.abs(s - p) <= Math.max(3 * eU, 0.1 + 0.05 * p) &&
@@ -154,8 +183,10 @@ function motionSentence(meta, ms, S, L) {
     return `${S}: no clear motion measured (${arcsec(s)}${err} ${t}), although ${pred} ${arcsec(p)}` +
       (ok(ms.gaia_pa_deg) ? ` ${compass(ms.gaia_pa_deg)}` : "") + `. The measurement is too uncertain here.`;
   }
-  return `${S} did not move measurably: ${arcsec(s)}${err} ${t}, which is zero within the errors` +
-    (P && p != null ? `, as ${pred}.` : ".");
+  const lim = motionLimit(e ?? eU, ms.dt_years);
+  return tx("en", "vw.nomove", "{S} did not move: measured shift {s} {t}{as}.", "{S} hareket etmedi: {t} ölçülen kayma {s}{as}.",
+    { S, s: arcsec(s) + err, t, as: P && p != null ? `, as ${pred}` : "" }) +
+    (lim ? " " + tx("en", "vw.nomove.limit", "Anything faster than ~{v}″/yr would have shown.", "Yılda ~{v}″'den hızlı her hareket görünürdü.", { v: rate(lim, "en") }) : "");
 }
 
 /** How a brightness ratio reads: "about half as bright", "about 25% fainter", "about twice as bright". */
@@ -251,13 +282,22 @@ function brightnessSentenceTr(ph, c, S, named) {
   return { text: t + cand + ".", note };
 }
 
-/** One plain sentence (plus an optional caveat) for a meta.json, or null if there is nothing to say. */
+// A pipeline message shown as it is (English); in Turkish through the site's templates when the page has them.
+const pipeMsg = (m, L) => (L === "tr" && globalThis.__fzI18n && globalThis.__fzI18n.ptext ? globalThis.__fzI18n.ptext(m) : m);
+
+/** One plain sentence (plus an optional caveat) for a meta.json, or null if there is nothing to say.
+ *  A result moved to the nearest source (meta.measured.snap) starts with "We measured the star 8″ from where you clicked." */
 export function plainSentence(meta, opt) {
+  const r = sentenceCore(meta, opt);
+  const sn = meta && meta.measured && meta.measured.snap;
+  return r && sn && ok(sn.sep_arcsec) ? { ...r, text: snapSentence(sn, langOf(opt)) + " " + r.text } : r;
+}
+function sentenceCore(meta, opt) {
   if (!meta || typeof meta !== "object") return null;
   const L = langOf(opt);
   const ms = meta.measured || {};
   const name = subject(meta);
-  const S = name ? (L === "tr" ? nameTr(name) : name) : (L === "tr" ? "Merkezdeki kaynak" : "The source at the centre");
+  const S = snapSubject(ms, L) || (name ? (L === "tr" ? nameTr(name) : name) : (L === "tr" ? "Merkezdeki kaynak" : "The source at the centre"));
   const status = ms.status || (ms.detection || {}).status || "";
   const tidy = (s) => (L === "tr" ? s.replace(/\( /g, "(").replace(/ \)/g, ")").trim() : s);
   try {
@@ -292,10 +332,10 @@ export function plainSentence(meta, opt) {
     }
     if (status === "detected") return { text: `${S} shows up in every season, but its motion could not be measured here.`, note: "" };
     const msg = ms.message || (ms.detection || {}).message;
-    return msg ? { text: msg, note: "" } : null;
+    return msg ? { text: pipeMsg(msg, L), note: "" } : null;
   } catch (e) {
     const msg = ms.message || (ms.detection || {}).message;
-    return msg ? { text: msg, note: "" } : null;
+    return msg ? { text: pipeMsg(msg, L), note: "" } : null;
   }
 }
 

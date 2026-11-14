@@ -48,11 +48,13 @@ function touchMid(e, box) {
  * Aladin Lite v3: wheel and two-finger pinch zoom toward the cursor / finger midpoint.
  *   al       the Aladin instance (its #sky div gets the listeners)
  *   limits   () -> [smallest, largest] field width (deg); the zoom stops there
+ *   onTarget (fov, x, y) -> called on each wheel step with the field the zoom will end at and the
+ *            cursor pixel (used to prefetch that view's map tiles)
  * The wheel replaces Aladin's own wheel zoom (its documented "wheelTriggered" callback), with the same rate
  * and the same smoothing. The pinch is still done by Aladin (zoom and finger rotation); right after each
  * finger move the view is shifted back so the midpoint keeps its sky point.
  */
-export function anchorAladinZoom(al, { limits }) {
+export function anchorAladinZoom(al, { limits, onTarget }) {
   const box = al.aladinDiv || document.getElementById("sky");
   const view = {
     toPixel: (ra, dec) => { try { const p = al.world2pix(ra, dec); return p && Number.isFinite(p[0]) && Number.isFinite(p[1]) ? p : null; } catch { return null; } },
@@ -100,6 +102,10 @@ export function anchorAladinZoom(al, { limits }) {
     left = snapshot();
     pending += d;
     if (!raf) { last = 0; raf = requestAnimationFrame(step); }
+    if (onTarget) {
+      const [lo, hi] = limits();
+      try { onTarget(Math.max(lo, Math.min(hi, al.getFov()[0] * Math.exp(WHEEL_RATE * pending))), x, y); } catch (err) { console.warn(err); }
+    }
   });
   // Grabbing the sky ends a wheel zoom that is still gliding.
   box.addEventListener("pointerdown", stop, { capture: true, passive: true });

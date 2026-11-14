@@ -28,16 +28,20 @@ const missing = new Set();           // keys asked for in Turkish that tr.json d
 let cur = detect();
 let EN = {}, TR = null;
 
+/** One language file, or null if it cannot be loaded (tried 3 times; a file being rewritten can fail once). */
 async function load(l) {
-  try {
-    const r = await fetch(new URL(l + ".json", BASE), { cache: "no-cache" });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const j = await r.json();
-    return j && typeof j === "object" ? j : {};
-  } catch (e) {
-    console.warn(`i18n: ${l}.json not loaded`, e);
-    return {};
+  for (let i = 0; i < 3; i++) {
+    try {
+      const r = await fetch(new URL(l + ".json", BASE), { cache: "no-cache" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const j = await r.json();
+      if (j && typeof j === "object") return j;
+    } catch (e) {
+      if (i === 2) console.warn(`i18n: ${l}.json not loaded`, e);
+    }
+    await new Promise((res) => setTimeout(res, 300 * (i + 1)));
   }
+  return null;
 }
 
 function detect() {
@@ -45,18 +49,30 @@ function detect() {
     const q = new URLSearchParams(location.search).get("lang");
     if (LANGS.includes(q)) { try { localStorage.setItem(KEY, q); } catch (e) { /* storage blocked */ } return q; }
   } catch (e) { /* no location */ }
-  try {
-    const s = localStorage.getItem(KEY);
-    if (LANGS.includes(s)) return s;
-  } catch (e) { /* storage blocked */ }
+  // A page inside a frame of the site (the explorer's result panel) follows the page around it.
   try {
     const p = window.parent !== window && window.parent.__fzI18n && window.parent.__fzI18n.lang();
     if (LANGS.includes(p)) return p;
   } catch (e) { /* other origin */ }
+  try {
+    const s = localStorage.getItem(KEY);
+    if (LANGS.includes(s)) return s;
+  } catch (e) { /* storage blocked */ }
   return "en";
 }
 
-[EN, TR] = await Promise.all([load("en"), cur === "tr" ? load("tr") : null]);
+{
+  const [en, tr] = await Promise.all([load("en"), cur === "tr" ? load("tr") : null]);
+  EN = en || {}; TR = tr;
+  if (!en || (cur === "tr" && !tr)) setTimeout(reload, 2000);
+}
+/** A language file failed at start: try again in the background, then redraw the page and tell the modules. */
+async function reload(n = 0) {
+  if (!Object.keys(EN).length) { const en = await load("en"); if (en) { EN = en; exact = null; } }
+  if (cur === "tr" && !TR) TR = await load("tr");
+  const ok = Object.keys(EN).length && (cur !== "tr" || TR);
+  if (ok) { apply(document); notify(); } else if (n < 5) setTimeout(() => reload(n + 1), 3000 * (n + 1));
+}
 
 export function lang() { return cur; }
 
@@ -128,6 +144,26 @@ const PIPE = [
   [/^([\d.]+)"\/yr toward PA (\d+)°$/, "pl.motion"],
   [/^seen in one season only \(S\/N without the strongest season ([\d.]+)\)$/, "pl.oneSeason"],
   [/^static star on the path \((\d+) uJy\): probably its residual$/, "pl.staticStar"],
+  [/^Preview: (\d+) images at ([\d.]+) µm in (\d+) seasons\. A quick look, not a measurement; the full result \(all wavelengths, Gaia-calibrated motion with error bars\) follows\.$/, "pl.preview"],
+  [/^Not detected above (\d+σ) in single-season stacks \(best S\/N (-?[\d.]+), (\S+) (\S+)\)\.$/, "pl.notDetBest"],
+  [/^Not detected above (\d+σ) in single-season stacks\.$/, "pl.notDet"],
+  [/^Detected above (\d+σ) in every wavelength bin; some season x detector stacks are below (\d+σ) \(fitted only where detected\)\.$/, "pl.detBins"],
+  [/^Detected at (.+?) µm \(≥(\d+σ)\) in season (\S+) only: no motion measurement\.$/, "pl.detOneAt"],
+  [/^Detected in (.+?) \(≥(\d+σ)\) in season (\S+) only: no motion measurement\.$/, "pl.detOneIn"],
+  [/^Detected at (.+?) µm only \(≥(\d+σ) in single-season stacks, detectors (.+?)\)\.$/, "pl.detAtOnly"],
+  [/^Detected in (.+?) only \(≥(\d+σ) in single-season stacks, detectors (.+?)\); not detected at (.+?) µm\.$/, "pl.detInSome"],
+  [/^Detected in (.+?) only \(≥(\d+σ) in single-season stacks, detectors (.+?)\)\.$/, "pl.detInOnly"],
+  [/^preview: (\d+) images at ([\d.]+) um, (\d+) seasons$/, "pl.job.preview"],
+  [/^reading and aligning exposure (\d+) of (\d+)$/, "pl.job.reading"],
+  [/^post-step: (.+)$/, "pl.job.post"],
+  [/^(\d+) cutouts ready, (\d+) skipped$/, "pl.job.cutoutsSkip"],
+  [/^(\d+) cutouts ready$/, "pl.job.cutouts"],
+  [/^(\d+) seasons, (\d+) wavelength bin\(s\)$/, "pl.job.seasons"],
+  [/^(\d+) of (\d+) regions ready$/, "pl.job.regions"],
+  [/^first look ready \((\d+) images\); (\d+) more regions coming$/, "pl.job.first"],
+  [/^local server error: (.+)$/, "pl.job.serverErr"],
+  [/^the job stopped \(exit code (-?\d+)\); see (.+)$/, "pl.job.stopped"],
+  [/^Lost contact with the local engine \((.+)\)\.$/, "pl.job.lost"],
   [/^seasons sample different wavelengths within the bin \(([\d.]+)-([\d.]+) um\)$/, "pl.binSample"],
   [/^known object \(field target (.+?), not in Gaia DR3\)$/, "pl.knownField"],
   [/^not seen in the other telescope orientation \(expected S\/N ([\d.]+), measured ([\d.]+)\): probably a detector artifact$/, "pl.otherOrient"],
@@ -205,20 +241,35 @@ export function onLang(f) { listeners.add(f); return () => listeners.delete(f); 
 /** Switch the language: saves it, updates the URL, the page, the toggles and same-site frames. */
 export async function setLang(l, { save = true } = {}) {
   l = l === "tr" ? "tr" : "en";
-  if (l === "tr" && !TR) TR = await load("tr");
   if (save) { try { localStorage.setItem(KEY, l); } catch (e) { /* storage blocked: this page only */ } }
   if (l === cur) { paintToggles(); return; }
-  cur = l;
+  cur = l;                                     // at once, so a second call (frame, storage, message) is a no-op
   document.documentElement.lang = l;
+  paintToggles();
+  syncFrames(l);                               // the page around this frame and the frames inside it switch too
+  if (l === "tr" && !TR) { TR = await load("tr"); if (!TR) setTimeout(reload, 2000); }
+  if (cur !== l) return;                       // switched back while tr.json was loading
   try { origReplace(history.state, "", withLang(location.href)); } catch (e) { /* ignore */ }
   apply(document);
+  notify();
+}
+
+function notify() {
   paintToggles();
-  for (const f of [...listeners]) { try { f(l); } catch (e) { console.warn("i18n listener", e); } }
-  document.dispatchEvent(new CustomEvent("fazari:lang", { bubbles: true, detail: { lang: l } }));
-  for (const fr of document.querySelectorAll("iframe")) {
-    try { fr.contentWindow && fr.contentWindow.__fzI18n && fr.contentWindow.__fzI18n.setLang(l, { save: false }); } catch (e) { /* other origin */ }
+  for (const f of [...listeners]) { try { f(cur); } catch (e) { console.warn("i18n listener", e); } }
+  document.dispatchEvent(new CustomEvent("fazari:lang", { bubbles: true, detail: { lang: cur } }));
+}
+
+/** Tell same-site frames (inside and around this page) the language: a direct call, plus postMessage. */
+function syncFrames(l, only) {
+  const msg = { type: "fazari-lang", lang: l };
+  const wins = [];
+  for (const fr of document.querySelectorAll("iframe")) if (fr.contentWindow) wins.push(fr.contentWindow);
+  if (window.parent !== window) wins.push(window.parent);
+  for (const w of only ? [only] : wins) {
+    try { if (w.__fzI18n && w.__fzI18n.lang() !== l) w.__fzI18n.setLang(l, { save: false }); } catch (e) { /* other origin */ }
+    try { w.postMessage(msg, location.origin); } catch (e) { /* closed */ }
   }
-  try { if (window.parent !== window && window.parent.__fzI18n) window.parent.__fzI18n.setLang(l, { save: false }); } catch (e) { /* other origin */ }
 }
 
 /** A same-site page URL with ?lang=tr when Turkish is on (and without lang when English is). */
@@ -301,6 +352,14 @@ for (const ev of ["click", "auxclick", "contextmenu"]) document.addEventListener
 
 // Another tab or frame changed the language.
 addEventListener("storage", (e) => { if (e.key === KEY && LANGS.includes(e.newValue) && e.newValue !== cur) setLang(e.newValue, { save: false }); });
+// A frame of the site (or the page around it) switched: follow it.
+addEventListener("message", (e) => {
+  const d = e.data;
+  if (e.origin !== location.origin || !d || d.type !== "fazari-lang" || !LANGS.includes(d.lang) || d.lang === cur) return;
+  setLang(d.lang, { save: false });
+});
+// A frame of the site finished loading (e.g. a new result in the explorer's panel): give it this page's language.
+document.addEventListener("load", (e) => { if (e.target && e.target.tagName === "IFRAME" && e.target.contentWindow) syncFrames(cur, e.target.contentWindow); }, true);
 
 // Elements added later with data-i18n (Turkish only needs work; English is already in the markup).
 try {

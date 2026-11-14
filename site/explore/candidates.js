@@ -28,8 +28,20 @@
 //
 // Language: these are candidates for follow-up, never discoveries.
 
+import { t, num } from "../js/i18n.js";
 const ok = (v) => v != null && v !== "" && Number.isFinite(+v);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// nature labels of the core (pipeline/detect, nature.label) + the old-core classes of the fallback rule
+const LABELS = {
+  "catalogued-star": "Known star", "catalogued-star-anomalous": "Known star, unusual motion",
+  "nearby-star-or-brown-dwarf-candidate": "Nearby star or brown dwarf candidate",
+  "distant-solar-system-candidate": "Distant Solar System candidate", "solar-system-known": "Known Solar System object",
+  "solar-system-candidate": "Solar System candidate", "variable-star-candidate": "Variable star candidate",
+  "transient-or-moving-candidate": "Transient or moving candidate", "single-exposure-event": "Single-exposure event",
+  "artifact": "Artifact", "gaia-known": "Known star (Gaia)", "catalogue-known": "Known star (catalogue)",
+};
+export const natureLabel = (label) => (label ? t("ex.nat." + label, null, LABELS[label] || String(label)) : "");
+
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const seasonText = (ep) => {
   const m = /^(\d{4})-(\d{2})/.exec(ep || "");
@@ -141,6 +153,10 @@ const CSS = `
 .cz .cz-l3 { display:block; font-size:.78rem; color:var(--mut, #9aa3b2); margin-top:2px; line-height:1.35; }
 .cz .cz-l3 abbr { text-decoration:none; border-bottom:1px dotted #55607a; cursor:help; }
 .cz .cz-flags { display:block; font-size:.76rem; color:#c9b27a; margin-top:2px; line-height:1.3; }
+.cz .cz-nat, .cz .cz-conf { display:block; font-size:.8rem; color:#d5dbea; margin-top:3px; line-height:1.35; }
+.cz .cz-ok { color:#7ee2a8; font-weight:600; }
+.cz .cz-chk { display:flex; flex-direction:column; gap:1px; font-size:.74rem; color:var(--mut, #9aa3b2); margin-top:3px; }
+.cz .cz-chk .pass { color:#7ee2a8; } .cz .cz-chk .fail { color:#d9a6a6; }
 .cz .cz-rej li > button { opacity:.88; }
 .cz .cz-rej .cz-flags { color:#d9a6a6; }
 .cz .cz-empty { font-size:.85rem; color:var(--mut, #9aa3b2); margin:0; }
@@ -268,11 +284,23 @@ export async function mountCandidates(v) {
     if (!inside(c.png_xy)) l3.push("outside the image");
     const flags = (c.flags || []).filter(Boolean);
     const mag = ok(c.mag_ab) ? `AB ${(+c.mag_ab).toFixed(1)}` : "";
+    // core v1 fields (null-safe: older files have none of them)
+    const nat = c.nature || {}, conf = c.confidence || {}, cf = c.confirmation || {};
+    const natLine = nat.text || nat.label ? `<span class="cz-nat">${nat.label ? `<b>${esc(natureLabel(nat.label))}</b>${nat.text ? ": " : ""}` : ""}${esc(nat.text || "")}</span>` : "";
+    const confLine = ok(conf.percent) || conf.sentence ? `<span class="cz-conf">` +
+      (c.confirmed === true ? `<span class="cz-ok">${esc(t("ex.cz.confirmed", null, "Confirmed"))}</span> · ` : "") +
+      (ok(conf.percent) ? `${esc(t("ex.fd.pct", { p: num(+conf.percent) }, `${conf.percent}% confidence`))}${conf.sentence ? " · " : ""}` : "") +
+      `${esc(conf.sentence || "")}</span>` : c.confirmed === true ? `<span class="cz-conf cz-ok">${esc(t("ex.cz.confirmed", null, "Confirmed"))}</span>` : "";
+    const checks = Array.isArray(cf.checks) ? cf.checks.filter((x) => x && x.name) : [];
+    const chk = checks.length ? `<span class="cz-chk" aria-label="${esc(t("ex.cz.checks", null, "Confirmation checks"))}">` + checks.map((x) =>
+      `<span class="${x.pass ? "pass" : "fail"}">${x.pass ? "✓" : "✗"} ${esc(x.name)}${ok(x.value) ? ` ${esc(num(+x.value))}` : ""}` +
+      `${ok(x.need) ? ` (≥ ${esc(num(+x.need))})` : x.need != null && typeof x.need !== "object" ? ` (${esc(x.need)})` : ""}</span>`).join("") +
+      (cf.sentence ? `<span>${esc(cf.sentence)}</span>` : "") + `</span>` : "";
     return `<li><button type="button" data-cid="${esc(c.id)}" style="--cz:${k.color}" aria-pressed="false">` +
       `<span class="cz-l1"><b>${esc(k.label)}</b><span class="cz-id">${esc(c.id)} · ${esc(KINDS[c.kind] || c.kind || "")}</span>` +
       (mag ? `<span class="cz-mag">${mag}</span>` : "") + `</span>` +
       `<span class="cz-l2">${l2.filter(Boolean).join(" · ")}</span>` +
-      (l3.length ? `<span class="cz-l3">${l3.join(" · ")}</span>` : "") +
+      (l3.length ? `<span class="cz-l3">${l3.join(" · ")}</span>` : "") + natLine + confLine + chk +
       (flags.length ? `<span class="cz-flags">${flags.map(esc).join("; ")}</span>` : "") +
       `</button></li>`;
   }
@@ -311,7 +339,7 @@ export async function mountCandidates(v) {
   sumText = sumText.charAt(0).toUpperCase() + sumText.slice(1);
   const keyClasses = Object.keys(CLASSES).filter((k) => k !== "artifact" && all.some((c) => c.class === k));
   box.innerHTML = `<div class="card cz" data-fz-candidates>` +
-    `<h2>${esc(headingText(n))}</h2>` +
+    `<h2>${esc((doc.verdict && doc.verdict.text) || headingText(n))}</h2>` +
     (sumText ? `<p class="cz-sum">${esc(sumText)}</p>` : "") +
     `<p class="cz-note">${esc(doc.language_note || "Candidates for follow-up. Not discoveries.")} Arrows: 1-year motion, magnified ×M.</p>` +
     (shown.length ? `<ul class="cz-list">${shown.map(entry).join("")}</ul>` : `<p class="cz-empty">Nothing but rejected detections in this field.</p>`) +

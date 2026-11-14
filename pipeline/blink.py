@@ -141,6 +141,13 @@ N_BLANK = 24                # random positions per exposure for the noise calibr
 BRIGHT_SNR = 20.0           # median per-exposure S/N above this (or a saturated core):
                             # per-exposure centroids ("bright path"); else season ePSF fits
 PIXEL_UJY = 1e12 * (PIX_NATIVE / 206264.806) ** 2   # 1 MJy/sr over one native pixel in uJy
+# snap to source: a picked sky position (no catalogue identity or motion) where nothing is detected
+# is moved to the BRIGHTEST SIGNIFICANT source within SNAP_RADIUS: a local maximum of the forced
+# ePSF S/N map (all seasons combined) with S/N >= DETECT_SNR in at least two seasons; the highest
+# combined S/N wins. A Gaia DR3 star within SNAP_GAIA of it gives its identity and prediction.
+SNAP_RADIUS = 20.0          # arcsec, about the viewer's ring (25")
+SNAP_STEP = 1.5             # arcsec, search grid
+SNAP_GAIA = 3.0             # arcsec
 # faint path: season position = minimum of the summed chi2 of the ePSF fit over a grid of
 # trial offsets (arcsec) from the predicted position; errors from a bootstrap over the
 # exposures and from the chi2 curvature (the larger one is kept)
@@ -1476,6 +1483,116 @@ def detection_check(t, infos, epochs):
     return det, detected
 
 
+# ---- snap to the nearest source (picked sky positions) --------------------------------------------
+def snappable(t):
+    """A picked sky position: a motion job with no catalogue identity and no motion (FAZARI_NO_SNAP=1: off)."""
+    return (t.get("kind", "motion") == "motion" and not t.get("gaia_dr3") and not t.get("catalog_key")
+            and not (t.get("pmra") or t.get("pmdec") or t.get("plx")) and not os.environ.get("FAZARI_NO_SNAP"))
+
+
+def forced_grid(i, xs, ys):
+    """forced_phot without neighbours (target + constant background) at many pixel positions of
+    exposure i: flux and error arrays (MJy/sr over the PSF), NaN where the stamp is unusable."""
+    px = i["_px"]
+    f, e = np.full(len(xs), np.nan), np.full(len(xs), np.nan)
+    ix, iy = np.rint(xs).astype(int), np.rint(ys).astype(int)
+    for a, b in set(zip(ix.tolist(), iy.tolist())):
+        sel = np.flatnonzero((ix == a) & (iy == b))
+        st = stamp(px, a, b)
+        if st is None:
+            continue
+        _, _, d, w, g = st
+        K = epsf_kernels(px, xs[sel] - a, ys[sel] - b)[:, g] * w[g]
+        one, y = w[g], d[g] * w[g]
+        kk, k1, oo = np.sum(K * K, 1), K @ one, float(one @ one)
+        det = kk * oo - k1 * k1
+        okd = det > 0
+        f[sel[okd]] = ((K @ y) * oo - k1 * float(one @ y))[okd] / det[okd]
+        e[sel[okd]] = np.sqrt(oo / det[okd])
+    return f, e
+
+
+def snap_to_source(t, infos, epochs, stars):
+    """The source to measure instead of an empty picked position (rule at SNAP_RADIUS), or None.
+    Map: forced ePSF S/N on a SNAP_STEP grid around the pick, per season (inverse-variance mean over
+    the exposures, noise scaled as in the detection check), seasons combined as sum / sqrt(n)."""
+    from scipy.ndimage import maximum_filter
+    ex = [i for i in infos if i["inside"] and i.get("epoch") and "_blank" in i]
+    if not ex:
+        return None
+    h = SNAP_RADIUS + 2 * SNAP_STEP
+    g1 = np.arange(-h, h + 1e-9, SNAP_STEP)
+    GE, GN = np.meshgrid(g1, g1)                                  # rows = north, columns = east
+    num, den, blank = {}, {}, {}
+    for i in ex:
+        Jinv = np.linalg.inv(np.array(i["jac_pred"]))
+        xs = i["x"] + Jinv[0, 0] * GE.ravel() + Jinv[0, 1] * GN.ravel()
+        ys = i["y"] + Jinv[1, 0] * GE.ravel() + Jinv[1, 1] * GN.ravel()
+        f, e = forced_grid(i, xs, ys)
+        good = np.isfinite(f) & np.isfinite(e) & (e > 0)
+        w = np.where(good, 1.0 / np.where(good, e, 1.0) ** 2, 0.0)
+        num[i["epoch"]] = num.get(i["epoch"], 0.0) + np.where(good, f, 0.0) * w
+        den[i["epoch"]] = den.get(i["epoch"], 0.0) + w
+        blank.setdefault(i["epoch"], []).extend(i["_blank"])
+    seasons = {}
+    for e in num:
+        sc = robust_sigma(blank[e])
+        sc = max(1.0, sc) if np.isfinite(sc) else 1.0
+        with np.errstate(invalid="ignore", divide="ignore"):
+            seasons[e] = np.where(den[e] > 0, num[e] / np.sqrt(den[e]) / sc, np.nan)
+    if len(seasons) < 2:
+        return None
+    Sm = np.stack([seasons[e] for e in sorted(seasons)])
+    comb = (np.nansum(Sm, 0) / np.sqrt(np.maximum(np.sum(np.isfinite(Sm), 0), 1))).reshape(GE.shape)
+    nsig = np.sum(Sm >= DETECT_SNR, 0).reshape(GE.shape)
+    cz = np.nan_to_num(comb, nan=-1e9)
+    peak = (cz == maximum_filter(cz, size=3)) & (np.hypot(GE, GN) <= SNAP_RADIUS) & (nsig >= 2)
+    if not peak.any():
+        return None
+    jn, je = np.unravel_index(int(np.argmax(np.where(peak, cz, -np.inf))), GE.shape)
+
+    def para(a, b, c):                                          # vertex of a parabola through a maximum
+        d = a - 2 * b + c
+        return 0.0 if d >= 0 else float(np.clip(0.5 * (a - c) / d, -0.5, 0.5))
+    oE = GE[jn, je] + para(cz[jn, je - 1], cz[jn, je], cz[jn, je + 1]) * SNAP_STEP
+    oN = GN[jn, je] + para(cz[jn - 1, je], cz[jn, je], cz[jn + 1, je]) * SNAP_STEP
+    ra0, dec0 = float(np.mean([i["ra_pred"] for i in ex])), float(np.mean([i["dec_pred"] for i in ex]))
+    cosd = math.cos(math.radians(dec0))
+    ra, dec = (ra0 + oE / 3600 / cosd) % 360.0, dec0 + oN / 3600
+    jyear = float(Time(float(np.mean([i["mjd"] for i in ex])), format="mjd").jyear)
+    best, gaia = SNAP_GAIA, None                                # Gaia DR3 identity: nearest star within SNAP_GAIA
+    for s_ in stars:
+        dt = jyear - 2016.0
+        sr = s_[1] + (s_[3] or 0) * dt / 3.6e6 / math.cos(math.radians(s_[2]))
+        sd = s_[2] + (s_[4] or 0) * dt / 3.6e6
+        d = offset_arcsec(ra, dec, sr, sd)[2]
+        if d < best:
+            best, gaia = d, s_
+    k = jn * GE.shape[1] + je
+    sep, pa = offset_arcsec(ra0, dec0, ra, dec)[2:]
+    print(f"  snap: source {sep:.1f}\" from the picked position (PA {pa:.0f}), combined S/N {comb[jn, je]:.1f}"
+          + (f", Gaia DR3 {gaia[0]} ({best:.1f}\")" if gaia else f", no Gaia DR3 star within {SNAP_GAIA:g}\""))
+    return {"ra": ra, "dec": dec, "jyear": jyear, "ra_click": ra0, "dec_click": dec0, "sep": sep, "pa": pa,
+            "snr": float(comb[jn, je]), "season_snr": {e: round(float(seasons[e][k]), 1) for e in sorted(seasons)},
+            "gaia": gaia, "gaia_sep": best if gaia else None}
+
+
+def snapped_target(t, src):
+    """The target definition of the snapped source: its Gaia DR3 astrometry, else a fixed point."""
+    t2 = dict(t)
+    g = src["gaia"]
+    if g is not None and g[3] is not None and g[4] is not None:
+        t2.update(ra=g[1], dec=g[2], epoch=2016.0, pmra=g[3], pmdec=g[4], plx=g[5] if (g[5] or 0) > 0 else 0.0,
+                  gaia_dr3=str(g[0]), plx_source=f"Gaia DR3 {g[0]}",
+                  notes=f"Gaia DR3 {g[0]}" + (f" (G = {g[6]:.1f})" if g[6] is not None else "")
+                  + f", {src['sep']:.1f}\" from the picked position")
+    else:
+        t2.update(ra=src["ra"], dec=src["dec"], epoch=src["jyear"], pmra=0.0, pmdec=0.0, plx=0.0,
+                  astrometry_label="requested position, moved to the nearest source",
+                  notes=f"brightest source {src['sep']:.1f}\" from the picked position (no motion assumed)")
+    return t2
+
+
 # ---- faint-target astrometry --------------------------------------------------------------
 def offset_chi2(i, oE, oN):
     """chi2 of the ePSF + neighbours + background fit in exposure i for trial target offsets
@@ -1903,7 +2020,8 @@ def main(name, inline=None):
             frames.append({"file": fn, "date": dmed.iso[:10], "epoch": e, "n_images": len(g),
                            "detectors": dets, "wavelength_um": round(lam, 3),
                            "date_first": d0, "date_last": d1,
-                           "files": sorted(x[0]["file"] for x in g)})
+                           "files": sorted(x[0]["file"] for x in g),
+                           "soft_core_px": int(satm.sum())})       # saturated core shown smoothed (soft_core)
         gname = f"blink_{b:.1f}um.gif"
         gif[0].save(out / gname, save_all=True, append_images=gif[1:], duration=800, loop=0)
         dname = f"diff_{b:.1f}um.png"
@@ -1922,6 +2040,7 @@ def main(name, inline=None):
         global GAIA_RADIUS_DEG                       # wider cutouts need a wider Gaia query
         GAIA_RADIUS_DEG = max(GAIA_RADIUS_DEG, round(footprint_radius(infos, ra_c, dec_c), 3))
         # Gaia DR3 field stars near the target: fitted as fixed-position neighbours
+        gf = {}
         try:
             gf = gaia_field(name, ra_c, dec_c)
             cosc = math.cos(math.radians(dec_c))
@@ -1930,6 +2049,37 @@ def main(name, inline=None):
         except Exception as e:
             print("  WARNING: no Gaia field stars for the neighbour model:", e)
         detection, detected = detection_check(t, infos, epochs)
+        snap = None
+        if detection["status"] == "not_detected" and snappable(t):
+            # nothing at a picked position: measure the brightest significant source near it instead
+            src = snap_to_source(t, infos, epochs, gf.get("stars", []))
+            if src:
+                t2, infos2 = snapped_target(t, src), []
+                for i in infos:                            # the per-exposure target quantities, for the source
+                    try:
+                        n = read_exposure(i["_px"]["path"], t2)[0]
+                    except Exception as e:
+                        print("  skip", i["file"], e)
+                        continue
+                    n.update({k: i[k] for k in ("collection", "obs_id", "t_min", "mjd_t", "epoch", "bin_um") if k in i})
+                    infos2.append(n)
+                det2, detected2 = detection_check(t2, infos2, epochs)
+                if det2["status"] != "not_detected":
+                    g = src["gaia"]
+                    snap = {"rule": (f"brightest source within {SNAP_RADIUS:g}\" of the picked position with forced-ePSF "
+                                     f"S/N >= {DETECT_SNR:g} in two or more seasons"),
+                            "radius_arcsec": SNAP_RADIUS, "sep_arcsec": round(src["sep"], 1), "pa_deg": round(src["pa"], 1),
+                            "clicked": {"ra": src["ra_click"], "dec": src["dec_click"],
+                                        "png_xy": [round(v, 1) for v in grid_xy(src["ra_click"], src["dec_click"])]},
+                            "source": {"ra": src["ra"], "dec": src["dec"], "snr": round(src["snr"], 1),
+                                       "season_snr": src["season_snr"],
+                                       "png_xy": [round(v, 1) for v in grid_xy(src["ra"], src["dec"])]},
+                            "gaia_dr3": str(g[0]) if g else None, "gaia_g": g[6] if g else None,
+                            "gaia_sep_arcsec": round(src["gaia_sep"], 2) if g else None,
+                            "at_click": {"status": detection["status"], "message": detection["message"]}}
+                    t, infos, detection, detected = t2, infos2, det2, detected2
+                else:
+                    print("  snap: not confirmed by the detection check at the source; the picked position stays")
         used = [i for i in infos if i["inside"] and (i.get("epoch"), i["detector"]) in detected]
         snrs = [i["phot_snr"] for i in used if "phot_snr" in i]
         satfrac = float(np.mean([bool(i["saturated"]) for i in used])) if used else 0.0
@@ -1953,6 +2103,17 @@ def main(name, inline=None):
         measured["status"] = detection["status"]
         measured["message"] = detection["message"]
         measured["detection"] = detection
+        if snap:
+            f = measured.get("fit") or {}
+            if snap["gaia_dr3"] and f.get("pmra_err_mas_yr") and f.get("pmdec_err_mas_yr"):
+                zr = (f["pmra_mas_yr"] - t["pmra"]) / f["pmra_err_mas_yr"]
+                zd = (f["pmdec_mas_yr"] - t["pmdec"]) / f["pmdec_err_mas_yr"]
+                snap["gaia_compare"] = {"gaia_pmra_mas_yr": round(t["pmra"], 2), "gaia_pmdec_mas_yr": round(t["pmdec"], 2),
+                                        "pmra_mas_yr": f["pmra_mas_yr"], "pmdec_mas_yr": f["pmdec_mas_yr"],
+                                        "pmra_err_mas_yr": f["pmra_err_mas_yr"], "pmdec_err_mas_yr": f["pmdec_err_mas_yr"],
+                                        "sigma_ra": round(zr, 1), "sigma_dec": round(zd, 1),
+                                        "sigma": round(max(abs(zr), abs(zd)), 1)}
+            measured["snap"] = snap
     else:
         measured = {"positions": [], "pairs": [], "status": "brightness",
                     "photometry": relative_photometry(t, infos, bin_stacks, grid, ra_c, dec_c)}

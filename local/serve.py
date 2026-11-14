@@ -12,6 +12,7 @@ Then open http://127.0.0.1:8765/explore.html. Standard library only; bound to 12
   GET    /api/jobs/<id>     {state, progress: {done, total, bytes}, message, result_url, queue, ...}
   DELETE /api/jobs/<id>     cancel (stops the downloads and blink.py)
   GET    /api/jobs          list of known jobs
+  GET    /api/finds         verified results, {schema, finds: [...]} from <cache>/finds.jsonl (pipeline/finds.py)
 
 Three lanes, each running one job at a time in a background thread:
   full     the measurement (`uv run ... python -I local/job_worker.py --no-post`, see there): the
@@ -261,6 +262,24 @@ def load_json(p, default):
         return json.loads(Path(p).read_text())
     except Exception:
         return default
+
+
+def read_finds():
+    """GET /api/finds: the verified results that the "finds" post-step appended to <cache>/finds.jsonl
+    (pipeline/finds.py), oldest first; a damaged line is skipped. The same shape as a static finds.json."""
+    out = []
+    try:
+        with open(CACHE / "finds.jsonl", encoding="utf-8") as fh:
+            for line in fh:
+                try:
+                    r = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(r, dict) and r.get("job_id"):
+                    out.append(r)
+    except OSError:
+        pass
+    return {"schema": "fazari-finds/1", "finds": out}
 
 
 def resolve_target(ra, dec, name, extra):
@@ -843,6 +862,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                                     "queued": queued, "lanes": list(LANES), "preview": True})
         if r == "/api/jobs":
             return self._json(200, {"jobs": self.jobs.list()})
+        if r == "/api/finds":
+            return self._json(200, read_finds())
         if r.startswith("/api/jobs/"):
             jid = urllib.parse.unquote(r[len("/api/jobs/"):]).strip("/")
             if not ID_RE.match(jid):

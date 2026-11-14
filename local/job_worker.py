@@ -381,6 +381,8 @@ POST_STEPS.append(("flags", "flags", "post_step"))
 POST_STEPS.append(("candidates", "detect.run", "job_step"))
 # faint-object mode: float frames, deep stacks, shift-and-stack -> faint/ (pipeline/faint.py, pipeline/FAINT.md)
 POST_STEPS.append(("faint", "faint", "post_step"))
+# last: a verified result is appended to <cache>/finds.jsonl, the lasting "Finds" list (pipeline/finds.py)
+POST_STEPS.append(("finds", "finds", "post_step"))
 
 
 def _step_function(entry):

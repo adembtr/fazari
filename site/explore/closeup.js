@@ -50,6 +50,12 @@ export function createCloseup({ A = null, al = null, state, pix2sky, size, onCha
   let view = null;
   let limitKey = null;         // sharpest map at the view centre, which sets the closest zoom
   const failed = new Set();    // close-up maps whose servers did not answer
+  let prefetch = null;         // prefetch.js: says when the close-up tiles of the view are in the cache
+  let lastT = 0, heldSince = 0, tick = 0;
+  const FADE_MS = 250;         // fastest fade in or out of the close-up map
+  // Holding the close-up back until its tiles arrive measured slower to sharp (Pan-STARRS 0.3 deg 4.0 -> 5.4 s),
+  // so it is off by default; ?cg=1 turns it on (max 4 s hold).
+  const WAIT_MAX_MS = new URLSearchParams(location.search).get("cg") === "1" ? 4000 : 0;
 
   const enabled = () => !!al && (ui.on ? ui.on.checked : true);
   const mix = () => (ui.mix ? Number(ui.mix.value) / 100 : 0);
@@ -108,8 +114,26 @@ export function createCloseup({ A = null, al = null, state, pix2sky, size, onCha
     const need = w.key && (w.op > 0 || (layer && w.could && fov < CLOSEUP_FOV[0] * 1.4));
     if (need && layer?.key !== w.key) ensure(w.key);
     else if (!need && layer) drop();
-    sharpOp = layer && layer.key === w.key ? w.op : 0;
+    let target = layer && layer.key === w.key ? w.op : 0;
+    const now = performance.now();
+    const dt = lastT ? Math.min(100, now - lastT) : 16;
+    lastT = now;
+    // Keep the map you see (DSS2) until the sharp tiles of this view have arrived, instead of fading in a
+    // blurry placeholder; then fade in quickly. Only for its first appearance, not while you pan or zoom on.
+    if (target > 0 && sharpOp === 0 && prefetch && layer) {
+      heldSince ||= now;
+      if (now - heldSince < WAIT_MAX_MS && prefetch.progress(layer.key) < 0.98) target = 0;
+      else heldSince = 0;
+    } else heldSince = 0;
+    if (target !== sharpOp) {
+      const step = dt / FADE_MS;
+      sharpOp = Math.abs(target - sharpOp) <= step ? target : sharpOp + Math.sign(target - sharpOp) * step;
+    }
     if (layer) { try { layer.hips.setOpacity(sharpOp); } catch { /* not ready yet */ } }
+    // Still fading or waiting for tiles: look again shortly.
+    if (layer && (sharpOp !== target || heldSince) && !tick) {
+      tick = setTimeout(() => { tick = 0; lastT = performance.now() - 16; onChange?.(); }, sharpOp !== target ? 16 : 100);
+    }
   }
 
   /** Factor for the automatic SPHEREx fade: it gives way to the sharp map at close zoom. */
@@ -198,8 +222,15 @@ export function createCloseup({ A = null, al = null, state, pix2sky, size, onCha
     return minFov(size()[0] || innerWidth, keyAt(view ? view.dec : 90, 0));
   }
 
+  /** Map key the close-up will show at field fov near dec (for prefetching), or null. */
+  function keyFor(fov, dec) {
+    const w = wanted(dec, fov);
+    return w.op > 0 ? w.key : null;
+  }
+
   return {
-    update, spherexFactor, render, credit, minFov: closest,
+    update, spherexFactor, render, credit, minFov: closest, keyFor,
+    setPrefetch: (p) => { prefetch = p; },
     // For tests and the measurement script.
     info: () => ({ key: layer?.key || null, opacity: sharpOp, failed: [...failed] }),
   };

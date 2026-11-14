@@ -95,6 +95,10 @@ and its status shows `post_pending: {steps, state}` meanwhile. Without the cutou
 - `cutout_deg`: cutout size of a full job, one of 0.2, 0.3, 0.4, 0.5, 0.6 (default `FULL_CUTOUT_DEG` = 0.4).
   It is part of the job id (`...-s0.4`; 0.2 deg ids have no tag, as before) and of the cutout store
   (`cache/local/cutouts/<point>-s0.4/`), so sizes never mix. Previews keep their own small region.
+  In the explorer the user picks it with the Field selector on the place card (`?fov=0.3` in the
+  address bar, also passed to sky.html; `site/js/fov.js` holds the choices and the rough time/size
+  estimate shown next to it). The five challenge targets always use their saved images (0.2 deg, or a
+  larger set saved by `pipeline/download.py --size`); nothing is downloaded for them.
 - `mode`: `full` (default) or `preview` (one id per point: `<...>-pv`, bins/cap do not apply);
   `"preview": true` with a full request also queues the preview (the `preview` field of the answer).
 - `state`: `queued` -> `finding` -> `downloading` -> `processing` -> `done`, or `error` / `cancelled`.
