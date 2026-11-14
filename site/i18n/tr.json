@@ -1730,5 +1730,11 @@
  "bm.fast.here": "Gaia'ya göre yılda {pm}″ kayan bir yıldız şimdi bu noktada; Gaia kataloğunda (2016) {sep}″ uzaktaydı.",
  "bm.target.near": "Hazır hedeflerden {name} bu noktanın yakınından geçiyor: hazır sonucuna bak.",
  "bm.centre.none": "Merkezde kaynak yok: burada her sezonda aynı olan bir yıldız yok, bu yüzden hareket verilmiyor.",
- "bm.catalogue.pending": "Yıldız kataloğu gelmeden ölçüldü: henüz kalibrasyon ve katalog tahmini yok. Sonraki dalga boyları katalogla ölçülüyor."
+ "bm.catalogue.pending": "Yıldız kataloğu gelmeden ölçüldü: henüz kalibrasyon ve katalog tahmini yok. Sonraki dalga boyları katalogla ölçülüyor.",
+ "vch.h": "Görev metni, madde madde",
+ "vch.sum": "{n} madde. Zorunlu: {req} maddenin {reqDone} tanesi tamam. Hepsi: {done} tamam, {part} kısmen.",
+ "vch.required": "zorunlu",
+ "vch.suggested": "önerilen",
+ "vch.done": "Tamam",
+ "vch.partial": "Kısmen"
 }

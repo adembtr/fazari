@@ -1667,5 +1667,11 @@
  "bm.fast.here": "A star that Gaia says moves {pm}″/yr is at this point now; in the Gaia catalogue (2016) it was {sep}″ away.",
  "bm.target.near": "{name}, one of the prepared targets, passes close to this point: see its prepared result.",
  "bm.centre.none": "No source at the centre: nothing here is the same star in every season, so no motion is given.",
- "bm.catalogue.pending": "Measured before the star catalogue arrived: no calibration and no catalogue prediction yet. The next wavelengths are measured with it."
+ "bm.catalogue.pending": "Measured before the star catalogue arrived: no calibration and no catalogue prediction yet. The next wavelengths are measured with it.",
+ "vch.h": "The challenge, item by item",
+ "vch.sum": "{n} items. Required: {reqDone} of {req} done. All items: {done} done, {part} partly.",
+ "vch.required": "required",
+ "vch.suggested": "suggested",
+ "vch.done": "Done",
+ "vch.partial": "Partly"
 }
