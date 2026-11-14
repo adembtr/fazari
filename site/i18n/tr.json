@@ -1053,7 +1053,7 @@
  "fv.min": "En az",
  "fv.max": "En çok",
  "vw.fl.title": "İşaretli pikseller",
- "vw.fl.tip": "Bu karedeki görüntülerin çoğunda SPHEREx'in işaretlediği pikseller (FLAGS uzantısı). Doymuş = karenin beyaz doyma maskesi; maskeli = birleştirmeden önce çıkarılan ya da verisi olmayan; diğer = tutulan ama işaretli (hayalet, hale, taşma, çapraz karışma).",
+ "vw.fl.tip": "Bu karedeki görüntülerin çoğunda SPHEREx'in işaretlediği pikseller (FLAGS uzantısı). Doymuş = karenin doyma maskesi (beyaz ya da parlak çekirdek); maskeli = birleştirmeden önce çıkarılan ya da verisi olmayan; diğer = tutulan ama işaretli (hayalet, hale, taşma, çapraz karışma).",
  "vw.fl.sat": "doymuş",
  "vw.fl.mask": "maskeli / veri yok",
  "vw.fl.other": "diğer işaretler",

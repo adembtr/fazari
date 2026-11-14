@@ -414,6 +414,7 @@ export class SkySession {
         const v = fr.img[k];
         fr.norm[k] = fr.sat[k] ? 1 : Number.isFinite(v) ? Math.min(1, Math.max(0, Math.asinh((v - st.lo) / st.soft) / den)) : NaN;
       }
+      softCore(fr.norm, fr.sat, G.n);                 // bright star: graded core, not a flat white disc
       fillNaN(fr.norm, G.n);
     }
     const first = frames[0], last = frames[frames.length - 1];
@@ -612,6 +613,53 @@ function dropSmallBlobs(m, n, minPx) {
       }
     }
     if (blob.length < minPx) for (const k of blob) m[k] = 0;
+  }
+}
+
+/** Saturated cores for display (as blink.py soft_core): each core (4-neighbour blob of sat) rises
+ * linearly from the median level of the 2-pixel ring around it to white at its centre, instead of
+ * a flat white disc. norm: stretched 0..1 values (NaN = missing), changed in place. */
+function softCore(norm, sat, n) {
+  const N = n * n, d = new Float32Array(N), R2 = Math.SQRT2;
+  for (let k = 0; k < N; k++) d[k] = sat[k] ? 1e9 : 0;
+  for (let pass = 0; pass < 2; pass++) {               // chamfer distance to the nearest unsaturated pixel
+    const nb = pass ? [[1, 0, 1], [-1, 1, R2], [0, 1, 1], [1, 1, R2]] : [[-1, 0, 1], [-1, -1, R2], [0, -1, 1], [1, -1, R2]];
+    for (let t = 0; t < N; t++) {
+      const k = pass ? N - 1 - t : t;
+      if (!d[k]) continue;
+      const i = k % n, j = (k / n) | 0;
+      for (const [di, dj, w] of nb) {
+        const ii = i + di, jj = j + dj;
+        if (ii >= 0 && jj >= 0 && ii < n && jj < n) d[k] = Math.min(d[k], d[jj * n + ii] + w);
+      }
+    }
+  }
+  const seen = new Uint8Array(N), stack = [];
+  for (let s = 0; s < N; s++) {
+    if (!sat[s] || seen[s]) continue;
+    const blob = [];
+    stack.push(s); seen[s] = 1;
+    while (stack.length) {
+      const k = stack.pop(); blob.push(k);
+      const i = k % n, j = (k / n) | 0;
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const ii = i + di, jj = j + dj, q = jj * n + ii;
+        if (ii >= 0 && jj >= 0 && ii < n && jj < n && sat[q] && !seen[q]) { seen[q] = 1; stack.push(q); }
+      }
+    }
+    const ring = new Set();
+    for (const k of blob) {
+      const i = k % n, j = (k / n) | 0;
+      for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) {
+        const ii = i + di, jj = j + dj, q = jj * n + ii;
+        if (Math.abs(di) + Math.abs(dj) <= 2 && ii >= 0 && jj >= 0 && ii < n && jj < n && !sat[q] && Number.isFinite(norm[q])) ring.add(q);
+      }
+    }
+    const rv = [...ring].map((q) => norm[q]);
+    const edge = rv.length ? Math.min(1, Math.max(0, median(rv))) : 0.8;
+    let dm = 1;
+    for (const k of blob) dm = Math.max(dm, d[k]);
+    for (const k of blob) norm[k] = edge + (1 - edge) * d[k] / dm;
   }
 }
 

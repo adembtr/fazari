@@ -988,7 +988,7 @@
  "fv.min": "Min",
  "fv.max": "Max",
  "vw.fl.title": "Flagged pixels",
- "vw.fl.tip": "Pixels that SPHEREx flagged in most images of this frame (FLAGS extension). Saturated = the white saturation mask of the frame; masked = removed before stacking or no data; other = kept but flagged (ghost, halo, bloom, crosstalk).",
+ "vw.fl.tip": "Pixels that SPHEREx flagged in most images of this frame (FLAGS extension). Saturated = the saturation mask of the frame (white or bright core); masked = removed before stacking or no data; other = kept but flagged (ghost, halo, bloom, crosstalk).",
  "vw.fl.sat": "saturated",
  "vw.fl.mask": "masked / no data",
  "vw.fl.other": "other flags",

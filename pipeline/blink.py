@@ -601,10 +601,27 @@ def fill_nan(a, it=20):
     return a
 
 
-def gray_rgb(s, satmask):
-    """Stretched image -> RGB. Saturated core = white, other missing pixels filled."""
+def soft_core(s, satmask):
+    """Saturated cores for display: each core rises from the level around it to white at its
+    centre (a flat white disc around a bright star looked like a broken image). Display only;
+    the cores stay marked as saturated (meta.json, the viewer's flag layer)."""
+    from scipy.ndimage import label, find_objects, distance_transform_edt, binary_dilation
     s = s.copy()
-    s[satmask] = 1.0
+    lab, n = label(satmask)
+    d = distance_transform_edt(satmask) if n else None
+    for i, sl in enumerate(find_objects(lab), 1):
+        sl = tuple(slice(max(a.start - 2, 0), a.stop + 2) for a in sl)
+        m = lab[sl] == i
+        ring = binary_dilation(m, iterations=2) & ~satmask[sl] & np.isfinite(s[sl])
+        edge = float(np.clip(np.median(s[sl][ring]), 0, 1)) if ring.any() else 0.8
+        dm = d[sl][m]
+        s[sl][m] = edge + (1 - edge) * dm / max(float(dm.max()), 1.0)      # linear ramp: a star-like profile
+    return s
+
+
+def gray_rgb(s, satmask):
+    """Stretched image -> RGB. Saturated core: soft_core (white centre), other missing pixels filled."""
+    s = soft_core(s, satmask)
     s = fill_nan(s)
     g = (np.flipud(s) * 255).astype(np.uint8)          # flip: north up in the PNG
     return np.dstack([g, g, g])

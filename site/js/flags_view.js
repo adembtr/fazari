@@ -88,7 +88,7 @@
   function texts() {
     $("fl-title").textContent = T("vw.fl.title", "Flagged pixels");
     $("fl-on").parentNode.title = T("vw.fl.tip", "Pixels that SPHEREx flagged in most images of this frame (FLAGS extension). " +
-      "Saturated = the white saturation mask of the frame; masked = removed before stacking or no data; other = kept but " +
+      "Saturated = the saturation mask of the frame (white or bright core); masked = removed before stacking or no data; other = kept but " +
       "flagged (ghost, halo, bloom, crosstalk).");
     summary();
   }

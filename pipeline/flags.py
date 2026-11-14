@@ -12,7 +12,7 @@ local-engine job's inputs); nothing is downloaded. Output (new files only):
                                           colour management cannot change the values
 
 Bits (one pixel can carry several):
-    1  saturated  OVERFLOW, SUR_ERROR, NONLINEAR (blink.py SAT_BITS): exactly the frame's white
+    1  saturated  OVERFLOW, SUR_ERROR, NONLINEAR (blink.py SAT_BITS): exactly the frame's
                   saturation mask (most images saturated, small blobs dropped, as blink.py marks it)
     2  masked     pixels blink.py removes (BAD_BITS: TRANSIENT, NONFUNC, MISSING_DATA, HOT, COLD,
                   PERSIST, OUTLIER, STREAK, SNOWBALL, or no value) in most images of the frame, or no
@@ -53,7 +53,7 @@ OTHER_BITS = (B["DICHROIC"] | B["PHANMISS"] | B["CROSSTALK"] | B["GHOST"] | B["G
               | B["BLOOM"] | B["HALO"])
 GROUPS = [
     dict(bit=1, key="saturated", flags=["OVERFLOW", "SUR_ERROR", "NONLINEAR"],
-         rule="saturated in most images of the frame (the frame's white saturation mask)"),
+         rule="saturated in most images of the frame (the frame's saturation mask: flat white in older frames, a graded core with a white centre since blink.soft_core)"),
     dict(bit=2, key="masked", flags=["TRANSIENT", "NONFUNC", "MISSING_DATA", "HOT", "COLD", "PERSIST", "OUTLIER",
                                      "STREAK", "SNOWBALL"],
          rule="removed (bad flag or no value) in most images of the frame, or not covered by any image"),
