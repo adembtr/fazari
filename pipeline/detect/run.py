@@ -24,13 +24,14 @@ import numpy as np
 from . import calib as CAL
 from . import data as Dt
 from . import schema as SC
-from . import diffimg, gaia_astrom, deep_astrom, variab, fast, sso, sensitivity, vet, nature
+from . import diffimg, gaia_astrom, deep_astrom, variab, fast, sso, sensitivity, vet, nature, distant
 
 # order: A first (its motion records are used by V to skip moving saturated stars), B before D
-# (D reuses B's systematic floor). Detector P (detect/distant.py, distant Solar System bodies) is
-# not registered here: its owner adds it. find() already keeps the records of a detector named
-# "P" that come with their own nature / confirmation apart from the position merge.
-DETECTORS = [diffimg, gaia_astrom, deep_astrom, variab, fast]
+# (D reuses B's systematic floor). Detector P (detect/distant.py, distant Solar System bodies) is last
+# and independent; its records come with their own nature / confirmation and are kept apart from the
+# position merge. Registered 15 Nov 2026 after a check on two null fields (P added 1.6-2.1 s per field,
+# 0 records; pipeline/PLANETX.md). It skips the quick stage (it needs the whole cutout).
+DETECTORS = [diffimg, gaia_astrom, deep_astrom, variab, fast, distant]
 VERSION = "1.1"
 GAIA_RETRY_S = float(os.environ.get("FAZARI_GAIA_RETRY_S", 1800))   # keep retrying the Gaia query this long
 

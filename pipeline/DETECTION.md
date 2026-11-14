@@ -22,7 +22,7 @@ only that a record passed the fixed rule of section 4.3.
 ```
 exposures (IMAGE, FLAGS, VARIANCE, ZODI, EPSF)                         data.py
   -> registration on Gaia DR3 stars                                     calib.py
-  -> detectors A, B, D, V, C (one record format)                        run.py DETECTORS
+  -> detectors A, B, D, V, C, P (one record format)                     run.py DETECTORS
   -> merge: one object, one record                                      schema.py
   -> vetting: records along a mover's track, single-exposure events     vet.py
   -> known asteroids (IMCCE SkyBoT)                                     sso.py
@@ -31,8 +31,8 @@ exposures (IMAGE, FLAGS, VARIANCE, ZODI, EPSF)                         data.py
 ```
 
 A detector is a module with `NAME` and `run(ctx) -> records` (`schema.new_candidate`), listed in
-`run.DETECTORS`. The distant-body search (`detect/distant.py`) is a separate module with its own
-document; its owner registers it.
+`run.DETECTORS`. The distant-body search (`detect/distant.py`, detector P) has its own document
+([`PLANETX.md`](PLANETX.md)); it is registered last in `run.DETECTORS` (15 Nov 2026: +1.6-2.1 s and 0 records on two null fields).
 
 **The Gaia list** (`run.fetch_gaia`; DR3, G < 19, 0.15 deg radius) is asked at IRSA and, when IRSA
 does not answer, at the ESA Gaia archive (the same table). A catalogue that cannot be reached is
