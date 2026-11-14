@@ -1,6 +1,7 @@
 {
  "_note": "Named sky categories for explore.html. ra/dec in degrees (ICRS) at 'epoch' (Julian year). pmra = mu_alpha*cos(dec), pmdec in mas/yr when known. ra_2026/dec_2026 = position linearly moved to 2026.0 (use these to centre cutouts on fast movers). Points with 'challenge': true are the 5 official targets; 'gallery' is the precomputed product folder (may not exist yet). Built by a script from SIMBAD (CDS Sesame), Gaia DR3 (pipeline/targets.json) and astropy.",
  "generated": "2026-11-14",
+ "ai_disclosure": "The script that builds this file and its descriptive text were written with help from Anthropic's Claude (Claude Code) and checked by Team Fazari; positions and motions come from SIMBAD (CDS) and Gaia DR3, not from an AI model.",
  "categories": [
   {
    "id": "challenge",

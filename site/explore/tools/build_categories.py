@@ -303,7 +303,11 @@ out = dict(
            "(use these to centre cutouts on fast movers). Points with 'challenge': true are the 5 official targets; "
            "'gallery' is the precomputed product folder (may not exist yet). Built by a script from SIMBAD (CDS Sesame), "
            "Gaia DR3 (pipeline/targets.json) and astropy."),
-    generated=TODAY, categories=cats)
+    generated=TODAY,
+    ai_disclosure=("The script that builds this file and its descriptive text were written with help from Anthropic's "
+                   "Claude (Claude Code) and checked by Team Fazari; positions and motions come from SIMBAD (CDS) and "
+                   "Gaia DR3, not from an AI model."),
+    categories=cats)
 add_tr(cats)                                     # Turkish fields from categories_tr.json
 json.dump(out, open(f"{REPO}/site/data/categories.json", "w"), indent=1, ensure_ascii=False)
 print("points:", sum(len(c["points"]) for c in cats), file=sys.stderr)

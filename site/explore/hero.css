@@ -141,3 +141,9 @@ body.fz-demo-on #card { visibility: hidden; }
   .fz-demo-skip { padding: 8px 11px; font-size: 13.5px; }
   .fz-demo-blink { top: auto; transform: none; right: 8px; bottom: calc(var(--sheet-peek, 132px) + 70px); width: 44vw; padding: 7px; }
 }
+
+/* Credits dialog (explore.html #about): the providers' acknowledgement texts and the AI note */
+.about .ack { margin: 12px 0 0; border: 1px solid var(--line, #2a3350); border-radius: 12px; padding: 8px 12px; }
+.about .ack summary { cursor: pointer; font-size: 14px; font-weight: 700; color: #d5dbea; }
+.about .ack p { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; color: #aab4c8; }
+.about .ai-note { margin: 12px 0 0; padding: 9px 12px; border-left: 3px solid #7fd4ff; background: rgba(127, 212, 255, .07); border-radius: 0 10px 10px 0; font-size: 13.5px; }

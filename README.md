@@ -232,13 +232,86 @@ the first season.
 
 - [SPHEREx DR1 spectral images](https://doi.org/10.26131/IRSA678) — NASA/IPAC Infrared Science Archive (IRSA), DOI: 10.26131/IRSA678
 - [SPHEREx QR3 spectral images](https://doi.org/10.26131/IRSA662) — NASA/IPAC IRSA, DOI: 10.26131/IRSA662
-- [Gaia DR3](https://www.cosmos.esa.int/web/gaia/dr3) — European Space Agency (ESA). Positions, proper motions and parallaxes of the targets are Gaia DR3 values (except WISE 0855-0714).
+- [Gaia DR3](https://www.cosmos.esa.int/web/gaia/dr3) — European Space Agency (ESA), a Space Apps partner agency. Positions, proper motions and parallaxes of the targets are Gaia DR3 values (except WISE 0855-0714).
 
 This publication makes use of data products from the Spectro-Photometer for the History of the Universe, Epoch of Reionization and Ices Explorer (SPHEREx), which is a joint project of the Jet Propulsion Laboratory and the California Institute of Technology, and is funded by the National Aeronautics and Space Administration.
 
 This work has made use of data from the European Space Agency (ESA) mission Gaia (https://www.cosmos.esa.int/gaia), processed by the Gaia Data Processing and Analysis Consortium (DPAC).
 
 This is a hackathon project by Team Fazari. It is not endorsed by NASA or ESA.
+
+## References
+
+Everything below is used by the site or the pipeline (checked in the code, November 2026). The site's
+Credits panel (explore.html) carries the same list.
+
+Data and services
+
+- SPHEREx DR1 and QR3 spectral images: NASA/JPL-Caltech, SPHEREx team; NASA/IPAC Infrared Science
+  Archive (IRSA), [doi:10.26131/IRSA678](https://doi.org/10.26131/IRSA678) and
+  [doi:10.26131/IRSA662](https://doi.org/10.26131/IRSA662). The SPHEREx all-sky map layer is the IRSA
+  SPHEREx DR1 HiPS.
+- [Registry of Open Data on AWS](https://registry.opendata.aws/spherex-qr/): the browser and local
+  engines read SPHEREx images from IRSA's public S3 bucket `nasa-irsa-spherex` (accessed November 2026).
+  Some DSS2 and Pan-STARRS map tiles come from STScI/MAST's public bucket `stpubdata`, one of several mirrors.
+- Gaia DR3 (ESA, partner agency): Gaia Collaboration, Prusti et al. 2016, A&A 595, A1; Gaia Collaboration,
+  Vallenari et al. 2023, A&A 674, A1. Via CDS VizieR (I/355/gaiadr3) and the ESA Gaia archive.
+- Tycho-2 (reference stars in sky.html): Høg et al. 2000, A&A 355, L27, via CDS VizieR.
+- [DSS2 colour](https://archive.stsci.edu/dss/): Digitized Sky Survey, STScI/NASA; coloured and HEALPixed by CDS.
+- [2MASS](https://irsa.ipac.caltech.edu/Missions/2mass.html): Skrutskie et al. 2006, AJ 131, 1163 (sky map;
+  near-infrared magnitudes of fast stars through the Gaia DR3 cross-match).
+- [AllWISE](https://irsa.ipac.caltech.edu/Missions/wise.html): Wright et al. 2010, AJ 140, 1868; Cutri et al. 2013,
+  Explanatory Supplement to the AllWISE Data Release Products (sky map; W1 magnitudes of fast stars through
+  the Gaia DR3 cross-match).
+- [CatWISE2020](https://catwise.github.io/): Marocco et al. 2021, ApJS 253, 8, via IRSA (static reference
+  stars around WISE 0855-0714).
+- [Pan-STARRS1 DR1](https://outerspace.stsci.edu/display/PANSTARRS/): Chambers et al. 2016, arXiv:1612.05560;
+  Flewelling et al. 2020, ApJS 251, 7. Images from STScI/MAST, HEALPixed by CDS (sharp close-up map).
+- [SIMBAD](https://simbad.cds.unistra.fr/simbad/): Wenger et al. 2000, A&AS 143, 9; with the CDS Sesame name resolver.
+- [VizieR](https://vizier.cds.unistra.fr/): Ochsenbein, Bauer & Marcout 2000, A&AS 143, 23;
+  [doi:10.26093/cds/vizier](https://doi.org/10.26093/cds/vizier).
+- WISE 0855-0714 motion and parallax: Kirkpatrick et al. 2021, ApJS 253, 7.
+- Planet Nine band: Brown & Batygin 2021, AJ 162, 219; Brown, Holman & Batygin 2024, arXiv:2401.17977.
+
+Software
+
+- [Aladin Lite v3](https://aladin.cds.unistra.fr/AladinLite/) (CDS, Strasbourg; GPL-3.0): Boch & Fernique 2014,
+  ASPC 485, 277; Bonnarel et al. 2000, A&AS 143, 33. Loaded unmodified from its npm build.
+- Python: astropy, reproject, NumPy, SciPy, Matplotlib, Pillow (see Tools).
+
+Acknowledgements requested by the providers
+
+This research has made use of the NASA/IPAC Infrared Science Archive, which is funded by the National
+Aeronautics and Space Administration and operated by the California Institute of Technology.
+
+This publication makes use of data products from the Two Micron All Sky Survey, which is a joint project of
+the University of Massachusetts and the Infrared Processing and Analysis Center/California Institute of
+Technology, funded by the National Aeronautics and Space Administration and the National Science Foundation.
+
+This publication makes use of data products from the Wide-field Infrared Survey Explorer, which is a joint
+project of the University of California, Los Angeles, and the Jet Propulsion Laboratory/California Institute
+of Technology, funded by the National Aeronautics and Space Administration. This publication also makes use of
+data products from NEOWISE, which is a project of the Jet Propulsion Laboratory/California Institute of
+Technology, funded by the Planetary Science Division of the National Aeronautics and Space Administration.
+
+The Pan-STARRS1 Surveys (PS1) and the PS1 public science archive have been made possible through
+contributions by the Institute for Astronomy, the University of Hawaii, the Pan-STARRS Project Office, the
+Max-Planck Society and its participating institutes, the Max Planck Institute for Astronomy, Heidelberg and the
+Max Planck Institute for Extraterrestrial Physics, Garching, The Johns Hopkins University, Durham University,
+the University of Edinburgh, the Queen's University Belfast, the Harvard-Smithsonian Center for Astrophysics,
+the Las Cumbres Observatory Global Telescope Network Incorporated, the National Central University of Taiwan,
+the Space Telescope Science Institute, the National Aeronautics and Space Administration under Grant No.
+NNX08AR22G issued through the Planetary Science Division of the NASA Science Mission Directorate, the National
+Science Foundation Grant No. AST-1238877, the University of Maryland, Eotvos Lorand University (ELTE), the Los
+Alamos National Laboratory, and the Gordon and Betty Moore Foundation.
+
+The Digitized Sky Surveys were produced at the Space Telescope Science Institute under U.S. Government grant
+NAG W-2166. The images of these surveys are based on photographic data obtained using the Oschin Schmidt
+Telescope on Palomar Mountain and the UK Schmidt Telescope. The plates were processed into the present
+compressed digital form with the permission of these institutions.
+
+This research has made use of the SIMBAD database, the VizieR catalogue access tool, the Sesame name resolver
+and the Aladin Lite sky atlas, operated at CDS, Strasbourg, France.
 
 ## Tools
 
@@ -247,6 +320,10 @@ Python (astropy, reproject, NumPy, SciPy, Matplotlib, Pillow), uv, HTML, CSS, Ja
 ## Use of AI
 
 Code and documentation in this repository were written with help from Anthropic's Claude (Claude Code). Commits made with AI help carry a `Co-Authored-By: Claude` trailer. Team Fazari designed the project and checked and tested the results.
+
+The same note is on the site (Credits panel and page footers), and every result file
+(`site/data/*/meta.json`, `site/data/categories.json`, new local-engine jobs) carries an
+`ai_disclosure` field. The sky images and measurements come from the data listed above, not from an AI model.
 
 ## License
 

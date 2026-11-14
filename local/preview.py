@@ -242,6 +242,7 @@ def render(out, groups, b, det, t, job_id, ra_c, dec_c, grid, shape, moving, loc
         "preview": dict(extra, n_images=used, seasons=len(eps)),
         "n_cutouts": used,
         "data_source": "NASA/IPAC IRSA SPHEREx DR1 + QR3 spectral images (preview: one wavelength, small regions)",
+        "ai_disclosure": blink.AI_DISCLOSURE,
         "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
     tmp = out / "meta.json.tmp"
