@@ -113,7 +113,7 @@ function draw(root, spec, state) {
   const W = Math.max(300, Math.round(plot.clientWidth || root.clientWidth || 640));
   const H = Math.round(Math.min(400, Math.max(240, W * 0.52)));
   const small = W < 480;
-  const m = { l: small ? 52 : 64, r: 12, t: 20, b: 40 };
+  const m = { l: small ? 56 : 70, r: 12, t: 22, b: 44 };
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img",
                           "aria-label": T("sp.aria", "Spectrum of {name}: flux against wavelength", { name: spec.target ? I18N.tname(spec.target) : T("sp.theSource", "the source") }) }, plot);
   const seasons = spec.seasons || [];
@@ -156,21 +156,21 @@ function draw(root, spec, state) {
   })()
     : niceTicks(y0, y1, small ? 4 : 5);
   for (const v of yt) el("line", { x1: m.l, x2: W - m.r, y1: sy(v), y2: sy(v) }, gGrid);
-  const gTxt = el("g", { fill: "var(--mut)", "font-size": small ? 10 : 11, "font-family": "system-ui, sans-serif" }, svg);
+  const gTxt = el("g", { fill: "var(--mut)", "font-size": small ? 11 : 12.5, "font-family": "system-ui, sans-serif" }, svg);
   for (const v of yt) {
     const t = el("text", { x: m.l - 6, y: sy(v) + 4, "text-anchor": "end" }, gTxt);
     t.textContent = fmtFlux(v, 3);
   }
   for (const e of DET_EDGES) el("line", { x1: sx(e), x2: sx(e), y1: m.t - 8, y2: H - m.b, stroke: "var(--grid)", "stroke-dasharray": "2 4" }, svg);
   for (const [a, b, d] of DETS) {
-    const t = el("text", { x: sx((a + b) / 2), y: m.t - 8, "text-anchor": "middle", "font-size": 10 }, gTxt);
+    const t = el("text", { x: sx((a + b) / 2), y: m.t - 8, "text-anchor": "middle", "font-size": small ? 10.5 : 11.5 }, gTxt);
     t.textContent = d;
   }
   if (!logOk && y0 < 0) el("line", { x1: m.l, x2: W - m.r, y1: sy(0), y2: sy(0), stroke: "var(--axis)", "stroke-width": 1 }, svg);
   el("line", { x1: m.l, x2: W - m.r, y1: H - m.b, y2: H - m.b, stroke: "var(--axis)" }, svg);
   for (const v of (small ? [1, 2, 3, 4, 5] : [0.75, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])) {
     el("line", { x1: sx(v), x2: sx(v), y1: H - m.b, y2: H - m.b + 4, stroke: "var(--axis)" }, svg);
-    const t = el("text", { x: sx(v), y: H - m.b + 16, "text-anchor": "middle" }, gTxt);
+    const t = el("text", { x: sx(v), y: H - m.b + 17, "text-anchor": "middle" }, gTxt);
     t.textContent = L1(String(v));
   }
   const xl = el("text", { x: (m.l + W - m.r) / 2, y: H - 6, "text-anchor": "middle" }, gTxt);

@@ -28,7 +28,7 @@
 //
 // Language: these are candidates for follow-up, never discoveries.
 
-import { t, num } from "../js/i18n.js";
+import { t, num, ptext, onLang, month } from "../js/i18n.js";
 const ok = (v) => v != null && v !== "" && Number.isFinite(+v);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 // nature labels of the core (pipeline/detect, nature.label) + the old-core classes of the fallback rule
@@ -45,7 +45,8 @@ export const natureLabel = (label) => (label ? t("ex.nat." + label, null, LABELS
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const seasonText = (ep) => {
   const m = /^(\d{4})-(\d{2})/.exec(ep || "");
-  return m && +m[2] >= 1 && +m[2] <= 12 ? `${MON[+m[2] - 1]} ${m[1]}` : String(ep || "");
+  if (!(m && +m[2] >= 1 && +m[2] <= 12)) return String(ep || "");
+  try { return month(`${m[1]}-${m[2]}`); } catch (_) { return `${MON[+m[2] - 1]} ${m[1]}`; }
 };
 const reduceMotion = () => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (_) { return false; } };
 
@@ -59,6 +60,10 @@ export const CLASSES = {
 };
 export const KINDS = { motion: "moving", appearing: "appears", disappearing: "disappears", variable: "brightness change", transient: "transient" };
 const cls = (c) => CLASSES[c && c.class] || CLASSES.candidate;
+// UI text (en.json / tr.json "ex.cz.*"; the English here is the fallback)
+const CZ = (k, p, f) => t("ex.cz." + k, p, f);
+export const clsLabel = (k) => CZ("cls." + k, null, (CLASSES[k] || CLASSES.candidate).label);
+const kindText = (k) => (k ? CZ("kind." + k, null, KINDS[k] || k) : "");
 const NICE = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
 const MIN_ARROW_PX = 40;
 
@@ -99,7 +104,7 @@ const dec2 = (v) => (Math.abs(v) >= 10 ? 1 : 2);
 function speedText(m) {
   if (!m || !ok(m.speed_arcsec_yr)) return "";
   const s = +m.speed_arcsec_yr, d = dec2(s);
-  return `${s.toFixed(d)}${ok(m.err_speed_arcsec_yr) ? ` ± ${(+m.err_speed_arcsec_yr).toFixed(d)}` : ""}″/yr`;
+  return num(+s.toFixed(d), d) + (ok(m.err_speed_arcsec_yr) ? ` ± ${num(+(+m.err_speed_arcsec_yr).toFixed(d), d)}` : "") + CZ("perYr", null, "″/yr");
 }
 function paText(m) {
   if (!m || !ok(m.pa_deg)) return "";
@@ -111,9 +116,9 @@ function changeText(c) {
   const sig = ok(b.max_sigma) ? ` (${Math.abs(+b.max_sigma).toFixed(1)}σ)` : "";
   if (ok(b.max_change_frac)) {
     const p = Math.round(100 * +b.max_change_frac);
-    return `${p > 0 ? "+" : p < 0 ? "−" : ""}${Math.abs(p)} % brightness${sig}`;
+    return CZ("brightPct", { p: `${p > 0 ? "+" : p < 0 ? "−" : ""}${Math.abs(p)}`, sig }, "{p} % brightness{sig}");
   }
-  return ok(b.max_sigma) ? `brightness ${+b.max_sigma > 0 ? "rise" : "drop"}${sig}` : "";
+  return ok(b.max_sigma) ? (+b.max_sigma > 0 ? CZ("rise", { sig }, "brightness rise{sig}") : CZ("drop", { sig }, "brightness drop{sig}")) : "";
 }
 const isMover = (c) => !!(c && c.motion && ok(c.motion.pmra_mas_yr) && ok(c.motion.pmdec_mas_yr) && Math.hypot(+c.motion.pmra_mas_yr, +c.motion.pmdec_mas_yr) > 0);
 function movingCount(doc) {
@@ -121,7 +126,8 @@ function movingCount(doc) {
   if (ok(s.n_moving)) return +s.n_moving;
   return doc.candidates.filter((c) => c.kind === "motion" && (c.class === "candidate" || c.class === "gaia-known")).length;
 }
-const headingText = (n) => (n === 1 ? "1 moving object found here" : `${n} moving objects found here`);
+const headingText = (n) => (n === 1 ? CZ("head.one", { n }, "1 moving object found here") : CZ("head.other", { n }, "{n} moving objects found here"));
+const headingShort = (n) => (n === 1 ? CZ("short.one", { n }, "1 moving object") : CZ("short.other", { n }, "{n} moving objects"));
 
 // =====================================================================================================
 // ornek.html: list, image layer, mini-blink
@@ -271,19 +277,19 @@ export async function mountCandidates(v) {
     if (!l2.length) {                                   // appears / disappears / transient: where and when
       const fc = (c.flux_changes || [])[0] || {}, sp = (c.season_pairs || [])[0] || [];
       const unit = fc.unit || (c.bins || [])[0], from = fc.from || sp[0], to = fc.to || sp[1];
-      l2.push(esc([KINDS[c.kind] || c.kind || "", unit ? `at ${unit}` : "", from && to ? `${seasonText(from)} → ${seasonText(to)}` : ""].filter(Boolean).join(" ")));
+      l2.push(esc([kindText(c.kind), unit ? CZ("at", { u: unit }, "at {u}") : "", from && to ? `${seasonText(from)} → ${seasonText(to)}` : ""].filter(Boolean).join(" ")));
     }
     const l3 = [];
     const dets = (c.detectors || []).map((d) => `<abbr title="${esc(d + ": " + detName(d))}">${esc(d)}</abbr>`).join(" ");
-    if (dets) l3.push(`detector${(c.detectors || []).length > 1 ? "s" : ""} ${dets}`);
-    if (m && ok(m.significance_sigma)) l3.push(`${(+m.significance_sigma).toFixed(1)}σ`);
+    if (dets) l3.push(((c.detectors || []).length > 1 ? CZ("dets", null, "detectors") : CZ("det", null, "detector")) + " " + dets);
+    if (m && ok(m.significance_sigma)) l3.push(`${num(+m.significance_sigma, 1)}σ`);
     const g = (c.match || {}).gaia_dr3;
-    if (g && ok(g.G)) l3.push(`Gaia G ${(+g.G).toFixed(1)}${ok(g.sep_arcsec) ? `, ${(+g.sep_arcsec).toFixed(1)}″ away` : ""}`);
+    if (g && ok(g.G)) l3.push(`Gaia G ${num(+g.G, 1)}` + (ok(g.sep_arcsec) ? ", " + CZ("away", { d: num(+g.sep_arcsec, 1) }, "{d}″ away") : ""));
     const sso = (c.match || {}).sso;
     if (sso && (sso.name || sso.designation)) l3.push(esc(sso.name || sso.designation));
-    if (!inside(c.png_xy)) l3.push("outside the image");
+    if (!inside(c.png_xy)) l3.push(esc(CZ("outside", null, "outside the image")));
     const flags = (c.flags || []).filter(Boolean);
-    const mag = ok(c.mag_ab) ? `AB ${(+c.mag_ab).toFixed(1)}` : "";
+    const mag = ok(c.mag_ab) ? `AB ${num(+c.mag_ab, 1)}` : "";
     // core v1 fields (null-safe: older files have none of them)
     const nat = c.nature || {}, conf = c.confidence || {}, cf = c.confirmation || {};
     const natLine = nat.text || nat.label ? `<span class="cz-nat">${nat.label ? `<b>${esc(natureLabel(nat.label))}</b>${nat.text ? ": " : ""}` : ""}${esc(nat.text || "")}</span>` : "";
@@ -297,7 +303,7 @@ export async function mountCandidates(v) {
       `${ok(x.need) ? ` (≥ ${esc(num(+x.need))})` : x.need != null && typeof x.need !== "object" ? ` (${esc(x.need)})` : ""}</span>`).join("") +
       (cf.sentence ? `<span>${esc(cf.sentence)}</span>` : "") + `</span>` : "";
     return `<li><button type="button" data-cid="${esc(c.id)}" style="--cz:${k.color}" aria-pressed="false">` +
-      `<span class="cz-l1"><b>${esc(k.label)}</b><span class="cz-id">${esc(c.id)} · ${esc(KINDS[c.kind] || c.kind || "")}</span>` +
+      `<span class="cz-l1"><b>${esc(clsLabel(c.class))}</b><span class="cz-id">${esc(c.id)} · ${esc(kindText(c.kind))}</span>` +
       (mag ? `<span class="cz-mag">${mag}</span>` : "") + `</span>` +
       `<span class="cz-l2">${l2.filter(Boolean).join(" · ")}</span>` +
       (l3.length ? `<span class="cz-l3">${l3.join(" · ")}</span>` : "") + natLine + confLine + chk +
@@ -308,62 +314,75 @@ export async function mountCandidates(v) {
     const s = doc.sensitivity;
     if (!s || typeof s !== "object") return "";
     if (s.error || !(s.text || (s.motion || []).length || (s.brightness || []).length)) {
-      return `<section class="cz-sens"><p>What this field can detect: no estimate for this result.</p></section>`;
+      return `<section class="cz-sens"><p>${esc(CZ("sens.none", null, "What this field can detect: no estimate for this result."))}</p></section>`;
     }
     const mo = Array.isArray(s.motion) ? s.motion : [], br = Array.isArray(s.brightness) ? s.brightness : [];
     const mags = [...new Set([...mo, ...br].map((r) => r && r.mag_ab).filter(ok).map(Number))].sort((a, b) => a - b);
     let table = "";
     if (mags.length) {
       const rowM = (mg) => mo.find((r) => +r.mag_ab === mg) || {}, rowB = (mg) => br.find((r) => +r.mag_ab === mg) || {};
-      table = `<div class="tw"><table><thead><tr><th>AB mag</th>${mo.length ? `<th title="Signal to noise of one season">S/N</th>` +
-        `<th title="Error of the proper motion">motion error</th><th title="Slowest motion found at this brightness (injection tests)">slowest motion</th>` : ""}` +
-        `${br.length ? `<th title="Smallest brightness change found at this brightness">smallest change</th>` : ""}</tr></thead><tbody>` +
+      table = `<div class="tw"><table><thead><tr><th>AB mag</th>${mo.length ? `<th title="${esc(CZ("th.snrT", null, "Signal to noise of one season"))}">S/N</th>` +
+        `<th title="${esc(CZ("th.pmT", null, "Error of the proper motion"))}">${esc(CZ("th.pm", null, "motion error"))}</th><th title="${esc(CZ("th.slowT", null, "Slowest motion found at this brightness (injection tests)"))}">${esc(CZ("th.slow", null, "slowest motion"))}</th>` : ""}` +
+        `${br.length ? `<th title="${esc(CZ("th.chT", null, "Smallest brightness change found at this brightness"))}">${esc(CZ("th.ch", null, "smallest change"))}</th>` : ""}</tr></thead><tbody>` +
         mags.map((mg) => {
           const a = rowM(mg), b = rowB(mg);
           return `<tr><td>${mg}</td>` + (mo.length ? `<td>${ok(a.season_snr) ? Math.round(+a.season_snr) : "–"}</td>` +
-            `<td>${ok(a.pm_err_arcsec_yr) ? (+a.pm_err_arcsec_yr).toFixed(2) + "″/yr" : "–"}</td>` +
-            `<td>${ok(a.min_speed_arcsec_yr) ? (+a.min_speed_arcsec_yr).toFixed(2) + "″/yr" : "–"}</td>` : "") +
+            `<td>${ok(a.pm_err_arcsec_yr) ? num(+a.pm_err_arcsec_yr, 2) + CZ("perYr", null, "″/yr") : "–"}</td>` +
+            `<td>${ok(a.min_speed_arcsec_yr) ? num(+a.min_speed_arcsec_yr, 2) + CZ("perYr", null, "″/yr") : "–"}</td>` : "") +
             (br.length ? `<td>${ok(b.min_change_frac) ? Math.round(100 * +b.min_change_frac) + " %" + (b.detector ? ` <small>${esc(b.detector)}</small>` : "") : "–"}</td>` : "") + `</tr>`;
         }).join("") + `</tbody></table></div>`;
     }
     const dep = s.diff_depth_ab_5sigma && typeof s.diff_depth_ab_5sigma === "object" ? Object.entries(s.diff_depth_ab_5sigma).filter(([, x]) => ok(x)) : [];
-    const depth = dep.length ? `<p>Difference images (fast movers), 5σ depth: ${dep.map(([u, x]) => `${esc(u)} AB ${(+x).toFixed(1)}`).join(", ")}.</p>` : "";
-    const facts = [ok(s.n_seasons) ? `${s.n_seasons} seasons` : "", ok(s.span_yr) ? `${(+s.span_yr).toFixed(2)} yr` : "",
-      ok(s.n_exposures) ? `${s.n_exposures} exposures` : ""].filter(Boolean).join(" · ");
-    return `<section class="cz-sens"><h3>What this field can detect</h3>` + (s.text ? `<p>${esc(String(s.text).replace(/>=/g, "≥"))}</p>` : facts ? `<p>${esc(facts)}</p>` : "") +
-      (table || depth ? `<details><summary>Limits by brightness</summary>${table}${depth}</details>` : "") + `</section>`;
+    const depth = dep.length ? `<p>${esc(CZ("depth", null, "Difference images (fast movers), 5σ depth:"))} ${dep.map(([u, x]) => `${esc(u)} AB ${num(+x, 1)}`).join(", ")}.</p>` : "";
+    const facts = [ok(s.n_seasons) ? CZ("nSeasons", { n: s.n_seasons }, "{n} seasons") : "", ok(s.span_yr) ? CZ("nYr", { n: num(+s.span_yr, 2) }, "{n} yr") : "",
+      ok(s.n_exposures) ? CZ("nExp", { n: s.n_exposures }, "{n} exposures") : ""].filter(Boolean).join(" · ");
+    return `<section class="cz-sens"><h3>${esc(CZ("sens.h", null, "What this field can detect"))}</h3>` + (s.text ? `<p>${esc(ptext(String(s.text)).replace(/>=/g, "≥"))}</p>` : facts ? `<p>${esc(facts)}</p>` : "") +
+      (table || depth ? `<details><summary>${esc(CZ("sens.lim", null, "Limits by brightness"))}</summary>${table}${depth}</details>` : "") + `</section>`;
   }
   const n = movingCount(doc);
   // the summary sentence without its first words (the heading says them)
   let sumText = String((doc.summary || {}).text || "").replace(/^\s*\d+ moving object\(s\) found here:\s*/i, "");
   sumText = sumText.charAt(0).toUpperCase() + sumText.slice(1);
+  const rejTxt = () => (S.rejected ? CZ("rejHide", { n: rejected.length }, "Hide rejected ({n})") : CZ("rejShow", { n: rejected.length }, "Show rejected ({n})"));
   const keyClasses = Object.keys(CLASSES).filter((k) => k !== "artifact" && all.some((c) => c.class === k));
-  box.innerHTML = `<div class="card cz" data-fz-candidates>` +
-    `<h2>${esc((doc.verdict && doc.verdict.text) || headingText(n))}</h2>` +
-    (sumText ? `<p class="cz-sum">${esc(sumText)}</p>` : "") +
-    `<p class="cz-note">${esc(doc.language_note || "Candidates for follow-up. Not discoveries.")} Arrows: 1-year motion, magnified ×M.</p>` +
-    (shown.length ? `<ul class="cz-list">${shown.map(entry).join("")}</ul>` : `<p class="cz-empty">Nothing but rejected detections in this field.</p>`) +
-    `<div class="cz-bar"><label><input type="checkbox" id="czRings" checked> Rings on the image</label>` +
-    (rejected.length ? `<button type="button" id="czRej" aria-pressed="false">Show rejected (${rejected.length})</button>` : "") + `</div>` +
-    `<ul class="cz-list cz-rej" id="czRejList" hidden>${rejected.map(entry).join("")}</ul>` +
+  const paintCard = () => {
+    box.innerHTML = `<div class="card cz" data-fz-candidates>` +
+    `<h2>${esc((doc.verdict && doc.verdict.text && ptext(doc.verdict.text)) || headingText(n))}</h2>` +
+    (sumText ? `<p class="cz-sum">${esc(ptext(sumText))}</p>` : "") +
+    `<p class="cz-note">${esc(CZ("note", null, "Candidates for follow-up, not discoveries."))} ${esc(CZ("arrows", null, "Arrows: 1-year motion, magnified ×M."))}</p>` +
+    (shown.length ? `<ul class="cz-list">${shown.map(entry).join("")}</ul>` : `<p class="cz-empty">${esc(CZ("empty", null, "Nothing but rejected detections in this field."))}</p>`) +
+    `<div class="cz-bar"><label><input type="checkbox" id="czRings"${S.rings ? " checked" : ""}> ${esc(CZ("rings", null, "Rings on the image"))}</label>` +
+    (rejected.length ? `<button type="button" id="czRej" aria-pressed="${S.rejected}">${esc(rejTxt())}</button>` : "") + `</div>` +
+    `<ul class="cz-list cz-rej" id="czRejList"${S.rejected ? "" : " hidden"}>${rejected.map(entry).join("")}</ul>` +
     `<p class="cz-key">${keyClasses.concat(rejected.length ? ["artifact"] : []).map((k) =>
-      `<span style="--cz:${CLASSES[k].color}"><i${k === "artifact" ? ` class="dash"` : ""}></i>${esc(CLASSES[k].label)}</span>`).join("")}</p>` +
+      `<span style="--cz:${CLASSES[k].color}"><i${k === "artifact" ? ` class="dash"` : ""}></i>${esc(clsLabel(k))}</span>`).join("")}</p>` +
     sensHtml() + `</div>`;
+    bindCard();
+  };
 
   const $ = (id) => document.getElementById(id);
   box.addEventListener("click", (e) => {
     const b = e.target.closest && e.target.closest("button[data-cid]");
     if (b && box.contains(b)) select(b.dataset.cid === S.sel ? null : b.dataset.cid, true);
   });
-  $("czRings").onchange = (e) => { S.rings = e.target.checked; draw(); };
-  if ($("czRej")) $("czRej").onclick = () => {
-    S.rejected = !S.rejected;
-    $("czRej").setAttribute("aria-pressed", String(S.rejected));
-    $("czRej").textContent = `${S.rejected ? "Hide" : "Show"} rejected (${rejected.length})`;
-    $("czRejList").hidden = !S.rejected;
-    if (!S.rejected && S.sel && (all.find((c) => c.id === S.sel) || {}).class === "artifact") select(null);
-    else draw();
-  };
+  function bindCard() {
+    $("czRings").onchange = (e) => { S.rings = e.target.checked; draw(); };
+    if ($("czRej")) $("czRej").onclick = () => {
+      S.rejected = !S.rejected;
+      $("czRej").setAttribute("aria-pressed", String(S.rejected));
+      $("czRej").textContent = rejTxt();
+      $("czRejList").hidden = !S.rejected;
+      if (!S.rejected && S.sel && (all.find((c) => c.id === S.sel) || {}).class === "artifact") select(null);
+      else draw();
+    };
+    box.querySelectorAll("button[data-cid]").forEach((b) => {
+      const on = b.dataset.cid === S.sel;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-pressed", String(on));
+    });
+  }
+  paintCard();
+  try { onLang(() => { try { paintCard(); } catch (e) { console.warn("candidates: language switch", e); } }); } catch (_) {}
 
   // --- the image layer ----------------------------------------------------------------------------------
   const drawn = () => all.filter((c) => inside(c.png_xy) && (c.class !== "artifact" || S.rejected || c.id === S.sel));
@@ -537,13 +556,13 @@ export async function mountCandidates(v) {
     C -= C % 2;                                          // crop in PNG px; shown at C x 8 CSS px
     const dpr = Math.min(2, window.devicePixelRatio || 1), css = C * MINI_X, px = Math.round(css * dpr);
     mini.style.setProperty("--cz", k.color);
-    mini.setAttribute("aria-label", `${MINI_X}× close-up of ${c.id}`);
+    mini.setAttribute("aria-label", CZ("mini.aria", { x: MINI_X, id: c.id }, "{x}× close-up of {id}"));
     mini.hidden = false;
-    mini.innerHTML = `<div class="cz-mini-h" style="max-width:${css}px"><b>${esc(c.id)}</b><span>${esc(k.label)}` +
+    mini.innerHTML = `<div class="cz-mini-h" style="max-width:${css}px"><b>${esc(c.id)}</b><span>${esc(clsLabel(c.class))}` +
       `${isMover(c) ? " · " + esc(speedText(c.motion)) : changeText(c) ? " · " + esc(changeText(c)) : ""}</span>` +
-      `<button type="button" id="czMiniPlay" aria-pressed="false">Pause</button><button type="button" id="czMiniClose" aria-label="Close the close-up">×</button></div>` +
+      `<button type="button" id="czMiniPlay" aria-pressed="false">${esc(CZ("pause", null, "Pause"))}</button><button type="button" id="czMiniClose" aria-label="${esc(CZ("miniClose", null, "Close the close-up"))}">×</button></div>` +
       `<canvas id="czMiniCv" width="${px}" height="${px}" style="width:${css}px; height:${css}px" role="img" ` +
-      `aria-label="${esc(`${MINI_X}× close-up of ${c.id}, the seasons one after the other`)}"></canvas>` +
+      `aria-label="${esc(CZ("mini.cv", { x: MINI_X, id: c.id }, "{x}× close-up of {id}, the seasons one after the other"))}"></canvas>` +
       `<small id="czMiniCap" style="max-width:${css}px"></small>`;
     if (S.mini) clearInterval(S.mini.timer);
     S.mini = { c, C, dpr, i: 0, timer: 0, playing: !reduceMotion(), crops: [], lohi: undefined, um: null,
@@ -574,7 +593,7 @@ export async function mountCandidates(v) {
       if (!im.complete) im.addEventListener("load", () => { if (S.mini === m) miniDraw(); }, { once: true });
     });
     const pb = $("czMiniPlay");
-    if (pb) { pb.textContent = m.playing ? "Pause" : "Play"; pb.setAttribute("aria-pressed", String(!m.playing)); pb.disabled = m.frames.length < 2; }
+    if (pb) { pb.textContent = m.playing ? CZ("pause", null, "Pause") : CZ("play", null, "Play"); pb.setAttribute("aria-pressed", String(!m.playing)); pb.disabled = m.frames.length < 2; }
     miniDraw();
     if (m.playing && m.frames.length > 1) m.timer = setInterval(() => { m.i = (m.i + 1) % m.frames.length; miniDraw(); }, MINI_MS);
   }
@@ -750,7 +769,7 @@ function skyKey() {
   if (!sky.chip) {
     const b = document.createElement("button");
     b.type = "button"; b.id = "czChip"; b.className = "chip";
-    b.title = "Rings: what the candidate finder reported in the last result you opened. Arrows: the motion in one year, magnified ×M.";
+    b.title = CZ("sky.tip", null, "Rings: what the candidate finder reported in the last result you opened. Arrows: the motion in one year, magnified ×M.");
     b.onclick = () => setSkyOn(!sky.on);
     const k = document.createElement("div");
     k.className = "fast-legend cz-sky-key"; k.id = "czSkyKey";
@@ -769,13 +788,13 @@ function skyKey() {
   const n = movingCount(doc);
   const nRej = all.filter((c) => c.class === "artifact").length;
   sky.chip.hidden = false;
-  sky.chip.innerHTML = `<i aria-hidden="true"></i><span>Finder candidates</span><small>${esc(sky.label)}: ${esc(headingText(n).replace(" found here", ""))}</small>`;
+  sky.chip.innerHTML = `<i aria-hidden="true"></i><span>${esc(CZ("sky.chip", null, "Finder candidates"))}</span><small>${esc(sky.label)}: ${esc(headingShort(n))}</small>`;
   const present = Object.keys(CLASSES).filter((k) => k !== "artifact" && all.some((c) => c.class === k));
-  sky.key.innerHTML = `<p class="fl-title">Candidate finder: ${esc(sky.label)}</p>` +
-    present.map((k) => `<div class="fl-row"><i style="border:2px solid ${CLASSES[k].color}; background:transparent"></i>${esc(CLASSES[k].label)}` +
+  sky.key.innerHTML = `<p class="fl-title">${esc(CZ("sky.title", { l: sky.label }, "Candidate finder: {l}"))}</p>` +
+    present.map((k) => `<div class="fl-row"><i style="border:2px solid ${CLASSES[k].color}; background:transparent"></i>${esc(clsLabel(k))}` +
       `<small>${all.filter((c) => c.class === k).length}</small></div>`).join("") +
-    `<p class="fl-src">Arrows: motion in one year, magnified ×M so it shows. Candidates for follow-up, not discoveries.</p>` +
-    (nRej ? `<label><input type="checkbox" id="czSkyRej"${sky.rejected ? " checked" : ""}> Show rejected (${nRej})</label>` : "");
+    `<p class="fl-src">${esc(CZ("sky.src", null, "Arrows: motion in one year, magnified ×M so it shows. Candidates for follow-up, not discoveries."))}</p>` +
+    (nRej ? `<label><input type="checkbox" id="czSkyRej"${sky.rejected ? " checked" : ""}> ${esc(CZ("rejShow", { n: nRej }, "Show rejected ({n})"))}</label>` : "");
 }
 
 function redrawSky() {

@@ -989,7 +989,7 @@ function startLocalJob(p) {
       rbar.hidden = false; rbar.classList.add("pending");
       rbar.querySelector("b").textContent = q ? q.text : T("ex.rb.preview", { n: shown.n, at: im.bin_um ? T("ex.rb.at", { um: iNum(im.bin_um, 1) }) : "" });
       rbar.querySelector("small").textContent = (q ? q.line2 + (q.sure ? " " + q.sure : "") + " · " : quickProgress(qd, T))
-        + T("ex.rb.bg", { line: jobLine(j) || stateText(j.state), elapsed: elapsed() });
+        + T("ex.rb.bg", { line: jobLine({ ...j, paused_for_preview: false }) || stateText(j.state), elapsed: elapsed() });   // our preview is on screen: "paused for the preview" would be stale
       if (q) try { $("blinkFrame").contentWindow.postMessage({ type: "fazari-quick", ...q }, location.origin); } catch { /* not loaded */ }
       return;
     }
@@ -1009,7 +1009,9 @@ function startLocalJob(p) {
     bits.push(elapsed());
     $("jobDetail").textContent = bits.join(" · ");
     $("jobMsg").textContent = cur !== j ? T("ex.job.after", { line: jobLine(j) || stateText(j.state) })
-      : j.state === "queued" && j.queue ? T("ex.job.full", { line: jobLine(j) }) : iPtext(j.message || "");
+      : j.state === "queued" && j.queue ? T("ex.job.full", { line: jobLine(j) })
+      : /^paused: a quick preview/.test(j.message || "") && !j.paused_for_preview ? stateText(j.state)   // the worker's message outlives the pause
+      : iPtext(j.message || "");
   };
   // state.jobTick: the progress text is drawn again on a language switch (relang)
   const job = runLocalPreviewJob(req, (d) => { state.jobTick = () => tick(d); tick(d); }, { after: prevCancel });

@@ -254,6 +254,7 @@
   }
   @media (prefers-reduced-motion: reduce) { .zoom { transition:none; } }
 </style>
+<link rel="stylesheet" href="css/ui_shell.css"><script src="js/ui_boot.js"></script><!-- ui layer (arayuz) -->
 </head>
 <body>
 <a class="skip" href="#stage" data-i18n="vw.skip">Skip to the image</a>
@@ -391,5 +392,6 @@ if (v) {
 <script src="js/faint_view.js"></script>
 <script src="js/flags_view.js"></script>
 <script type="module">import { mountFromUrl } from "./js/spectrum_chart.js"; mountFromUrl(document.getElementById("spectrum"), new URLSearchParams(location.search).get("data") || "data/barnard/");</script>
+<script type="module" src="js/ui_shell.js"></script><!-- ui layer (arayuz) -->
 </body>
 </html>
