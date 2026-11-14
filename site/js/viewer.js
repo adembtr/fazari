@@ -1,0 +1,918 @@
+// Fazari result viewer (site/ornek.html): the SPHEREx season frames of one result as Blink, Step,
+// Swipe or Trail, with the measured motion drawn on the image, the result card (measured vs the
+// catalogue, images, seasons), the difference image with its colour key, and the measurement
+// details. Reads <data>/meta.json written by pipeline/blink.py or the local engine (/jobs/<id>/).
+//
+//   startViewer() -> Promise<api | null>
+//     api = { meta, base, current(), setMarking(markingApi), fallbackSentence(), on(fn) }
+//     current() -> { frame, bin_um } (the frame on screen; what js/marking.js stores with a mark)
+//
+// URL (a link reopens the same view; ?data= stays the main parameter):
+//   data=<folder>/   result folder: data/<target>/ or /jobs/<id>/  (t=<target id> is a shortcut)
+//   um=<µm>          wavelength bin (bin=<µm> from the explorer is also read)
+//   mode=blink|step|swipe|trail   s=<season>,<season>   z=<zoom>
+//
+// Plug-ins (other modules) find: #explainSentence, #explainStrip, #markingPanel, .controls,
+// #faintControls, #spectrumPanel, #candidateList, <svg id="candLayer"> (PNG pixel coordinates, inside
+// the zoomed box), #frame / #zoomer (the frame image and the zoomed box: the whole PNG, no
+// letterboxing). Every frame change fires document event "fazari:frame" ({ epoch, bin_um, file }).
+
+const $ = (id) => document.getElementById(id);
+const ok = (v) => v != null && v !== "" && Number.isFinite(+v);
+const fx = (v, d = 2) => (ok(v) ? (+v).toFixed(d) : "–");
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+  "November", "December"];
+const season = (ep, long) => {
+  const m = /^(\d{4})-(\d{2})/.exec(ep || "");
+  return m && +m[2] >= 1 && +m[2] <= 12 ? `${(long ? MONTHS : MON)[+m[2] - 1]} ${m[1]}` : String(ep || "");
+};
+const dayNum = (d) => { const t = Date.parse(String(d || "").slice(0, 10) + "T00:00:00Z"); return Number.isFinite(t) ? t / 864e5 : NaN; };
+const daysApart = (a, b) => Math.round(Math.abs(dayNum(b.date) - dayNum(a.date)));
+const arcsec = (v, err) => (+v).toFixed(Math.abs(v) < 1 || (ok(err) && err > 0 ? err < 0.095 : Math.abs(v) < 3) ? 2 : 1) + "″";
+const span = (dt) => {
+  if (!ok(dt) || dt <= 0) return "";
+  const y = Math.round(dt);
+  if (y >= 1 && Math.abs(dt - y) < 0.12) return y === 1 ? "in 1 year" : `in ${y} years`;
+  const mo = Math.max(1, Math.round(dt * 12));
+  return mo === 1 ? "in 1 month" : `in ${mo} months`;
+};
+
+// The five challenge targets: a short tag and whether the challenge tests motion or brightness.
+export const TARGETS = [
+  { id: "barnard", name: "Barnard's Star", kind: "moves", tag: "speed record",
+    why: "The fastest-moving star in our sky." },
+  { id: "eps_indi_b", name: "Epsilon Indi B", kind: "moves", tag: "cold brown dwarfs",
+    why: "A pair of cold brown dwarfs, 12 light years away." },
+  { id: "wise0855", name: "WISE 0855-0714", kind: "moves", tag: "Planet X analog",
+    why: "The coldest brown dwarf known: dark in visible light, seen only in the infrared, like a Planet X would be." },
+  { id: "rw_aur", name: "RW Aurigae", kind: "varies", tag: "young star",
+    why: "A young star whose brightness changes irregularly." },
+  { id: "r_dra", name: "R Draconis", kind: "varies", tag: "pulsating giant",
+    why: "A giant star that brightens and fades every 8 months or so." },
+];
+const KIND_TEXT = { moves: "moves", varies: "varies" };
+const KIND_TIP = { moves: "The challenge tests this target for motion.", varies: "The challenge tests this target for brightness change." };
+
+const S = {                 // viewer state
+  meta: null, base: "", bins: [], bi: 0, bin: null, sel: [], idx: 0, mode: "blink", playing: true, timer: 0,
+  zoom: 3, k: 1, tx: 0, ty: 0, game: null, trailKey: null, gif: new Map(), marking: null, ex: {}, listeners: [],
+  ref: null, info: null, defaultZoom: 3,
+};
+const Q = new URLSearchParams(location.search);
+
+function baseFromUrl() {
+  let b = Q.get("data");
+  const t = Q.get("t") || Q.get("target");
+  if (!b && t && /^[\w-]+$/.test(t)) b = `data/${t}/`;
+  b = b || "data/barnard/";
+  return /\/$/.test(b) ? b : b + "/";
+}
+const targetIdOf = (base) => { const m = /(?:^|\/)data\/([\w-]+)\/$/.exec(base.replace(/^\.?\//, "")); return m ? m[1] : null; };
+const pngSize = () => (S.meta && S.meta.grid && S.meta.grid.png_px) || [720, 720];
+const labelStrip = () => (S.meta && S.meta.grid && S.meta.grid.label_strip_px) || 0;
+const pngArcsec = () => { const g = (S.meta && S.meta.grid) || {}; return g.pixel_arcsec && g.upscale ? g.pixel_arcsec / g.upscale : null; };
+
+function refInfo(m) {
+  const label = ((m && m.gaia) || {}).label || "Gaia DR3";
+  const none = /requested position/i.test(label);
+  const short = label.split(" (")[0];
+  return {
+    label, none, short, Short: short.charAt(0).toUpperCase() + short.slice(1),
+    who: none ? null : /gaia/i.test(label) ? "Gaia" : /spitzer/i.test(label) ? "Spitzer" : "The catalogue",
+  };
+}
+
+// --- positions in PNG pixels ------------------------------------------------------------------
+function markerXY(epoch) {        // catalogue prediction for a season
+  const mk = (S.meta.markers || []).find((q) => q.epoch === epoch);
+  if (mk) return mk.png_xy;
+  const p = ((S.meta.measured || {}).positions || []).find((q) => q.epoch === epoch);
+  return p ? p.png_xy_gaia : null;
+}
+function measuredPos(epoch) { return ((S.meta.measured || {}).positions || []).find((q) => q.epoch === epoch && q.png_xy_measured) || null; }
+function centreXY() {
+  const ps = (S.meta.markers && S.meta.markers.length) ? S.meta.markers.map((m) => m.png_xy)
+    : ((S.meta.measured || {}).positions || []).map((p) => p.png_xy_gaia).filter(Boolean);
+  const [W, H] = pngSize();
+  if (!ps.length) return [W / 2, (H + labelStrip()) / 2];
+  return [ps.reduce((a, p) => a + p[0], 0) / ps.length, ps.reduce((a, p) => a + p[1], 0) / ps.length];
+}
+const selFrames = () => S.sel.map((i) => S.bin.frames[i]);
+
+// --- zoom: the zoomed box is the whole PNG (W x H CSS px), placed with translate + scale ------------
+function place(box, wrap, zoom) {
+  const Sw = wrap.clientWidth, Sh = wrap.clientHeight;
+  if (!Sw || !Sh) return null;
+  const [W, H] = pngSize(), L = labelStrip();
+  const k = Math.min(Sw / W, Sh / (H - L)) * zoom;
+  const [cx, cy] = centreXY();
+  let tx = Sw / 2 - cx * k, ty = Sh / 2 - cy * k;
+  const sw = W * k, sh = (H - L) * k;
+  tx = sw >= Sw ? Math.min(0, Math.max(Sw - sw, tx)) : (Sw - sw) / 2;
+  ty = sh >= Sh ? Math.min(-L * k, Math.max(Sh - sh - L * k, ty)) : (Sh - sh) / 2 - L * k;     // the label strip stays hidden
+  box.style.width = W + "px"; box.style.height = H + "px";
+  box.style.transform = `translate(${tx.toFixed(2)}px, ${ty.toFixed(2)}px) scale(${k.toFixed(5)})`;
+  return { k, tx, ty };
+}
+function layout() {
+  if (!S.meta) return;
+  const p = place($("zoomer"), $("stage"), S.zoom);
+  if (p) Object.assign(S, p);
+  const d = $("diffZoom") && place($("diffZoom"), $("diffView"), Math.max(1, S.zoom * 0.75));
+  if (S.mode === "swipe") applySwipe();
+  drawOverlay();
+  scaleBar();
+}
+
+function scaleBar() {
+  const a = pngArcsec(), el = $("hudScale");
+  if (!a || !S.k) { el.hidden = true; return; }
+  const perPx = a / S.k;                    // arcsec per screen pixel
+  const pick = [5, 10, 20, 30, 60, 120, 300, 600].find((v) => v / perPx >= 48) || 600;
+  const px = pick / perPx;
+  el.hidden = false;
+  const ne = !(S.meta.grid && S.meta.grid.north_up_east_left === false);
+  el.innerHTML = (ne ? `<svg class="compass" viewBox="0 0 34 34" width="34" height="34" aria-label="North up, east left">` +
+    `<path d="M24 26V9M24 26H7" stroke="currentColor" stroke-width="1.6" fill="none"/>` +
+    `<path d="M20.5 12L24 7l3.5 5M10 22.5L5 26l5 3.5" stroke="currentColor" stroke-width="1.6" fill="none"/>` +
+    `<text x="24" y="5.5" font-size="7" text-anchor="middle" fill="currentColor">N</text>` +
+    `<text x="3" y="23" font-size="7" text-anchor="middle" fill="currentColor">E</text></svg>` : "") +
+    `<span class="bar" style="width:${px.toFixed(0)}px"></span><span>${pick >= 60 ? pick / 60 + "′" : pick + "″"}</span>`;
+}
+
+// --- overlay: motion arrow, path, catalogue ring, measured point, game click ---------------------
+function motionPoints() {
+  const eps = selFrames().map((f) => f.epoch);
+  const meas = eps.map((e) => { const p = measuredPos(e); return p ? { e, xy: p.png_xy_measured } : null; }).filter(Boolean);
+  if (meas.length >= 2) return { kind: "measured", pts: meas };
+  if (S.ref.none) return null;
+  const cat = eps.map((e) => { const xy = markerXY(e); return xy ? { e, xy } : null; }).filter(Boolean);
+  if (cat.length >= 2) {
+    const a = cat[0].xy, b = cat[cat.length - 1].xy;
+    if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 1) return { kind: "predicted", pts: cat };
+  }
+  return null;
+}
+/** Measured shift between two seasons: the pipeline's pair (or headline) value, else from the PNG. */
+function pairShift(ea, eb, pts) {
+  const ms = S.meta.measured || {};
+  if (ms.from_epoch === ea && ms.to_epoch === eb && ok(ms.shift_arcsec)) return { s: +ms.shift_arcsec, e: ms.shift_err_arcsec, dt: ms.dt_years };
+  const p = (ms.pairs || []).find((q) => q.from === ea && q.to === eb && ok(q.shift_arcsec));
+  if (p) return { s: +p.shift_arcsec, e: p.shift_err_arcsec, dt: p.dt_years };
+  const a = pngArcsec();
+  if (!a || !pts) return null;
+  const A = pts[0].xy, B = pts[pts.length - 1].xy;
+  const fa = S.bin.frames.find((f) => f.epoch === ea), fb = S.bin.frames.find((f) => f.epoch === eb);
+  return { s: Math.hypot(B[0] - A[0], B[1] - A[1]) * a, e: null, dt: fa && fb ? daysApart(fa, fb) / 365.25 : null, approx: true };
+}
+const RING = 34;                  // ring radius in PNG px (about 25″ on the sky)
+function motionSvg(u, legend) {
+  const mp = motionPoints();
+  if (!mp) return "";
+  const pts = mp.pts, a = pts[0].xy, b = pts[pts.length - 1].xy;
+  const halo = (d, w) => `<path d="${d}" fill="none" stroke="#05070d" stroke-opacity=".8" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  let s = "";
+  if (pts.length > 2) {                    // path through every compared season
+    const d = "M" + pts.map((p) => p.xy.map((v) => v.toFixed(1)).join(" ")).join("L");
+    s += halo(d, 3.5 * u) + `<path d="${d}" fill="none" stroke="#e8eaf0" stroke-width="${1.4 * u}" stroke-dasharray="${4 * u} ${3 * u}"/>`;
+    pts.slice(1, -1).forEach((p) => { s += `<circle cx="${p.xy[0]}" cy="${p.xy[1]}" r="${3 * u}" fill="#c9d2e3" stroke="#05070d" stroke-width="${1.2 * u}"/>`; });
+  }
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy);
+  if (L > 0.2) {
+    const ux = dx / L, uy = dy / L;
+    const hl = Math.min(12 * u, L * 0.75), hw = 6.5 * u;
+    const bx = b[0] - ux * hl, by = b[1] - uy * hl;
+    const head = `M${b[0].toFixed(2)} ${b[1].toFixed(2)}L${(bx - uy * hw).toFixed(2)} ${(by + ux * hw).toFixed(2)}L${(bx + uy * hw).toFixed(2)} ${(by - ux * hw).toFixed(2)}Z`;
+    const line = `M${a[0].toFixed(2)} ${a[1].toFixed(2)}L${bx.toFixed(2)} ${by.toFixed(2)}`;
+    const col = mp.kind === "measured" ? "#ffffff" : "#ffd08a";
+    s += halo(line, 7 * u) + halo(head, 3.5 * u) +
+      `<path d="${line}" stroke="${col}" stroke-width="${3 * u}" stroke-linecap="round"${mp.kind === "measured" ? "" : ` stroke-dasharray="${5 * u} ${3 * u}"`}/>` +
+      `<path d="${head}" fill="${col}"/>`;
+    // first and last position (blue = before, red = after, like the difference image)
+    s += `<circle cx="${a[0]}" cy="${a[1]}" r="${5.5 * u}" fill="none" stroke="#05070d" stroke-width="${4 * u}"/>` +
+      `<circle cx="${a[0]}" cy="${a[1]}" r="${5.5 * u}" fill="none" stroke="#5aa9ff" stroke-width="${2.2 * u}"/>`;
+    // labels: the first season behind the start, the last ahead of the end, the size beside it
+    const lab = (x, y, t, c, anchor = "middle", size = 13) =>
+      `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" fill="${c}" font-size="${size * u}" font-weight="700" text-anchor="${anchor}" ` +
+      `dominant-baseline="middle" stroke="#05070d" stroke-width="${3.2 * u}" paint-order="stroke" font-family="system-ui, sans-serif">${esc(t)}</text>`;
+    const off = RING + (11 + 30 * Math.abs(ux)) * u;       // clear of the ring, also for sideways motion
+    s += lab(a[0] - ux * off, a[1] - uy * off, season(pts[0].e), "#8cc4ff") +
+      lab(b[0] + ux * off, b[1] + uy * off, season(pts[pts.length - 1].e), "#ff8f8a");
+    const sh = pairShift(pts[0].e, pts[pts.length - 1].e, pts);
+    if (sh) {
+      const t = (sh.approx ? "≈" : "") + arcsec(sh.s, sh.e) + (sh.dt ? " " + span(sh.dt) : "") + (mp.kind === "measured" ? "" : ` (${S.ref.short} prediction)`);
+      // beside the ring, on the side with room on screen (right, else left, else below)
+      let px = -uy, py = ux;
+      if (px < 0 || (Math.abs(px) < 0.3 && py < 0)) { px = -px; py = -py; }
+      const cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2, d = RING + (8 + 14 * Math.abs(py)) * u;
+      const Sw = $("stage").clientWidth, scr = (x) => S.tx + x * S.k;
+      const width = (str) => str.length * 15 * 0.56;                       // text width in screen px (estimate)
+      const short = (sh.approx ? "≈" : "") + arcsec(sh.s, sh.e);
+      let pick = null;
+      for (const str of [t, short]) {
+        if (px <= 0.3) { pick = { str, x: cx + px * d, y: cy + py * d, anchor: "middle" }; break; }
+        if (scr(cx + px * d) + width(str) < Sw - 6) { pick = { str, x: cx + px * d, y: cy + py * d, anchor: "start" }; break; }
+        if (scr(cx - px * d) - width(str) > 6) { pick = { str, x: cx - px * d, y: cy - py * d, anchor: "end" }; break; }
+      }
+      if (!pick) pick = { str: short, x: cx + px * d, y: cy + py * d, anchor: "middle" };
+      s += lab(pick.x, pick.y, pick.str, "#ffffff", pick.anchor, 15);
+    }
+  }
+  legend.push(mp.kind === "measured" ? `<span><i class="lg arrow"></i>measured motion</span>`
+    : `<span><i class="lg arrow dash"></i>${esc(S.ref.short)} predicted path</span>`);
+  legend.push(`<span><i class="lg first"></i>first season</span>`);
+  return s;
+}
+function ringSvg(u, legend) {
+  const f = S.bin.frames[S.idx];
+  const xy = markerXY(f.epoch);
+  if (!xy) return "";
+  const [x, y] = xy;
+  const ring = `<circle cx="${x}" cy="${y}" r="${RING}" fill="none" stroke="#05070d" stroke-opacity=".7" stroke-width="${5 * u}"/>` +
+    `<circle cx="${x}" cy="${y}" r="${RING}" fill="none" stroke="#ffb347" stroke-width="${2.4 * u}"/>`;
+  const cross = `M${x - 7 * u} ${y}H${x + 7 * u}M${x} ${y - 7 * u}V${y + 7 * u}`;
+  let s = ring + `<path d="${cross}" stroke="#05070d" stroke-width="${4 * u}"/><path d="${cross}" stroke="#ffb347" stroke-width="${2 * u}"/>`;
+  legend.push(`<span><i class="lg ring"></i>${S.ref.none ? "position you picked" : esc(S.ref.short) + " predicts"}</span>`);
+  const p = measuredPos(f.epoch);
+  if (p) {
+    const [mx, my] = p.png_xy_measured;
+    s += `<circle cx="${mx}" cy="${my}" r="${3.6 * u}" fill="#5dd39e" stroke="#05070d" stroke-width="${1.6 * u}"/>`;
+    const d = Math.hypot(+p.minus_gaia_east_arcsec || 0, +p.minus_gaia_north_arcsec || 0);
+    legend.push(`<span><i class="lg dot"></i>we measured${ok(p.minus_gaia_east_arcsec) && !S.ref.none ? ` (${d.toFixed(2)}″ apart)` : ""}</span>`);
+  }
+  return s;
+}
+function drawOverlay() {
+  if (!S.meta || !S.bin) return;
+  const ov = $("ov"), [W, H] = pngSize();
+  ov.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const u = 1 / (S.k || 1);
+  const hide = S.game && !S.game.revealed;
+  const legend = [];
+  let s = "";
+  if (!hide && $("arrowOn").checked) s += motionSvg(u, legend);
+  if (!hide && $("mark").checked) s += ringSvg(u, legend);
+  if (S.game && S.game.click) {
+    const [x, y] = S.game.click, c = S.game.hit ? "#5dd39e" : "#7fd4ff";
+    const d = `M${x - 9 * u} ${y - 9 * u}L${x + 9 * u} ${y + 9 * u}M${x + 9 * u} ${y - 9 * u}L${x - 9 * u} ${y + 9 * u}`;
+    s += `<path d="${d}" stroke="#05070d" stroke-width="${6 * u}"/><path d="${d}" stroke="${c}" stroke-width="${3 * u}"/>`;
+  }
+  ov.innerHTML = s;
+  const lg = $("hudLegend");
+  lg.innerHTML = legend.join("");
+  lg.hidden = !legend.length;
+}
+
+// --- frames, modes, seasons ------------------------------------------------------------------
+function setSrc(img, url) { if (img.getAttribute("src") !== url) img.setAttribute("src", url); }
+function roleOf(i) {
+  if (S.sel.length < 2) return "";
+  return i === S.sel[0] ? "before" : i === S.sel[S.sel.length - 1] ? "after" : "";
+}
+function show() {
+  if (!S.bin) return;
+  const f = S.bin.frames[S.idx];
+  setSrc($("frame"), S.base + f.file);
+  const fs = selFrames(), A = fs[0], B = fs[fs.length - 1];
+  if (S.mode === "swipe") setSrc($("frameB"), S.base + B.file);
+  const hd = $("hudDate");
+  if (S.mode === "swipe") {
+    hd.className = "hud-date";
+    hd.innerHTML = `<span class="before">${esc(season(A.epoch))}</span> | <span class="after">${esc(season(B.epoch))}</span>`;
+  } else if (S.mode === "trail") {
+    hd.className = "hud-date";
+    hd.innerHTML = `Trail · ${fs.map((x) => esc(season(x.epoch))).join(" + ")}`;
+  } else {
+    const r = roleOf(S.idx);
+    hd.className = "hud-date " + r;
+    hd.innerHTML = (r ? `<b>${r === "before" ? "Before" : "After"}</b> ` : "") + esc(season(f.epoch, true));
+  }
+  $("date").textContent = S.mode === "trail" ? `Trail of ${fs.length} seasons (brightest value of each pixel)`
+    : `Season ${f.epoch} · mean date ${f.date}`;
+  $("detail").textContent = `SPHEREx ${(f.detectors || []).join("+")} · ${fx(f.wavelength_um)} µm · ${f.n_images} images stacked`;
+  document.querySelectorAll("#seasons .chip").forEach((c) => c.classList.toggle("cur", +c.dataset.i === S.idx && S.mode !== "trail"));
+  drawOverlay();
+  try { document.dispatchEvent(new CustomEvent("fazari:frame", { detail: { epoch: f.epoch, bin_um: S.bin.wavelength_um, file: f.file, mode: S.mode } })); } catch (_) {}
+  S.listeners.forEach((fn) => { try { fn(f); } catch (_) {} });
+}
+function tick() {
+  const k = S.sel.indexOf(S.idx);
+  S.idx = S.sel[(k + 1) % S.sel.length];
+  show();
+}
+function restart() {
+  clearInterval(S.timer);
+  S.timer = 0;
+  if (S.mode === "blink" && S.playing && S.sel.length > 1) S.timer = setInterval(tick, +$("speed").value);
+  $("play").textContent = S.playing ? "Pause" : "Play";
+  $("play").setAttribute("aria-pressed", String(!S.playing));
+}
+function step(d) {
+  if (S.mode === "swipe" || S.mode === "trail") setMode("step");
+  if (S.mode === "blink") S.playing = false;
+  const k = S.sel.indexOf(S.idx);
+  S.idx = S.sel[((k < 0 ? 0 : k) + d + S.sel.length) % S.sel.length];
+  show(); restart();
+}
+function setMode(md, quiet) {
+  if (!["blink", "step", "swipe", "trail"].includes(md)) md = "blink";
+  if (S.game && md !== "blink") endGame();
+  S.mode = md;
+  document.querySelectorAll("#modes button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === md)));
+  $("stage").dataset.mode = md;
+  $("frameB").hidden = md !== "swipe";
+  $("trail").hidden = md !== "trail";
+  $("swipeUi").hidden = md !== "swipe";
+  $("play").disabled = md !== "blink";
+  if (md === "swipe") S.idx = S.sel[0];
+  if (md === "trail") { S.idx = S.sel[S.sel.length - 1]; buildTrail(); }
+  if (md === "blink") S.playing = true;
+  if (md === "swipe") applySwipe();
+  $("modeHint").textContent = {
+    blink: "Blink: the compared seasons, one after the other.",
+    step: "Step: one season at a time (← → keys).",
+    swipe: "Swipe: drag the slider to compare the first and last season.",
+    trail: "Trail: the brightest value of each pixel over the seasons; a mover leaves a streak.",
+  }[md];
+  show(); restart();
+  if (!quiet) writeUrl();
+}
+function applySwipe() {
+  const st = $("stage"), v = +$("swipe").value / 100, Sw = st.clientWidth, W = pngSize()[0];
+  const xs = Sw * v, xp = (xs - S.tx) / (S.k || 1);
+  $("frameB").style.clipPath = `inset(0 0 0 ${Math.max(0, Math.min(W, xp)).toFixed(1)}px)`;
+  $("swipeLine").style.left = xs.toFixed(1) + "px";
+}
+function loadImg(url) {
+  return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error("load " + url)); im.src = url; });
+}
+async function buildTrail() {
+  const key = S.bi + "|" + S.sel.join(",");
+  if (S.trailKey === key) return;
+  S.trailKey = key;
+  const cv = $("trail");
+  try {
+    const imgs = await Promise.all(selFrames().map((f) => loadImg(S.base + f.file)));
+    if (S.trailKey !== key) return;
+    const W = imgs[0].naturalWidth, H = imgs[0].naturalHeight;
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext("2d", { willReadFrequently: true });
+    let acc = null;
+    for (const im of imgs) {
+      ctx.clearRect(0, 0, W, H);
+      ctx.drawImage(im, 0, 0, W, H);
+      const d = ctx.getImageData(0, 0, W, H).data;
+      if (!acc) acc = d; else for (let i = 0; i < d.length; i++) if (d[i] > acc[i]) acc[i] = d[i];
+    }
+    ctx.putImageData(new ImageData(acc, W, H), 0, 0);
+  } catch (e) { console.warn("trail", e); S.trailKey = null; }
+}
+
+function renderSeasons() {
+  const fr = S.bin.frames;
+  let h = "";
+  fr.forEach((f, i) => {
+    if (i) h += `<span class="gap" aria-hidden="true">${daysApart(fr[i - 1], f)} days</span>`;
+    const on = S.sel.includes(i), r = roleOf(i);
+    h += `<button type="button" class="chip${on ? " on" : ""}${r ? " " + r : ""}" data-i="${i}" aria-pressed="${on}" ` +
+      `title="${on ? "Remove from" : "Add to"} the comparison (${f.n_images} images, mean date ${f.date})">` +
+      `<b>${esc(season(f.epoch))}</b><small>${f.n_images} img</small></button>`;
+  });
+  $("seasons").innerHTML = h;
+  $("seasons").querySelectorAll(".chip").forEach((c) => { c.onclick = () => toggleSeason(+c.dataset.i); });
+  const fs = selFrames(), A = fs[0], B = fs[fs.length - 1];
+  const all = S.sel.length === fr.length;
+  $("allSeasons").hidden = fr.length < 3;
+  $("allSeasons").textContent = all ? "First and last only" : "All seasons";
+  const far = S.sel.length === 2 && S.sel[0] === 0 && S.sel[1] === fr.length - 1;
+  $("compareLine").innerHTML = S.sel.length > 1
+    ? `<b class="before">${esc(season(A.epoch))}</b> ↔ <b class="after">${esc(season(B.epoch))}</b>: ` +
+      `<b>${daysApart(A, B)} days apart</b>${far && fr.length > 2 ? " (most distant seasons)" : ""}${S.sel.length > 2 ? ` · ${S.sel.length} seasons` : ""}`
+    : `One season selected: add another to compare.`;
+  fairBadge();
+}
+function toggleSeason(i) {
+  const s = new Set(S.sel);
+  if (s.has(i)) { if (s.size > 1) s.delete(i); } else s.add(i);
+  S.sel = [...s].sort((a, b) => a - b);
+  if (!S.sel.includes(S.idx)) S.idx = S.sel[0];
+  afterSelection();
+}
+function afterSelection() {
+  renderSeasons();
+  if (S.mode === "trail") { buildTrail(); S.idx = S.sel[S.sel.length - 1]; }
+  if (S.mode === "swipe") S.idx = S.sel[0];
+  show(); restart(); writeUrl();
+}
+function fairBadge() {
+  const fs = selFrames(), el = $("fairBadge");
+  if (fs.length < 2) { el.hidden = true; return; }
+  const dets = [...new Set(fs.flatMap((f) => f.detectors || []))];
+  const lam = fs.map((f) => +f.wavelength_um).filter(ok);
+  const lo = Math.min(...lam), hi = Math.max(...lam);
+  const spread = (hi - lo) / S.bin.wavelength_um;
+  const fair = dets.length === 1 && spread <= 0.06;
+  el.hidden = false;
+  el.className = "badge " + (fair ? "fair" : "warn");
+  el.innerHTML = fair
+    ? `<span aria-hidden="true">✓</span> Fair comparison: same detector ${esc(dets[0])}, same colour ${lo.toFixed(2)}–${hi.toFixed(2)} µm`
+    : `<span aria-hidden="true">!</span> Not like for like: ${dets.length > 1 ? `detectors ${esc(dets.join(", "))}` : ""}${dets.length > 1 && spread > 0.06 ? "; " : ""}${spread > 0.06 ? `colours ${lo.toFixed(2)}–${hi.toFixed(2)} µm` : ""}`;
+  el.title = "SPHEREx sees every point in a slightly different colour each time. Frames are compared only within one detector and one narrow wavelength bin (±6 %), so a still star looks the same in every season.";
+}
+
+// --- wavelength bins -----------------------------------------------------------------------------
+async function gifUrl(bin) {
+  if (!bin.gif) return null;
+  const url = S.base + bin.gif;
+  if (!S.gif.has(url)) S.gif.set(url, fetch(url, { method: "HEAD" }).then((r) => r.ok).catch(() => false));
+  return (await S.gif.get(url)) ? url : null;
+}
+function selectBin(i, sel) {
+  S.bi = i; S.bin = S.bins[i];
+  const n = S.bin.frames.length;
+  S.sel = sel && sel.length ? sel : n > 1 ? [0, n - 1] : [0];
+  S.idx = S.sel[0];
+  S.trailKey = null;
+  S.bin.frames.forEach((f) => { const im = new Image(); im.src = S.base + f.file; });   // smooth blinking
+  const A = S.bin.frames[0], B = S.bin.frames[n - 1];
+  setSrc($("diff"), S.base + S.bin.diff);
+  $("diffKey").innerHTML =
+    `<span class="k"><i class="sw blue"></i><b>Blue = before</b><small>brighter in ${esc(season(A.epoch))}</small></span>` +
+    `<span class="k"><i class="sw white"></i><b>White</b><small>no change</small></span>` +
+    `<span class="k"><i class="sw red"></i><b>Red = after</b><small>brighter in ${esc(season(B.epoch))}</small></span>`;
+  $("diffCap").textContent = `${season(B.epoch)} minus ${season(A.epoch)} at ${S.bin.wavelength_um.toFixed(1)} µm (last season minus first). ` +
+    `Stars that stay the same cancel out. A star that moved leaves blue where it was and red where it went; ` +
+    `a star that got brighter turns red, one that got fainter turns blue.`;
+  const g = $("saveGif");
+  g.hidden = true;
+  gifUrl(S.bin).then((u) => {
+    if (!u || S.bin !== S.bins[i]) return;
+    g.href = u;
+    g.download = `fazari_${(targetIdOf(S.base) || String(S.meta.target || "result").replace(/\W+/g, "_")).toLowerCase()}_${S.bin.wavelength_um.toFixed(1)}um.gif`;
+    g.hidden = false;
+  });
+  renderSeasons();
+  setMode(S.mode, true);
+  layout();
+  writeUrl();
+}
+
+// --- URL -----------------------------------------------------------------------------------------
+function writeUrl() {
+  if (!S.bin) return;
+  const p = new URLSearchParams(location.search);
+  ["t", "target", "bin"].forEach((k) => p.delete(k));
+  p.set("data", S.base);
+  p.set("um", S.bin.wavelength_um.toFixed(1));
+  if (S.mode !== "blink") p.set("mode", S.mode); else p.delete("mode");
+  const n = S.bin.frames.length;
+  const dflt = n > 1 ? S.sel.length === 2 && S.sel[0] === 0 && S.sel[1] === n - 1 : true;
+  if (dflt) p.delete("s"); else p.set("s", selFrames().map((f) => f.epoch).join(","));
+  if (S.zoom !== S.defaultZoom) p.set("z", String(S.zoom)); else p.delete("z");
+  const q = p.toString().replace(/%2F/gi, "/").replace(/%2C/gi, ",");
+  try { history.replaceState(null, "", location.pathname + "?" + q + location.hash); } catch (_) {}
+}
+
+// --- result card -----------------------------------------------------------------------------------
+function bestChange(ph) {
+  if (S.ex.brightnessChange) { try { return S.ex.brightnessChange(ph); } catch (_) {} }
+  const c = [];
+  (ph.bins || []).forEach((b) => (b.seasons || []).slice(1).forEach((s) => {
+    if (ok(s.ratio_to_first) && s.ratio_err > 0) c.push({ b, ref: b.seasons[0].epoch, to: s.epoch, r: +s.ratio_to_first, er: +s.ratio_err, z: Math.abs(s.ratio_to_first - 1) / s.ratio_err });
+  }));
+  const sig = c.filter((x) => x.z >= 3 && Math.abs(x.r - 1) >= 0.1).sort((a, b) => b.z - a.z);
+  return sig.length ? { main: sig[0], from: sig[0].ref, to: sig[0].to } : c.length ? { flat: true } : null;
+}
+const tile = (k, b, small, cls = "") => `<div class="tile ${cls}"><span class="k">${k}</span><b>${b}</b><small>${small}</small></div>`;
+function renderResult() {
+  const m = S.meta, ms = m.measured || {}, pv = m.preview, R = S.ref;
+  const nImg = pv ? pv.n_images : ok(m.n_cutouts) ? m.n_cutouts : S.bins.reduce((a, b) => a + b.frames.reduce((s, f) => s + (f.n_images || 0), 0), 0);
+  const eps = m.epochs || [];
+  const tImg = tile("SPHEREx images", String(nImg), `${S.bins.length} wavelength bin${S.bins.length === 1 ? "" : "s"}${pv ? " (preview)" : ""}`);
+  const tSea = tile("Seasons", String(eps.length), eps.length ? `${esc(season(eps[0]))} – ${esc(season(eps[eps.length - 1]))}` : "");
+  let tMeas, tRef, verdict = "";
+  if (ok(ms.shift_arcsec)) {
+    const s = +ms.shift_arcsec, e = ok(ms.shift_err_arcsec) ? +ms.shift_err_arcsec : null, p = ok(ms.gaia_predicted_arcsec) ? +ms.gaia_predicted_arcsec : null;
+    tMeas = tile("Measured by us", arcsec(s, e), `${e != null ? `± ${arcsec(e, e)}` : ""}<span class="x">${e != null ? " · " : ""}${esc(season(ms.from_epoch))} → ${esc(season(ms.to_epoch))}</span>`, "hero");
+    if (R.none || p == null) {
+      tRef = tile("Compared with", "–", R.none ? "nothing: a picked sky position has no catalogue motion" : "no prediction for this result");
+      verdict = `Measured by us from SPHEREx images${R.none ? "; there is no catalogue motion to compare with" : ""}.`;
+    } else {
+      const dirTxt = ok(ms.gaia_pa_deg) ? `toward ${S.ex.compass ? S.ex.compass(ms.gaia_pa_deg) + " " : ""}(PA ${fx(ms.gaia_pa_deg, 0)}°` +
+        (ok(ms.pa_deg) ? `; we ${fx(ms.pa_deg, 0)}°)` : ")") : "";
+      tRef = tile(`${esc(R.Short)} predicts`, arcsec(p, e), dirTxt, "ref");
+      const d = Math.abs(s - p), pct = p > 0 ? 100 * d / p : null;
+      const agree = e != null ? (d <= 2 * e ? ", within the error" : `, ${(d / e).toFixed(1)} times the error`) : "";
+      verdict = `<b>Measured by us from SPHEREx images</b>, compared with ${esc(R.label)}: ${arcsec(d, e)} apart` +
+        (pct != null ? ` (${pct < 1 ? pct.toFixed(1) : Math.round(pct)} %)` : "") + `${agree}.`;
+    }
+  } else if (ms.photometry) {
+    const c = bestChange(ms.photometry);
+    if (c && c.main) {
+      const r = c.main.r, er = c.main.er, b = c.main.b;
+      const pc = Math.round(100 * (r - 1)), pe = Math.max(1, Math.round(100 * er));
+      tMeas = tile("Brightness change", `${pc > 0 ? "+" : "−"}${Math.abs(pc)} %`, `± ${pe} %<span class="x"> · ${b.wavelength_um.toFixed(1)} µm · ${esc(season(c.from))} → ${esc(season(c.to))}</span>`, "hero");
+      tRef = tile("Compared with", String(b.n_comparison || "–"), "stars in the same images", "ref");
+    } else {
+      tMeas = tile("Brightness change", c && c.flat ? "none" : "–", c && c.flat ? "no change larger than the errors" : "too few comparison stars", "hero");
+      tRef = tile("Compared with", "–", "stars in the same images", "ref");
+    }
+    verdict = `<b>Measured by us from SPHEREx images</b>: the target's brightness relative to comparison stars in the same images (1st season = 100 %).`;
+  } else if (ms.preliminary && ok(ms.preliminary.shift_arcsec)) {
+    const pre = ms.preliminary;
+    tMeas = tile("Rough first look", "≈" + arcsec(pre.shift_arcsec), `${esc(season(pre.from_epoch))} → ${esc(season(pre.to_epoch))}, no error bars`, "hero");
+    tRef = tile(`${esc(R.Short)} predicts`, ok(pre.catalogue_shift_arcsec) ? arcsec(pre.catalogue_shift_arcsec) : "–", "same seasons", "ref");
+    verdict = "A quick preview from a few SPHEREx images, not a measurement. The full result follows.";
+  } else {
+    const st = ms.status || "";
+    tMeas = tile("Measured", "–", st === "not_detected" ? "not detected above the noise" : st === "preview" ? "full result follows" : esc(ms.message || "no measurement"), "hero");
+    tRef = tile(R.none ? "Compared with" : `${esc(R.Short)} predicts`, "–", R.none ? "nothing: a picked sky position has no catalogue motion" : "no prediction for this result", "ref");
+    verdict = esc(ms.message || "");
+  }
+  $("tiles").innerHTML = tMeas + tRef + tImg + tSea;
+  $("verdict").innerHTML = verdict;
+  // badge: saturated core, measured from the wings
+  const det = ms.detection || {};
+  const satBins = new Set();
+  (det.bins || []).forEach((c) => { if (c.saturated_frac > 0.5) satBins.add(c.wavelength_um); });
+  ((ms.photometry || {}).bins || []).forEach((b) => { if (b.saturated) satBins.add(b.wavelength_um); });
+  const sb = $("satBadge");
+  sb.hidden = !satBins.size;
+  if (satBins.size) {
+    sb.innerHTML = `Core saturated, measured from the wings`;
+    sb.title = `The star is so bright that its centre fills the detector pixels to the top (the white core) at ` +
+      `${[...satBins].sort((a, b) => a - b).map((v) => v.toFixed(1)).join(", ")} µm. ` +
+      (ms.photometry ? "Its brightness is measured in a ring around the core." : "Its position is fitted to the unsaturated outer glow (the wings) only.");
+  }
+}
+
+function renderHeader() {
+  const m = S.meta, ms = m.measured || {};
+  const name = m.target && !/^(none|null)$/i.test(m.target) ? m.target : "Sky field";
+  $("title").textContent = name;
+  document.title = `${name} · Fazari SPHEREx blink`;
+  const kind = ms.photometry ? "varies" : (ok(ms.shift_arcsec) || ms.preliminary) && !S.ref.none ? "moves" : S.info ? S.info.kind : null;
+  const kb = $("kindBadge");
+  kb.hidden = !kind;
+  if (kind) { kb.textContent = KIND_TEXT[kind]; kb.className = "badge kind " + kind; kb.title = KIND_TIP[kind]; }
+  const tg = $("tagList");
+  tg.innerHTML = S.info ? `<span class="tag" title="${esc(S.info.why)}">${esc(S.info.tag)}</span>` : "";
+  $("why").textContent = S.info ? S.info.why : "";
+  $("why").hidden = !S.info;
+}
+
+function buildTargets() {
+  const cur = targetIdOf(S.base);
+  const box = $("targets");
+  box.innerHTML = "";
+  TARGETS.forEach((t) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "tgt" + (cur === t.id ? " on" : "");
+    b.setAttribute("aria-current", cur === t.id ? "page" : "false");
+    b.innerHTML = `<b>${esc(t.name)}</b><small><span class="dot ${t.kind}"></span>${esc(KIND_TEXT[t.kind])} · ${esc(t.tag)}</small>`;
+    b.title = t.why;
+    b.disabled = true;
+    b.onclick = () => {
+      const p = new URLSearchParams();
+      p.set("data", `data/${t.id}/`);
+      if (S.mode !== "blink") p.set("mode", S.mode);
+      location.search = "?" + p.toString().replace(/%2F/gi, "/");
+    };
+    box.appendChild(b);
+    fetch(`data/${t.id}/meta.json`, { method: "HEAD" })
+      .then((r) => { if (r.ok) b.disabled = false; else b.title = "Coming soon"; })
+      .catch(() => { b.title = "Coming soon"; });
+  });
+}
+
+// --- measurement details (the full table, as before) -------------------------------------------------
+function renderMeasure() {
+  const m = S.meta, ms = m.measured || {}, ref = S.ref.label;
+  let html = "";
+  if (ms.message) html += `<p class="status ${ms.status || ""}">${ms.message}</p>`;
+  const pre = ms.preliminary;
+  if (pre) {
+    html += `<p><b>Preliminary</b> (preview, not a measurement): ${pre.from_epoch} → ${pre.to_epoch} roughly ` +
+      `${fx(pre.shift_arcsec, 1)}" toward PA ${fx(pre.pa_deg, 0)}°; ${ref} predicts ${fx(pre.catalogue_shift_arcsec, 1)}" toward PA ` +
+      `${fx(pre.catalogue_pa_deg, 0)}°. <small>${pre.n_used} images; raw SPHEREx WCS, no Gaia field-star calibration, no error bars.</small></p>`;
+  }
+  if (ms.shift_arcsec != null) {
+    html += `<p>${ms.from_epoch} → ${ms.to_epoch}: moved <b>${fx(ms.shift_arcsec)}"</b>` +
+      (ms.shift_err_arcsec ? ` ± ${fx(ms.shift_err_arcsec)}"` : "") + ` toward PA ${fx(ms.pa_deg, 0)}°. ` +
+      `${ref} predicts <b>${fx(ms.gaia_predicted_arcsec)}"</b> toward PA ${fx(ms.gaia_pa_deg, 0)}°.` +
+      (ms.same_orientation === false ? ` <small>(seasons seen with the telescope turned 180°)</small>` : "") + `</p>`;
+  }
+  if (ms.fit) {
+    html += `<p><small>Proper motion from ${ms.fit.n_used} images: ${fx(ms.fit.pmra_mas_yr, 0)} ± ${fx(ms.fit.pmra_err_mas_yr, 0)}, ` +
+      `${fx(ms.fit.pmdec_mas_yr, 0)} ± ${fx(ms.fit.pmdec_err_mas_yr, 0)} mas/yr (${ref}: ${fx(ms.fit.gaia_pmra_mas_yr, 0)}, ${fx(ms.fit.gaia_pmdec_mas_yr, 0)}).</small></p>`;
+  }
+  const rows = (ms.positions || []).map((p) =>
+    `<tr><td>${p.epoch}</td><td>${p.date}</td><td>${p.n_images}</td>` +
+    `<td class="num">${fx(p.minus_gaia_east_arcsec)}", ${fx(p.minus_gaia_north_arcsec)}"</td>` +
+    `<td class="num">${fx(p.err_east_arcsec)}", ${fx(p.err_north_arcsec)}"</td></tr>`).join("");
+  if (rows) html += `<div class="tw"><table><tr><th>Season</th><th>Mean date</th><th>Images</th><th>Measured − ${ref.split(" (")[0]} (E, N)</th><th>± (E, N)</th></tr>${rows}</table></div>`;
+  const fc = ms.field_calibration;
+  if (fc && fc.applied && fc.n_exposures_calibrated > 0)
+    html += `<small>Positions are tied to Gaia DR3 with the field stars of the same images ` +
+      `(${fc.n_exposures_calibrated} exposures calibrated).</small> `;
+  else if (fc && fc.applied)
+    html += `<small>Field-star calibration not applied: too few Gaia stars at these wavelengths; positions use the SPHEREx WCS.</small> `;
+  if (rows && ms.positions.some((p) => p.bias_corrected) && ms.same_orientation === true)
+    html += `<small>Positions corrected for a small detector-fixed centroid bias (fitted per detector); ` +
+      `the main result above uses two seasons seen in the same orientation, where that bias cancels.</small>`;
+  const det = ms.detection;
+  if (det && det.bins && det.bins.length) {
+    const eps = m.epochs;
+    const bl = [...new Set(det.bins.map((c) => c.wavelength_um))];
+    let t = `<tr><th>Bin</th>${eps.map((e) => `<th>${e}</th>`).join("")}</tr>`;
+    bl.forEach((b) => {
+      t += `<tr><td>${b.toFixed(1)} µm (${det.bins.find((c) => c.wavelength_um === b).detector})</td>` + eps.map((e) => {
+        const c = det.bins.find((q) => q.wavelength_um === b && q.epoch === e);
+        if (!c) return "<td>–</td>";
+        const v = c.saturated_frac > 0.5 ? "sat." : fx(c.snr, 1);
+        return `<td class="num ${c.detected ? "det" : ""}">${v} <small>(${c.n})</small></td>`;
+      }).join("") + "</tr>";
+    });
+    html += `<details${ms.status === "detected" ? "" : " open"}><summary>Detection check: S/N at the predicted position ` +
+      `(single-season stacks, ≥${det.threshold_snr}σ in green; number of images in brackets)</summary><div class="tw"><table>${t}</table></div>` +
+      (det.blend_note ? `<small>${det.blend_note}</small>` : "") +
+      ((det.blend_check || []).length ? `<small>Nearest catalogue source to the predicted position: ` +
+        det.blend_check.map((b) => `${b.epoch} ${fx(b.nearest_arcsec, 1)}"`).join(", ") + ` (fitted together with the target).</small>` : "") +
+      `</details>`;
+  }
+  const ph = ms.photometry;
+  if (ph) {
+    $("mtitle").textContent = "Brightness change (relative photometry)";
+    const eps = m.epochs;
+    let t = `<tr><th>Bin</th>${eps.map((e) => `<th>${e}</th>`).join("")}<th>Note</th></tr>`;
+    ph.bins.forEach((b) => {
+      t += `<tr><td>${b.wavelength_um.toFixed(1)} µm</td>` + eps.map((e) => {
+        const s = (b.seasons || []).find((q) => q.epoch === e);
+        if (!s) return "<td>–</td>";
+        return s.ratio_err ? `<td class="num">${fx(s.ratio_to_first)} ± ${fx(s.ratio_err)}</td>` : `<td class="num">1 (ref.)</td>`;
+      }).join("") + `<td><small>${(b.flags || []).join("; ") || (b.method === "psf" ? "PSF flux" : "")}` +
+      (b.n_comparison ? ` · ${b.n_comparison} comparison stars` : "") + `</small></td></tr>`;
+    });
+    html += `<p>Target flux relative to comparison stars in the same images, as a ratio to the first season ` +
+      `(1.20 = 20 % brighter).</p><div class="tw"><table>${t}</table></div><p><small>${ph.method || ""} ${(ph.caveats || []).join(" ")}</small></p>`;
+  }
+  if (ms.finding) html += `<p><small><b>Finding:</b> ${ms.finding}</small></p>`;
+  if (ms.note) html += `<p><small>${ms.note}</small></p>`;
+  $("measure").innerHTML = html;
+}
+
+function renderStagebar() {
+  const m = S.meta, pv = m.preview;
+  if (!(pv || /^\/jobs\//.test(S.base))) return;
+  const n = pv ? pv.n_images : S.bins.reduce((a, b) => a + b.frames.reduce((s, f) => s + f.n_images, 0), 0);
+  const st = $("stagebar");
+  st.hidden = false;
+  st.className = "stagebar " + (pv ? "preview" : "full");
+  st.innerHTML = pv
+    ? `<b>Preview (${n} images)</b> · ${(+pv.bin_um).toFixed(1)} µm only (${pv.detector}), ${pv.seasons} seasons, small regions. ` +
+      `A quick look, not a measurement.`
+    : `<b>Full result (${n} images)</b> · ${S.bins.length} wavelength bin(s), ${(m.epochs || []).length} seasons.`;
+}
+
+function watchHint() {
+  const fs = S.bin ? selFrames() : [];
+  const ms = S.meta.measured || {};
+  if (fs.length < 2) { $("watch").textContent = ""; return; }
+  const A = season(fs[0].epoch, true), B = season(fs[fs.length - 1].epoch, true);
+  const tail = ms.photometry ? "the star in the ring changes brightness."
+    : (ok(ms.shift_arcsec) || ms.preliminary) && !S.ref.none ? "the arrow shows where it went." : "anything that jumps has moved.";
+  $("watch").innerHTML = `<b>Watch it.</b><span class="x"> The image switches between ${esc(A)} and ${esc(B)}; ${tail}</span>`;
+}
+
+// --- "Find the mover" game ---------------------------------------------------------------------------
+function answers() {
+  const pts = [];
+  S.sel.forEach((i) => {
+    const e = S.bin.frames[i].epoch, p = measuredPos(e);
+    const xy = p ? p.png_xy_measured : markerXY(e);
+    if (xy) pts.push(xy);
+  });
+  if (!pts.length && S.ref.none) pts.push(centreXY());
+  return pts;
+}
+function canPlay() {
+  const ms = S.meta.measured || {};
+  return ms.status !== "not_detected" && (ok(ms.shift_arcsec) || !!ms.photometry) && answers().length > 0;
+}
+function startGame() {
+  if (!canPlay()) return;
+  if (S.marking && S.marking.setOn) S.marking.setOn(false);
+  if (S.mode !== "blink") setMode("blink");
+  S.playing = true; restart();
+  S.game = { revealed: false, click: null, hit: false };
+  $("stage").classList.add("game");
+  const vary = !!(S.meta.measured || {}).photometry;
+  gameMsg(vary ? "Find the star that changes brightness: watch the blink, then click it."
+    : "Find the mover: watch the blink, then click the thing that moves.", "ask");
+  $("gameBtn").textContent = "Show me";
+  drawOverlay();
+}
+function gameMsg(html, cls) {
+  const g = $("gameMsg");
+  g.hidden = !html;
+  g.className = "game-msg " + (cls || "");
+  g.innerHTML = html || "";
+}
+function reveal(hit) {
+  S.game.revealed = true;
+  S.game.hit = hit;
+  const m = S.meta, ms = m.measured || {}, name = esc(m.target || "the target");
+  let msg;
+  if (ms.photometry) {
+    const c = bestChange(ms.photometry);
+    const what = c && c.main ? ` Our measurement: ${Math.abs(Math.round(100 * (c.main.r - 1)))} % ${c.main.r < 1 ? "fainter" : "brighter"} at ${c.main.b.wavelength_um.toFixed(1)} µm.` : "";
+    msg = hit ? `<b>Correct!</b> That is ${name}.${what}` : `<b>Not quite: here it is</b> (in the orange ring).${what}`;
+  } else {
+    const who = S.ref.who;
+    const nums = ok(ms.shift_arcsec) ? ` We measured ${arcsec(ms.shift_arcsec, ms.shift_err_arcsec)}` +
+      (who && ok(ms.gaia_predicted_arcsec) ? `; ${who} predicts ${arcsec(ms.gaia_predicted_arcsec, ms.shift_err_arcsec)}.` : ".") : "";
+    msg = hit ? `<b>${who ? `${who} confirms!` : "Yes!"}</b> You found ${name}.${nums}` : `<b>Not quite: here it is</b> (follow the arrow).${nums}`;
+  }
+  gameMsg(msg + ` <button type="button" id="gameAgain">Play again</button>`, hit ? "hit" : "miss");
+  $("gameAgain").onclick = () => { endGame(); startGame(); };
+  $("gameBtn").textContent = "Find the mover";
+  $("stage").classList.remove("game");
+  drawOverlay();
+}
+function endGame() {
+  S.game = null;
+  $("stage").classList.remove("game");
+  gameMsg("");
+  $("gameBtn").textContent = "Find the mover";
+  drawOverlay();
+}
+function onStageClick(ev) {
+  if (!S.game || S.game.revealed) return;
+  if (ev.target && ev.target.closest && ev.target.closest("#gameMsg, #swipeUi, button, input")) return;
+  if ($("fzmToggle") && $("fzmToggle").getAttribute("aria-pressed") === "true") { endGame(); return; }
+  const r = $("frame").getBoundingClientRect();
+  if (!r.width) return;
+  const [W, H] = pngSize();
+  const x = (ev.clientX - r.left) / r.width * W, y = (ev.clientY - r.top) / r.height * H;
+  const tol = Math.max(30, 26 / (S.k || 1));
+  const d = Math.min(...answers().map((p) => Math.hypot(p[0] - x, p[1] - y)));
+  S.game.click = [x, y];
+  reveal(d <= tol);
+}
+
+// --- copy link ---------------------------------------------------------------------------------------
+async function copyLink() {
+  const b = $("copyLink"), url = location.href;
+  let done = false;
+  try { await navigator.clipboard.writeText(url); done = true; } catch (_) {}
+  if (!done) {
+    const i = $("linkOut");
+    i.hidden = false; i.value = url; i.focus(); i.select();
+    try { done = document.execCommand("copy"); } catch (_) {}
+  }
+  b.textContent = done ? "Link copied" : "Copy the link below";
+  setTimeout(() => { b.textContent = "Copy link"; }, 2200);
+}
+
+// --- start ---------------------------------------------------------------------------------------------
+function stageMsg(t) { const el = $("stageMsg"); el.hidden = !t; el.textContent = t || ""; }
+
+export async function startViewer() {
+  S.base = baseFromUrl();
+  S.ex = await import("./explain.js").catch((e) => { console.warn("explain.js", e); return {}; });
+  buildTargets();
+  stageMsg("Loading…");
+  let m;
+  try {
+    const r = await fetch(S.base + "meta.json");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    m = await r.json();
+  } catch (e) {
+    stageMsg(`Could not load ${S.base}meta.json (${e.message || e}).`);
+    $("explainSentence").textContent = "This result could not be loaded. Pick a target above.";
+    return null;
+  }
+  S.meta = m;
+  S.bins = m.wavelength_bins || [];
+  S.ref = refInfo(m);
+  const tid = targetIdOf(S.base);
+  S.info = TARGETS.find((t) => t.id === tid) || TARGETS.find((t) => t.name === m.target) || null;
+  if (!S.bins.length) { stageMsg("This result has no SPHEREx frames."); return null; }
+  stageMsg("");
+  renderHeader();
+  renderStagebar();
+  renderResult();
+  renderMeasure();
+  $("marklabel").textContent = S.ref.none ? "Centre ring" : `${S.ref.Short} ring`;
+  $("subtitle").textContent = `Centre RA ${fx(m.ra, 4)}°, Dec ${fx(m.dec, 4)}° (epoch ${m.epoch_center}).`;
+  $("src").textContent = "Data: " + (m.data_source || "SPHEREx") + ". Generated " + (m.generated || "") + ".";
+  $("realNote").textContent = `All frames are real SPHEREx images (${m.data_source || "NASA/IPAC IRSA"}), stacked per season; nothing is simulated.`;
+  m.wavelength_bins.forEach((b, i) => {
+    const o = document.createElement("option");
+    o.value = i; o.textContent = b.wavelength_um.toFixed(1) + " µm (" + b.frames.length + " seasons)";
+    $("wl").appendChild(o);
+  });
+
+  // zoom: ?z=, else 4x around the target (a preview's smaller region: 3x shows about the same sky)
+  const pv = m.preview;
+  S.defaultZoom = (m.measured || {}).photometry ? 2 : pv && pv.fov_deg && pv.fov_deg < 0.15 ? 3 : 4;   // brightness: show the comparison stars
+  const zq = +Q.get("z");
+  S.zoom = [1, 2, 3, 4, 6].includes(zq) ? zq : S.defaultZoom;
+  $("zoom").value = String(S.zoom);
+  S.mode = ["blink", "step", "swipe", "trail"].includes(Q.get("mode")) ? Q.get("mode") : "blink";
+
+  // start bin: ?um= (a shared link) wins; then a detected bin for faint targets (WISE 0855: 4.6 µm);
+  // then ?bin= (the explorer's preview wavelength); then, for brightness targets, the bin of the
+  // strongest change (the one the sentence talks about)
+  const ms = m.measured || {};
+  const find = (v) => (v ? S.bins.findIndex((b) => Math.abs(b.wavelength_um - v) < 0.05) : -1);
+  const db = (ms.detection || {}).detected_bins_um || [];
+  let start = 0;
+  const ku = find(+Q.get("um")), kb = find(+Q.get("bin"));
+  if (ku >= 0) start = ku;
+  else if (db.length && ms.status !== "detected" && !ok(ms.shift_arcsec) && find(db[db.length - 1]) >= 0) start = find(db[db.length - 1]);
+  else if (kb >= 0 && (ms.status === "detected" || !db.length || db.some((w) => Math.abs(w - +Q.get("bin")) < 0.05))) start = kb;
+  else if (db.length && ok(ms.shift_arcsec)) {
+    // a detected bin with the most images in its thinnest season; ties -> the longest wavelength
+    // (Barnard's Star: 4.6 µm, the smallest saturated core)
+    let best = -1;
+    db.forEach((w) => {
+      const k = find(w);
+      if (k < 0) return;
+      const n = Math.min(...S.bins[k].frames.map((f) => f.n_images || 0));
+      if (best < 0 || n >= Math.min(...S.bins[best].frames.map((f) => f.n_images || 0))) best = k;
+    });
+    if (best >= 0) start = best;
+  }
+  else if (ms.photometry) {
+    const c = bestChange(ms.photometry);
+    if (c && c.main && find(c.main.b.wavelength_um) >= 0) start = find(c.main.b.wavelength_um);
+  }
+  $("wl").value = start;
+  let sel = null;
+  if (Q.get("s")) {
+    const want = Q.get("s").split(",");
+    sel = S.bins[start].frames.map((f, i) => (want.includes(f.epoch) ? i : -1)).filter((i) => i >= 0);
+  }
+
+  // controls
+  $("wl").onchange = (e) => { selectBin(+e.target.value); watchHint(); };
+  $("play").onclick = () => { if (S.mode !== "blink") setMode("blink"); else { S.playing = !S.playing; restart(); } };
+  $("prev").onclick = () => step(-1);
+  $("next").onclick = () => step(1);
+  $("speed").oninput = (e) => { $("speedv").textContent = e.target.value + " ms"; restart(); };
+  $("mark").onchange = () => drawOverlay();
+  $("arrowOn").onchange = () => drawOverlay();
+  $("zoom").onchange = (e) => { S.zoom = +e.target.value; layout(); writeUrl(); };
+  document.querySelectorAll("#modes button").forEach((b) => { b.onclick = () => setMode(b.dataset.mode); });
+  $("allSeasons").onclick = () => {
+    const n = S.bin.frames.length;
+    S.sel = S.sel.length === n ? [0, n - 1] : S.bin.frames.map((_, i) => i);
+    if (!S.sel.includes(S.idx)) S.idx = S.sel[0];
+    afterSelection(); watchHint();
+  };
+  $("swipe").oninput = applySwipe;
+  $("copyLink").onclick = copyLink;
+  $("gameBtn").hidden = !canPlay();
+  $("gameBtn").onclick = () => { if (S.game && !S.game.revealed) reveal(false); else { endGame(); startGame(); } };
+  const st = $("stage");
+  st.addEventListener("click", onStageClick);
+  // swipe: drag on the image as well as the slider
+  let drag = false;
+  const dragTo = (ev) => { const r = st.getBoundingClientRect(); $("swipe").value = String(Math.max(0, Math.min(100, 100 * (ev.clientX - r.left) / r.width))); applySwipe(); };
+  st.addEventListener("pointerdown", (ev) => {
+    if (S.mode !== "swipe" || ev.target === $("swipe") || ($("fzmToggle") && $("fzmToggle").getAttribute("aria-pressed") === "true")) return;
+    drag = true; try { st.setPointerCapture(ev.pointerId); } catch (_) {}
+    dragTo(ev);
+  });
+  st.addEventListener("pointermove", (ev) => { if (drag) dragTo(ev); });
+  const stop = () => { drag = false; };
+  st.addEventListener("pointerup", stop); st.addEventListener("pointercancel", stop);
+  document.addEventListener("keydown", (e) => {
+    if (e.altKey || e.ctrlKey || e.metaKey || /^(INPUT|SELECT|TEXTAREA)$/.test((e.target && e.target.tagName) || "")) return;
+    if (e.key === "ArrowLeft") { step(-1); e.preventDefault(); }
+    else if (e.key === "ArrowRight") { step(1); e.preventDefault(); }
+    else if (e.key === " " && (e.target === document.body || e.target === st)) { $("play").click(); e.preventDefault(); }
+    else if (e.key === "Escape" && S.game) endGame();
+  });
+  try { new ResizeObserver(() => layout()).observe(st); } catch (_) { window.addEventListener("resize", layout); }
+
+  selectBin(start, sel && sel.length ? sel : null);
+  watchHint();
+  return {
+    meta: m, base: S.base,
+    current: () => ({ frame: S.bin && S.bin.frames[S.idx], bin_um: S.bin && S.bin.wavelength_um }),
+    setMarking(api) { S.marking = api || null; },
+    fallbackSentence() {
+      const box = $("explainSentence");
+      if (box.textContent.trim()) return;
+      const t = ok(ms.shift_arcsec) ? `${m.target} moved ${arcsec(ms.shift_arcsec, ms.shift_err_arcsec)} between ${season(ms.from_epoch, true)} and ${season(ms.to_epoch, true)}.`
+        : ms.photometry ? `${m.target} changes brightness between the SPHEREx seasons.` : ms.message || "";
+      box.innerHTML = t ? `<p>${esc(t)}</p>` : "";
+    },
+    on(fn) { if (typeof fn === "function") S.listeners.push(fn); },
+  };
+}

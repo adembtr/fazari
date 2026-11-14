@@ -3,261 +3,376 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fazari Blink Preview</title>
+<title>Fazari Blink Viewer</title>
+<meta name="color-scheme" content="dark">
+<script>
+// ?t=<target> is a shortcut for ?data=data/<target>/; rewrite it first so every module sees ?data=
+(function () {
+  try {
+    var q = new URLSearchParams(location.search), t = q.get("t") || q.get("target");
+    if (!q.get("data") && t && /^[\w-]+$/.test(t)) {
+      q.delete("t"); q.delete("target"); q.set("data", "data/" + t + "/");
+      history.replaceState(null, "", location.pathname + "?" + q.toString().replace(/%2F/gi, "/") + location.hash);
+    }
+  } catch (e) {}
+})();
+</script>
 <style>
-  :root { --bg:#0b0d12; --fg:#e8eaf0; --mut:#9aa3b2; --acc:#ffb347; --card:#151925; }
+  :root {
+    --bg:#0b0d12; --fg:#e8eaf0; --mut:#9aa3b2; --acc:#ffb347; --card:#151925; --card2:#1b2131; --line:#2a3246;
+    --before:#5aa9ff; --after:#ff6b6b; --good:#5dd39e; --warn:#e0b85d; --blue:#7fd4ff;
+    color-scheme: dark;
+  }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.45 system-ui, sans-serif; }
-  main { max-width: 760px; margin: 0 auto; padding: 16px; }
-  h1 { font-size: 1.3rem; margin: 0 0 4px; }
-  .sub { color: var(--mut); margin: 0 0 14px; }
-  .controls { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; background:var(--card);
-              padding:10px 12px; border-radius:8px; margin-bottom:10px; }
-  label { color: var(--mut); font-size: .9rem; }
-  select, button { font: inherit; background:#222838; color:var(--fg); border:1px solid #333b50;
-                   border-radius:6px; padding:4px 10px; }
-  button { cursor:pointer; min-width: 70px; }
-  .stage { position:relative; width:100%; aspect-ratio:720/770; background:#000; border-radius:6px; overflow:hidden; }
-  .zoom { position:absolute; inset:0; transition: transform .25s ease; }
-  .stage img { position:absolute; inset:0; width:100%; height:100%; image-rendering: pixelated; }
-  .stage svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
-  .info { display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; margin:8px 0 14px; }
-  .date { font-size:1.15rem; color:var(--acc); font-variant-numeric: tabular-nums; }
-  .card { background:var(--card); border-radius:8px; padding:10px 12px; margin-top:10px; }
-  .card h2 { font-size: 1rem; margin: 0 0 6px; }
-  table { border-collapse: collapse; width:100%; font-size:.9rem; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  [hidden] { display:none !important; }
+  a { color:var(--acc); }
+  :focus-visible { outline:2.5px solid var(--blue); outline-offset:2px; }
+  .skip { position:absolute; left:8px; top:-60px; z-index:50; background:var(--acc); color:#1a1300; padding:8px 12px; border-radius:8px; }
+  .skip:focus { top:8px; }
+  .app { max-width:1720px; margin:0 auto; padding:10px 16px 28px; }
+  h1, h2 { margin:0; }
+  small { color:var(--mut); }
+  select, button, .btn { font:inherit; background:#222838; color:var(--fg); border:1px solid #333b50; border-radius:7px; padding:5px 11px; }
+  button, .btn { cursor:pointer; }
+  button:disabled { opacity:.45; cursor:default; }
+  .btn { display:inline-flex; align-items:center; gap:6px; text-decoration:none; }
+
+  /* header */
+  .top { display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; margin:0 0 8px; }
+  .tl { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; min-width:0; }
+  .brand { color:var(--mut); text-decoration:none; font-weight:700; letter-spacing:.02em; font-size:.9rem; }
+  .brand::after { content:"/"; margin-left:10px; color:#4a5368; font-weight:400; }
+  h1 { font-size:1.35rem; line-height:1.2; }
+  .badge { display:inline-flex; align-items:center; gap:5px; font-size:.78rem; font-weight:700; border-radius:999px; padding:2px 10px; border:1px solid; white-space:normal; }
+  .badge.kind.moves { color:#9fd0ff; border-color:#2f5f8f; background:#0f2236; }
+  .badge.kind.varies { color:#e3b8ff; border-color:#6a3f8a; background:#24123a; }
+  .tag { font-size:.78rem; color:#ffd7a0; border:1px dashed #8a6a1f; border-radius:999px; padding:1px 9px; }
+  .real { margin-left:auto; font-size:.8rem; font-weight:700; color:#c4f2d4; background:#10291b; border:1px solid #2f7a4c; border-radius:999px; padding:3px 11px; }
+  .targets { display:flex; gap:6px; overflow-x:auto; margin:0 0 10px; padding-bottom:3px; scrollbar-width:thin; }
+  .tgt { flex:none; display:flex; flex-direction:column; align-items:flex-start; text-align:left; padding:5px 11px 6px; line-height:1.25; background:var(--card); }
+  .tgt b { font-weight:600; font-size:.92rem; }
+  .tgt small { font-size:.74rem; display:flex; align-items:center; gap:5px; }
+  .tgt.on { border-color:var(--acc); }
+  .tgt.on b { color:var(--acc); }
+  .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .dot.moves { background:#5aa9ff; } .dot.varies { background:#c48bff; }
+  .stagebar { padding:7px 10px; border-radius:6px; margin:0 0 10px; font-size:.92rem; }
+  .stagebar b { font-weight:700; }
+  .stagebar.preview { background:#33290f; border:1px solid #8a6a1f; color:#ffdf9e; }
+  .stagebar.full { background:#10291b; border:1px solid #2f7a4c; color:#c4f2d4; }
+
+  /* viewer: big image left, narrow panel right; one column below 1000 px */
+  .viewer { display:grid; grid-template-columns:minmax(0, 1fr) 340px; gap:0 18px; align-items:start; }
+  .main { min-width:0; }
+  .side { display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .lead { margin:0 0 8px; }
+  #explainSentence.fzx-plain, #explainSentence { margin:0; padding:0; background:none; border:0; border-radius:0; }
+  #explainSentence p { margin:0; font-size:1.3rem; line-height:1.3; font-weight:650; }
+  #explainSentence small { display:block; margin-top:2px; font-size:.85rem; }
+  .watch { margin:3px 0 0; color:var(--mut); font-size:.95rem; }
+  .watch b { color:var(--acc); }
+
+  .stage { position:relative; height:clamp(360px, calc(100vh - 255px), 1000px); background:#000; border-radius:10px; overflow:hidden; touch-action:manipulation; }
+  .stage[data-mode="swipe"] { touch-action:pan-y; cursor:ew-resize; }
+  .stage.game { cursor:crosshair; }
+  .zoom { position:absolute; left:0; top:0; transform-origin:0 0; transition:transform .25s ease; }
+  .zoom > img, .zoom > canvas, .zoom > svg { position:absolute; left:0; top:0; width:100%; height:100%; image-rendering:pixelated; user-select:none; -webkit-user-drag:none; }
+  #frame { z-index:1; } #faintcv { z-index:2; } #frameB, #trail { z-index:3; } #candLayer { z-index:5; } #ov { z-index:6; }
+  .zoom > svg, #fzmOv { pointer-events:none; overflow:visible; }
+  #fzmOv { z-index:7; }
+  .hud { position:absolute; inset:0; pointer-events:none; z-index:10; }
+  .hud-date { position:absolute; left:10px; top:10px; font-size:1.05rem; font-weight:600; background:rgba(5,7,13,.78); border-left:5px solid #4a5368;
+              padding:4px 10px 4px 8px; border-radius:6px; font-variant-numeric:tabular-nums; }
+  .hud-date b { text-transform:uppercase; font-size:.78rem; letter-spacing:.06em; margin-right:4px; }
+  .hud-date.before { border-left-color:var(--before); } .hud-date.before b { color:var(--before); }
+  .hud-date.after { border-left-color:var(--after); } .hud-date.after b { color:var(--after); }
+  .hud-date .before { color:var(--before); } .hud-date .after { color:var(--after); }
+  .hud-legend { position:absolute; right:10px; bottom:10px; max-width:calc(100% - 160px); display:flex; flex-wrap:wrap; justify-content:flex-end; gap:2px 12px;
+                font-size:.8rem; background:rgba(5,7,13,.72); padding:4px 9px; border-radius:6px; }
+  .hud-legend span { display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+  .lg { display:inline-block; width:14px; height:14px; flex:none; }
+  .lg.ring { border:2px solid var(--acc); border-radius:50%; }
+  .lg.dot { width:9px; height:9px; border-radius:50%; background:var(--good); border:1.5px solid #05070d; }
+  .lg.first { width:11px; height:11px; border:2px solid var(--before); border-radius:50%; }
+  .lg.arrow { height:3px; width:18px; background:#fff; position:relative; }
+  .lg.arrow::after { content:""; position:absolute; right:-3px; top:-4px; border:5.5px solid transparent; border-left:7px solid #fff; border-right:0; }
+  .lg.arrow.dash { background:repeating-linear-gradient(90deg, #ffd08a 0 4px, transparent 4px 7px); }
+  .lg.arrow.dash::after { border-left-color:#ffd08a; }
+  .hud-scale { position:absolute; left:10px; bottom:10px; display:flex; align-items:center; gap:8px; font-size:.8rem; color:#dfe5f2;
+               background:rgba(5,7,13,.72); padding:3px 9px 3px 4px; border-radius:6px; }
+  .hud-scale .bar { display:inline-block; height:4px; background:#dfe5f2; border-radius:2px; }
+  .compass { color:#dfe5f2; }
+  .swipe-ui { position:absolute; inset:0; z-index:11; pointer-events:none; }
+  .swipe-line { position:absolute; top:0; bottom:0; width:2px; margin-left:-1px; background:#fff; box-shadow:0 0 0 1px rgba(0,0,0,.6); }
+  .swipe-line::after { content:"◀ ▶"; position:absolute; top:22%; left:50%; transform:translate(-50%,-50%); background:#fff; color:#05070d;
+                       font-size:.7rem; padding:3px 6px; border-radius:999px; white-space:nowrap; letter-spacing:-.1em; }
+  #swipe { position:absolute; left:12px; right:12px; bottom:46px; width:calc(100% - 24px); pointer-events:auto; accent-color:#fff; }
+  .game-msg { position:absolute; left:50%; top:52px; transform:translateX(-50%); z-index:12; width:min(560px, calc(100% - 24px));
+              background:rgba(12,16,28,.94); border:1px solid var(--line); border-radius:10px; padding:9px 12px; font-size:.95rem; text-align:center; }
+  .game-msg.ask { border-color:#2f5f8f; } .game-msg.hit { border-color:#2f7a4c; } .game-msg.hit b { color:var(--good); }
+  .game-msg.miss { border-color:#8a6a1f; } .game-msg.miss b { color:var(--acc); }
+  .game-msg button { margin-left:6px; padding:2px 10px; font-size:.85rem; }
+  .stage-msg { position:absolute; inset:0; display:grid; place-items:center; color:var(--mut); padding:20px; text-align:center; z-index:9; }
+
+  .below { margin:8px 0 0; }
+  .row { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; }
+  .seg { display:inline-flex; border:1px solid #333b50; border-radius:8px; overflow:hidden; }
+  .seg button { border:0; border-radius:0; background:#1b2030; color:var(--mut); padding:6px 13px; }
+  .seg button + button { border-left:1px solid #333b50; }
+  .seg button[aria-pressed="true"] { background:#2f3a55; color:var(--fg); font-weight:600; }
+  .transport { display:inline-flex; gap:4px; }
+  .transport button { min-width:44px; }
+  #play { min-width:72px; }
+  .game-btn { background:#2a1f08; border-color:#8a6a1f; color:#ffd7a0; font-weight:600; }
+  .seasons { display:flex; align-items:center; flex-wrap:wrap; gap:4px; }
+  .chip { display:flex; flex-direction:column; align-items:center; line-height:1.15; padding:4px 10px; background:#151925; color:var(--mut); border-style:dashed; }
+  .chip b { font-weight:600; font-size:.9rem; }
+  .chip small { font-size:.72rem; }
+  .chip.on { border-style:solid; color:var(--fg); background:#1f2638; }
+  .chip.on.before { border-color:var(--before); box-shadow:inset 0 -3px 0 var(--before); }
+  .chip.on.after { border-color:var(--after); box-shadow:inset 0 -3px 0 var(--after); }
+  .chip.cur { outline:2px solid #fff; outline-offset:1px; }
+  .gap { font-size:.75rem; color:var(--mut); padding:0 2px; white-space:nowrap; }
+  .gap::before { content:"— "; color:#4a5368; } .gap::after { content:" —"; color:#4a5368; }
+  .ghost { background:none; font-size:.85rem; padding:4px 10px; }
+  .compare { margin:6px 0 0; font-size:.9rem; color:var(--mut); display:flex; flex-wrap:wrap; gap:4px 10px; align-items:center; }
+  .compare b { color:var(--fg); } .compare b.before { color:var(--before); } .compare b.after { color:var(--after); }
+  .badge.fair { color:#c4f2d4; border-color:#2f7a4c; background:#10291b; font-weight:600; }
+  .badge.warn { color:#ffdf9e; border-color:#8a6a1f; background:#33290f; font-weight:600; }
+  .badge.sat { color:#ffe1b8; border-color:#8a6a1f; background:#2a1f08; }
+  .mode-hint { margin:2px 0 0; font-size:.82rem; color:#7f8aa0; }
+  .info { display:flex; flex-wrap:wrap; gap:2px 14px; margin:6px 0 10px; font-size:.85rem; color:var(--mut); font-variant-numeric:tabular-nums; }
+  .info .date { color:var(--acc); }
+  .real-note { flex-basis:100%; color:#9fcfb1; }
+
+  /* result card */
+  .result { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px; }
+  .result h2 { font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color:var(--mut); margin:0 0 8px; }
+  .tiles { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .tile { background:var(--card2); border-radius:9px; padding:8px 10px; min-width:0; display:flex; flex-direction:column; }
+  .tile .k { font-size:.75rem; color:var(--mut); line-height:1.2; }
+  .tile b { font-size:1.55rem; line-height:1.15; margin:3px 0 1px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+  .tile small { font-size:.74rem; line-height:1.25; }
+  .tile.hero { background:#2a1f08; box-shadow:inset 0 0 0 1px #8a6a1f; }
+  .tile.hero b { color:var(--acc); font-size:1.9rem; }
+  .tile.ref b { font-size:1.9rem; }
+  .verdict { margin:9px 0 0; font-size:.9rem; line-height:1.4; color:#c9d2e3; }
+  .verdict b { color:var(--fg); }
+  .badges { margin:8px 0 0; }
+  .badges:has(> [hidden]:only-child) { display:none; }
+
+  /* side panel controls */
+  .controls { background:var(--card); border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:8px; }
+  .fld { display:flex; align-items:center; justify-content:space-between; gap:10px; color:var(--mut); font-size:.9rem; }
+  .fld select { min-width:0; max-width:62%; }
+  .fld input[type=range] { width:120px; }
+  .speed { display:flex; align-items:center; gap:8px; }
+  #speedv { font-size:.8rem; color:var(--mut); min-width:4.2em; text-align:right; font-variant-numeric:tabular-nums; }
+  .chk { display:flex; align-items:center; gap:8px; font-size:.9rem; cursor:pointer; }
+  .chk input { width:16px; height:16px; accent-color:var(--acc); }
+  #fzmToggle { align-self:flex-start; }
+  .side .faintbar { margin:0; }
+  .actions { display:flex; flex-wrap:wrap; gap:8px; }
+  .actions .btn { background:#1f2638; }
+  #linkOut { flex-basis:100%; font:inherit; font-size:.8rem; background:#0f131c; color:var(--fg); border:1px solid #333b50; border-radius:6px; padding:4px 8px; }
+  .why { margin:0; font-size:.85rem; color:var(--mut); }
+  .more { margin:0; font-size:.85rem; }
+
+  /* lower part */
+  #explainStrip { margin:14px 0 0; }
+  .lower { display:grid; grid-template-columns:minmax(0, 5fr) minmax(0, 7fr); gap:14px; margin-top:14px; align-items:start; }
+  .card { background:var(--card); border-radius:12px; padding:12px 14px; }
+  .card h2 { font-size:1.02rem; margin:0 0 8px; }
+  .key { display:flex; flex-wrap:wrap; gap:8px 16px; margin:0 0 10px; }
+  .key .k { display:flex; align-items:center; gap:8px; font-size:1rem; }
+  .key .k b { font-size:1.05rem; }
+  .key .k small { font-size:.82rem; }
+  .sw { width:30px; height:22px; border-radius:5px; flex:none; border:1px solid #05070d; }
+  .sw.blue { background:#2166ac; } .sw.red { background:#b2182b; } .sw.white { background:#f7f7f7; }
+  .diffview { position:relative; aspect-ratio:1 / 1; max-height:520px; width:100%; background:#000; border-radius:8px; overflow:hidden; }
+  #diffZoom > img { position:absolute; left:0; top:0; width:100%; height:100%; image-rendering:pixelated; }
+  .diff small { display:block; margin-top:8px; line-height:1.4; }
+  table { border-collapse:collapse; width:100%; font-size:.88rem; }
   td, th { text-align:left; padding:3px 6px; border-bottom:1px solid #262c3c; }
-  .diff img { width:100%; image-rendering: pixelated; border-radius:6px; }
-  small { color: var(--mut); }
-  .targets { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px; }
-  .targets button.on { border-color: var(--acc); color: var(--acc); }
-  .targets button:disabled { opacity:.45; cursor:default; }
+  .tw { overflow-x:auto; }
   .status { padding:8px 10px; border-radius:6px; margin:0 0 8px; border-left:4px solid var(--acc); background:#1d2232; }
   .status.not_detected { border-left-color:#e05d5d; }
-  .status.partial, .status.detected_one_season { border-left-color:#e0b85d; }
+  .status.partial, .status.detected_one_season, .status.preview { border-left-color:#e0b85d; }
   .status.detected { border-left-color:#5dbb7a; }
   td.det { color:#8fe0a5; font-weight:600; }
-  td.num { font-variant-numeric: tabular-nums; }
+  td.num { font-variant-numeric:tabular-nums; }
   details summary { cursor:pointer; color:var(--mut); margin-top:8px; }
+  #spectrumPanel, #candidateList { margin-top:14px; }
+  #spectrumPanel:not(:has(> :not([hidden]))), #candidateList:empty { display:none; }
+  footer { margin-top:16px; display:flex; flex-wrap:wrap; gap:4px 14px; }
+
+  @media (max-width: 999px) {
+    .viewer { display:flex; flex-direction:column; align-items:stretch; }
+    .main, .side { display:contents; }
+    .main > * { order:10; } .side > * { order:20; }
+    .lead { order:1; } .result { order:2; margin-bottom:10px; } .stage { order:3; } .below { order:4; } .info { order:5; } #markingPanel { order:6; }
+    .controls { order:21; margin-top:4px; } .actions { order:22; margin-top:10px; } .why { order:23; margin-top:8px; } .more { order:24; margin-top:6px; }
+    .stage { height:clamp(300px, calc(100vh - 380px), calc(100vw - 32px)); }
+    .result { padding:10px; }
+    .result h2 { display:none; }
+    .verdict { margin-top:7px; }
+    .badges { margin-top:6px; }
+    .tiles { grid-template-columns:repeat(4, minmax(0, 1fr)); }
+    .tile.hero b, .tile.ref b { font-size:1.6rem; }
+    .controls { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:8px 18px; }
+    .lower { grid-template-columns:1fr; }
+    .diffview { max-height:none; max-width:560px; }
+    .real { margin-left:0; }
+  }
+  @media (max-width: 560px) {
+    .app { padding:8px 16px 24px; }
+    h1 { font-size:1.15rem; }
+    #explainSentence p { font-size:1.08rem; }
+    .watch { font-size:.85rem; }
+    .result { padding:9px; }
+    .result h2 { display:none; }
+    .tiles { gap:5px; }
+    .tile { padding:6px 6px; }
+    .tile .k, .tile small { font-size:.66rem; }
+    .tile:not(.hero) small, .tile small .x, .watch .x { display:none; }
+    .tile b, .tile.hero b, .tile.ref b { font-size:1.08rem; }
+    .verdict { font-size:.8rem; }
+    .hud-date { font-size:.9rem; left:6px; top:6px; }
+    .hud-legend { font-size:.7rem; right:6px; bottom:6px; max-width:calc(100% - 12px); gap:0 8px; }
+    .hud-scale { bottom:auto; top:6px; left:auto; right:6px; font-size:.72rem; }
+    .compass { width:26px; height:26px; }
+    .seg button { padding:6px 10px; }
+    .tgt { padding:4px 9px 5px; }
+    .key .k { font-size:.9rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { .zoom { transition:none; } }
 </style>
 </head>
 <body>
-<main>
-  <h1 id="title">SPHEREx blink</h1>
-  <p class="sub" id="subtitle">Loading meta.json ...</p>
-  <div class="targets" id="targets"></div>
-  <p class="sub"><a href="sky.html" style="color:var(--acc)">Any coordinate (beta): blink any point of the sky in your browser &rarr;</a></p>
+<a class="skip" href="#stage">Skip to the image</a>
+<div class="app">
+  <header class="top">
+    <div class="tl">
+      <a class="brand" href="explore.html" title="Fazari Sky Explorer">Fazari</a>
+      <h1 id="title">SPHEREx blink</h1>
+      <span id="kindBadge" class="badge kind" hidden></span>
+      <span id="tagList"></span>
+    </div>
+    <span class="real" title="Every frame on this page is a SPHEREx spectral image from NASA/IPAC IRSA, stacked per season. Nothing is simulated.">Real SPHEREx data, not a simulation</span>
+  </header>
+  <nav class="targets" id="targets" aria-label="Challenge targets"></nav>
+  <p class="stagebar" id="stagebar" hidden></p>
 
-  <div class="controls">
-    <label>Wavelength <select id="wl"></select></label>
-    <button id="play">Pause</button>
-    <label>Frame time <input id="speed" type="range" min="150" max="2000" step="50" value="800"></label>
-    <span id="speedv" class="sub" style="margin:0">800 ms</span>
-    <label>Zoom <select id="zoom"><option value="1">1×</option><option value="2">2×</option><option value="3" selected>3×</option></select></label>
-    <label><input id="mark" type="checkbox" checked> <span id="marklabel">Gaia</span> marker</label>
-  </div>
+  <div class="viewer">
+    <div class="main">
+      <section class="lead" aria-live="polite">
+        <div id="explainSentence"></div>
+        <p class="watch" id="watch"></p>
+      </section>
+      <div class="stage" id="stage" aria-label="SPHEREx image of the field">
+        <div class="zoom" id="zoomer">
+          <img id="frame" alt="SPHEREx frame of the season on screen" draggable="false">
+          <img id="frameB" alt="SPHEREx frame of the last compared season" draggable="false" hidden>
+          <canvas id="trail" aria-label="Trail: brightest value of each pixel over the compared seasons" hidden></canvas>
+          <svg id="candLayer" aria-hidden="true"></svg>
+          <svg id="ov" aria-hidden="true" viewBox="0 0 720 770"></svg>
+        </div>
+        <div class="hud">
+          <div id="hudDate" class="hud-date"></div>
+          <div id="hudLegend" class="hud-legend" hidden></div>
+          <div id="hudScale" class="hud-scale" hidden></div>
+        </div>
+        <div id="swipeUi" class="swipe-ui" hidden>
+          <span id="swipeLine" class="swipe-line"></span>
+          <input id="swipe" type="range" min="0" max="100" step="0.5" value="50" aria-label="Swipe between the first and the last season">
+        </div>
+        <div id="gameMsg" class="game-msg" hidden aria-live="polite"></div>
+        <div id="stageMsg" class="stage-msg" hidden></div>
+      </div>
+      <div class="below">
+        <div class="row">
+          <div class="seg" id="modes" role="group" aria-label="How to show the seasons">
+            <button type="button" data-mode="blink" aria-pressed="true">Blink</button><button type="button" data-mode="step" aria-pressed="false">Step</button><button type="button" data-mode="swipe" aria-pressed="false">Swipe</button><button type="button" data-mode="trail" aria-pressed="false">Trail</button>
+          </div>
+          <div class="transport">
+            <button type="button" id="prev" aria-label="Previous season" title="Previous season (←)">◀</button>
+            <button type="button" id="play" aria-pressed="false">Pause</button>
+            <button type="button" id="next" aria-label="Next season" title="Next season (→)">▶</button>
+          </div>
+          <div class="seasons" id="seasons" role="group" aria-label="Seasons in the comparison"></div>
+          <button type="button" id="allSeasons" class="ghost" hidden>All seasons</button>
+          <button type="button" id="gameBtn" class="game-btn" hidden>Find the mover</button>
+        </div>
+        <p class="compare"><span id="compareLine"></span><span id="fairBadge" class="badge fair" hidden></span></p>
+        <p class="mode-hint" id="modeHint"></p>
+      </div>
+      <div class="info">
+        <span class="date" id="date"></span>
+        <span id="detail"></span>
+        <span id="realNote" class="real-note"></span>
+      </div>
+      <div id="markingPanel"></div>
+    </div>
 
-  <div class="stage" id="stage">
-    <div class="zoom" id="zoomer">
-      <img id="frame" alt="SPHEREx frame">
-      <svg id="ov" viewBox="0 0 720 770"></svg>
+    <div class="side">
+      <section class="result" id="result" aria-label="Our result">
+        <h2>Our result</h2>
+        <div class="tiles" id="tiles"></div>
+        <p class="verdict" id="verdict"></p>
+        <p class="badges"><span id="satBadge" class="badge sat" hidden></span></p>
+      </section>
+      <section class="controls" aria-label="View settings">
+        <label class="fld">Wavelength <select id="wl"></select></label>
+        <label class="fld">Zoom <select id="zoom"><option value="1">1× (whole field)</option><option value="2">2×</option><option value="3">3×</option><option value="4">4×</option><option value="6">6× (close-up)</option></select></label>
+        <label class="fld">Frame time <span class="speed"><input id="speed" type="range" min="150" max="2000" step="50" value="800"><span id="speedv">800 ms</span></span></label>
+        <label class="chk"><input id="mark" type="checkbox" checked> <span id="marklabel">Gaia ring</span></label>
+        <label class="chk"><input id="arrowOn" type="checkbox" checked> Motion arrow and path</label>
+      </section>
+      <div id="faintControls"></div>
+      <section class="actions" aria-label="Share">
+        <a id="saveGif" class="btn" href="#" download hidden>Save GIF</a>
+        <button type="button" id="copyLink" class="btn">Copy link</button>
+        <input id="linkOut" readonly hidden aria-label="Link to this view">
+      </section>
+      <p class="why" id="why" hidden></p>
+      <p class="more"><a href="sky.html">Any coordinate (beta): blink any point of the sky in your browser &rarr;</a></p>
     </div>
   </div>
-  <div class="info">
-    <span class="date" id="date"></span>
-    <span id="detail" class="sub" style="margin:0"></span>
+
+  <div id="explainStrip"></div>
+  <div class="lower">
+    <section class="card diff">
+      <h2>Difference image: what changed</h2>
+      <div class="key" id="diffKey"></div>
+      <div class="diffview" id="diffView"><div class="zoom" id="diffZoom"><img id="diff" alt="Difference image: last season minus first season"></div></div>
+      <small id="diffCap"></small>
+    </section>
+    <section class="card">
+      <h2 id="mtitle">Measurement details</h2>
+      <div id="measure"></div>
+    </section>
   </div>
+  <section id="spectrumPanel"><div class="card" id="spectrum" hidden></div></section>
+  <section id="candidateList"></section>
+  <footer><small id="subtitle"></small><small id="src"></small></footer>
+</div>
 
-  <div class="card">
-    <h2 id="mtitle">Measured motion</h2>
-    <div id="measure"></div>
-  </div>
-  <div class="card diff">
-    <h2>Difference (last minus first season)</h2>
-    <img id="diff" alt="difference image">
-    <small>Red = later, blue = earlier. Stars that do not move cancel out.</small>
-  </div>
-  <p><small id="src"></small></p>
-</main>
-<script>
-const BASE = new URLSearchParams(location.search).get("data") || "data/barnard/";
-let meta, bin, idx = 0, timer = null, playing = true;
-const $ = id => document.getElementById(id);
-
-// Target buttons: the five challenge targets; a target is enabled once its products exist.
-const TARGETS = [["barnard", "Barnard's Star"], ["eps_indi_b", "Epsilon Indi B"],
-                 ["wise0855", "WISE 0855-0714"], ["rw_aur", "RW Aurigae"], ["r_dra", "R Draconis"]];
-TARGETS.forEach(([id, name]) => {
-  const b = document.createElement("button");
-  b.textContent = name;
-  b.disabled = true;
-  if (BASE.replace(/^\.?\//, "") === `data/${id}/`) b.classList.add("on");
-  b.onclick = () => { location.search = "?data=data/" + id + "/"; };
-  $("targets").appendChild(b);
-  fetch(`data/${id}/meta.json`, { method: "HEAD" })
-    .then(r => { if (r.ok) b.disabled = false; else { b.textContent = name + " (soon)"; b.title = "Coming soon"; } })
-    .catch(() => { b.textContent = name + " (soon)"; b.title = "Coming soon"; });
-});
-
-function show() {
-  const f = bin.frames[idx];
-  $("frame").src = BASE + f.file;
-  $("date").textContent = f.epoch + "  (" + f.date + ")";
-  $("detail").textContent = `${f.detectors.join("+")} · ${f.wavelength_um.toFixed(2)} µm · ${f.n_images} images stacked`;
-  drawMarker(f.epoch);
+<script type="module">
+import { startViewer } from "./js/viewer.js";
+const v = await startViewer();
+if (v) {
+  // Plug-ins: each one is optional; a failure only warns. Mount points: #explainSentence, #explainStrip,
+  // #markingPanel (+ its toggle in .controls), #faintControls, #spectrum (in #spectrumPanel),
+  // #candidateList, <svg id="candLayer"> (PNG pixels, inside #zoomer). Frame changes: event "fazari:frame".
+  // plain-language sentence + "What you are seeing" (js/explain.js); "Mark something" (js/marking.js)
+  import("./js/explain.js").then(x => x.mountExplain(v.meta, v.base)).catch(e => { console.warn("explain.js", e); v.fallbackSentence(); });
+  import("./js/marking.js").then(x => v.setMarking(x.mountMarking({ meta: v.meta, base: v.base, current: v.current })))
+    .catch(e => console.warn("marking.js", e));
 }
-// where the catalogue puts the target in each season: meta.markers (always present in new
-// products), else the measured positions (older products)
-function markerXY(epoch) {
-  const mk = (meta.markers || []).find(q => q.epoch === epoch);
-  if (mk) return mk.png_xy;
-  const p = ((meta.measured || {}).positions || []).find(q => q.epoch === epoch);
-  return p ? p.png_xy_gaia : null;
-}
-function allMarkers() {
-  if (meta.markers && meta.markers.length) return meta.markers.map(m => m.png_xy);
-  return ((meta.measured || {}).positions || []).map(p => p.png_xy_gaia);
-}
-const fx = (v, d = 2) => (v == null || !isFinite(v)) ? "–" : (+v).toFixed(d);
-function pngSize() { return (meta.grid && meta.grid.png_px) || [720, 720]; }
-function applyZoom() {
-  // zoom around the target (mean predicted position over the seasons); the label strip on
-  // top of each PNG is cut off when zoomed, the date is shown below the image instead
-  const [W, H] = pngSize();
-  const z = +$("zoom").value;
-  const ps = allMarkers();
-  let cx = W / 2, cy = (H + ((meta.grid && meta.grid.label_strip_px) || 0)) / 2;
-  if (ps.length) {
-    cx = ps.reduce((a, p) => a + p[0], 0) / ps.length;
-    cy = ps.reduce((a, p) => a + p[1], 0) / ps.length;
-  }
-  $("zoomer").style.transformOrigin = `${(100 * cx / W).toFixed(2)}% ${(100 * cy / H).toFixed(2)}%`;
-  $("zoomer").style.transform = `scale(${z})`;
-}
-function drawMarker(epoch) {
-  const ov = $("ov");
-  const [W, H] = pngSize();
-  ov.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  ov.innerHTML = "";
-  if (!$("mark").checked) return;
-  const xy = markerXY(epoch);
-  if (!xy) return;
-  const [x, y] = xy;
-  const sw = 3 / +$("zoom").value;
-  // ring = where Gaia says the star is at this season; small cross = its exact centre
-  ov.innerHTML = `<circle cx="${x}" cy="${y}" r="34" fill="none" stroke="#ffb347" stroke-width="${sw}"/>` +
-    `<path d="M${x-6} ${y}H${x+6}M${x} ${y-6}V${y+6}" stroke="#ffb347" stroke-width="${sw}"/>`;
-}
-function tick() { idx = (idx + 1) % bin.frames.length; show(); }
-function restart() {
-  clearInterval(timer);
-  if (playing) timer = setInterval(tick, +$("speed").value);
-}
-function selectBin(i) {
-  bin = meta.wavelength_bins[i]; idx = 0;
-  $("diff").src = BASE + bin.diff;
-  show(); restart();
-}
-fetch(BASE + "meta.json").then(r => r.json()).then(m => {
-  meta = m;
-  const [W, H] = pngSize();
-  $("stage").style.aspectRatio = `${W} / ${H}`;
-  applyZoom();
-  $("title").textContent = m.target + " — SPHEREx blink";
-  $("subtitle").textContent = `Centre RA ${m.ra.toFixed(4)}°, Dec ${m.dec.toFixed(4)}° (epoch ${m.epoch_center}). ` +
-    `Background stars stay still; the target moves.`;
-  m.wavelength_bins.forEach((b, i) => {
-    const o = document.createElement("option");
-    o.value = i; o.textContent = b.wavelength_um.toFixed(1) + " µm (" + b.frames.length + " seasons)";
-    $("wl").appendChild(o);
-  });
-  const ms = m.measured || {};
-  const ref = (m.gaia && m.gaia.label) || "Gaia DR3";
-  $("marklabel").textContent = ref.split(" (")[0];
-  let html = "";
-  if (ms.message) html += `<p class="status ${ms.status || ""}">${ms.message}</p>`;
-  if (ms.shift_arcsec != null) {
-    html += `<p>${ms.from_epoch} → ${ms.to_epoch}: moved <b>${fx(ms.shift_arcsec)}"</b>` +
-      (ms.shift_err_arcsec ? ` ± ${fx(ms.shift_err_arcsec)}"` : "") + ` toward PA ${fx(ms.pa_deg, 0)}°. ` +
-      `${ref} predicts <b>${fx(ms.gaia_predicted_arcsec)}"</b> toward PA ${fx(ms.gaia_pa_deg, 0)}°.` +
-      (ms.same_orientation === false ? ` <small>(seasons seen with the telescope turned 180°)</small>` : "") + `</p>`;
-  }
-  if (ms.fit) {
-    html += `<p><small>Proper motion from ${ms.fit.n_used} images: ${fx(ms.fit.pmra_mas_yr, 0)} ± ${fx(ms.fit.pmra_err_mas_yr, 0)}, ` +
-      `${fx(ms.fit.pmdec_mas_yr, 0)} ± ${fx(ms.fit.pmdec_err_mas_yr, 0)} mas/yr (${ref}: ${fx(ms.fit.gaia_pmra_mas_yr, 0)}, ${fx(ms.fit.gaia_pmdec_mas_yr, 0)}).</small></p>`;
-  }
-  const rows = (ms.positions || []).map(p =>
-    `<tr><td>${p.epoch}</td><td>${p.date}</td><td>${p.n_images}</td>` +
-    `<td class="num">${fx(p.minus_gaia_east_arcsec)}", ${fx(p.minus_gaia_north_arcsec)}"</td>` +
-    `<td class="num">${fx(p.err_east_arcsec)}", ${fx(p.err_north_arcsec)}"</td></tr>`).join("");
-  if (rows) html += `<table><tr><th>Season</th><th>Mean date</th><th>Images</th><th>Measured − ${ref.split(" (")[0]} (E, N)</th><th>± (E, N)</th></tr>${rows}</table>`;
-  const fc = ms.field_calibration;
-  if (fc && fc.applied && fc.n_exposures_calibrated > 0)
-    html += `<small>Positions are tied to Gaia DR3 with the field stars of the same images ` +
-      `(${fc.n_exposures_calibrated} exposures calibrated).</small> `;
-  else if (fc && fc.applied)
-    html += `<small>Field-star calibration not applied: too few Gaia stars at these wavelengths; positions use the SPHEREx WCS.</small> `;
-  if (rows && ms.positions.some(p => p.bias_corrected) && ms.same_orientation === true)
-    html += `<small>Positions corrected for a small detector-fixed centroid bias (fitted per detector); ` +
-    `the main result above uses two seasons seen in the same orientation, where that bias cancels.</small>`;
-  // detection check: S/N at the predicted position per wavelength bin and season
-  const det = ms.detection;
-  if (det && det.bins && det.bins.length) {
-    const eps = m.epochs;
-    const bl = [...new Set(det.bins.map(c => c.wavelength_um))];
-    let t = `<tr><th>Bin</th>${eps.map(e => `<th>${e}</th>`).join("")}</tr>`;
-    bl.forEach(b => {
-      t += `<tr><td>${b.toFixed(1)} µm (${det.bins.find(c => c.wavelength_um === b).detector})</td>` + eps.map(e => {
-        const c = det.bins.find(q => q.wavelength_um === b && q.epoch === e);
-        if (!c) return "<td>–</td>";
-        const v = c.saturated_frac > 0.5 ? "sat." : fx(c.snr, 1);
-        return `<td class="num ${c.detected ? "det" : ""}">${v} <small>(${c.n})</small></td>`;
-      }).join("") + "</tr>";
-    });
-    html += `<details${ms.status === "detected" ? "" : " open"}><summary>Detection check: S/N at the predicted position ` +
-      `(single-season stacks, ≥${det.threshold_snr}σ in green; number of images in brackets)</summary><table>${t}</table>` +
-      (det.blend_note ? `<small>${det.blend_note}</small>` : "") +
-      ((det.blend_check || []).length ? `<small>Nearest catalogue source to the predicted position: ` +
-        det.blend_check.map(b => `${b.epoch} ${fx(b.nearest_arcsec, 1)}"`).join(", ") + ` (fitted together with the target).</small>` : "") +
-      `</details>`;
-  }
-  // relative photometry (brightness targets)
-  const ph = ms.photometry;
-  if (ph) {
-    $("mtitle").textContent = "Brightness change (relative photometry)";
-    const eps = m.epochs;
-    let t = `<tr><th>Bin</th>${eps.map(e => `<th>${e}</th>`).join("")}<th>Note</th></tr>`;
-    ph.bins.forEach(b => {
-      t += `<tr><td>${b.wavelength_um.toFixed(1)} µm</td>` + eps.map(e => {
-        const s = (b.seasons || []).find(q => q.epoch === e);
-        if (!s) return "<td>–</td>";
-        return s.ratio_err ? `<td class="num">${fx(s.ratio_to_first)} ± ${fx(s.ratio_err)}</td>` : `<td class="num">1 (ref.)</td>`;
-      }).join("") + `<td><small>${(b.flags || []).join("; ") || (b.method === "psf" ? "PSF flux" : "")}` +
-      (b.n_comparison ? ` · ${b.n_comparison} comparison stars` : "") + `</small></td></tr>`;
-    });
-    html += `<p>Target flux relative to comparison stars in the same images, as a ratio to the first season ` +
-      `(1.20 = 20 % brighter).</p><table>${t}</table><p><small>${ph.method} ${(ph.caveats || []).join(" ")}</small></p>`;
-  }
-  if (ms.finding) html += `<p><small><b>Finding:</b> ${ms.finding}</small></p>`;
-  if (ms.note) html += `<p><small>${ms.note}</small></p>`;
-  $("measure").innerHTML = html;
-  $("src").textContent = "Data: " + m.data_source + ". Generated " + m.generated + ".";
-  // start on a wavelength where the target is detected (e.g. 4.6 um for WISE 0855)
-  const db = ((ms.detection || {}).detected_bins_um || []);
-  let start = 0;
-  if (db.length && ms.status !== "detected") {
-    const k = m.wavelength_bins.findIndex(b => b.wavelength_um === db[db.length - 1]);
-    if (k >= 0) start = k;
-  }
-  $("wl").value = start;
-  selectBin(start);
-}).catch(e => { $("subtitle").textContent = "Could not load " + BASE + "meta.json (" + e + "). Serve this folder with: python -m http.server"; });
-
-$("wl").onchange = e => selectBin(+e.target.value);
-$("play").onclick = () => { playing = !playing; $("play").textContent = playing ? "Pause" : "Play"; restart(); };
-$("speed").oninput = e => { $("speedv").textContent = e.target.value + " ms"; restart(); };
-$("mark").onchange = () => show();
-$("zoom").onchange = () => { applyZoom(); show(); };
 </script>
+<script src="js/faint_view.js"></script>
+<script type="module">import { mountFromUrl } from "./js/spectrum_chart.js"; mountFromUrl(document.getElementById("spectrum"), new URLSearchParams(location.search).get("data") || "data/barnard/");</script>
 </body>
 </html>

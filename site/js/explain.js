@@ -368,9 +368,11 @@ export function mountExplain(meta, base = "", where = {}) {
   const set = (k, on) => { if (k in has && has[k] !== !!on) { has[k] = !!on; draw(); } };
   document.addEventListener("fazari:has", (ev) => { const d = ev.detail || {}; set(d.key === "candidates" ? "cands" : d.key, d.on !== false); });
   // other modules' output on the page
+  // only count visible, filled containers (an empty or hidden #spectrum is just a mount point)
+  const shown = (sel) => [...document.querySelectorAll(sel)].some((el) => !el.closest("[hidden]") && el.childElementCount > 0);
   const look = () => {
-    if (!has.spectrum && document.querySelector("#spectrum, .spectrum-chart, [data-fz-spectrum]")) set("spectrum", true);
-    if (!has.cands && document.querySelector(".cand-ring, [data-fz-candidates]")) set("cands", true);
+    if (!has.spectrum && shown("#spectrum, .spectrum-chart, [data-fz-spectrum]")) set("spectrum", true);
+    if (!has.cands && (document.querySelector(".cand-ring") || shown("[data-fz-candidates]"))) set("cands", true);
   };
   let pend = 0;
   try { new MutationObserver(() => { if (!pend) pend = setTimeout(() => { pend = 0; look(); }, 300); }).observe(document.body, { childList: true, subtree: true }); } catch (_) {}
