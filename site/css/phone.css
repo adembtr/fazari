@@ -1,0 +1,59 @@
+/* Phone layout down to 320 px, portrait and landscape (ilk_izlenim agent).
+ * Loaded last on every page; only media-scoped fixes on top of each page's own CSS.
+ * Remove the <link> line of a page to undo it there. */
+
+/* ---- touch targets (any page) ---- */
+@media (pointer: coarse) {
+  .fz-langsw.fz-langsw button { min-height: 32px; min-width: 34px; display: inline-flex; align-items: center; justify-content: center; }
+  .vf-mt { min-height: 34px; }
+  label:has(> input[type="checkbox"]) { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; }
+  input[type="checkbox"] { width: 18px; height: 18px; }
+}
+
+/* ---- explorer (explore.html) ---- */
+/* Narrow phones: the 4-step bar shows only the bold verb of each step, so it stays one row
+   and no longer runs under the "Star layers" button. */
+@media (max-width: 400px) {
+  .steps > li > span { font-size: 0; }
+  .steps > li > span b { font-size: 11px; }
+  .steps li { justify-content: center; }
+}
+
+/* Phones held sideways (low and narrow): one top row, no step bar, smaller sheet, card on the right. */
+@media (max-width: 720px) and (max-height: 500px) and (orientation: landscape) {
+  :root { --sheet-peek: 104px; }
+  .topbar { flex-wrap: nowrap; }
+  .tools { width: auto; flex: none; }
+  .steps { display: none; }
+  .star-tools { top: 58px; }
+  .msg { top: 58px; }
+  .popover { top: 56px; max-height: calc(100dvh - 64px); }
+  .scale { display: none; }
+  .card { left: auto; top: 6px; width: min(400px, 64vw); max-height: calc(100dvh - 12px); border-radius: 18px 0 0 18px; }
+  body[data-sheet="open"] .panel { height: calc(100dvh - 64px); }
+}
+
+/* Wide but very low screens (phones in landscape at 721-1000 px): labels off the round tool buttons,
+   step bar hidden (it would sit under the left panel). */
+@media (min-width: 721px) and (max-height: 500px) {
+  .topbar .icon-btn .lbl { display: none; }
+  .topbar #search { flex: 1 1 200px; }
+  .steps { display: none; }
+}
+
+/* ---- result viewer (ornek.html) ---- */
+@media (max-width: 400px) {
+  /* "BEFORE / August 2025" on two short lines, clear of the scale bar and compass at the top right */
+  .hud-date b { display: block; margin: 0 0 1px; }
+  .hud-date { max-width: calc(100% - 130px); line-height: 1.15; }
+  /* the key under the blink: smaller, so more of the image (arrow, labels) stays visible */
+  .hud-legend { font-size: .64rem; gap: 0 7px; line-height: 1.3; }
+  /* answer card numbers ("10.37″/yr") stay on one line in the narrow tiles */
+  html.ui .ui-facts .tile.hero b, html.ui .ui-facts .tile.ref b { font-size: clamp(1.05rem, 5.6vw, 1.5rem); white-space: nowrap; overflow-wrap: normal; }
+}
+
+/* ---- comets.html / asteroids.html image legends: wrap inside the image instead of running off its left edge ---- */
+@media (max-width: 480px) {
+  div.legend { left: 8px; text-align: right; }
+  div.legend span { white-space: normal; }
+}

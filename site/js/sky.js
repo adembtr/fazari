@@ -14,6 +14,7 @@ import { s3Source } from "./net.js";
 import { gaiaStars, tychoStars } from "./gaia.js";
 import { CALIB, prepareStars, calibrateExposure, calibrateSaturated, poolCells, fieldStarTable } from "./calib.js";
 import { propagate, offsetArcsec, mjdToDate, mjdToMonth, median, percentile, gaussCentroid, jyearToMjd } from "./astro.js";
+import { flagStats } from "./ch_flags.js";   // challenge item: flags of the box (frame information)
 
 export const CONFIG = {
   pixArcsec: 3.0,          // output grid (half the native 6.15" pixel)
@@ -139,10 +140,11 @@ export class SkySession {
     const e = this.cfg.edgePx;
     const inside = x >= e && x <= nx - 1 - e && y >= e && y <= ny - 1 - e;
     let lam = NaN, bw = NaN;
-    if (inside) [lam, bw] = new WaveWcs(h, f.waveTable).at(x, y);
+    const wave = inside ? new WaveWcs(h, f.waveTable) : null;   // kept (ex.wave): wavelength of any object (ch_worker.js)
+    if (wave) [lam, bw] = wave.at(x, y);
     const ok = inside && Math.abs(lam / um - 1) <= this.cfg.tol;
     return { f, wcs, img, mjd, x, y, lam, bw, inside, ok, detector: h.num("DETECTOR", img.detector),
-             orient: wcs.orientation(), ra_pred: ra, dec_pred: dec };
+             orient: wcs.orientation(), ra_pred: ra, dec_pred: dec, wave };
   }
 
   /** Data stage: read the rows, clean, reproject, centroid. G: output grid (default the session's);
@@ -165,6 +167,7 @@ export class SkySession {
     const y0 = Math.max(0, Math.floor(ymin) - 1), y1 = Math.min(NDET - 1, Math.ceil(ymax) + 1);
     const reg = await f.readRegion(y0, y1, { zodi });
     const bits = { ...DEFAULT_BITS, ...flagBits(f.flags.header) };
+    try { ex.flagStats = flagStats(reg.flags, reg.nx, y1 - y0 + 1, y0, px, py, bits); } catch (_) { ex.flagStats = null; }
     const badMask = this.cfg.badFlags.reduce((m, n) => m | (bits[n] || 0), 0);
     const satMask = this.cfg.satFlags.reduce((m, n) => m | (bits[n] || 0), 0);
     const W = reg.nx, H = y1 - y0 + 1;

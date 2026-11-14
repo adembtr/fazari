@@ -95,6 +95,22 @@
   .fz-new ol { display: grid; gap: 4px; width: 100%; padding: 0; margin: 0; }
 }
 
+/* smallest phones (320-360 px) and phones held sideways (ilk_izlenim) */
+@media (max-width: 360px) {
+  .fz-hero .fz-in { padding: 58px 12px 12px; }
+  .fz-hero h1 { font-size: 24px; }
+  .fz-cards b { font-size: 19px; }
+  .fz-cards li { padding: 8px 8px 7px; }
+  .fz-cards small { font-size: 12px; }
+}
+@media (max-width: 960px) and (max-height: 500px) and (orientation: landscape) {
+  .fz-hero .fz-in { grid-template-columns: minmax(0, 1fr) minmax(150px, 34vh); padding: 56px 16px 12px; align-items: start; }
+  .fz-hero .fz-blinkbox { order: 0; width: 100%; }
+  .fz-hero h1 { font-size: 23px; }
+  .fz-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .fz-cards b { font-size: 18px; }
+}
+
 /* ---------------- opening demo (explore/demo.js) ---------------- */
 /* the selection card would cover the star during the demo; it is back as soon as the demo stops */
 body.fz-demo-on #card { visibility: hidden; }

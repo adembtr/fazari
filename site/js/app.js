@@ -13,6 +13,7 @@ import { highPmStars } from "./gaia.js";
 import { propagate, offsetArcsec, jyearToMjd } from "./astro.js";
 import { t, tn, num, loc, lang, tname, onLang } from "./i18n.js";
 import { fovFromUrl, fovFor, fillFovSelect, fovEstimateText, setFovInUrl } from "./fov.js";
+import { drawScale, speedOf, speedText, scaleText, significant } from "./motion_arrow.js";   // measured-motion arrow (ilk_izlenim)
 
 // Sky index: the real module (skyindex.js) when it is there, else the dev stand-in.
 // To switch for good, change this one line.
@@ -45,6 +46,7 @@ let run = null;            // {ctl, engine, info, results, astro, target, ...}
 let current = null;        // displayed bin result
 let frameIdx = 0, timer = null, playing = true;
 let fieldStars = [];       // Gaia high-PM stars (other coordinates)
+window.__fzSky = () => ({ run, current, frameIdx, fieldStars });   // read-only view for the challenge tools (ch_sky.js)
 const t0 = { start: 0 };
 
 let lastStatus = null;     // [msg, kind]; msg may be a function, re-run when the language changes
@@ -155,6 +157,7 @@ function drawOverlay(canvas, toCanvas, frame, zoom) {
       ctx.beginPath(); ctx.moveTo(x - 7, y); ctx.lineTo(x + 7, y); ctx.moveTo(x, y - 7); ctx.lineTo(x, y + 7); ctx.stroke();
     }
   }
+  drawMotionArrow(ctx, canvas, toCanvas);
   // scale bar (1 arcmin) and compass
   const bar = 60 * pxPerArcsec;
   ctx.fillStyle = "#fff"; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
@@ -167,6 +170,49 @@ function drawOverlay(canvas, toCanvas, frame, zoom) {
   const cx = canvas.width - 30, cy = canvas.height - 18;
   ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - 40); ctx.moveTo(cx, cy); ctx.lineTo(cx - 40, cy); ctx.stroke();
   ctx.fillText(t("sk.cN"), cx - 5, cy - 46); ctx.fillText(t("sk.cE"), cx - 58, cy + 6);
+}
+
+/** The measured motion, first season -> last season: drawn N times longer (stated on the image), from the measured
+ *  first position, true end marked; label = speed ± error and direction (js/motion_arrow.js, ilk_izlenim). */
+function drawMotionArrow(ctx, canvas, toCanvas) {
+  const a = run && run.astro, P = a && a.positions;
+  if (!current || current.preview || !P || P.length < 2) return;
+  const A = P[0], Z = P[P.length - 1];
+  const p = (a.pairs || []).find((q) => q.from === A.season && q.to === Z.season);
+  if (!p || !significant(p.shift, p.err)) return;               // a shift inside its own noise is not drawn as motion
+  const grid = current.n === run.info.n ? run.grid : new TanGrid(run.info.ra0, run.info.dec0, run.info.pixArcsec, current.n);
+  const [ax, ay] = toCanvas(...grid.skyToPix(A.ra, A.dec)), [zx, zy] = toCanvas(...grid.skyToPix(Z.ra, Z.dec));
+  const dx = zx - ax, dy = zy - ay, len = Math.hypot(dx, dy), W = canvas.width, H = canvas.height;
+  if (!(len > 0.5) || ax < 0 || ay < 0 || ax > W || ay > H) return;
+  const N = drawScale(len, 0.28 * Math.min(W, H)), ux = dx / len, uy = dy / len;
+  const qx = ax + dx * N, qy = ay + dy * N, lw = W / 170, hl = Math.min(W / 32, len * N * 0.75), hw = W / 60;
+  const bx = qx - ux * hl, by = qy - uy * hl;
+  ctx.save();
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  for (const [col, w] of [["rgba(5,7,13,.85)", lw + 5], ["#ffffff", lw]]) {
+    ctx.strokeStyle = col; ctx.lineWidth = w;
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+  }
+  ctx.beginPath(); ctx.moveTo(qx, qy); ctx.lineTo(bx - uy * hw, by + ux * hw); ctx.lineTo(bx + uy * hw, by - ux * hw); ctx.closePath();
+  ctx.lineWidth = 4; ctx.strokeStyle = "rgba(5,7,13,.85)"; ctx.stroke(); ctx.fillStyle = "#ffffff"; ctx.fill();
+  const ring = (x, y, col) => { ctx.lineWidth = 6; ctx.strokeStyle = "rgba(5,7,13,.85)"; ctx.beginPath(); ctx.arc(x, y, W / 90, 0, 2 * Math.PI); ctx.stroke();
+    ctx.lineWidth = 3; ctx.strokeStyle = col; ctx.stroke(); };
+  ring(ax, ay, "#5aa9ff");                     // first season (measured)
+  if (N > 1) ring(zx, zy, "#ff6b6b");          // true end (last season)
+  const sp = speedOf(null, { s: p.shift, e: p.err, dt: p.dtYears, pa: p.pa });
+  const l1 = speedText(sp), l2 = scaleText(N), f1 = Math.round(W / 26), f2 = Math.round(W / 34);
+  ctx.font = `700 ${f1}px system-ui, sans-serif`;
+  const bw = Math.max(ctx.measureText(l1).width, (ctx.font = `700 ${f2}px system-ui, sans-serif`, ctx.measureText(l2).width)), bh = f1 + f2 + 8;
+  const clampX = (x0) => Math.min(Math.max(x0, 8), W - 8 - bw);
+  const mx = (ax + qx) / 2, top = Math.min(ay, qy) - 14 - bh, bot = Math.max(ay, qy) + 14;
+  const y0 = top >= 8 ? top : bot + bh <= H - 40 ? bot : Math.max(8, top);
+  const cx = clampX(mx - bw / 2) + bw / 2;
+  ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.lineWidth = Math.max(3, W / 160); ctx.strokeStyle = "#05070d";
+  ctx.font = `700 ${f1}px system-ui, sans-serif`; ctx.fillStyle = "#ffffff";
+  if (l1) { ctx.strokeText(l1, cx, y0); ctx.fillText(l1, cx, y0); }
+  ctx.font = `700 ${f2}px system-ui, sans-serif`; ctx.fillStyle = "#ffd08a";
+  ctx.strokeText(l2, cx, y0 + f1 + 6); ctx.fillText(l2, cx, y0 + f1 + 6);
+  ctx.restore();
 }
 
 // ---- stage label: "Preview (N images)" -> "Full result (N images)" ------------------------------
@@ -203,6 +249,7 @@ function showFrame() {
   $("detail").textContent = `${num(fr.lam, 2)} µm · SPHEREx ${fr.detectors.join("+")} · ${tn("sk.exposures", fr.n)}`
     + (current.preview ? t("sk.detail.preview") : "")
     + (fr.satAtTarget ? " · " + t("u3.sk.coreHere") : "");      // the object's own core is saturated: display fill, not data
+  document.dispatchEvent(new CustomEvent("fazari:skyframe", { detail: { season: fr.season, um: current.um, zoom } }));   // ch_sky.js
 }
 
 function showDiff() {

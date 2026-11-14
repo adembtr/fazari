@@ -253,7 +253,7 @@
   }
   @media (prefers-reduced-motion: reduce) { .zoom { transition:none; } }
 </style>
-<link rel="stylesheet" href="css/ui_shell.css"><script src="js/ui_boot.js"></script><!-- ui layer (arayuz) -->
+<link rel="stylesheet" href="css/ui_shell.css"><link rel="stylesheet" href="css/phone.css"><script src="js/ui_boot.js"></script><!-- ui layer (arayuz) -->
 </head>
 <body>
 <a class="skip" href="#stage" data-i18n="vw.skip">Skip to the image</a>
@@ -380,6 +380,7 @@ if (v) {
     .catch(e => console.warn("marking.js", e));
   import("./explore/candidates.js").then(x => x.mountCandidates(v)).catch(e => console.warn("candidates.js", e));   // candidate finder: list + rings
   import("./js/planet_note.js").then(x => x.mountPlanetNote(v.meta)).catch(e => console.warn("planet_note.js", e));   // star with known planets (NASA Exoplanet Archive)
+  import("./js/ch_viewer.js").then(x => x.mountChallenge(v)).catch(e => console.warn("ch_viewer.js", e));   // challenge items: frame info, new data, deep image
   // local engine: the result is shown before its post-steps finish (status post_pending); mount each
   // output when its step is done (faint_view.js and others listen to the "fazari:post" event)
   import("./js/post_watch.js").then(x => x.watchPostSteps(v.base, (step) => {
@@ -392,5 +393,6 @@ if (v) {
 <script src="js/flags_view.js"></script>
 <script type="module">import { mountFromUrl } from "./js/spectrum_chart.js"; mountFromUrl(document.getElementById("spectrum"), new URLSearchParams(location.search).get("data") || "data/barnard/");</script>
 <script type="module" src="js/ui_shell.js"></script><!-- ui layer (arayuz) -->
+<script type="module" src="js/howto_read.js"></script><!-- how to read cards (ilk_izlenim) -->
 </body>
 </html>

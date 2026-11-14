@@ -1,0 +1,60 @@
+/* "How to read this" cards in the result viewer (js/howto_read.js). */
+.fi-howto-row { display: flex; justify-content: flex-end; margin: 4px 0 6px; }
+.fi-howto-row:has(> [hidden]:only-child) { display: none; }
+.fi-howto-open { background: none !important; border: 0 !important; padding: 6px 2px !important; min-height: 32px; color: var(--blue, #7fd4ff) !important;
+  font-size: .9rem !important; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+.fi-howto { margin: 12px 0 16px; padding: 12px 14px 14px; border-radius: 16px; border: 1px solid rgba(127, 212, 255, .28);
+  background: linear-gradient(180deg, rgba(127, 212, 255, .07), rgba(255, 255, 255, .015) 70%); }
+.fi-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 10px; }
+.fi-head h2 { margin: 0; font-size: 1rem; font-weight: 750; color: #dff3ff; }
+.fi-close { flex: none; min-height: 36px; padding: 6px 16px !important; border-radius: 999px !important; font-weight: 700;
+  background: #7fd4ff !important; color: #021018 !important; border: 0 !important; }
+
+.fi-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.fi-card { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 10px; align-items: start; min-width: 0;
+  padding: 10px; border-radius: 12px; background: rgba(5, 7, 13, .55); border: 1px solid rgba(160, 180, 230, .16); }
+.fi-pic svg, .fi-mini { display: block; width: 120px; height: 120px; border-radius: 9px; background: #000; }
+.fi-blink { cursor: pointer; }
+.fi-blink .fb, .fi-blink .lb { opacity: 0; }
+.fi-blink.b .fb, .fi-blink.b .lb { opacity: 1; }
+.fi-blink.b .la { opacity: 0; }
+.fi-pic text { font: 700 13px system-ui, sans-serif; paint-order: stroke; stroke: #000; stroke-width: 3px; }
+.fi-txt h3 { margin: 0 0 3px; font-size: .95rem; line-height: 1.2; display: flex; align-items: center; gap: 6px; color: #fff; }
+.fi-n { display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; border-radius: 50%; font-size: .72rem; font-weight: 800;
+  background: rgba(127, 212, 255, .2); color: #9fdcff; }
+.fi-txt p { margin: 0 0 4px; font-size: .86rem; line-height: 1.38; color: #d3dae8; }
+.fi-txt small { font-size: .74rem; line-height: 1.3; display: block; }
+
+/* card 3: the answer card in small (real numbers) */
+.fi-mini { box-sizing: border-box; padding: 6px 7px; background: #141824; border: 1px solid rgba(255, 201, 77, .35); display: grid; gap: 3px;
+  align-content: center; font-variant-numeric: tabular-nums; }
+.fi-mini div { border-left: 3px solid; padding-left: 5px; line-height: 1.1; }
+.fi-mini small { display: block; font-size: 9.5px; text-transform: uppercase; letter-spacing: .05em; color: #a9b3c9; }
+.fi-mini b { font-size: 16px; }
+.fi-mini i { font-style: normal; font-size: 9px; color: #ffe3a3; margin-left: 3px; }
+.fi-mini span { font-size: 9px; color: #d3dae8; }
+.fi-mini .m { border-color: #ffc94d; } .fi-mini .m b { color: #ffc94d; }
+.fi-mini .g { border-color: #7fd4ff; } .fi-mini .g b { color: #7fd4ff; }
+.fi-mini .s { border-color: #5dd39e; }
+
+@media (max-width: 1100px) {
+  .fi-cards { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(280px, 1fr); overflow-x: auto;
+    scroll-snap-type: x mandatory; overscroll-behavior-x: contain; padding-bottom: 4px; scrollbar-width: thin; }
+  .fi-card { scroll-snap-align: start; }
+}
+@media (max-width: 560px) {
+  .fi-howto { padding: 10px; border-radius: 14px; margin-bottom: 12px; }
+  .fi-head { margin-bottom: 8px; }
+  .fi-cards { grid-auto-columns: 90%; gap: 8px; }
+  .fi-card { grid-template-columns: 80px minmax(0, 1fr); gap: 8px; padding: 8px; }
+  .fi-pic svg, .fi-mini { width: 80px; height: 80px; }
+  .fi-mini { padding: 3px 4px; gap: 1px; }
+  .fi-mini small { font-size: 7.5px; }
+  .fi-mini b { font-size: 11.5px; }
+  .fi-mini i, .fi-mini span { font-size: 7.5px; }
+  .fi-txt h3 { font-size: .9rem; }
+  .fi-txt p { font-size: .8rem; line-height: 1.33; }
+  .fi-txt small { font-size: .7rem; }
+}
+@media (prefers-reduced-motion: reduce) { .fi-cards { scroll-behavior: auto; } }
