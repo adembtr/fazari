@@ -9,18 +9,94 @@
 
 Details: [Use of AI](#use-of-ai).
 
+![Fazari result viewer: Barnard's Star moved 10.21″ in one year (August 2025 → August 2026), Gaia DR3 predicts 10.24″](docs/img/viewer_barnard.webp)
+
+*The result viewer for Barnard's Star (`site/ornek.html`, English, simple view): the measured shift against the
+Gaia DR3 prediction, the blink frame with the motion arrow, and the NASA Exoplanet Archive note for its known
+planets.*
+
 Fazari shows images of the same patch of sky, taken by NASA's SPHEREx infrared observatory in different observing seasons, as a "blink" animation. Switching between the seasons makes moving objects (nearby brown dwarfs, high proper-motion stars) and changing sources easy to spot by eye. For each season the viewer marks where the target should be according to its Gaia DR3 position, proper motion and parallax, so real motion can be told apart from noise.
 
 Challenge: [Planet X and SPHEREx](https://www.spaceappschallenge.org/2026/challenges/planet-x-and-spherex/) — NASA Space Apps Challenge 2026.
 
 ## Status
 
-Work in progress during the hackathon (14–15 November 2026).
+State on 14 November 2026, evening (branch `dev`, last commit 257a7c3). The hackathon runs 14–15 November 2026.
 
-Live site: https://adembtr.github.io/fazari/
+Live site: https://adembtr.github.io/fazari/ (published from `main`; the newest `dev` work appears there after the next release).
 
-- **Works now:** the data pipeline and the viewer for all five challenge targets: motion measured and compared with the reference astrometry for Barnard's Star, Epsilon Indi B and WISE 0855-0714; relative brightness for RW Aurigae and R Draconis.
-- **In progress:** a sky explorer (`site/explore.html`). Click any point on the sky; a static index finds the SPHEREx images that cover it, and the local engine (`local/`) fetches only the needed image regions and builds a blink for that point.
+- **Five challenge targets:** done. Motion is measured and compared with the reference astrometry for Barnard's Star,
+  Epsilon Indi B and WISE 0855-0714; relative brightness for RW Aurigae and R Draconis (viewer `site/ornek.html`).
+- **Sky explorer (`site/explore.html`):** done. Search or click any point; the in-browser engine builds a blink there
+  on the static site, the local Python engine does more when it runs on the same computer (see
+  [What runs where](#what-runs-where)). Field-of-view selector, FLAGS layer, English/Turkish on every page.
+- **Candidate finder v1 and known-asteroid recovery:** done, with a test round. Of 10 numbered verification tests
+  6 pass, 3 fail (V4, V6, V7) and 1 reaches a limit (V8); see the summary at the top of
+  [`pipeline/ACCURACY.md`](pipeline/ACCURACY.md).
+- **Open:** in the injection test the best bin recovers 97.8 % of the fake movers, below the 99 % target (V6); the
+  date-shuffle test gives 15 fake movers in 1200 shuffles (V7); in the blind run the direction of WISE 0855-0714 is 3.8σ off (V4). Every result is a
+  candidate until checked.
+
+## Challenge request → In Fazari
+
+One row per required and suggested item of the challenge. Pages are in `site/`; the live site serves them at the
+same names.
+
+| # | Challenge request | In Fazari (page or file) | Status |
+|---|---|---|---|
+| 1 | Required: a public web tool | Live site https://adembtr.github.io/fazari/ (static, GitHub Pages); repository public, MIT | Done |
+| 2 | Required: the user can enter any coordinate | `explore.html` search box (decimal or sexagesimal coordinates, decimal comma accepted, object names through CDS Sesame) or a click on the sky; `sky.html?ra=…&dec=…` | Done |
+| 3 | Required: play the image series like a short video (blink) | `ornek.html` (Blink, Step, Swipe, Trail; play/pause, speed, season choice); `sky.html` for any point | Done |
+| 4 | Required: moving objects easy to spot | Measured-motion arrow, season rings, Gaia DR3 marker, difference image, one-sentence answer card (`ornek.html`); preliminary "is it moving?" answer from the local engine (`local/quick.py`) | Done |
+| 5 | Required: the five test targets | `ornek.html?data=data/<target>/` for Barnard's Star, Epsilon Indi B, WISE 0855-0714, RW Aurigae, R Draconis; numbers in [Result](#result) | Done |
+| 6 | Suggested: easy to update as new data arrive | `pipeline/sky_index.py` rebuilds the static index of all SPHEREx DR1 and QR3 images (`site/index/`) with one command; both engines find images through it (the local engine falls back to IRSA SIA) | Partial: no scheduled automatic rebuild |
+| 7 | Suggested: handle the 102 wavelengths sensibly | Six wavelength bins, each tied to one detector, so a blink never mixes detectors ([Method](#method) step 3; `site/js/sky.js` `CONFIG.bins`) | Done |
+| 8 | Suggested: spectrum on the fly | Forced PSF photometry in every exposure at its own wavelength: `pipeline/spectrum.py`, `site/js/spectrum.js` (browser), chart in the viewer; `spectrum.json` for all five targets | Partial: at the target position, not at any clicked pixel |
+| 9 | Suggested: add or subtract dates | Per-season stacks, difference image (last − first season), Trail, Swipe (`ornek.html`) | Done |
+| 10 | Suggested: user-selected field of view | Field-of-view selector (`site/js/fov.js`, `site/explore/fov_ui.js`): 0.15–0.6° in the browser engine (phones up to 0.3°), 0.2–0.6° in the local engine | Done |
+| 11 | Suggested: Gaia / WISE overlays | Gaia DR3 predicted position per season (WISE 0855-0714: Kirkpatrick et al. 2021); explorer layers with Gaia stars and fast stars; WISE, 2MASS and SPHEREx sky maps | Done |
+| 12 | Suggested: coordinates in the URL (embeddable) | `explore.html?ra=&dec=&fov=`, `ornek.html?data=&um=&mode=&s=&z=`; the viewer runs inside the explorer as an iframe | Done |
+| 13 | Suggested: metadata and flags (e.g. bad pixels) | FLAGS layer in the viewer (saturated / masked / other, per frame) and the per-frame image list (`site/js/flags_view.js`); dates, detector and wavelength range on every frame | Done |
+| 14 | Suggested: use existing tools (Astropy, Aladin) | Pipeline on astropy and reproject; explorer on Aladin Lite v3 | Done |
+
+Beyond the list:
+
+| Addition | Where | Status |
+|---|---|---|
+| Known-asteroid recovery: 24 ecliptic fields, matched with SkyBoT from the SPHEREx position | `site/asteroids.html`, `site/data/asteroids/summary.json`, [`pipeline/ASTEROIDS.md`](pipeline/ASTEROIDS.md) | Done (test V8: limit) |
+| Candidate finder for moving and changing sources in the whole field | `pipeline/detect/`, [`pipeline/DETECTION.md`](pipeline/DETECTION.md); local engine post-step | v1 done; tests V1–V10 |
+| Quick decision: a preliminary "is it moving?" answer before the full result | `local/quick.py` (local engine) | Done |
+| NASA Exoplanet Archive link for stars with known planets | Explorer and viewer cards; `site/data/exoplanet_hosts.json` | Done |
+| English / Turkish on every page | `site/i18n/en.json`, `site/i18n/tr.json`, `site/js/i18n.js` | Done |
+| Numbered verification data (V1–V10) | [`site/data/verify/tests.json`](site/data/verify/tests.json), evidence in `site/data/verify/evidence/`; summary in [`pipeline/ACCURACY.md`](pipeline/ACCURACY.md) | Done (6 pass, 3 fail, 1 limit) |
+
+## What runs where
+
+**Browser engine (the published static site; no server code).** The explorer opens `sky.html` in a panel for the
+clicked point. `site/js/app.js` is the page: it resolves the input, looks the point up in the static sky index
+(`site/index/`) and draws. The heavy work runs in a Web Worker (`site/js/worker.js`) that drives `SkySession` from
+`site/js/sky.js`:
+
+- reads only the needed image regions from IRSA's public S3 bucket with HTTP Range requests and decodes them;
+- per exposure: IMAGE − ZODI, bad FLAGS pixels masked, reprojection onto one north-up grid; per season the median;
+- a quick preview first (one wavelength, a few exposures per season, no calibration), then the full result
+  (all wavelength bins, relative astrometry against Gaia DR3 field stars, `site/js/calib.js`);
+- centroid of the target, season positions and the shift compared with the Gaia DR3 prediction; spectrum of the
+  target (`site/js/spectrum.js`).
+
+The five challenge targets are shown from precomputed pipeline results (`site/data/<target>/`). The browser
+engine does not run the candidate finder, the quick decision or the finds list.
+
+**Local Python engine (`local/serve.py`, on the team's computer, bound to 127.0.0.1).** It serves `site/` and a
+small job API. The explorer uses it only when the page is opened from that computer and `/api/health` answers;
+otherwise it uses the browser engine. It adds:
+
+- full jobs (`local/job_worker.py` → `pipeline/blink.py`): up to 6 exposures per season and bin by default (1–30),
+  all six bins, the detection check, the Gaia DR3 field calibration and the measurement, field 0.2–0.6° (default 0.4°); results are cached;
+- a preview lane (`local/preview.py`) and the quick decision (`local/quick.py`: a 0.05° box from every exposure,
+  a preliminary "is it moving?" answer);
+- post-steps after a full job: spectrum, FLAGS layer, candidate finder (`pipeline/detect/`), faint-object mode,
+  and the finds list (`pipeline/finds.py`, served at `/api/finds`, shown in the explorer on that computer only).
 
 ## Repository layout
 
@@ -34,6 +110,11 @@ Live site: https://adembtr.github.io/fazari/
 - `site/js/skyindex.js` — browser lookup in that index: which images cover a given RA/Dec.
 - `local/` — local engine: serves the site and runs on-demand blink jobs for any clicked position (see `local/README.md`).
 - `site/ornek.html` — viewer page (blink, wavelength choice, zoom, Gaia marker, difference image, measured motion).
+- `site/explore.html` (+ `site/explore/`) — sky explorer; `site/sky.html` — blink for any point (browser engine, `site/js/`).
+- `site/asteroids.html` — known-asteroid recovery results; `site/verify.html` — evidence page.
+- `pipeline/detect/` — candidate finder (see `pipeline/DETECTION.md`); `pipeline/finds.py` — finds list of the local engine.
+- `site/data/verify/tests.json` — numbered verification tests V1–V10, evidence in `site/data/verify/evidence/`.
+- `docs/img/` — screenshot used in this README.
 - `site/data/<target>/` — pipeline output: `frames/*.png`, `blink_*um.gif`, `diff_*um.png`, `images.csv` (per-exposure diagnostics), `meta.json` (read by the viewer). `gaia_field.json` — cached Gaia DR3 field stars (motion targets).
 
 ## Reproduce
@@ -129,10 +210,34 @@ Requires Python 3 and [uv](https://docs.astral.sh/uv/).
 
 ## Result
 
+### Summary: speed, catalogue value and shift
+
+| Target | Measured speed (″/yr) | Measured direction (PA) | Catalogue speed (″/yr) and direction | Catalogue source | Test | Measured shift (same orientation) | Time span |
+|---|---|---|---|---|---|---|---|
+| Barnard's Star | 10.361 ± 0.051 | 355.4° ± 0.3° | 10.393 at 355.6° | Gaia DR3 | V1 pass | 10.207″ ± 0.06″ (2025-08 → 2026-08) | 0.982 yr |
+| Epsilon Indi B | 4.678 ± 0.02 | 121.6° ± 0.2° | 4.684 at 121.8° | Gaia DR3 | V2 pass | 4.535″ ± 0.029″ (2025-10 → 2026-09) | 0.9647 yr |
+| WISE 0855-0714 | 8.429 ± 0.377 | 284.2° ± 2.5° | 8.152 at 274.7° | Kirkpatrick et al. 2021, ApJS 253, 7 (total proper motion) | V4 **fail** (direction 3.8σ off) | 8.419″ ± 0.558″ (2025-05 → 2026-05) | 0.9855 yr |
+| Luhman 16AB | 2.678 ± 0.059 | 274.3° ± 1.5° | 2.79 at 277.4° | SIMBAD (no Gaia DR3 proper motion) | V3 pass | 2.75″ ± 0.058″ (2025-06 → 2026-06) | 0.9945 yr |
+
+Sources:
+
+- Speed, direction, catalogue speed and test status: [`site/data/verify/tests.json`](site/data/verify/tests.json)
+  V1–V4. The candidate finder measured them blind, without being told where the target is.
+- Catalogue source: `gaia.label` in `site/data/<target>/meta.json`; for Luhman 16AB, `reference` in
+  [`site/data/accuracy.json`](site/data/accuracy.json).
+- Shift and time span: the headline pair in `site/data/<target>/meta.json` (`measured.shift_arcsec`,
+  `shift_err_arcsec`, `dt_years`); for Luhman 16AB, `shift` in `site/data/accuracy.json` (a local-engine job
+  of 104 cutouts; Luhman 16AB has no `site/data/` folder).
+- The catalogue speed is a total proper motion. It is not the shift expected over the observed interval, which
+  also depends on the interval and on parallax; the per-target tables below compare the shift with that
+  prediction.
+
+### Per target
+
 From `site/data/<target>/meta.json`. The headline shift uses two seasons seen with the same
 telescope orientation, where detector-fixed centroid offsets cancel.
 
-### Barnard's Star
+#### Barnard's Star
 
 358 cutouts; seasons 2025-08, 2026-03, 2026-08. Detected in every season and bin (saturated
 core).
@@ -143,7 +248,7 @@ core).
 | Proper motion (joint fit, 335 exposures) | −810 ± 56, 10336 ± 56 mas/yr | −802, 10362 mas/yr |
 | Position − Gaia, per season (E, N) | (−0.05″, +0.15″), (−0.05″, +0.13″), (−0.05″, +0.11″) ± 0.04″ | 0 |
 
-### Epsilon Indi B
+#### Epsilon Indi B
 
 458 cutouts; seasons 2025-04, 2025-10, 2026-04, 2026-09. Detected in every season and bin.
 
@@ -169,7 +274,7 @@ DR3 solution, which has RUWE 4.30 and astrometric excess noise 5.8 mas. The infr
 photocentre, where the cooler Bb contributes more, can differ from Gaia's G-band photocentre.
 Orbital motion since the Gaia epoch (2016) adds to this.
 
-### WISE 0855-0714
+#### WISE 0855-0714
 
 258 cutouts; seasons 2025-05, 2025-11, 2026-05. The object is not in Gaia. Reference
 astrometry is Kirkpatrick et al. 2021 (ApJS 253, 7), from Spitzer:
@@ -187,7 +292,7 @@ It is **detected only at 4.0 and 4.6 µm** (D5, D6):
 A W2 = 15.2 background star (CatWISE J085501.95-071428.2) lies 11″, 8″ and 4″ from the
 predicted position in the three seasons. It is fitted together with the target.
 
-| | Measured (D5+D6) | Kirkpatrick et al. 2021 prediction |
+| | Measured (D5+D6) | Predicted from Kirkpatrick et al. 2021 (same interval, with parallax) |
 |---|---|---|
 | Shift 2025-05 → 2026-05 (0.99 yr) | 8.4″ ± 0.6″ at PA 277° | 8.03″ at PA 274.6° |
 | Proper motion (3 season positions) | −8370 ± 600, +1100 ± 630 mas/yr | −8124, +673 mas/yr |
@@ -199,7 +304,7 @@ this.
 As a control, a static W2 = 15.5 field star in the same images was put through the same
 faint-target fit. It gave 34 ± 160, 159 ± 155 mas/yr.
 
-### RW Aurigae and R Draconis (relative photometry)
+#### RW Aurigae and R Draconis (relative photometry)
 
 Both are saturated in every band, so the values are wing (annulus) estimates. Ratios are to
 the first season.

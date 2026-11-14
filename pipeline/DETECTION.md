@@ -1,4 +1,4 @@
-# Candidate finder: moving and changing sources (work in progress)
+# Candidate finder: moving and changing sources (v1)
 
 Code: `pipeline/detect/` (package), launcher `pipeline/find_candidates.py`.
 Output: `candidates.json` next to the blink products of a target or job.
@@ -17,4 +17,6 @@ Classes: `gaia-known`, `asteroid-known`, `candidate`, `variable`, `artifact`.
 Kinds: `motion`, `appearing`, `disappearing`, `variable`, `transient`.
 Language: always "candidate", never "discovery".
 
-The full method, thresholds, tests and limits follow when the tests are done.
+Version v1: thresholds frozen at TEST-READY v1 16:58, code committed in 257a7c3. Test results (V1–V10:
+6 pass, 3 fail, 1 limit) are in [`site/data/verify/tests.json`](../site/data/verify/tests.json), summarised at
+the top of [`ACCURACY.md`](ACCURACY.md).
