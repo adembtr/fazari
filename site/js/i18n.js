@@ -119,6 +119,45 @@ export function tname(s) {
   return v != null ? v : String(s);
 }
 
+// Sentences the pipeline writes into meta.json / faint.json (English only). In Turkish they are shown from
+// tr.json: exact sentences are "pl.x.*" keys whose en.json text is the pipeline sentence itself; sentences
+// with numbers match a pattern below ({0}, {1}, ... = the numbers, shown with a decimal comma).
+const PIPE = [
+  [/^Detected at (.+?) µm only \(≥5σ in single-season stacks, detectors (.+?)\); not detected at (.+?) µm\.$/, "pl.detSome"],
+  [/^Proper motion \((.+?)\): (\d+) trial motions up to ([\d.]+) arcsec\/yr; (\d+) peak\(s\) at S\/N >= ([\d.]+), (\d+) matched to known movers, (\d+) candidate\(s\) for follow-up\.$/, "pl.ssRun"],
+  [/^([\d.]+)"\/yr toward PA (\d+)°$/, "pl.motion"],
+  [/^seen in one season only \(S\/N without the strongest season ([\d.]+)\)$/, "pl.oneSeason"],
+  [/^static star on the path \((\d+) uJy\): probably its residual$/, "pl.staticStar"],
+  [/^seasons sample different wavelengths within the bin \(([\d.]+)-([\d.]+) um\)$/, "pl.binSample"],
+  [/^known object \(field target (.+?), not in Gaia DR3\)$/, "pl.knownField"],
+  [/^not seen in the other telescope orientation \(expected S\/N ([\d.]+), measured ([\d.]+)\): probably a detector artifact$/, "pl.otherOrient"],
+];
+let exact = null;
+function pipeOne(s) {
+  if (!exact) exact = new Map(Object.entries(EN).filter(([k]) => k.startsWith("pl.x.")).map(([k, v]) => [v, k]));
+  const k = exact.get(s);
+  if (k && TR[k] != null) return TR[k];
+  for (const [re, key] of PIPE) {
+    const m = re.exec(s);
+    if (m && TR[key] != null) {
+      return TR[key].replace(/\{(\d)\}/g, (x, i) => {
+        const v = m[+i + 1] ?? "";
+        return v === "all wavelengths" ? t("pl.allWl", null, v) : loc(v.replace(/(\d) um$/, "$1 µm"));
+      });
+    }
+  }
+  return null;
+}
+/** A pipeline sentence (or "; "-joined list of them) in the current language; unknown text stays English. */
+export function ptext(s) {
+  if (s == null) return "";
+  s = String(s);
+  if (cur !== "tr" || !TR) return s;
+  const whole = pipeOne(s.trim());
+  if (whole != null) return whole;
+  return s.split("; ").map((part) => pipeOne(part.trim()) ?? part).join("; ");
+}
+
 /** Translate data-i18n / data-i18n-html / data-i18n-attr elements under root. */
 export function apply(root = document, { pageText = false } = {}) {
   if (!root || !root.querySelectorAll) return;
@@ -276,7 +315,7 @@ try {
   }).observe(document.documentElement, { childList: true, subtree: true });
 } catch (e) { /* old browser: pages still call apply() themselves */ }
 
-globalThis.__fzI18n = { t, tn, has, lang, num, loc, month, field, tname, apply, setLang, onLang, withLang, missing };
+globalThis.__fzI18n = { t, tn, has, lang, num, loc, month, field, tname, ptext, apply, setLang, onLang, withLang, missing };
 document.documentElement.lang = cur;
 if (cur === "tr") { try { origReplace(history.state, "", withLang(location.href)); } catch (e) { /* ignore */ } }
 apply(document, { pageText: true });

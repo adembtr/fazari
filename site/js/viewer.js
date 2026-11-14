@@ -17,7 +17,7 @@
 // the zoomed box), #frame / #zoomer (the frame image and the zoomed box: the whole PNG, no
 // letterboxing). Every frame change fires document event "fazari:frame" ({ epoch, bin_um, file }).
 
-import { t, lang, loc, month, tname, onLang } from "./i18n.js";
+import { t, lang, loc, month, tname, onLang, ptext } from "./i18n.js";
 
 const $ = (id) => document.getElementById(id);
 const ok = (v) => v != null && v !== "" && Number.isFinite(+v);
@@ -683,9 +683,9 @@ function renderResult() {
     verdict = esc(L("vw.r.previewVerdict", "A quick preview from a few SPHEREx images, not a measurement. The full result follows."));
   } else {
     const st = ms.status || "";
-    tMeas = tile(esc(L("vw.t.measuredPlain", "Measured")), "–", st === "not_detected" ? esc(L("vw.t.notDet", "not detected above the noise")) : st === "preview" ? esc(L("vw.t.fullFollows", "full result follows")) : esc(ms.message || L("vw.t.noMeas", "no measurement")), "hero");
+    tMeas = tile(esc(L("vw.t.measuredPlain", "Measured")), "–", st === "not_detected" ? esc(L("vw.t.notDet", "not detected above the noise")) : st === "preview" ? esc(L("vw.t.fullFollows", "full result follows")) : esc(ptext(ms.message) || L("vw.t.noMeas", "no measurement")), "hero");
     tRef = tile(R.none ? esc(L("vw.t.compared", "Compared with")) : tPredicts, "–", esc(R.none ? L("vw.t.nothingPicked", "nothing: a picked sky position has no catalogue motion") : L("vw.t.noPred", "no prediction for this result")), "ref");
-    verdict = esc(ms.message || "");
+    verdict = esc(ptext(ms.message || ""));
   }
   $("tiles").innerHTML = tMeas + tRef + tImg + tSea;
   $("verdict").innerHTML = verdict;
@@ -784,7 +784,7 @@ function paintTargets() {
 function renderMeasure() {
   const m = S.meta, ms = m.measured || {}, ref = S.ref.label;
   let html = "";
-  if (ms.message) html += `<p class="status ${ms.status || ""}">${ms.message}</p>`;
+  if (ms.message) html += `<p class="status ${ms.status || ""}">${ptext(ms.message)}</p>`;
   const pre = ms.preliminary;
   if (pre) {
     html += `<p>` + L("vw.m.pre", "<b>Preliminary</b> (preview, not a measurement): {a} → {b} roughly {s}\" toward PA {pa}°; {ref} predicts {p}\" toward PA {ppa}°. <small>{n} images; raw SPHEREx WCS, no Gaia field-star calibration, no error bars.</small>",
@@ -829,7 +829,7 @@ function renderMeasure() {
     });
     html += `<details${ms.status === "detected" ? "" : " open"}><summary>` + L("vw.m.detSum", "Detection check: S/N at the predicted position " +
       "(single-season stacks, ≥{thr}σ in green; number of images in brackets)", { thr: det.threshold_snr }) + `</summary><div class="tw"><table>${t}</table></div>` +
-      (det.blend_note ? `<small>${det.blend_note}</small>` : "") +
+      (det.blend_note ? `<small>${ptext(det.blend_note)}</small>` : "") +
       ((det.blend_check || []).length ? `<small>` + L("vw.m.nearest", "Nearest catalogue source to the predicted position: {list} (fitted together with the target).",
         { list: det.blend_check.map((b) => `${b.epoch} ${fx(b.nearest_arcsec, 1)}"`).join(lang() === "tr" ? "; " : ", ") }) + `</small>` : "") +
       `</details>`;
@@ -844,14 +844,14 @@ function renderMeasure() {
         const s = (b.seasons || []).find((q) => q.epoch === e);
         if (!s) return "<td>–</td>";
         return s.ratio_err ? `<td class="num">${fx(s.ratio_to_first)} ± ${fx(s.ratio_err)}</td>` : `<td class="num">${L("vw.m.ref1", "1 (ref.)")}</td>`;
-      }).join("") + `<td><small>${(b.flags || []).join("; ") || (b.method === "psf" ? L("vw.m.psf", "PSF flux") : "")}` +
+      }).join("") + `<td><small>${ptext((b.flags || []).join("; ")) || (b.method === "psf" ? L("vw.m.psf", "PSF flux") : "")}` +
       (b.n_comparison ? L("vw.m.compStars", " · {n} comparison stars", { n: b.n_comparison }) : "") + `</small></td></tr>`;
     });
     html += `<p>` + L("vw.m.photP", "Target flux relative to comparison stars in the same images, as a ratio to the first season " +
-      "(1.20 = 20 % brighter).") + `</p><div class="tw"><table>${t}</table></div><p><small>${ph.method || ""} ${(ph.caveats || []).join(" ")}</small></p>`;
+      "(1.20 = 20 % brighter).") + `</p><div class="tw"><table>${t}</table></div><p><small>${ptext(ph.method || "")} ${(ph.caveats || []).map(ptext).join(" ")}</small></p>`;
   }
-  if (ms.finding) html += `<p><small><b>${L("vw.m.finding", "Finding:")}</b> ${ms.finding}</small></p>`;
-  if (ms.note) html += `<p><small>${ms.note}</small></p>`;
+  if (ms.finding) html += `<p><small><b>${L("vw.m.finding", "Finding:")}</b> ${ptext(ms.finding)}</small></p>`;
+  if (ms.note) html += `<p><small>${ptext(ms.note)}</small></p>`;
   $("measure").innerHTML = html;
   if (!ph) $("mtitle").textContent = L("vw.m.title", "Measurement details");
 }
@@ -1123,7 +1123,7 @@ export async function startViewer() {
       const box = $("explainSentence");
       if (box.textContent.trim()) return;
       const t = ok(ms.shift_arcsec) ? L("vw.fb.moved", "{name} moved {s} between {a} and {b}.", { name: tname(m.target), s: arcsec(ms.shift_arcsec, ms.shift_err_arcsec), a: season(ms.from_epoch, true), b: season(ms.to_epoch, true) })
-        : ms.photometry ? L("vw.fb.bright", "{name} changes brightness between the SPHEREx seasons.", { name: tname(m.target) }) : ms.message || "";
+        : ms.photometry ? L("vw.fb.bright", "{name} changes brightness between the SPHEREx seasons.", { name: tname(m.target) }) : ptext(ms.message || "");
       box.innerHTML = t ? `<p>${esc(t)}</p>` : "";
     },
     on(fn) { if (typeof fn === "function") S.listeners.push(fn); },

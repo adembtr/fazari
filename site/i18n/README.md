@@ -6,7 +6,7 @@ The module is `site/js/i18n.js`. English is the default; `?lang=tr` or the EN | 
 ## Add a new string
 
 1. Add the key and the English text to `en.json`. Use the page prefix: `ex.` explorer, `vw.` result viewer
-   (ornek.html), `mk.` marking, `fv.` faint mode, `sp.` spectrum, `ex.ss.` / `ex.fs.` star layers, `sk.` sky.html,
+   (ornek.html), `mk.` marking, `pl.` pipeline sentences, `fv.` faint mode, `sp.` spectrum, `ex.ss.` / `ex.fs.` star layers, `sk.` sky.html,
    `v.` verify, `s.` / `how.` story, `hero.` opening card, `pg.` shared page chrome.
 2. Turkish in `tr.json` is optional. A missing key shows the English text.
 3. Use it:
@@ -21,6 +21,9 @@ The module is `site/js/i18n.js`. English is the default; `?lang=tr` or the EN | 
      - `month("2025-09")` gives `Sep 2025` / `Eyl 2025`; `month(ep, true)` the long name.
      - `field(obj, "name")` gives `obj.name_tr` in Turkish when it exists.
      - `tname("Barnard's Star")` gives a sky object's Turkish name (tr.json `tname.<English name>`), else the name.
+     - `ptext(s)` shows a pipeline sentence from meta.json / faint.json in Turkish: exact sentences are
+       `pl.x.*` keys (en.json holds the pipeline's exact English), sentences with numbers are patterns in
+       `PIPE` in i18n.js (`pl.*`). Unknown pipeline text stays English.
      - Re-render dynamic text on a switch: `onLang(() => render())` or listen to the
        `fazari:lang` event on `document` (`detail.lang`).
    - Classic scripts, and modules that also run in Node: `globalThis.__fzI18n?.t(...)` (absent = English).

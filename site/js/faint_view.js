@@ -20,6 +20,7 @@
     return p ? s.replace(/\{(\w+)\}/g, (m, k) => (p[k] != null ? String(p[k]) : m)) : s;
   };
   const locN = s => { const I = window.__fzI18n; return I && I.lang() === "tr" ? I.loc(s) : String(s); };
+  const P = s => { const I = window.__fzI18n; return I && I.ptext ? I.ptext(s) : String(s ?? ""); };   // pipeline sentences
   const frameImg = $("frame"), zoomer = $("zoomer");
   if (!frameImg || !zoomer) return;
 
@@ -88,8 +89,8 @@
         <option value="pix" data-i18n="fv.snPix">S/N per pixel</option><option value="psf" data-i18n="fv.snPsf">S/N, point-source filtered</option></select></label>
       <label><span data-i18n="fv.image">Image</span> <select id="fv-img"><option value="frame" data-i18n="fv.thisWl">This wavelength</option>
         <option value="deep" data-i18n="fv.deep">Deep stack, all wavelengths</option></select></label>
-      <label>Min <input id="fv-lo" type="range" min="-100" max="200" step="1"> <span class="val" id="fv-lov"></span></label>
-      <label>Max <input id="fv-hi" type="range" min="0" max="450" step="1"> <span class="val" id="fv-hiv"></span></label>
+      <label><span data-i18n="fv.min">Min</span> <input id="fv-lo" type="range" min="-100" max="200" step="1"> <span class="val" id="fv-lov"></span></label>
+      <label><span data-i18n="fv.max">Max</span> <input id="fv-hi" type="range" min="0" max="450" step="1"> <span class="val" id="fv-hiv"></span></label>
       <button id="fv-reset" title="Back to the published PNG" data-i18n="fv.reset" data-i18n-attr="title:fv.resetTip">Reset</button>
       <span class="faintnote" id="fv-note"></span>`;
     const mount = $("faintControls");
@@ -276,7 +277,7 @@
   function shiftCard(ss) {
     let h = `<h2 style="margin-top:12px">${T("fv.ssTitle", "Shift-and-stack search")}</h2>`;
     for (const r of (ss.runs || [])) {
-      h += `<p>${r.summary || ""}</p>`;
+      h += `<p>${P(r.summary || "")}</p>`;
       if (r.peak_map_png) {
         h += `<div class="two"><figure><img src="${BASE}faint/${r.peak_map_png}" alt="${T("fv.peakAlt", "shift-and-stack peak map")}"><figcaption>` +
           T("fv.peakCap", "Best S/N over all trial motions at each position ({n} trial motions{unit}). Circles: peaks ≥ {thr}σ.",
@@ -290,13 +291,13 @@
         const known = p => p.match && (p.match.target || p.match.gaia_dr3) ?
           T("fv.known", "known: {name}", { name: (p.match.target && p.match.target.name) || "Gaia DR3 " + p.match.gaia_dr3.source_id }) : "";
         h += `<div class="tw"><table><tr><th>#</th><th>S/N</th><th>${T("fv.th.motion", "Motion")}</th><th>${T("fv.th.pos", "Position (RA, Dec)")}</th><th>${T("fv.th.flux", "Flux")}</th><th>${T("fv.th.class", "Class")}</th><th>${T("fv.th.note", "Note")}</th></tr>` +
-          pk.map((p, i) => `<tr><td>${i + 1}</td><td>${fx(p.snr)}</td><td>${p.motion_text || ""}</td>` +
-            `<td>${fx(p.ra, 5)}, ${fx(p.dec, 5)}</td><td>${fx(p.flux_ujy, 0)} µJy</td><td>${p.class || ""}</td>` +
-            `<td><small>${[known(p)].concat(p.flags || []).filter(Boolean).join("; ")}</small></td></tr>`).join("") +
+          pk.map((p, i) => `<tr><td>${i + 1}</td><td>${fx(p.snr)}</td><td>${P(p.motion_text || "")}</td>` +
+            `<td>${fx(p.ra, 5)}, ${fx(p.dec, 5)}</td><td>${fx(p.flux_ujy, 0)} µJy</td><td>${P(p.class || "")}</td>` +
+            `<td><small>${[known(p)].concat((p.flags || []).map(P)).filter(Boolean).join("; ")}</small></td></tr>`).join("") +
           `</table></div>`;
       }
     }
-    if (ss.note) h += `<p class="faintnote">${ss.note}</p>`;
+    if (ss.note) h += `<p class="faintnote">${P(ss.note)}</p>`;
     return h;
   }
 
