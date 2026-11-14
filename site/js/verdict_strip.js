@@ -162,9 +162,13 @@ const limitField = (v) => L("vd.limField", "Anything moving faster than about {v
   { v: loc(v >= 1 ? v.toFixed(1) : v.toFixed(2)) + "″/" + yr() });
 function fieldHtml(cand) {
   const s = cand && cand.summary;
-  if (!s || !ok(s.n_moving_candidates)) return "";
-  const n = +s.n_moving_candidates;
-  if (!n) return esc(L("vd.field.none", "No moving candidate in the whole field either."));
+  if (!s) return "";
+  // finder v1.1: n_moving_unconfirmed = candidates that did not pass the confirmation rule (n_moving_candidates
+  // counts confirmed ones too); results made before v1.1 only have n_moving_candidates
+  const n = ok(s.n_moving_unconfirmed) ? +s.n_moving_unconfirmed : ok(s.n_moving_candidates) ? +s.n_moving_candidates : null;
+  if (n == null) return "";
+  const confirmed = ok(s.n_moving_unconfirmed) && ok(s.n_moving_candidates) ? +s.n_moving_candidates - n : 0;
+  if (!n) return confirmed > 0 ? "" : esc(L("vd.field.none", "No moving candidate in the whole field either."));
   return esc(plural("vd.field.some", n, "{n} moving candidate in the field (unconfirmed).", "{n} moving candidates in the field (unconfirmed).")) +
     ` <button type="button" class="vd-linkbtn" data-vd-list>${esc(L("vd.field.list", "See the list"))}</button>`;
 }
