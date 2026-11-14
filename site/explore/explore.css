@@ -93,6 +93,7 @@ a { color: var(--blue); }
 .icon-btn[aria-expanded="true"] { border-color: var(--blue); }
 
 .steps { position: fixed; z-index: 10; top: 64px; left: 50%; transform: translateX(-50%); margin: 0; padding: 4px; list-style: none;
+  pointer-events: none;   /* hints only: touches and drags go through to the sky (a pinch starting here must reach Aladin) */
   display: flex; gap: 4px; background: rgba(10, 14, 26, .78); border: 1px solid var(--line); border-radius: 999px;
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); font-size: 13px; white-space: nowrap; }
 .steps li { display: flex; align-items: center; gap: 6px; padding: 3px 11px 3px 4px; border-radius: 999px; color: var(--mut); transition: background .3s, color .3s; }
@@ -344,3 +345,14 @@ body.engine-local .status .eng i { background: var(--good); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* EN | TR switch (js/i18n.js): next to the title; on phones (title hidden) at the end of the search row. */
+.topbar .lang-slot { display: flex; flex: none; }
+html[lang="tr"] .cat.hl .nm::after { content: "  ·  5 resmî hedef"; }
+@media (max-width: 720px) {
+  #search { flex: 1 1 0; min-width: 0; }
+  .topbar .lang-slot { order: 2; }
+  .topbar .fz-langsw button { padding: 5px 6px; min-width: 0; }
+  #search button { padding: 7px 13px; }
+}
+@media (min-width: 721px) { html[lang="tr"] .cat .nm { padding-right: 9px; } }   /* long Turkish words clear the count badge */

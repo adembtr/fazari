@@ -55,7 +55,12 @@ preview is queued or running the full job starts no new image download (flag fil
 4. **processing**: `pipeline/blink.py` on the ad-hoc target writes `cache/jobs/<id>/`
    (meta.json, frames, blink GIFs, difference images, images.csv).
 5. **post-steps**: `POST_STEPS` in `local/job_worker.py` (extension point for later steps of the full
-   result, e.g. a moving-object finder; never run for a preview). `spectrum` (`pipeline/spectrum.py`):
+   result, e.g. a moving-object finder; never run for a preview). They run AFTER the job is shown:
+   the full worker is started with `--no-post`, so the job is `done` and viewable as soon as blink.py
+   wrote meta.json and the frames; the server then runs `job_worker.py --post-only <steps>` in its
+   `post` lane (next to the next full job). Until they finish the status has
+   `post_pending: {steps, state}` and `complete: false`, and `post.<step>` appears as each one
+   ends; ornek.html (`site/js/post_watch.js`) polls that and mounts each output when it exists. `spectrum` (`pipeline/spectrum.py`):
    forced PSF photometry of the target in every exposure of the job -> `spectrum.csv` (one row per
    exposure) and `spectrum.json` (points, season bins, summary), shown as a chart in ornek.html
    (~15 s for 250 exposures). `candidates` (`pipeline/detect`) and `faint` (`pipeline/faint.py`)
@@ -69,7 +74,7 @@ catalogue changed (or `"force": true`). Each post-step has its own fingerprint: 
 local module it imports (any depth; `serve.py post_step_hashes`, recorded per job as
 `post_hashes`). If only post-steps are new or changed and the job's cutouts are still in
 `cache/local/inputs/<id>/`, the cached result is returned at once (`cached: true`, no preview) and
-just those steps are rerun in the full lane (`job_worker.py --post-only a,b`); the job stays `done`
+just those steps are rerun in the post lane (`job_worker.py --post-only a,b`); the job stays `done`
 and its status shows `post_pending: {steps, state}` meanwhile. Without the cutouts the job reruns fully.
 
 ## API (127.0.0.1:8765)
@@ -97,8 +102,10 @@ and its status shows `post_pending: {steps, state}` meanwhile. Without the cutou
   `queue: {lane, ahead, position, wait_s}` (queued: jobs ahead in its lane and a rough wait; running:
   position 0), `eta_s` (running: rough seconds left), `paused_for_preview` (a full job waiting for a
   preview), `partial: {n_images, url}` (preview: first look ready), `post` (post-step results),
-  `post_pending: {steps, state}` (a cached job whose new/changed post-steps are being rerun).
-- Two lanes, one job at a time each: `full` and `preview`; the server keeps answering while jobs run.
+  `post_pending: {steps, state}` (viewable, post-steps still queued/running), `complete` (blink and
+  every post-step done). Post-steps cut off by a server stop are queued again at the next start.
+- Three lanes, one job at a time each: `full`, `preview` and `post`; the server keeps answering while
+  jobs run.
 - `FAZARI_CACHE=/some/dir python3 -I local/serve.py --port 8791` keeps everything (jobs, byte cache,
   cutouts) in that folder instead of `cache/`, e.g. a fresh temporary folder for uncached timing runs.
 - POST/DELETE are accepted only from pages of this server (Host/Origin check).

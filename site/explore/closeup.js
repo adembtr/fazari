@@ -9,6 +9,7 @@
 
 import { CLOSEUP_FOV, SPHEREX_PIXEL_ARCSEC, SPHEREX_MAP_PIXEL_ARCSEC, closeupKeyAt, surveyInfo, surveyUrl, minFov } from "./surveys.js";
 import { separation, nowYear } from "./coords.js";
+import { t as T, loc as iLoc, field as iField, tname as iName } from "../js/i18n.js";
 
 const $ = (id) => document.getElementById(id);
 const smooth = (t) => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
@@ -143,7 +144,7 @@ export function createCloseup({ A = null, al = null, state, pix2sky, size, onCha
     let len = NICE[0];
     for (const n of NICE) if (n / asPerPx <= BAR_MAX_PX) len = n;
     ui.bar.style.width = `${(len / asPerPx).toFixed(1)}px`;
-    ui.lbl.textContent = formatArcsec(len) + (len === 1800 ? " ≈ full Moon" : len === 3600 ? " ≈ 2 full Moons" : "");   // Moon ~30′ across
+    ui.lbl.textContent = iLoc(formatArcsec(len)) + (len === 1800 ? T("ex.cu.moon1") : len === 3600 ? T("ex.cu.moon2") : "");   // Moon ~30′ across
     const box = SPHEREX_PIXEL_ARCSEC / asPerPx;
     ui.pxRow.hidden = box < 3;
     if (box >= 3) { ui.box.style.width = ui.box.style.height = `${box.toFixed(1)}px`; }
@@ -152,9 +153,9 @@ export function createCloseup({ A = null, al = null, state, pix2sky, size, onCha
     const layers = onScreen(spxOp);
     const main = layers[0] ? surveyInfo(layers[0].key) : surveyInfo(state.bg);
     ui.img.hidden = false;
-    const txt = layers.map((l) => { const s = surveyInfo(l.key); return `${s.short} (${s.years})`; });
+    const txt = layers.map((l) => { const s = surveyInfo(l.key); return `${T("ex.cu.short." + l.key, null, s.short)} (${s.years})`; });
     const spxShown = layers.some((l) => l.key === "spherex");
-    ui.img.textContent = `Image: ${txt.join(" + ")}${spxShown ? ` · map pixels ${SPHEREX_MAP_PIXEL_ARCSEC}″` : ""}`;
+    ui.img.textContent = T("ex.cu.image", { maps: txt.join(" + ") }) + (spxShown ? T("ex.cu.mapPx", { px: iLoc(SPHEREX_MAP_PIXEL_ARCSEC) }) : "");
 
     // Fast movers: the background image is from another year than our (2026) marker.
     const p = state.selected;
@@ -165,8 +166,8 @@ export function createCloseup({ A = null, al = null, state, pix2sky, size, onCha
       const off = pm * Math.abs(markerYear - main.epoch);
       const near = separation(view.ra, view.dec, p.pos.ra, p.pos.dec) < view.fov;
       if (near && off > Math.max(2, 3 * asPerPx)) {
-        note = `${p.name} moves ${formatArcsec(pm)} a year. This ${main.short} image is from ${main.years}, ` +
-          `so the star appears about ${formatArcsec(off)} from its ${Math.floor(markerYear)} marker.`;
+        note = T("ex.cu.note", { name: p.nameKey ? T(p.nameKey) : iName(iField(p, "name")), pm: iLoc(formatArcsec(pm)), map: T("ex.cu.short." + (layers[0] ? layers[0].key : state.bg), null, main.short), years: main.years,
+          off: iLoc(formatArcsec(off)), year: Math.floor(markerYear) });
       }
     }
     ui.move.hidden = !note;

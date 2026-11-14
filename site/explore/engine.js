@@ -11,6 +11,8 @@
 // The explorer asks for a quick preview first (the engine's fast lane: one wavelength, a few images
 // per season, small regions) and shows it until the full result is done (runLocalPreviewJob).
 
+import { t as T, tn as Tn, num as iNum } from "../js/i18n.js";
+
 const LOCAL_HOSTS = /^(localhost|127\.0\.0\.1|\[::1\]|::1)$/;
 
 /** Ask the local server whether it is there. Only on a local host (no 404 noise on the public site). */
@@ -30,7 +32,7 @@ export async function detectEngine({ force, timeout = 4000 } = {}) {
   return { kind: "browser" };
 }
 
-export const engineLabel = (e) => (e.kind === "local" ? "Local Python engine" : "In-browser engine");
+export const engineLabel = (e) => T(e.kind === "local" ? "ex.eng.local" : "ex.eng.browser");
 
 /**
  * Run one local job. Calls onUpdate(job) after every poll; resolves with the final job
@@ -140,7 +142,7 @@ export function runLocalPreviewJob({ ra, dec, name, pmra, pmdec, epoch, parallax
 /** "about 3 min" / "about 40 s" for a wait in seconds. */
 export function fmtWait(s) {
   if (s == null || !Number.isFinite(s)) return "";
-  return s >= 90 ? `about ${Math.round(s / 60)} min` : `about ${Math.max(5, Math.round(s / 5) * 5)} s`;
+  return s >= 90 ? T("ex.eng.min", { n: Math.round(s / 60) }) : T("ex.eng.sec", { n: Math.max(5, Math.round(s / 5) * 5) });
 }
 
 /** One line on where a local job stands (queue position / progress / time left). */
@@ -149,15 +151,15 @@ export function jobLine(j) {
   const pr = j.progress || {};
   const q = j.queue || {};
   if (j.state === "queued") {
-    return q.ahead ? `waiting in line (${q.ahead} job${q.ahead > 1 ? "s" : ""} ahead, ${fmtWait(q.wait_s)})` : "starting";
+    return q.ahead ? Tn("ex.eng.queue", q.ahead, { wait: fmtWait(q.wait_s) }) : T("ex.eng.starting");
   }
-  if (j.paused_for_preview && j.state === "downloading") return "paused while the preview loads";
+  if (j.paused_for_preview && j.state === "downloading") return T("ex.eng.paused");
   const bits = [];
-  if (j.state === "finding") bits.push("finding images");
-  if (j.state === "downloading") bits.push(pr.total ? `downloading ${pr.done || 0} of ${pr.total} images` : "downloading");
-  if (j.state === "processing") bits.push(pr.total ? `measuring (${pr.done || 0} of ${pr.total} images read)` : "measuring");
+  if (j.state === "finding") bits.push(T("ex.eng.finding"));
+  if (j.state === "downloading") bits.push(pr.total ? T("ex.eng.dl", { done: pr.done || 0, total: pr.total }) : T("ex.eng.dl0"));
+  if (j.state === "processing") bits.push(pr.total ? T("ex.eng.meas", { done: pr.done || 0, total: pr.total }) : T("ex.eng.meas0"));
   if (pr.bytes) bits.push(`${(pr.bytes / 1048576).toFixed(0)} MB`);
-  if (j.eta_s != null && j.state !== "finding") bits.push(`${fmtWait(j.eta_s)} left`);
+  if (j.eta_s != null && j.state !== "finding") bits.push(T("ex.eng.left", { t: fmtWait(j.eta_s) }));
   return bits.join(" · ");
 }
 
@@ -170,7 +172,7 @@ const STATE_TEXT = {
   error: "Something went wrong.",
   cancelled: "Cancelled.",
 };
-export const stateText = (s) => STATE_TEXT[s] || s || "";
+export const stateText = (s) => (STATE_TEXT[s] ? T("ex.eng.state." + s, null, STATE_TEXT[s]) : s || "");
 
 /** One-line summary of a finished job's meta.json (blink.py products), or null. */
 export async function resultSummary(resultUrl) {
@@ -179,7 +181,7 @@ export async function resultSummary(resultUrl) {
     if (!r.ok) return null;
     const m = await r.json();
     const ms = m.measured || {};
-    const f = (x, d = 2) => Number(x).toFixed(d);
+    const f = (x, d = 2) => iNum(x, d);
     // images in the blink frames (all wavelength bins): the real count behind "Full result (N images)"
     const n = m.preview ? m.preview.n_images
       : (m.wavelength_bins || []).reduce((a, b) => a + (b.frames || []).reduce((s, fr) => s + (fr.n_images || 0), 0), 0);
@@ -187,11 +189,11 @@ export async function resultSummary(resultUrl) {
     const plain = await import("../js/explain.js").then((x) => x.plainSentence(m)).catch(() => null);
     if (plain && plain.text) return { text: plain.text, meta: m, n };
     if (ms.shift_arcsec != null) {
-      let t = `Moved ${f(ms.shift_arcsec)}″ ± ${f(ms.shift_err_arcsec ?? 0)}″ between ${ms.from_epoch} and ${ms.to_epoch}`;
-      if (ms.gaia_predicted_arcsec != null) t += ` (Gaia predicts ${f(ms.gaia_predicted_arcsec)}″)`;
+      let t = T("ex.eng.moved", { s: f(ms.shift_arcsec), e: f(ms.shift_err_arcsec ?? 0), from: ms.from_epoch, to: ms.to_epoch });
+      if (ms.gaia_predicted_arcsec != null) t += T("ex.eng.gaia", { g: f(ms.gaia_predicted_arcsec) });
       return { text: t + ".", meta: m, n };
     }
     const msg = ms.message || (ms.detection && ms.detection.message);
-    return msg ? { text: msg, meta: m, n } : { text: `${(m.epochs || []).length} seasons ready.`, meta: m, n };
+    return msg ? { text: msg, meta: m, n } : { text: T("ex.eng.seasons", { n: (m.epochs || []).length }), meta: m, n };
   } catch { return null; }
 }

@@ -30,6 +30,13 @@ import { TanGrid } from "./wcs.js";
 export const KEY = "fazari.myCandidates.v1";
 export const TYPES = [["moving", "Moving"], ["brightness", "Brightness change"], ["artifact", "Artifact"], ["unsure", "Not sure"]];
 const typeLabel = (k) => (TYPES.find((t) => t[0] === k) || [k, k])[1];
+// i18n (no import: this module also runs in Node tests): Turkish from site/i18n/tr.json ("mk.*") when the page has it
+const T = (key, en, p) => {
+  const I = globalThis.__fzI18n, s = I && I.lang() === "tr" ? I.t(key, null, en) : en;
+  return p ? s.replace(/\{(\w+)\}/g, (m, k) => (p[k] != null ? String(p[k]) : m)) : s;
+};
+const locN = (s) => { const I = globalThis.__fzI18n; return I && I.lang() === "tr" ? I.loc(s) : s; };
+const typeText = (k) => T("mk.type." + k, typeLabel(k));
 const ok = (v) => v != null && Number.isFinite(+v);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -135,10 +142,14 @@ export function initMarking(container, imgEl, meta, opts = {}) {
 
   // "Mark something" toggle
   const btn = document.createElement("button");
-  btn.id = "fzmToggle"; btn.type = "button"; btn.textContent = "Mark something";
+  btn.id = "fzmToggle"; btn.type = "button";
   btn.setAttribute("aria-pressed", "false");
-  btn.title = grid ? "Click the image to mark something you see; it goes into your list of candidates"
-    : "This result has no sky grid, so marks cannot be placed";
+  const paintBtn = () => {
+    btn.textContent = T("mk.toggle", "Mark something");
+    btn.title = grid ? T("mk.toggleTip", "Click the image to mark something you see; it goes into your list of candidates")
+      : T("mk.noGrid", "This result has no sky grid, so marks cannot be placed");
+  };
+  paintBtn();
   btn.disabled = !grid;
   const tp = el(opts.toggleParent);
   if (tp) tp.appendChild(btn); else box.parentNode.insertBefore(btn, box);
@@ -158,7 +169,7 @@ export function initMarking(container, imgEl, meta, opts = {}) {
 
   // the panel
   const panel = document.createElement("section");
-  panel.id = "fzmPanel"; panel.className = "fzm"; panel.setAttribute("aria-label", "My candidates");
+  panel.id = "fzmPanel"; panel.className = "fzm"; panel.setAttribute("aria-label", T("mk.panel", "My candidates"));
   box.appendChild(panel);
 
   // PNG pixels per screen pixel (ring strokes and labels stay the same size at any zoom)
@@ -197,44 +208,44 @@ export function initMarking(container, imgEl, meta, opts = {}) {
     ov.innerHTML = s;
   }
 
-  const fmtRa = (v) => (+v).toFixed(5) + "°";
-  const fmtDec = (v) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(5) + "°";
-  const seenText = (m) => [m.season, ok(m.wavelength_um) ? (+m.wavelength_um).toFixed(2) + " µm" : null].filter(Boolean).join(", ");
+  const fmtRa = (v) => locN((+v).toFixed(5) + "°");
+  const fmtDec = (v) => locN((v >= 0 ? "+" : "−") + Math.abs(v).toFixed(5) + "°");
+  const seenText = (m) => [m.season, ok(m.wavelength_um) ? locN((+m.wavelength_um).toFixed(2)) + " µm" : null].filter(Boolean).join(", ");
 
   function render() {
     const show = on || marks.length > 0;
     panel.hidden = !show;
     if (!show) { panel.innerHTML = ""; drawRings(); return; }
     let h = "";
-    if (on && !pending) h += `<p class="hint">Click the image where you see something that moves or changes. Your ring stays while the blink plays.</p>`;
+    if (on && !pending) h += `<p class="hint">${esc(T("mk.hint", "Click the image where you see something that moves or changes. Your ring stays while the blink plays."))}</p>`;
     if (pending) {
       h += `<form id="fzmForm" autocomplete="off">` +
-        `<p class="where">New mark: RA ${fmtRa(pending.ra)}, Dec ${fmtDec(pending.dec)} · seen in ${esc(seenText(pending)) || "this frame"}</p>` +
-        `<fieldset><legend class="sr-only">Type</legend>` + TYPES.map(([k, l]) =>
-          `<label><input type="radio" name="fzmType" value="${k}"${(pending.type || "moving") === k ? " checked" : ""}> ${l}</label>`).join("") +
+        `<p class="where">${esc(T("mk.new", "New mark: RA {ra}, Dec {dec} · seen in {where}", { ra: fmtRa(pending.ra), dec: fmtDec(pending.dec), where: seenText(pending) || T("mk.thisFrame", "this frame") }))}</p>` +
+        `<fieldset><legend class="sr-only">${esc(T("mk.type", "Type"))}</legend>` + TYPES.map(([k, l]) =>
+          `<label><input type="radio" name="fzmType" value="${k}"${(pending.type || "moving") === k ? " checked" : ""}> ${esc(T("mk.type." + k, l))}</label>`).join("") +
         `</fieldset>` +
-        `<input type="text" id="fzmNote" maxlength="200" placeholder="Note (optional)" value="${esc(pending.note || "")}" aria-label="Note (optional)">` +
-        `<button type="submit" id="fzmSave">Save</button><button type="button" id="fzmCancel">Cancel</button></form>`;
+        `<input type="text" id="fzmNote" maxlength="200" placeholder="${esc(T("mk.note", "Note (optional)"))}" value="${esc(pending.note || "")}" aria-label="${esc(T("mk.note", "Note (optional)"))}">` +
+        `<button type="submit" id="fzmSave">${esc(T("mk.save", "Save"))}</button><button type="button" id="fzmCancel">${esc(T("mk.cancel", "Cancel"))}</button></form>`;
     }
     const n = marks.length;
-    h += `<div class="head"><b>My candidates (${n})</b>` +
-      (n ? `<button type="button" id="fzmExport" title="Download all your marks as JSON">Export JSON</button>` +
-        `<button type="button" id="fzmClear" title="Remove all your marks from this browser">${clearArmed ? `Clear all ${n}? Click again` : "Clear"}</button>` : "") +
+    h += `<div class="head"><b>${esc(T("mk.mine", "My candidates ({n})", { n }))}</b>` +
+      (n ? `<button type="button" id="fzmExport" title="${esc(T("mk.exportTip", "Download all your marks as JSON"))}">${esc(T("mk.export", "Export JSON"))}</button>` +
+        `<button type="button" id="fzmClear" title="${esc(T("mk.clearTip", "Remove all your marks from this browser"))}">${esc(clearArmed ? T("mk.clearAgain", "Clear all {n}? Click again", { n }) : T("mk.clear", "Clear"))}</button>` : "") +
       `</div>`;
     if (n) {
       h += `<ol id="fzmList">` + marks.map((m, k) => ({ m, k })).reverse().map(({ m, k }) => {
         const inHere = !!here(m);
         const where = m.target || (m.field && m.field.id) || "";
         return `<li class="${inHere ? "here" : ""}" data-id="${esc(m.id)}"><span class="n">#${k + 1}</span>` +
-          `<span class="t"><b>${esc(typeLabel(m.type))}</b> · RA ${fmtRa(m.ra)}, Dec ${fmtDec(m.dec)}` +
-          `<small> · ${esc(where)}${seenText(m) ? " · " + esc(seenText(m)) : ""}${inHere ? " · on this image" : ""}</small>` +
+          `<span class="t"><b>${esc(typeText(m.type))}</b> · RA ${fmtRa(m.ra)}, Dec ${fmtDec(m.dec)}` +
+          `<small> · ${esc(where)}${seenText(m) ? " · " + esc(seenText(m)) : ""}${inHere ? esc(T("mk.onImage", " · on this image")) : ""}</small>` +
           (m.note ? `<br><small>“${esc(m.note)}”</small>` : "") + `</span>` +
-          `<button type="button" class="del" aria-label="Remove mark ${k + 1}" title="Remove">×</button></li>`;
+          `<button type="button" class="del" aria-label="${esc(T("mk.removeN", "Remove mark {n}", { n: k + 1 }))}" title="${esc(T("mk.remove", "Remove"))}">×</button></li>`;
       }).join("") + `</ol>`;
     } else if (!on) {
-      h += `<p class="hint">Nothing marked yet.</p>`;
+      h += `<p class="hint">${esc(T("mk.none", "Nothing marked yet."))}</p>`;
     }
-    if (!stored) h += `<p class="warn">This browser blocks local storage: your marks last only until you leave this page. Use Export JSON to keep them.</p>`;
+    if (!stored) h += `<p class="warn">${esc(T("mk.blocked", "This browser blocks local storage: your marks last only until you leave this page. Use Export JSON to keep them."))}</p>`;
     panel.innerHTML = h;
     drawRings();
     const form = $("fzmForm");
@@ -346,6 +357,7 @@ export function initMarking(container, imgEl, meta, opts = {}) {
   img.parentNode.addEventListener("transitionend", drawRings);
   window.addEventListener("resize", drawRings);
   try { new ResizeObserver(drawRings).observe(img); } catch (_) {}
+  document.addEventListener("fazari:lang", () => { paintBtn(); panel.setAttribute("aria-label", T("mk.panel", "My candidates")); render(); });
   window.addEventListener("storage", (e) => {
     if (e.key !== KEY && e.key !== null) return;
     const fresh = readStore();

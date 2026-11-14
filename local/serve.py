@@ -13,12 +13,16 @@ Then open http://127.0.0.1:8765/explore.html. Standard library only; bound to 12
   DELETE /api/jobs/<id>     cancel (stops the downloads and blink.py)
   GET    /api/jobs          list of known jobs
 
-Two lanes, each running one job at a time in a background thread:
-  full     the measurement (`uv run ... python -I local/job_worker.py`, see there)
+Three lanes, each running one job at a time in a background thread:
+  full     the measurement (`uv run ... python -I local/job_worker.py --no-post`, see there): the
+           job is "done" and viewable as soon as blink.py wrote meta.json and the frames
   preview  a quick look (`local/preview.py`): one wavelength, 2-4 exposures per season, small
            regions; it never waits for a full job. While a preview is queued or running, the
            full job does not start new image downloads (cooperative pause through the flag
            file <cache>/local/preview.active), so the preview gets the network first.
+  post     the post-steps of a finished full job (job_worker.py --post-only: spectrum, candidates,
+           faint), next to the next full job. Meanwhile the job status has
+           "post_pending": {"steps", "state"} and "complete": false; "post" fills in step by step.
 POST {"preview": true} with a full request also queues the preview of that point (unless the
 full result is cached) and returns its id as {"preview": {"id", "cached"}}. A queued job's
 status carries {"queue": {"lane", "ahead", "position", "wait_s"}}; a running one "eta_s".
@@ -27,7 +31,7 @@ Results are cached by rounded position and options: posting the same point again
 finished job at once (unless the science code changed or "force": true). The blink code
 (pipeline_hash) and each post-step of job_worker.POST_STEPS (post_step_hashes: its module and the
 local modules it imports) have their own fingerprints; when only post-steps are new or changed,
-the cached result is returned at once and just those steps are rerun in the full lane
+the cached result is returned at once and just those steps are rerun in the post lane
 (job_worker.py --post-only, status "post_pending"), as long as the job's cutouts are still kept. Everything is stored
 under cache/ (gitignored), or under $FAZARI_CACHE when that is set (e.g. a fresh temporary
 folder for uncached timing runs; the repo's cache/ is then not touched).
@@ -60,7 +64,7 @@ PREVIEW_FLAG = CACHE / "local" / "preview.active"              # exists while a 
 WORKER = ROOT / "local" / "job_worker.py"
 PREVIEW_WORKER = ROOT / "local" / "preview.py"
 UV_WITH = ["astropy", "reproject", "numpy", "scipy", "matplotlib", "pillow"]
-LANES = ("full", "preview")
+LANES = ("full", "preview", "post")   # post: the post-steps of a finished full job (job_worker.py --post-only)
 MODES = {"full": "full", "preview": "preview"}
 # rough durations for the queue estimate (seconds; measured on the team's computer)
 EST_PREVIEW_S = 12.0              # a whole preview
@@ -446,6 +450,9 @@ class Jobs:
                 state, st["message"] = "error", "interrupted (the local server was stopped); post it again"
             self.jobs[d.name] = {"state": state, "status": st, "pipeline": st.get("pipeline"), "req": req,
                                  "post_hashes": st.get("post_hashes") or {}}
+            pend = (st.get("post_pending") or {}).get("steps")
+            if state == "done" and pend and inputs_ready(d.name):   # post-steps cut off by a server stop
+                self._queue_post(d.name, self.jobs[d.name], pend, write=False)
         self._set_flag()                                     # nothing queued yet: clears a stale flag
         for lane in LANES:
             threading.Thread(target=self._runner, args=(lane,), daemon=True, name=f"job-runner-{lane}").start()
@@ -469,6 +476,22 @@ class Jobs:
         except OSError as e:
             log("preview flag:", e)
 
+    def _queue_post(self, jid, j, names, write=True):
+        """Queue post-steps of a finished job in the post lane (lock held or init). The job stays
+        done and viewable; status.json keeps post_pending so that a server restart picks them up."""
+        hashes = post_step_hashes()
+        names = [n for n in hashes if n in names]            # known steps, in POST_STEPS order
+        if not names:
+            return False
+        j["post_only"] = {"steps": names, "state": "queued", "queued": time.time(),
+                          "hashes": {n: hashes[n] for n in names}}
+        j["status"] = dict(j["status"], post_pending={"steps": names, "state": "queued"})
+        if write:
+            self._write_status(jid, j["status"])
+        self.queues["post"].put(jid)
+        log("queued post-steps", jid, ",".join(names))
+        return True
+
     def submit(self, p):
         jid, req = job_identity(p)
         mode = req["mode"]
@@ -478,18 +501,14 @@ class Jobs:
             j = self.jobs.get(jid)
             if j and j["state"] in STATES_ACTIVE:
                 return jid, False
-            if j and j.get("post_only"):                     # its post-steps are being rerun: result viewable
+            if j and j.get("post_only"):                     # viewable; its post-steps are queued/running
                 return jid, True
             if (j and j["state"] == "done" and not p["force"] and j.get("pipeline") == ph
                     and (JOB_OUT / jid / "meta.json").exists()):
                 stale = [n for n, h in steps.items() if (j.get("post_hashes") or {}).get(n) != h]
-                if not stale:
+                if not stale:                                # complete
                     return jid, True
-                if inputs_ready(jid):                        # rerun only the new/changed post-steps
-                    j["post_only"] = {"steps": stale, "state": "queued", "queued": time.time(),
-                                      "hashes": {n: steps[n] for n in stale}}
-                    self.queues["full"].put(jid)
-                    log("queued post-steps", jid, ",".join(stale))
+                if inputs_ready(jid) and self._queue_post(jid, j, stale):   # only the new/changed post-steps
                     return jid, True
             d = JOB_META / jid
             d.mkdir(parents=True, exist_ok=True)
@@ -543,12 +562,9 @@ class Jobs:
         t = j["status"].get("queued", 0)
         ahead = [k for k, o in self.jobs.items() if k != jid and o["state"] == "queued" and lane_of(o) == lane
                  and o["status"].get("queued", 0) <= t]
-        posts = [k for k, o in self.jobs.items() if lane == "full" and (o.get("post_only") or {}).get("state") == "queued"
-                 and o["post_only"]["queued"] <= t]          # post-step reruns of cached jobs ahead
         run = self.running[lane]
         wait = (self._remaining(run[0], lane) if run else 0.0) + len(ahead) * (EST_PREVIEW_S if lane == "preview" else EST_FULL_S)
-        wait += len(posts) * EST_POST_S
-        n = len(ahead) + len(posts) + (1 if run else 0)
+        n = len(ahead) + (1 if run else 0)
         return {"lane": lane, "ahead": n, "position": n + 1, "wait_s": round(wait)}
 
     def get(self, jid):
@@ -568,6 +584,10 @@ class Jobs:
             preview_running = self.running["preview"] is not None or any(
                 o["state"] == "queued" and lane_of(o) == "preview" for o in self.jobs.values())
             post_only = dict(j["post_only"]) if j.get("post_only") else None
+            if post_only and post_only["state"] == "running":       # results of the steps done so far
+                live = load_json(JOB_META / jid / "status.json", None)
+                if live and live.get("post") is not None:
+                    st["post"] = live["post"]
         out = {"id": jid, "state": state, "mode": lane,
                "progress": {k: int(st.get("progress", {}).get(k, 0) or 0) for k in ("done", "total", "bytes")},
                "message": st.get("message", ""), "result_url": f"/jobs/{jid}/"}
@@ -587,8 +607,9 @@ class Jobs:
                 out["paused_for_preview"] = True
         if state == "done":
             out["viewer"] = f"/ornek.html?data=/jobs/{jid}/"
-        if post_only:                                        # rerun of new/changed post-steps of a cached job
+        if post_only:                                        # viewable, post-steps still queued/running
             out["post_pending"] = {"steps": post_only["steps"], "state": post_only["state"]}
+        out["complete"] = state == "done" and not post_only  # blink and every post-step finished
         return out
 
     def list(self):
@@ -599,6 +620,7 @@ class Jobs:
     def counts(self):
         with self.lock:
             q = {lane: sum(1 for o in self.jobs.values() if o["state"] == "queued" and lane_of(o) == lane) for lane in LANES}
+            q["post"] = sum(1 for o in self.jobs.values() if (o.get("post_only") or {}).get("state") == "queued")
             r = {lane: (self.running[lane][0] if self.running[lane] else None) for lane in LANES}
         return q, r
 
@@ -633,8 +655,9 @@ class Jobs:
             jid = self.queues[lane].get()
             with self.lock:
                 j = self.jobs.get(jid)
-                post = bool(j and j["state"] == "done" and (j.get("post_only") or {}).get("state") == "queued")
-                if not j or (j["state"] != "queued" and not post):
+                post = lane == "post"
+                if not j or (post and not (j["state"] == "done" and (j.get("post_only") or {}).get("state") == "queued")) \
+                        or (not post and j["state"] != "queued"):
                     continue
             try:
                 self._run(jid, j, lane, post_only=j["post_only"]["steps"] if post else None)
@@ -660,6 +683,8 @@ class Jobs:
         cmd += ["python", "-I", str(PREVIEW_WORKER if lane == "preview" else WORKER), "--job", str(d)]
         if post_only:
             cmd += ["--post-only", ",".join(post_only)]
+        elif lane == "full":
+            cmd += ["--no-post"]                             # viewable after the blink; post-steps in their lane
         env = dict(os.environ, PYTHONUNBUFFERED="1", FAZARI_CACHE=str(CACHE), FAZARI_S3_CACHE=str(CACHE / "s3"),
                    FAZARI_PREVIEW_FLAG=str(PREVIEW_FLAG))
         t0 = time.time()
@@ -671,6 +696,8 @@ class Jobs:
                     if not j.get("post_only"):
                         return
                     j["post_only"]["state"] = "running"
+                    j["status"] = dict(j["status"], post_pending={"steps": post_only, "state": "running"})
+                    self._write_status(jid, j["status"])
                 elif j["state"] != "queued":
                     return
                 else:
@@ -693,6 +720,8 @@ class Jobs:
                                             **{n: h for n, h in po.get("hashes", {}).items() if n in ran})
                 st = dict(st, state="done", pipeline=j["pipeline"], post_hashes=j.get("post_hashes") or {})
                 st.pop("post_running", None)
+                st.pop("post_pending", None)
+                st.pop("post_step", None)
                 j["status"] = st
                 self._write_status(jid, st)
                 log("post-steps", jid, "exit", rc, f"{round(time.time() - t0, 1)} s")
@@ -709,7 +738,10 @@ class Jobs:
             st["mode"] = lane
             st["wall_seconds"] = round(time.time() - t0, 1)
             j["state"], j["status"] = st["state"], st
-            self._write_status(jid, st)
+            missing = [n for n in (j.get("post_expected") or {}) if n not in j["post_hashes"]]
+            if not (st["state"] == "done" and lane == "full" and missing and self._queue_post(jid, j, missing, write=False)):
+                st.pop("post_pending", None)
+            self._write_status(jid, j["status"])
             if lane == "preview":
                 self._set_flag()
         log("finished", jid, st["state"], f"{st['wall_seconds']} s", st.get("message", ""))
@@ -807,6 +839,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self._json(200, {"ok": True, "engine": "python", "version": VERSION,
                                     "uv": bool(self.jobs.uv), "local_data": bool(local_data_dir()),
                                     "running": running["full"], "running_preview": running["preview"],
+                                    "running_post": running["post"],
                                     "queued": queued, "lanes": list(LANES), "preview": True})
         if r == "/api/jobs":
             return self._json(200, {"jobs": self.jobs.list()})

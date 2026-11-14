@@ -5,6 +5,7 @@
 
 import { eclToEq, galToEq } from "./coords.js";
 import { minFov, closeupKeyAt } from "./surveys.js";
+import { t as T } from "../js/i18n.js";
 import { pinSky, wheelDelta } from "./zoomanchor.js";
 
 const R = Math.PI / 180;
@@ -16,11 +17,12 @@ export function startFlatMap(host, { points, colors, onPick, onView, ra = 83.8, 
   host.innerHTML = "";
   host.classList.add("flat");
   const canvas = document.createElement("canvas");
-  canvas.setAttribute("aria-label", "Sky map. Drag to look around, scroll or pinch to zoom, tap a spot to pick it.");
+  canvas.setAttribute("aria-label", T("ex.flat.aria"));
   host.appendChild(canvas);
   const note = document.createElement("p");
   note.className = "flat-note";
-  note.textContent = "Simple sky mode: this device could not start the 3D sky. Drag, zoom and tap still work.";
+  note.textContent = T("ex.flat.note");
+  document.addEventListener("fazari:lang", () => { canvas.setAttribute("aria-label", T("ex.flat.aria")); note.textContent = T("ex.flat.note"); });
   host.appendChild(note);
   const ctx = canvas.getContext("2d");
   const view = { ra, dec, fov: Math.min(MAX_FOV * Math.min(1, (host.clientWidth || 1) / Math.max(1, host.clientHeight || 1)), fov) };

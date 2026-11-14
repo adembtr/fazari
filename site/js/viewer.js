@@ -640,7 +640,7 @@ function renderResult() {
         tRef = tile(esc(L("vw.t.compared", "Compared with")), "–", esc(R.none ? L("vw.t.nothingPicked", "nothing: a picked sky position has no catalogue motion") : L("vw.t.noPred", "no prediction for this result")));
         verdict = esc(L("vw.r.measuredFrom", "Measured by us from SPHEREx images") + (R.none ? L("vw.r.noCatMotion", "; there is no catalogue motion to compare with") : "")) + ".";
       } else {
-        const dirTxt = ok(v.ppa) ? L("vw.t.toward", "toward {dir}(PA {pa}°", { dir: S.ex.compass ? S.ex.compass(v.ppa) + " " : "", pa: fx(v.ppa, 0) }) +
+        const dirTxt = ok(v.ppa) ? L("vw.t.toward", "toward {dir}(PA {pa}°", { dir: S.ex.compass ? L("vw.dir." + S.ex.compass(v.ppa), S.ex.compass(v.ppa)) + " " : "", pa: fx(v.ppa, 0) }) +
           (ok(v.pa) ? L("vw.t.weDeg", "; we {pa}°)", { pa: fx(v.pa, 0) }) : ")") : "";
         tRef = tile(tPredicts, arcsec(p, e), dirTxt, "ref");
         const d = Math.abs(s - p), pct = p > 0 ? 100 * d / p : null;

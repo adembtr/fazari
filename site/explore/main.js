@@ -7,8 +7,9 @@ import {
 } from "./coords.js";
 import { SURVEYS, SPHEREX_SLICES, CLOSEUP_FOV, surveyUrl, minFov } from "./surveys.js";
 import { createCloseup } from "./closeup.js";
-import { findLocal, sesame, plainType } from "./lookup.js";
+import { findLocal, sesame, plainType, typeName } from "./lookup.js";
 import { detectEngine, engineLabel, runLocalPreviewJob, jobLine, stateText, resultSummary, isLocalHost } from "./engine.js";
+import { t as T, num as iNum, loc as iLoc, field as iField, tname as iName, onLang } from "../js/i18n.js";
 
 // Aladin Lite v3 (CDS, GPL-3). Pinned. The npm build on jsDelivr is the same code CDS publishes;
 // the CDS host is the fallback (its /api/v3/<version>/ path returned 404 in Nov 2026).
@@ -67,10 +68,12 @@ const catsReady = loadCategories();
 function setEngine(e) {
   state.engine = e;
   document.body.classList.toggle("engine-local", e.kind === "local");
-  $("engineTag").textContent = engineLabel(e) + (e.kind === "local" ? " (this computer does the work)" : " (your browser does the work)");
+  state.engineKnown = true;
+  $("engineTag").textContent = engineLabel(e) + T(e.kind === "local" ? "ex.engine.localSuffix" : "ex.engine.browserSuffix");
   $("stEngine").textContent = engineLabel(e);
   return e;
 }
+$("stEngine").textContent = T("ex.st.checking");
 const engineReady = detectEngine({ force: params.get("engine") }).then((e) => {
   performance.mark("fz-engine");
   setEngine(e);
@@ -79,7 +82,7 @@ const engineReady = detectEngine({ force: params.get("engine") }).then((e) => {
     let tries = 0;
     const again = setInterval(async () => {
       const e2 = await detectEngine({ timeout: 8000 });
-      if (e2.kind === "local") { setEngine(e2); clearInterval(again); toast("Local Python engine found: Fetch now runs on this computer."); }
+      if (e2.kind === "local") { setEngine(e2); clearInterval(again); toast(T("ex.toast.localFound")); }
       if (++tries >= 6) clearInterval(again);
     }, 10000);
   }
@@ -88,6 +91,7 @@ const engineReady = detectEngine({ force: params.get("engine") }).then((e) => {
 const skyReady = startSky();
 loadCoverage();
 wireUi();
+onLang(relang);
 
 async function loadCategories() {
   try {
@@ -103,7 +107,7 @@ async function loadCategories() {
     renderCategories();
     performance.mark("fz-ui");
   } catch (e) {
-    $("cats").innerHTML = `<p class="warn">Could not load the categories (${esc(e.message)}). You can still search or tap the sky.</p>`;
+    $("cats").innerHTML = `<p class="warn">${T("ex.cats.fail", { err: esc(e.message) })}</p>`;
   }
 }
 
@@ -129,7 +133,7 @@ function hasWebGL2() {
 async function startFlat(reason) {
   console.info("Using the flat sky map:", reason);
   document.body.classList.add("flat-mode");
-  for (const b of document.querySelectorAll("#bgSwitch button")) { b.disabled = true; b.title = "Needs the 3D sky"; }
+  for (const b of document.querySelectorAll("#bgSwitch button")) { b.disabled = true; b.title = T("ex.flat.needs3d"); }
   $("btnLayers").disabled = true;
   $("intro")?.remove();
   await catsReady;
@@ -139,7 +143,7 @@ async function startFlat(reason) {
   const onFlatView = (v) => { showView(v.ra, v.dec, v.fov); setCompass(0, -90); state.closeup.update(v.ra, v.dec, v.fov); state.closeup.render(); };
   state.flat = startFlatMap($("sky"), {
     points: state.points, colors: CAT_COLORS, ra: sv.ra, dec: sv.dec, fov: sv.fov,
-    onPick: (q) => select({ id: null, name: "Your spot", ra: q.ra, dec: q.dec, cat: null, manual: true }),
+    onPick: (q) => select({ id: null, name: "Your spot", nameKey: "ex.name.yourSpot", ra: q.ra, dec: q.dec, cat: null, manual: true }),
     onView: onFlatView,
   });
   onFlatView(state.flat.getView());
@@ -215,7 +219,7 @@ function startView() {
   const fov = Number(params.get("fov")) || null;
   if (params.get("p")) return { ra: 83.8, dec: -1, fov0: MAX_FOV, fov: 60, point: { id: params.get("p") } };
   if (Number.isFinite(ra) && Number.isFinite(dec) && params.has("ra") && params.has("dec")) {
-    return { ra, dec, fov0: MAX_FOV, fov: fov || 1, point: { id: null, name: "Shared spot", ra, dec, cat: null, manual: true, fov: fov || 1 } };
+    return { ra, dec, fov0: MAX_FOV, fov: fov || 1, point: { id: null, name: "Shared spot", nameKey: "ex.name.shared", ra, dec, cat: null, manual: true, fov: fov || 1 } };
   }
   return { ra: 83.8, dec: -1.0, fov0: MAX_FOV, fov: 70 };
 }
@@ -320,10 +324,10 @@ function buildCatalogs() {
     const dots = mk(false), labeled = mk(true);
     const srcs = () => c.points
       .filter((p) => isCh || !p.challenge)     // challenge targets are drawn once, by their own layer
-      .map((p) => { const q = markerPos(p); return A.source(q.ra, q.dec, { name: p.name, pid: p.id }); });
+      .map((p) => { const q = markerPos(p); return A.source(q.ra, q.dec, { name: pname(p), pid: p.id }); });
     al.addCatalog(dots); dots.addSources(srcs());
     al.addCatalog(labeled); labeled.addSources(srcs());
-    state.catalogs[c.id] = { dots, labeled };
+    state.catalogs[c.id] = { dots, labeled, srcs };
   }
   syncCatalogs();
 }
@@ -472,8 +476,8 @@ function onViewChange() {
 }
 
 function showView(ra, dec, fov) {
-  $("stRa").textContent = formatRA(ra);
-  $("stDec").textContent = formatDec(dec);
+  $("stRa").textContent = iLoc(formatRA(ra));
+  $("stDec").textContent = iLoc(formatDec(dec));
   $("stFov").textContent = formatFov(fov);
 }
 
@@ -551,7 +555,7 @@ async function preloadSpherex() {
   } catch (e) {
     console.warn("SPHEREx HiPS unavailable", e);
     $("bg-spherex").disabled = true;
-    $("bg-spherex").title = "The SPHEREx map server is not answering right now.";
+    $("bg-spherex").title = T("ex.spx.down");
   }
 }
 
@@ -594,13 +598,13 @@ function updateSpherexFade(fov) {
   badge.hidden = !showing;
   if (showing) {
     const sl = SPHEREX_SLICES.find((s) => s.slice === state.slice);
-    badge.querySelector("span").textContent = `SPHEREx infrared map${sl ? " · " + sl.label : ""}`;
+    badge.querySelector("span").textContent = `${T("ex.spx.badge")}${sl ? " · " + iLoc(sl.label) : ""}`;
   }
   const credits = [SURVEYS[state.bg].credit];
   if (showing && state.bg !== "spherex") credits.push(SURVEYS.spherex.credit);
   const cc = state.closeup?.credit();
   if (cc && !credits.includes(cc)) credits.push(cc);
-  $("creditSurvey").textContent = credits.join("; ");
+  $("creditSurvey").textContent = credits.map((c) => T("ex.credit." + String(c).split(":")[0], null, c)).join("; ");
   state.closeup?.render(op);
 }
 
@@ -616,11 +620,11 @@ async function setBackground(key) {
     if (key === "spherex") setSlice(h);
     if (state.bg !== key) return;
     state.al.setBaseImageLayer(h);
-    toast(`${SURVEYS[key].title}: ${SURVEYS[key].blurb}`);
+    toast(`${T(`ex.sv.${key}.title`, null, SURVEYS[key].title)}: ${T(`ex.sv.${key}.blurb`, null, SURVEYS[key].blurb)}`);
   } catch (e) {
     state.bg = prev;
     for (const b of document.querySelectorAll("#bgSwitch button")) b.setAttribute("aria-checked", String(b.id === "bg-" + prev));
-    toast(e.message || "That sky map is not available right now.", true);
+    toast(e.message || T("ex.bg.fail"), true);
   } finally {
     btn.classList.remove("loading");
     $("sliceRow").hidden = false;
@@ -641,7 +645,7 @@ function renderCategories() {
     b.dataset.cat = c.id;
     b.style.setProperty("--c", CAT_COLORS[c.id] || "#9fb4ff");
     b.setAttribute("aria-pressed", "false");
-    b.innerHTML = `<span class="ico" aria-hidden="true">${c.icon}</span><span class="nm">${esc(c.name)}</span>` +
+    b.innerHTML = `<span class="ico" aria-hidden="true">${c.icon}</span><span class="nm">${esc(iField(c, "name"))}</span>` +
       (c.points.length ? `<span class="ct">${c.points.length}</span>` : "");
     b.onclick = () => (c.random ? surprise() : openCategory(c.id, { fly: true }));
     wrap.appendChild(b);
@@ -659,11 +663,11 @@ function openCategory(id, { fly = false } = {}) {
   const det = $("catDetail");
   det.hidden = false;
   det.style.setProperty("--c", CAT_COLORS[id] || "#9fb4ff");
-  $("catTitle").innerHTML = `<span aria-hidden="true">${c.icon}</span> ${esc(c.name)}`;
-  $("catDesc").textContent = c.description;
+  $("catTitle").innerHTML = `<span aria-hidden="true">${c.icon}</span> ${esc(iField(c, "name"))}`;
+  $("catDesc").textContent = iField(c, "description");
   const disc = $("catDisclaimer");
   disc.hidden = !c.disclaimer;
-  disc.innerHTML = c.disclaimer ? `${esc(c.disclaimer)}${c.citation ? `<br><small>Source: ${esc(c.citation)}</small>` : ""}` : "";
+  disc.innerHTML = c.disclaimer ? `${esc(iField(c, "disclaimer"))}${c.citation ? `<br><small>${T("ex.cat.source")} ${esc(c.citation)}</small>` : ""}` : "";
   const ul = $("points");
   ul.innerHTML = "";
   for (const p of c.points) {
@@ -672,8 +676,8 @@ function openCategory(id, { fly = false } = {}) {
     b.type = "button";
     b.className = "pt" + (p.challenge ? " ch" : "");
     b.dataset.pid = p.id;
-    b.innerHTML = `<span class="pn">${esc(p.name)}${p.challenge ? ' <span class="tag">Challenge</span>' : ""}</span>` +
-      `<span class="pd">${esc(p.note || "")}</span>`;
+    b.innerHTML = `<span class="pn">${esc(pname(p))}${p.challenge ? ` <span class="tag">${T("ex.tag.challenge")}</span>` : ""}</span>` +
+      `<span class="pd">${esc(iField(p, "note"))}</span>`;
     b.onclick = () => select({ ...state.byId.get(p.id), cat: id }, { fly: true });
     li.appendChild(b);
     ul.appendChild(li);
@@ -725,7 +729,9 @@ function select(p, { fly = false, fov, fill = true } = {}) {
   history.replaceState(null, "", "?" + q.toString());
 }
 
-function catName(id) { return state.cats.find((c) => c.id === id)?.name || ""; }
+function catName(id) { return iField(state.cats.find((c) => c.id === id), "name") || ""; }
+/** A point's name in the current language (generic names such as "Your spot" carry a nameKey). */
+function pname(p) { return !p ? "" : p.nameKey ? T(p.nameKey) : iName(iField(p, "name")); }
 
 function renderCard() {
   const p = state.selected;
@@ -735,16 +741,16 @@ function renderCard() {
   document.body.classList.add("card-open");
   card.style.setProperty("--c", CAT_COLORS[p.cat] || "#7fd4ff");
   const kick = [];
-  if (p.challenge) kick.push("Challenge target");
+  if (p.challenge) kick.push(T("ex.kick.challenge"));
   if (p.cat && p.cat !== "challenge") kick.push(catName(p.cat));
-  if (p.manual) kick.push("Your pick");
-  if (p.type) kick.push(p.type);
+  if (p.manual) kick.push(T("ex.kick.yourPick"));
+  if (p.type) kick.push(typeName(p.type));
   $("cardKicker").textContent = kick.join(" · ");
-  $("cardTitle").textContent = p.name;
-  $("cardNote").textContent = p.note || (p.manual ? "A spot you picked. Every place on the sky has something in it, even if it looks empty here." : "");
-  $("cardRa").textContent = formatRA(p.pos.ra);
-  $("cardDec").textContent = formatDec(p.pos.dec);
-  $("cardDeg").textContent = `${p.pos.ra.toFixed(4)}°, ${p.pos.dec >= 0 ? "+" : ""}${p.pos.dec.toFixed(4)}°`;
+  $("cardTitle").textContent = pname(p);
+  $("cardNote").textContent = (p.noteFn ? p.noteFn() : p.noteKey ? T(p.noteKey) : iField(p, "note")) || (p.manual ? T("ex.card.manualNote") : "");
+  $("cardRa").textContent = iLoc(formatRA(p.pos.ra));
+  $("cardDec").textContent = iLoc(formatDec(p.pos.dec));
+  $("cardDeg").textContent = iLoc(`${p.pos.ra.toFixed(4)}°, ${p.pos.dec >= 0 ? "+" : ""}${p.pos.dec.toFixed(4)}°`);
   $("cardMoved").hidden = !(p.ra_2026 != null || p.moved);
   const cov = coverageAt(p.pos.ra, p.pos.dec);
   const covEl = $("cardCov");
@@ -752,10 +758,10 @@ function renderCard() {
     covEl.hidden = false;
     covEl.className = "cov " + (cov.seasons >= 2 ? "good" : "thin");
     covEl.textContent = cov.seasons >= 2
-      ? `SPHEREx looked here in ${cov.seasons} seasons: good for a blink.`
+      ? T("ex.cov.good", { n: cov.seasons })
       : cov.seasons === 1
-        ? "SPHEREx has only one season here so far, so a blink may not show change yet."
-        : "No SPHEREx images listed here yet.";
+        ? T("ex.cov.one")
+        : T("ex.cov.none");
   } else covEl.hidden = true;
   const g = $("btnGallery");
   g.hidden = true;
@@ -787,13 +793,13 @@ async function drawFootprints() {
   const p = state.selected;
   if (!$("tgFoot").checked || !p) { legend.hidden = true; return; }
   legend.hidden = false;
-  legend.textContent = "Looking up SPHEREx images of this spot…";
+  legend.textContent = T("ex.fp.looking");
   let imgs;
   try {
     const { findImages } = await import("../js/skyindex.js");
     imgs = await findImages(p.pos.ra, p.pos.dec);
   } catch (e) {
-    if (run === fpRun) legend.textContent = "The sky index is not available here, so footprints cannot be drawn.";
+    if (run === fpRun) legend.textContent = T("ex.fp.noIndex");
     return;
   }
   if (run !== fpRun) return;
@@ -808,9 +814,9 @@ async function drawFootprints() {
   for (const im of imgs) ov.add(A.polygon(im.corners.map((c) => [c[0], c[1]]), { color: im._color, lineWidth: 1 }));
   const ym = (mjd) => new Date((mjd - 40587) * 86400e3).toISOString().slice(0, 7);
   legend.innerHTML = imgs.length
-    ? `<b>${imgs.length}</b> SPHEREx images cover this spot: ` + seasons.map((s) =>
+    ? T("ex.fp.cover", { n: imgs.length }) + " " + seasons.map((s) =>
       `<span class="sea"><i style="background:${s.color}"></i>${ym(s.start)} (${s.n})</span>`).join(" ")
-    : "No SPHEREx images in the sky index for this spot.";
+    : T("ex.fp.none");
 }
 
 function blinkUrl(p) {
@@ -821,11 +827,12 @@ function blinkUrl(p) {
 // ---------------------------------------------------------------------------------------------
 // Blink panel (sky.html / ornek.html in an iframe)
 // ---------------------------------------------------------------------------------------------
-let lastFocus = null;
+let lastFocus = null, panelTitle = null;
 function showPanel(title) {
   const panel = $("blink");
   if (panel.hidden) lastFocus = document.activeElement;
-  $("blinkTitle").textContent = title;
+  panelTitle = title;                          // a string, or a function (re-run on a language switch)
+  $("blinkTitle").textContent = typeof title === "function" ? title() : title;
   panel.hidden = false;
   setStep(4);
   requestAnimationFrame(() => panel.classList.add("in"));
@@ -849,12 +856,13 @@ function loadFrame(src) {
 // with real counts. The local engine sets it from its jobs; sky.html (in-browser engine) reports its
 // stage with postMessage. window.__fzTimes keeps the click and stage times (Date.now) for timing runs.
 function setStage(kind, n, note = "") {
+  setStage.last = kind ? [kind, n, note] : null;
   const el = $("blinkStage");
   if (kind) { const t = (window.__fzTimes ||= {}); t[kind + "Shown"] ||= Date.now(); t[kind + "N"] = n; }
   if (!el) return;
   el.hidden = !kind;
   el.className = "stage-badge" + (kind ? " " + kind : "");
-  el.textContent = kind === "preview" ? `Preview (${n} images)` : kind === "full" ? `Full result (${n} images)` : "";
+  el.textContent = kind === "preview" ? T("ex.stage.preview", { n }) : kind === "full" ? T("ex.stage.full", { n }) : "";
   el.title = note;
 }
 window.addEventListener("message", (ev) => {
@@ -862,6 +870,19 @@ window.addEventListener("message", (ev) => {
   if (ev.origin !== location.origin || !d || d.type !== "fazari-stage" || state.job) return;
   if (ev.source !== $("blinkFrame").contentWindow) return;
   setStage(d.stage, d.n, d.note || "");
+});
+
+// Post-steps (spectrum, candidates, faint) that finish after the local result is on screen:
+// ornek.html (js/post_watch.js) reports each one; update the result bar and the finder's sky marks.
+window.addEventListener("message", (ev) => {
+  const d = ev.data;
+  if (ev.origin !== location.origin || !d || d.type !== "fazari-post" || ev.source !== $("blinkFrame").contentWindow) return;
+  const rb = $("resultBar"), fz = rb._fz;
+  if (fz && fz.post && fz.url && fz.url.includes(`/jobs/${d.job}/`)) {
+    fz.post.left = Array.isArray(d.pending) ? d.pending : [];
+    rb.querySelector("small").textContent = fz.small();
+  }
+  if (d.step === "candidates") import("./candidates.js").then((m) => m.showOnSky(state, $("blinkFrame").getAttribute("src"))).catch(() => {});
 });
 
 function openBlink(src, title) {
@@ -894,8 +915,8 @@ function startLocalJob(p) {
   $("blinkLoading").hidden = true;
   $("blinkNew").hidden = true;
   $("job").hidden = false;
-  $("jobState").textContent = "Sending the job to the local engine…";
-  $("jobDetail").textContent = `RA ${p.pos.ra.toFixed(5)}°, Dec ${p.pos.dec.toFixed(5)}°`;
+  $("jobState").textContent = T("ex.job.sending");
+  $("jobDetail").textContent = iLoc(`RA ${p.pos.ra.toFixed(5)}°, Dec ${p.pos.dec.toFixed(5)}°`);
   $("jobMsg").textContent = ""; $("jobMsg").className = "job-msg";
   $("jobCancel").hidden = false; $("jobBrowser").hidden = true;
   const bar = $("jobBar").parentElement;
@@ -903,7 +924,7 @@ function startLocalJob(p) {
   const rbar = $("resultBar");
   rbar.hidden = true; rbar.classList.remove("pending");
   const t0 = performance.now();
-  const elapsed = () => { const el = Math.round((performance.now() - t0) / 1000); return `${Math.floor(el / 60)}:${String(el % 60).padStart(2, "0")} elapsed`; };
+  const elapsed = () => { const el = Math.round((performance.now() - t0) / 1000); return T("ex.job.elapsed", { t: `${Math.floor(el / 60)}:${String(el % 60).padStart(2, "0")}` }); };
   const req = { ra: +p.pos.ra.toFixed(6), dec: +p.pos.dec.toFixed(6), name: p.manual && !p.pmra ? undefined : p.name };
   if ((p.manual || p.pmEpoch != null) && p.pmra != null && Math.hypot(p.pmra, p.pmdec || 0) > 0) {   // pmEpoch: fast stars (2026.0)
     Object.assign(req, { pmra: p.pmra, pmdec: p.pmdec || 0, epoch: +(p.pmEpoch ?? (p.moved ? nowYear() : 2000)).toFixed(3) });
@@ -919,20 +940,20 @@ function startLocalJob(p) {
     if (j.state !== "done" && pvUrl && shown.url !== pvUrl) {          // first look, then the complete preview
       shown.url = pvUrl; shown.n = pvN; shown.bin = (pv.images || {}).bin_um || null;
       loadFrame(`ornek.html?data=${pvUrl}`);
-      setStage("preview", pvN, "A quick look at one wavelength, not a measurement. The full result replaces it when it is ready.");
+      setStage("preview", pvN, T("ex.job.pvNote"));
       performance.mark("fz-preview");
     }
     if (shown.url) {
       const im = (pv && pv.images) || {};
       rbar.hidden = false; rbar.classList.add("pending");
-      rbar.querySelector("b").textContent = `Preview (${shown.n} images)${im.bin_um ? ` at ${im.bin_um.toFixed(1)} µm` : ""}: a quick look, not a measurement.`;
-      rbar.querySelector("small").textContent = `Full result in the background: ${jobLine(j) || stateText(j.state)} · ${elapsed()}`;
+      rbar.querySelector("b").textContent = T("ex.rb.preview", { n: shown.n, at: im.bin_um ? T("ex.rb.at", { um: iNum(im.bin_um, 1) }) : "" });
+      rbar.querySelector("small").textContent = T("ex.rb.bg", { line: jobLine(j) || stateText(j.state), elapsed: elapsed() });
       return;
     }
     // nothing on screen yet: progress of the preview (or of the full job when there is no preview)
     const cur = pv && !["done", "error", "cancelled"].includes(pv.state) ? pv : j;
     $("jobState").textContent = cur !== j
-      ? (pv.state === "queued" ? "Waiting for a quick preview…" : "Building a quick preview: one wavelength, a few images per season…")
+      ? (pv.state === "queued" ? T("ex.job.pvWait") : T("ex.job.pvBuild"))
       : stateText(j.state);
     const pr = cur.progress || {};
     const pct = cur.state === "downloading" && pr.total ? Math.round(100 * (pr.done || 0) / pr.total) : null;
@@ -940,12 +961,12 @@ function startLocalJob(p) {
     $("jobBar").style.width = pct == null ? "" : pct + "%";
     bar.setAttribute("aria-valuenow", pct == null ? "" : String(pct));
     const bits = [];
-    if (pr.total) bits.push(`${pr.done || 0} of ${pr.total} images`);
-    if (pr.bytes) bits.push(`${(pr.bytes / 1048576).toFixed(1)} MB`);
+    if (pr.total) bits.push(T("ex.job.nOf", { done: pr.done || 0, total: pr.total }));
+    if (pr.bytes) bits.push(iLoc(`${(pr.bytes / 1048576).toFixed(1)} MB`));
     bits.push(elapsed());
     $("jobDetail").textContent = bits.join(" · ");
-    $("jobMsg").textContent = cur !== j ? `Full result after it: ${jobLine(j) || stateText(j.state)}`
-      : j.state === "queued" && j.queue ? `Full result: ${jobLine(j)}` : (j.message || "");
+    $("jobMsg").textContent = cur !== j ? T("ex.job.after", { line: jobLine(j) || stateText(j.state) })
+      : j.state === "queued" && j.queue ? T("ex.job.full", { line: jobLine(j) }) : (j.message || "");
   }, { after: prevCancel });
   job.key = key;
   state.job = job;
@@ -959,16 +980,19 @@ function startLocalJob(p) {
       resultSummary(j.result_url).then((r) => {
         if (state.job || $("job").hidden === false) return;
         rbar.hidden = false; rbar.classList.remove("pending");
-        rbar.querySelector("b").textContent = r ? r.text : (j.message || "Done.");
-        const extra = j.post_pending ? ` · adding ${j.post_pending.steps.join(", ")} in the background (open this point again to see it)` : "";
-        rbar.querySelector("small").textContent = `Local Python engine · ${secs < 2 ? "cached result" : `ready in ${secs.toFixed(0)} s`}${extra}`;
-        setStage("full", r ? r.n : (j.progress || {}).total, "All wavelengths, Gaia-calibrated measurement.");
+        rbar.querySelector("b").textContent = r ? r.text : (j.message || T("ex.job.done"));
+        const post = { left: j.post_pending ? j.post_pending.steps.slice() : [] };   // post-steps still running
+        const small = () => T("ex.rb.engine", { when: secs < 2 ? T("ex.rb.cached") : T("ex.rb.ready", { s: secs.toFixed(0) }) })
+          + (post.left.length ? T("ex.rb.adding", { steps: post.left.join(", ") }) : "");
+        rbar.querySelector("small").textContent = small();
+        rbar._fz = { url: j.result_url, small, post };    // re-rendered on a language switch and on "fazari-post"
+        setStage("full", r ? r.n : (j.progress || {}).total, T("ex.job.fullNote"));
       });
     } else if (j.state !== "cancelled") {
       if (shown.url) {                                             // keep the preview on screen
-        rbar.querySelector("small").textContent = `The full result failed: ${j.message || "unknown error"}`;
+        rbar.querySelector("small").textContent = T("ex.rb.failed", { msg: j.message || T("ex.err.unknown") });
       } else {
-        jobFailed(p, j.message || "The local engine could not finish this job.");
+        jobFailed(p, j.message || T("ex.job.failed"));
       }
     }
   }).catch((e) => { if (state.job === job) { state.job = null; jobFailed(p, e.message); } });
@@ -981,7 +1005,7 @@ function jobFailed(p, message) {
   $("jobCancel").hidden = true;
   const b = $("jobBrowser");
   b.hidden = false;
-  b.onclick = () => openBlink(blinkUrl(p), `SPHEREx blink: ${p.name}`);
+  b.onclick = () => openBlink(blinkUrl(p), () => T("ex.blink.title", { name: pname(p) }));
 }
 
 function closeBlink() {
@@ -1007,7 +1031,7 @@ function onSkyClick(e) {
   if (!e || e.isDragging || !Number.isFinite(e.ra)) return;
   if (performance.now() - state.objectClickedAt < 250) return;
   if (performance.now() - (state.multiTouchAt || 0) < 600) return;
-  select({ id: null, name: "Your spot", ra: e.ra, dec: e.dec, cat: null, manual: true });
+  select({ id: null, name: "Your spot", nameKey: "ex.name.yourSpot", ra: e.ra, dec: e.dec, cat: null, manual: true });
 }
 
 async function runSearch(text) {
@@ -1017,38 +1041,38 @@ async function runSearch(text) {
   msg.className = "msg"; msg.hidden = false;
   const c = parseCoords(t);
   if (c) {
-    msg.textContent = `Going to RA ${formatRA(c.ra)}, Dec ${formatDec(c.dec)} (${c.format === "decimal" ? "read as decimal degrees" : "read as hours and degrees"}).`;
-    select({ id: null, name: "Your coordinates", ra: c.ra, dec: c.dec, cat: null, manual: true }, { fly: true, fov: 1, fill: false });
+    msg.textContent = T("ex.q.going", { ra: iLoc(formatRA(c.ra)), dec: iLoc(formatDec(c.dec)), how: T(c.format === "decimal" ? "ex.q.decimal" : "ex.q.sexa") });
+    select({ id: null, name: "Your coordinates", nameKey: "ex.name.yourCoords", ra: c.ra, dec: c.dec, cat: null, manual: true }, { fly: true, fov: 1, fill: false });
     return;
   }
   if (looksLikeCoords(t)) {
     msg.className = "msg err";
-    msg.innerHTML = "That looks like a coordinate, but I could not read it. Try <b>269.45 +4.69</b> (degrees) or <b>17 57 48 +04 41 36</b> (hours and degrees).";
+    msg.innerHTML = T("ex.q.bad");
     return;
   }
   const local = findLocal(state.points, t);
   if (local) {
-    msg.textContent = `Found ${local.name} in “${catName(local.cat)}”.`;
+    msg.textContent = T("ex.q.foundIn", { name: pname(local), cat: catName(local.cat) });
     openCategory(local.cat);
     select(local, { fly: true, fill: false });
     return;
   }
-  msg.textContent = `Looking up “${t}”…`;
+  msg.textContent = T("ex.q.looking", { q: t });
   try {
     const r = await sesame(t);
     if (!r) {
       msg.className = "msg err";
-      msg.innerHTML = `No object called “${esc(t)}” was found. Try a catalogue name like <b>M 31</b>, <b>NGC 7000</b> or <b>Vega</b>.`;
+      msg.innerHTML = T("ex.q.none", { q: esc(t) });
       return;
     }
     const same = r.name.toLowerCase().replace(/\W/g, "") === t.toLowerCase().replace(/\W/g, "");
     const shown = same ? r.name : `${t} (${r.name})`;
     const kind = plainType(r.type);
-    msg.textContent = `Found ${shown}${kind ? `: ${kind}` : ""}.`;
+    msg.textContent = kind ? T("ex.q.foundKind", { name: iName(shown), kind: typeName(kind) }) : T("ex.q.found", { name: iName(shown) });
     select({ id: null, name: shown, ra: r.ra, dec: r.dec, cat: null, manual: true, moved: r.moved, type: kind, pmra: r.pmra, pmdec: r.pmdec }, { fly: true, fov: 1, fill: false });
   } catch (e) {
     msg.className = "msg err";
-    msg.textContent = "The name service did not answer. Check your connection, or type coordinates instead.";
+    msg.textContent = T("ex.q.noService");
   }
 }
 
@@ -1064,12 +1088,12 @@ function surpriseQuick() {
     for (let i = 0; i < 400; i++) {
       const q = randomSky();
       const cv = coverageAt(q.ra, q.dec);
-      if (cv && cv.seasons >= 4) { target = { id: null, name: "A random spot SPHEREx visited often", ra: q.ra, dec: q.dec, cat: null, manual: true }; break; }
+      if (cv && cv.seasons >= 4) { target = { id: null, name: "A random spot SPHEREx visited often", nameKey: "ex.name.randomOften", ra: q.ra, dec: q.dec, cat: null, manual: true }; break; }
     }
   }
   if (!target && pick < 0.25) {
     const q = randomSky();
-    target = { id: null, name: "A random spot on the sky", ra: q.ra, dec: q.dec, cat: null, manual: true };
+    target = { id: null, name: "A random spot on the sky", nameKey: "ex.name.random", ra: q.ra, dec: q.dec, cat: null, manual: true };
   }
   if (!target && state.points.length) {
     target = state.points[Math.floor(Math.random() * state.points.length)];
@@ -1120,7 +1144,7 @@ function wireUi() {
   $("tgFoot").addEventListener("change", () => drawFootprints());
   $("tgAuto").addEventListener("change", (e) => { state.autoSpx = e.target.checked; onViewChange(); });
   const sel = $("slice");
-  for (const s of SPHEREX_SLICES) sel.add(new Option(s.label, s.slice, s.slice === state.slice, s.slice === state.slice));
+  for (const s of SPHEREX_SLICES) sel.add(new Option(iLoc(s.label), s.slice, s.slice === state.slice, s.slice === state.slice));
   sel.addEventListener("change", () => {
     state.slice = Number(sel.value);
     for (const h of [state.hips.spherex, state.spxOverlay]) if (h) setSlice(h);
@@ -1149,13 +1173,13 @@ function wireUi() {
   $("jobCancel").addEventListener("click", () => {
     stopJob();
     $("jobState").textContent = stateText("cancelled");
-    $("jobMsg").textContent = "The job was stopped. Pick a spot and press Fetch again any time.";
+    $("jobMsg").textContent = T("ex.job.stopped");
     $("jobBar").parentElement.classList.remove("indet");
     $("jobCancel").hidden = true;
   });
   $("btnGallery").addEventListener("click", () => {
     const p = state.selected;
-    if (p) openBlink($("btnGallery").dataset.src, `Prepared blink: ${p.name}`);
+    if (p) openBlink($("btnGallery").dataset.src, () => T("ex.blink.prepared", { name: pname(p) }));
   });
   $("btnZoom").addEventListener("click", () => {
     const p = state.selected;
@@ -1164,7 +1188,7 @@ function wireUi() {
     flyTo(p.pos.ra, p.pos.dec, Math.max(0.12, Math.min(fov / 4, 0.5)));
   });
   $("btnShare").addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText(location.href); toast("Link copied. Anyone who opens it lands on this spot."); }
+    try { await navigator.clipboard.writeText(location.href); toast(T("ex.toast.copied")); }
     catch { toast(location.href); }
   });
   $("blinkClose").addEventListener("click", closeBlink);
@@ -1198,7 +1222,7 @@ function wireUi() {
       if (k === "ArrowUp") al.gotoRaDec(ra, Math.min(90, dec + step));
       if (k === "ArrowDown") al.gotoRaDec(ra, Math.max(-90, dec - step));
     } else if (k === "Enter" && document.activeElement === $("sky")) {
-      select({ id: null, name: "Your spot", ra, dec, cat: null, manual: true });
+      select({ id: null, name: "Your spot", nameKey: "ex.name.yourSpot", ra, dec, cat: null, manual: true });
     }
   });
 
@@ -1206,6 +1230,33 @@ function wireUi() {
   $("sky").addEventListener("pointerdown", () => { if (state.step < 2) setStep(2); }, { passive: true });
   // capture: Aladin stops the wheel event on its canvas, so a bubbling listener here never ran.
   $("sky").addEventListener("wheel", () => { if (state.step < 2) setStep(2); }, { capture: true, passive: true });
+}
+
+// Language switch (js/i18n.js): re-render text only. The selection, the coordinate box, the open
+// category, the view and an open blink panel stay as they are (the viewer in the panel switches itself).
+function relang() {
+  if (state.engineKnown) setEngine(state.engine); else $("stEngine").textContent = T("ex.st.checking");
+  if (state.cats.length) {
+    const sheet = document.body.dataset.sheet;
+    renderCategories();
+    if (state.activeCat === "surprise") state.fast?.openSurprise?.();
+    else if (state.activeCat) openCategory(state.activeCat);
+    for (const b of document.querySelectorAll(".pt")) b.classList.toggle("on", !!state.selected?.id && b.dataset.pid === state.selected.id);
+    setSheet(sheet);
+    for (const v of Object.values(state.catalogs)) {
+      if (v.srcs) { v.dots.removeAll(); v.dots.addSources(v.srcs()); v.labeled.removeAll(); v.labeled.addSources(v.srcs()); }
+    }
+  }
+  for (const o of $("slice").options) { const sl = SPHEREX_SLICES.find((s) => String(s.slice) === o.value); if (sl) o.text = iLoc(sl.label); }
+  if (state.selected) { renderCard(); if ($("tgFoot").checked) drawFootprints(); }
+  if (setStage.last) setStage(...setStage.last);
+  if (!$("blink").hidden && panelTitle) $("blinkTitle").textContent = typeof panelTitle === "function" ? panelTitle() : panelTitle;
+  const rb = $("resultBar");
+  if (!rb.hidden && rb._fz && !rb.classList.contains("pending")) {
+    const fz = rb._fz;
+    resultSummary(fz.url).then((r) => { if (r && rb._fz === fz) { rb.querySelector("b").textContent = r.text; rb.querySelector("small").textContent = fz.small(); } });
+  }
+  onViewChange();
 }
 
 function openDialog(id) {
@@ -1218,4 +1269,5 @@ function esc(s) {
 }
 
 // For tests: window.__explore exposes state and a few actions.
-window.__explore = { MAX_FOV, state, openCategory, select, flyTo, runSearch, surprise, setBackground, openBlink, closeBlink, startLocalJob };
+window.__explore = { MAX_FOV, state, openCategory, select, flyTo, runSearch, surprise, setBackground, openBlink, closeBlink, startLocalJob,
+  stopFlight: () => { flight++; state.al?.stopAnimation?.(); } };   // stopFlight: the opening demo (demo.js) ends a flight where it is

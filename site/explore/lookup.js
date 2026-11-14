@@ -2,6 +2,7 @@
 // Sesame answers with CORS headers (tested Nov 2026), so this works from a static page.
 
 import { applyPM, nowYear } from "./coords.js";
+import { t as T } from "../js/i18n.js";
 
 const SESAME = [
   "https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNV?",
@@ -16,7 +17,7 @@ export function findLocal(points, text) {
   if (q.length < 2) return null;
   let best = null, bestScore = 0;
   for (const p of points) {
-    const names = [p.name, p.id, ...(p.aliases || [])].map(norm);
+    const names = [p.name, p.id, p.name_tr, ...(p.aliases || [])].filter(Boolean).map(norm);
     for (const n of names) {
       let score = 0;
       if (n === q) score = 3;
@@ -73,3 +74,5 @@ const OTYPES = {
   "AB*": "giant star", "Y*O": "young star", "MS*": "star", "SN*": "supernova", "Neb": "nebula", "ISM": "gas cloud",
 };
 export const plainType = (t) => OTYPES[t] || "";
+/** A plain type (English, as plainType gives it) in the current language. */
+export const typeName = (s) => (s ? T("ex.type." + s, null, s) : "");

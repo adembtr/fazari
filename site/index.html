@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fazari - SPHEREx Sky Explorer</title>
+<title data-i18n="ix.title">Fazari - SPHEREx Sky Explorer</title>
 <meta http-equiv="refresh" content="0; url=explore.html">
 <script>
   // Old links with ?data= keep opening the precomputed viewer; everything else goes to the explorer.
@@ -16,7 +16,9 @@
 </style>
 </head>
 <body>
-<p>Opening the Fazari Sky Explorer&hellip;</p>
-<p>If nothing happens, <a href="explore.html">open the Sky Explorer</a> or the <a href="ornek.html">precomputed blink viewer</a>.</p>
+<p data-i18n="ix.opening">Opening the Fazari Sky Explorer&hellip;</p>
+<p data-i18n-html="ix.fallback">If nothing happens, <a href="explore.html">open the Sky Explorer</a> or the <a href="ornek.html">precomputed blink viewer</a>.</p>
+<!-- Language of the fallback text only; the redirect above runs first and is not delayed. -->
+<script type="module" src="js/i18n.js"></script>
 </body>
 </html>

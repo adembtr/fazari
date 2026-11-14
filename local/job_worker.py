@@ -18,8 +18,10 @@ Steps
                '[CALIB] epsf <id>' per detector); it is cached in cache/local/epsf/.
   processing   pipeline/blink.py on the ad-hoc target -> cache/jobs/<id>/
   post-steps   POST_STEPS (below): later steps of the full result that read the blink products,
-               run in order after blink.py (spectrum, candidates, faint); --post-only reruns
-               some of them on a finished job (the server does this when their code changed)
+               run in order after blink.py (spectrum, candidates, faint). The server starts
+               full jobs with --no-post (the job is "done" and viewable right after the blink)
+               and then runs them with --post-only in its own lane; also when a step is new or
+               its code changed
 
 Quick looks ("mode": "preview") are not done here but in local/preview.py (the server's fast
 lane). While a preview is queued or running the server keeps the flag file
@@ -387,9 +389,10 @@ def _step_function(entry):
     return getattr(importlib.import_module(entry[1]), entry[2])
 
 
-def run_post_steps(ctx, only=None, quiet=False):
+def run_post_steps(ctx, only=None, quiet=False, on_step=None):
     """Run the POST_STEPS (or only the named ones, in list order). quiet: a finished job whose steps
-    are rerun; its status message is left alone (the step name goes to status.post_step)."""
+    are rerun; its status message is left alone (the step name goes to status.post_step).
+    on_step(results so far) after each step (the viewer shows each output as soon as it exists)."""
     results = {}
     for entry in POST_STEPS:
         name = entry[0]
@@ -403,12 +406,16 @@ def run_post_steps(ctx, only=None, quiet=False):
         except Exception as e:
             traceback.print_exc()
             results[name] = {"ok": False, "error": f"{type(e).__name__}: {e}", "seconds": round(time.time() - t0, 2)}
+        if on_step:
+            on_step(dict(results))
     return results
 
 
 def run_post_only(jd, req, names):
-    """Rerun some post-steps of a finished job from its kept blink products and cutouts. The job
-    stays "done" (its result stays viewable); status.post is merged, the message restored."""
+    """Run some post-steps of a finished job from its kept blink products and cutouts: right after
+    the blink (the server starts full jobs with --no-post, so the blink is viewable first) or when a
+    step is new or its code changed. The job stays "done" (viewable); status.post is merged after
+    each step, the message restored."""
     job_id = req["id"]
     status = Status(jd / "status.json")
     old = json.loads((jd / "status.json").read_text())
@@ -419,9 +426,10 @@ def run_post_only(jd, req, names):
     print(f"[{time.strftime('%H:%M:%S')}] post-steps only: {', '.join(names)}", flush=True)
     status.set(post_running=names)
     t0 = time.time()
+    base = dict(old.get("post") or {})
     post = run_post_steps({"job_id": job_id, "req": req, "target": req["target"], "out": out,
                            "inputs": LOCAL / "inputs" / job_id, "meta": m, "status": status},
-                          only=names, quiet=True)
+                          only=names, quiet=True, on_step=lambda r: status.set(post=dict(base, **r)))
     with status.lock:
         status.d.pop("post_running", None)
         status.d.pop("post_step", None)
@@ -437,6 +445,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--job", required=True, help="job folder with request.json")
     ap.add_argument("--post-only", help="comma-separated POST_STEPS names: rerun only these on a finished job")
+    ap.add_argument("--no-post", action="store_true",
+                    help="stop after the blink (state done); the server runs the post-steps with --post-only")
     a = ap.parse_args()
     jd = Path(a.job).resolve()
     req = json.loads((jd / "request.json").read_text())
@@ -526,7 +536,7 @@ def main():
         if not meta.exists():
             raise RuntimeError("blink.py finished without writing meta.json")
         m = json.loads(meta.read_text())
-        if POST_STEPS:
+        if POST_STEPS and not a.no_post:
             post = run_post_steps({"job_id": job_id, "req": req, "target": target, "out": out_root / job_id,
                                    "inputs": tdir, "meta": m, "status": status})
             status.set(post=post)

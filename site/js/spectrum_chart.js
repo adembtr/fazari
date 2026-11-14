@@ -7,7 +7,12 @@
 // non-detections as 3-sigma upper limits (down arrows); saturated wing estimates as hollow
 // markers, never as normal points; saturated exposures without an estimate as ticks on the axis.
 
+import * as I18N from "./i18n.js";
+
 const NS = "http://www.w3.org/2000/svg";
+// i18n: English from the code, Turkish from site/i18n/tr.json ("sp.*")
+const T = (key, en, p) => (I18N.lang() === "tr" ? I18N.t(key, p, en) : p ? en.replace(/\{(\w+)\}/g, (m, k) => (p[k] != null ? String(p[k]) : m)) : en);
+const L1 = (s) => I18N.loc(s);
 // season colours (validated for the dark card #151925: first three pass every CVD / normal-vision
 // check all-pairs; a 4th season relies on its marker shape as well) and shapes
 const COLORS = ["#3987e5", "#d95926", "#199e70", "#c98500", "#9085e9", "#e66767"];
@@ -58,9 +63,9 @@ export function fmtFlux(v, digits = 3) {
   if (!fin(v)) return "–";
   const a = Math.abs(v);
   const p = (x) => Number(x.toPrecision(digits)).toString();
-  if (a >= 1e6) return p(v / 1e6) + " Jy";
-  if (a >= 1e3) return p(v / 1e3) + " mJy";
-  return p(v) + " µJy";
+  if (a >= 1e6) return L1(p(v / 1e6)) + " Jy";
+  if (a >= 1e3) return L1(p(v / 1e3)) + " mJy";
+  return L1(p(v)) + " µJy";
 }
 
 function marker(g, shape, x, y, r, { fill, stroke, sw = 1.5 }) {
@@ -110,7 +115,7 @@ function draw(root, spec, state) {
   const small = W < 480;
   const m = { l: small ? 52 : 64, r: 12, t: 20, b: 40 };
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "img",
-                          "aria-label": `Spectrum of ${spec.target || "the source"}: flux against wavelength` }, plot);
+                          "aria-label": T("sp.aria", "Spectrum of {name}: flux against wavelength", { name: spec.target ? I18N.tname(spec.target) : T("sp.theSource", "the source") }) }, plot);
   const seasons = spec.seasons || [];
   const sIdx = (s) => Math.max(0, seasons.indexOf(s));
   // saturated exposures without an estimate are shown as ticks in both views
@@ -166,12 +171,12 @@ function draw(root, spec, state) {
   for (const v of (small ? [1, 2, 3, 4, 5] : [0.75, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])) {
     el("line", { x1: sx(v), x2: sx(v), y1: H - m.b, y2: H - m.b + 4, stroke: "var(--axis)" }, svg);
     const t = el("text", { x: sx(v), y: H - m.b + 16, "text-anchor": "middle" }, gTxt);
-    t.textContent = String(v);
+    t.textContent = L1(String(v));
   }
   const xl = el("text", { x: (m.l + W - m.r) / 2, y: H - 6, "text-anchor": "middle" }, gTxt);
-  xl.textContent = "Wavelength (µm)";
+  xl.textContent = T("sp.xAxis", "Wavelength (µm)");
   const yl = el("text", { x: 12, y: (m.t + H - m.b) / 2, "text-anchor": "middle", transform: `rotate(-90 12 ${(m.t + H - m.b) / 2})` }, gTxt);
-  yl.textContent = "Flux density";
+  yl.textContent = T("sp.yAxis", "Flux density");
   // marks: faint exposures behind the binned view, then the view's points
   const gData = el("g", {}, svg);
   if (state.mode === "binned") {
@@ -238,7 +243,7 @@ function draw(root, spec, state) {
   svg.addEventListener("pointerleave", () => { tip.hidden = true; ring.setAttribute("visibility", "hidden"); });
   if (!pts.length) {
     const t = el("text", { x: (m.l + W - m.r) / 2, y: (m.t + H - m.b) / 2, "text-anchor": "middle" }, gTxt);
-    t.textContent = "No measured points in this view.";
+    t.textContent = T("sp.noPoints", "No measured points in this view.");
   }
 }
 
@@ -248,25 +253,25 @@ function fillTip(tip, p, spec) {
   const lab = (spec.status_labels || {});
   const first = h("div", {}, null, tip);
   if (p.kind === "ul") h("b", {}, "< " + fmtFlux(p.ul), first);
-  else if (p.kind === "sat") h("b", {}, "saturated", first);
+  else if (p.kind === "sat") h("b", {}, T("sp.saturated", "saturated"), first);
   else h("b", {}, fmtFlux(p.y) + (fin(p.err) ? " ± " + fmtFlux(p.err, 2) : ""), first);
   const ab = num(r.ab_mag), abl = num(r.ab_mag_limit);
-  if (fin(ab)) first.appendChild(document.createTextNode(`  (AB ${ab.toFixed(2)})`));
-  else if (fin(abl)) first.appendChild(document.createTextNode(`  (AB > ${abl.toFixed(2)})`));
-  const lam = p.bin ? `${num(r.wavelength_um).toFixed(3)} µm (bin ${num(r.lam_lo_um).toFixed(2)}–${num(r.lam_hi_um).toFixed(2)})`
-    : `${num(r.wavelength_um).toFixed(3)} µm, band ${num(r.bandwidth_um).toFixed(3)} µm`;
-  h("div", {}, `${lam} · ${r.detector} · season ${r.season}`, tip);
+  if (fin(ab)) first.appendChild(document.createTextNode(`  (AB ${L1(ab.toFixed(2))})`));
+  else if (fin(abl)) first.appendChild(document.createTextNode(`  (AB > ${L1(abl.toFixed(2))})`));
+  const lam = p.bin ? T("sp.tipBin", "{um} µm (bin {lo}–{hi})", { um: L1(num(r.wavelength_um).toFixed(3)), lo: L1(num(r.lam_lo_um).toFixed(2)), hi: L1(num(r.lam_hi_um).toFixed(2)) })
+    : T("sp.tipBand", "{um} µm, band {bw} µm", { um: L1(num(r.wavelength_um).toFixed(3)), bw: L1(num(r.bandwidth_um).toFixed(3)) });
+  h("div", {}, `${lam} · ${r.detector} · ${T("sp.season", "season {s}", { s: r.season })}`, tip);
   if (p.bin) {
-    h("div", {}, `${r.n} exposure${r.n === 1 ? "" : "s"}` + (r.kind === "saturated_wing" ? " · saturated (wing estimate)"
-      : r.detected ? ` · S/N ${num(r.snr).toFixed(1)}` : " · not detected (3σ upper limit)"), tip);
+    h("div", {}, (r.n === 1 ? T("sp.exp.one", "{n} exposure", { n: r.n }) : T("sp.exp.other", "{n} exposures", { n: r.n })) + (r.kind === "saturated_wing" ? T("sp.tipWing", " · saturated (wing estimate)")
+      : r.detected ? ` · S/N ${L1(num(r.snr).toFixed(1))}` : T("sp.tipNotDet", " · not detected (3σ upper limit)")), tip);
   } else {
-    h("div", {}, (lab[r.status] || r.status) + (fin(num(r.snr)) && r.status !== "saturated" ? ` · S/N ${num(r.snr).toFixed(1)}` : ""), tip);
+    h("div", {}, T("sp.status." + r.status, lab[r.status] || r.status) + (fin(num(r.snr)) && r.status !== "saturated" ? ` · S/N ${L1(num(r.snr).toFixed(1))}` : ""), tip);
     h("div", {}, `${r.date}` + (r.file ? ` · ${String(r.file).slice(0, 34)}` : ""), tip);
   }
 }
 
 /** Render a spectrum (format fazari-spectrum/1) into container `box`. */
-export function renderSpectrum(box, spec, { csvUrl = null, csvName = null, jsonUrl = null, title = "Spectrum" } = {}) {
+export function renderSpectrum(box, spec, { csvUrl = null, csvName = null, jsonUrl = null, title = "Spectrum", keep = null } = {}) {
   if (!document.getElementById("spx-style")) {
     const st = document.createElement("style");
     st.id = "spx-style";
@@ -278,19 +283,20 @@ export function renderSpectrum(box, spec, { csvUrl = null, csvName = null, jsonU
   box.classList.add("spx");
   const sm = spec.summary || {};
   const seasons = spec.seasons || [];
-  h("h2", {}, title, box);
+  h("h2", {}, title === "Spectrum" ? T("sp.title", "Spectrum") : title, box);
   const dr = sm.detected_range_um;
   const nSat = sm.n_saturated || 0;
   h("p", { class: "spx-note" },
-    `${sm.n_exposures || 0} exposures in ${seasons.length} season${seasons.length === 1 ? "" : "s"}, each at its own wavelength. ` +
-    (dr ? `Detected at ${dr[0].toFixed(2)}–${dr[1].toFixed(2)} µm (S/N ≥ 3 in season bins). ` : "No wavelength bin with S/N ≥ 3. ") +
-    (nSat ? `${nSat} saturated exposure${nSat === 1 ? "" : "s"}` + (sm.n_saturated_wing ? ` (${sm.n_saturated_wing} with a wing estimate, hollow markers)` : "") + ". " : "") +
-    (spec.engine === "browser" ? "Measured in your browser from the exposures loaded so far." : ""), box);
+    (seasons.length === 1 ? T("sp.sum.one", "{n} exposures in {s} season, each at its own wavelength. ", { n: sm.n_exposures || 0, s: 1 })
+      : T("sp.sum.other", "{n} exposures in {s} seasons, each at its own wavelength. ", { n: sm.n_exposures || 0, s: seasons.length })) +
+    (dr ? T("sp.detAt", "Detected at {lo}–{hi} µm (S/N ≥ 3 in season bins). ", { lo: L1(dr[0].toFixed(2)), hi: L1(dr[1].toFixed(2)) }) : T("sp.noDet", "No wavelength bin with S/N ≥ 3. ")) +
+    (nSat ? (nSat === 1 ? T("sp.sat.one", "{n} saturated exposure", { n: nSat }) : T("sp.sat.other", "{n} saturated exposures", { n: nSat })) + (sm.n_saturated_wing ? T("sp.satWing", " ({n} with a wing estimate, hollow markers)", { n: sm.n_saturated_wing }) : "") + ". " : "") +
+    (spec.engine === "browser" ? T("sp.browser", "Measured in your browser from the exposures loaded so far.") : ""), box);
   const head = h("div", { class: "spx-head" }, null, box);
   const anyBins = (spec.binned || []).some((b) => b.kind === "measured" || b.kind === "saturated_wing");
   const det = (spec.points || []).filter((p) => p.status === "detection" || p.status === "saturated_wing").map((p) => num(p.flux_ujy)).filter((v) => v > 0);
   const wide = det.length > 3 && Math.max(...det) / Math.min(...det) > 20;
-  const state = { mode: anyBins ? "binned" : "exposures", log: wide || (!det.length && nSat > 0), off: new Set() };
+  const state = keep || { mode: anyBins ? "binned" : "exposures", log: wide || (!det.length && nSat > 0), off: new Set() };
   const seg = (labels, key, vals) => {
     const s = h("div", { class: "spx-seg", role: "group" }, null, head);
     labels.forEach((lab, k) => {
@@ -300,11 +306,11 @@ export function renderSpectrum(box, spec, { csvUrl = null, csvName = null, jsonU
       sync();
     });
   };
-  seg(["Season bins", "Every exposure"], "mode", ["binned", "exposures"]);
-  seg(["Linear", "Log"], "log", [false, true]);
+  seg([T("sp.binned", "Season bins"), T("sp.every", "Every exposure")], "mode", ["binned", "exposures"]);
+  seg([T("sp.linear", "Linear"), T("sp.log", "Log")], "log", [false, true]);
   const chips = h("div", { class: "spx-chips" }, null, head);
   seasons.forEach((s, k) => {
-    const c = h("button", { type: "button", class: "spx-chip", "aria-pressed": "true", title: "Show or hide this season" }, null, chips);
+    const c = h("button", { type: "button", class: "spx-chip" + (state.off.has(s) ? " off" : ""), "aria-pressed": String(!state.off.has(s)), title: T("sp.chipTip", "Show or hide this season") }, null, chips);
     const ic = document.createElementNS(NS, "svg");
     ic.setAttribute("viewBox", "0 0 14 14"); ic.setAttribute("width", 14); ic.setAttribute("height", 14);
     marker(ic, SHAPES[k % SHAPES.length], 7, 7, 4, { fill: COLORS[k % COLORS.length], stroke: "none" });
@@ -328,37 +334,45 @@ export function renderSpectrum(box, spec, { csvUrl = null, csvName = null, jsonU
     s.appendChild(ic);
     s.appendChild(document.createTextNode(" " + txt));
   };
-  item("measured", (g) => marker(g, "circle", 7, 7, 4, { fill: "#9aa3b2", stroke: "none" }));
-  item("3σ upper limit (not detected)", (g) => el("path", { d: "M7 2v9m-3.5 -4.5l3.5 4.5l3.5 -4.5M3 2h8", fill: "none", stroke: "#9aa3b2", "stroke-width": 1.5 }, g));
-  item("saturated (wing estimate)", (g) => marker(g, "circle", 7, 7, 4.5, { fill: "none", stroke: "#9aa3b2", sw: 1.6 }));
-  item("saturated, no estimate", (g) => el("path", { d: "M7 12l-4 -8h8z", fill: "none", stroke: "#9aa3b2", "stroke-width": 1.3 }, g));
-  item("flagged pixels", (g) => el("path", { d: "M3 3l8 8m0 -8l-8 8", stroke: "#9aa3b2", "stroke-width": 1.5 }, g));
+  item(T("sp.k.measured", "measured"), (g) => marker(g, "circle", 7, 7, 4, { fill: "#9aa3b2", stroke: "none" }));
+  item(T("sp.k.ul", "3σ upper limit (not detected)"), (g) => el("path", { d: "M7 2v9m-3.5 -4.5l3.5 4.5l3.5 -4.5M3 2h8", fill: "none", stroke: "#9aa3b2", "stroke-width": 1.5 }, g));
+  item(T("sp.k.wing", "saturated (wing estimate)"), (g) => marker(g, "circle", 7, 7, 4.5, { fill: "none", stroke: "#9aa3b2", sw: 1.6 }));
+  item(T("sp.k.sat", "saturated, no estimate"), (g) => el("path", { d: "M7 12l-4 -8h8z", fill: "none", stroke: "#9aa3b2", "stroke-width": 1.3 }, g));
+  item(T("sp.k.flag", "flagged pixels"), (g) => el("path", { d: "M3 3l8 8m0 -8l-8 8", stroke: "#9aa3b2", "stroke-width": 1.5 }, g));
   const links = h("p", { class: "spx-note spx-links" }, null, box);
-  if (csvUrl) h("a", { href: csvUrl, download: csvName || "spectrum.csv" }, "Download CSV", links);
+  if (csvUrl) h("a", { href: csvUrl, download: csvName || "spectrum.csv" }, T("sp.csv", "Download CSV"), links);
   if (jsonUrl) h("a", { href: jsonUrl, target: "_blank", rel: "noopener" }, "spectrum.json", links);
-  links.appendChild(document.createTextNode("PSF-fit flux (checked against 2MASS and WISE on field stars: within ±7 %); AB = 23.9 − 2.5 log₁₀(flux/µJy). "
-    + "Wing estimates of saturated exposures are rough (often 10–40 % low, up to ×2 off)."));
+  links.appendChild(document.createTextNode(T("sp.method", "PSF-fit flux (checked against 2MASS and WISE on field stars: within ±7 %); AB = 23.9 − 2.5 log₁₀(flux/µJy). "
+    + "Wing estimates of saturated exposures are rough (often 10–40 % low, up to ×2 off).")));
   // table view (same numbers as the chart's season bins)
   const det2 = h("details", {}, null, box);
-  h("summary", {}, "Table: season bins", det2);
+  h("summary", {}, T("sp.tableSum", "Table: season bins"), det2);
   const tb = h("table", {}, null, det2);
   const hr = h("tr", {}, null, tb);
-  for (const c of ["Season", "λ (µm)", "Detector", "N", "Flux", "±", "Note"]) h("th", {}, c, hr);
+  for (const c of [T("sp.th.season", "Season"), T("sp.th.lam", "λ (µm)"), T("sp.th.det", "Detector"), "N", T("sp.th.flux", "Flux"), "±", T("sp.th.note", "Note")]) h("th", {}, c, hr);
   for (const b of spec.binned || []) {
     if (b.kind === "none") continue;
     const tr = h("tr", {}, null, tb);
     const ul = b.kind === "measured" && !b.detected;
-    for (const v of [b.season, num(b.wavelength_um).toFixed(3), b.detector, String(b.n),
+    for (const v of [b.season, L1(num(b.wavelength_um).toFixed(3)), b.detector, String(b.n),
                      ul ? "< " + fmtFlux(num(b.upper_limit_ujy)) : fmtFlux(num(b.flux_ujy)), ul ? "" : fmtFlux(num(b.flux_err_ujy), 2),
-                     b.kind === "saturated_wing" ? "saturated (wing estimate)" : ul ? "3σ upper limit" : `S/N ${num(b.snr).toFixed(1)}`]) {
+                     b.kind === "saturated_wing" ? T("sp.k.wing", "saturated (wing estimate)") : ul ? T("sp.ul", "3σ upper limit") : `S/N ${L1(num(b.snr).toFixed(1))}`]) {
       h("td", {}, v, tr);
     }
   }
   const doDraw = () => draw(box, spec, state);
   doDraw();
-  if (typeof ResizeObserver === "function") {
+  box.__spxDraw = doDraw;
+  if (typeof ResizeObserver === "function" && !box.__spxRO) {
     let w0 = box.clientWidth;
-    new ResizeObserver(() => { if (Math.abs(box.clientWidth - w0) > 8) { w0 = box.clientWidth; doDraw(); } }).observe(box);
+    box.__spxRO = new ResizeObserver(() => { if (Math.abs(box.clientWidth - w0) > 8) { w0 = box.clientWidth; box.__spxDraw(); } });
+    box.__spxRO.observe(box);
+  }
+  // language switch: render again with the same view (season bins / exposures, log, hidden seasons)
+  box.__spxArgs = { spec, opts: { csvUrl, csvName, jsonUrl, title, keep: state } };
+  if (!box.__spxLang) {
+    box.__spxLang = true;
+    I18N.onLang(() => { const a = box.__spxArgs; if (a && box.isConnected) { const open = box.querySelector("details")?.open; renderSpectrum(box, a.spec, a.opts); if (open) box.querySelector("details").open = true; } });
   }
   return { redraw: doDraw, state };
 }

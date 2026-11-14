@@ -11,6 +11,7 @@
 import { propagate, offsetArcsec, mjdToMonth } from "../js/astro.js";
 import { randomSky } from "./coords.js";
 import { plainType } from "./lookup.js";
+import { t as T, lang as iLang, loc as iLoc } from "../js/i18n.js";
 
 const DATA_URL = "data/fast_stars.json.gz";
 const EPOCH = 2026.0;
@@ -31,7 +32,9 @@ const bySid = new Map(), byPid = new Map();
 
 const binOf = (pm) => { let k = 0; while (k < BINS.length - 1 && pm >= BINS[k + 1].min) k++; return k; };
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-const fmt = (x, n = 1) => x.toLocaleString("en", { minimumFractionDigits: n, maximumFractionDigits: n });
+const fmt = (x, n = 1) => x.toLocaleString(iLang() === "tr" ? "tr-TR" : "en", { minimumFractionDigits: n, maximumFractionDigits: n });
+const binLabel = (k) => T("ex.fs.bin" + k, null, BINS[k].label);
+const bandText = (k) => (BAND[k] ? T("ex.fs.band." + k, null, iLoc(BAND[k])) : k);
 const D2R = Math.PI / 180;
 
 /** The fast-star list (cached). Each star: {sid, name, label, otype, pid, ra, dec (2016.0), pmra, pmdec, plx,
@@ -80,6 +83,7 @@ function pointFor(s) {
       pmra: s.pmra, pmdec: s.pmdec, parallax: s.plx, pmEpoch: EPOCH, cat: null, fast: s.sid, fov: 0.3,
       type: plainType(s.otype) || "fast-moving star",
       note: `Moves ${fmt(s.pm / 1000, 2)}″ every year. The dot shows where Gaia DR3 puts it in 2026.0.`,
+      noteFn: () => T("ex.fs.note", { pm: fmt(s.pm / 1000, 2) }),
     });
   }
   return st.byId.get(key);
@@ -139,7 +143,7 @@ export async function setFastOn(v) {
     const c = await ensureLayer();
     if (on) c?.show();
   } catch (e) {
-    toastErr("The fast-star list could not be loaded.");
+    toastErr(T("ex.fs.loadFail"));
     console.warn(e);
   }
 }
@@ -150,9 +154,10 @@ function renderLegend(d) {
   if (!legend) return;
   const n = BINS.map(() => 0);
   for (const s of d.stars) n[s.bin]++;
-  legend.innerHTML = `<p class="fl-title">${d.stars.length.toLocaleString("en")} stars moving over 0.5″ a year</p>` +
-    BINS.map((b, k) => `<span class="fl-row"><i style="--c:${b.color}"></i>${b.label}<small>${n[k].toLocaleString("en")}</small></span>`).reverse().join("") +
-    `<p class="fl-src">Gaia DR3 (ESA), bright enough for SPHEREx, 2+ SPHEREx seasons</p>`;
+  const loc = iLang() === "tr" ? "tr-TR" : "en";
+  legend.innerHTML = `<p class="fl-title">${T("ex.fs.lg.title", { n: d.stars.length.toLocaleString(loc) })}</p>` +
+    BINS.map((b, k) => `<span class="fl-row"><i style="--c:${b.color}"></i>${binLabel(k)}<small>${n[k].toLocaleString(loc)}</small></span>`).reverse().join("") +
+    `<p class="fl-src">${T("ex.fs.lg.src")}</p>`;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -175,24 +180,24 @@ export function seasonShifts(s) {
 }
 
 function visText(s) {
-  const m = `≈${fmt(s.m_spx, 1)} AB (${BAND[s.m_src] || s.m_src})`;
+  const m = `≈${fmt(s.m_spx, 1)} AB (${bandText(s.m_src)})`;
   const [why, d, who] = String(s.why).split(":");
-  const verdict = { yes: "Yes", maybe: "Maybe", no: "No" }[s.vis] || s.vis;
+  const verdict = { yes: T("ex.fs.vis.yes"), maybe: T("ex.fs.vis.maybe"), no: T("ex.fs.vis.no") }[s.vis] || s.vis;
   let reason;
-  if (why === "saturated") reason = `very bright, ${m}. Its core is probably saturated; the position then comes from the wings, as for Barnard's Star.`;
-  else if (why === "bright") reason = `bright enough: ${m}. One SPHEREx exposure reaches about 17.5 AB at 1–2 µm.`;
-  else if (why === "faint") reason = `${m}, close to the ~17.5 AB limit of one SPHEREx exposure. It may show only at some wavelengths, or when a season's images are stacked.`;
-  else if (why === "plane") reason = `${m}, in a crowded Milky Way field: neighbours can blend with it in 6.2″ pixels.`;
-  else if (why === "near") reason = `${m}, but a brighter fast star (${esc(who)}) is only ${d}″ away. SPHEREx pixels are 6.2″, so the two may blend.`;
-  else if (why === "blend") reason = `it is ${d}″ from the much brighter ${esc(who)}. In 6.2″ SPHEREx pixels the two blend into one dot.`;
+  if (why === "saturated") reason = T("ex.fs.why.saturated", { m });
+  else if (why === "bright") reason = T("ex.fs.why.bright", { m });
+  else if (why === "faint") reason = T("ex.fs.why.faint", { m });
+  else if (why === "plane") reason = T("ex.fs.why.plane", { m });
+  else if (why === "near") reason = T("ex.fs.why.near", { m, who: esc(who), d: iLoc(d) });
+  else if (why === "blend") reason = T("ex.fs.why.blend", { who: esc(who), d: iLoc(d) });
   else reason = m;
   return `<span class="vis ${esc(s.vis)}">${verdict}</span> ${reason}`;
 }
 
 function blinkText(max) {
-  if (max >= PIXEL) return `Easy to see in a blink: it moves more than one SPHEREx pixel (${PIXEL}″).`;
-  if (max >= 2) return `Small: ${fmt(max / PIXEL, 1)} of a ${PIXEL}″ SPHEREx pixel. Look closely, or zoom into the blink.`;
-  return `Too small to see by eye in a blink (under a third of a ${PIXEL}″ pixel). Only careful centroid measurements can show it.`;
+  if (max >= PIXEL) return T("ex.fs.blink.easy", { px: iLoc(PIXEL) });
+  if (max >= 2) return T("ex.fs.blink.small", { f: fmt(max / PIXEL, 1), px: iLoc(PIXEL) });
+  return T("ex.fs.blink.tiny", { px: iLoc(PIXEL) });
 }
 
 function starFor(p) {
@@ -209,17 +214,17 @@ function renderCardInfo(p) {
   if (!s) { el.hidden = true; el.innerHTML = ""; return; }
   const sh = seasonShifts(s);
   const pa = ((Math.atan2(s.pmra, s.pmdec) / D2R) + 360) % 360;
-  const dir = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"][Math.round(pa / 45) % 8];
+  const dir = T("ex.dir8." + (Math.round(pa / 45) % 8));
   const seasons = s.seasons.map(([mjd, n]) => `${mjdToMonth(mjd)} <small>(${n})</small>`).join(" · ");
   const shifts = sh.rows.map((r) => `${mjdToMonth(r.from)} → ${mjdToMonth(r.to)}: <b>${fmt(r.arcsec, 1)}″</b>`).join(" · ");
   el.innerHTML =
-    `<p class="fs-head"><i style="--c:${BINS[s.bin].color}" aria-hidden="true"></i><b>Fast star</b> · Gaia DR3 ${esc(s.sid)}` +
+    `<p class="fs-head"><i style="--c:${BINS[s.bin].color}" aria-hidden="true"></i><b>${T("ex.fs.card.head")}</b> · Gaia DR3 ${esc(s.sid)}` +
     (s.name && s.name !== p.name ? ` · ${esc(s.name)}` : "") + `</p>` +
     `<dl class="fs-grid">` +
-    `<div><dt>Proper motion</dt><dd><b>${fmt(s.pm / 1000, 2)}″ per year</b> toward the ${dir} <small>(μα* ${fmt(s.pmra, 1)}, μδ ${fmt(s.pmdec, 1)} mas/yr${s.plx > 0 ? `; parallax ${fmt(s.plx, 1)} mas` : ""})</small></dd></div>` +
-    `<div><dt>SPHEREx seasons</dt><dd>${seasons}</dd></div>` +
-    `<div><dt>Expected shift</dt><dd>${shifts || "–"} <small>(largest ${fmt(sh.max, 1)}″ = ${fmt(sh.max / PIXEL, 2)} pixels)</small></dd></div>` +
-    `<div><dt>Visible in SPHEREx?</dt><dd>${visText(s)}</dd></div>` +
+    `<div><dt>${T("ex.fs.card.pm")}</dt><dd>${T("ex.fs.card.pmv", { pm: fmt(s.pm / 1000, 2), dir })} <small>(μα* ${fmt(s.pmra, 1)}, μδ ${fmt(s.pmdec, 1)} ${T("ex.fs.masyr")}${s.plx > 0 ? T("ex.fs.card.parallax", { p: fmt(s.plx, 1) }) : ""})</small></dd></div>` +
+    `<div><dt>${T("ex.fs.card.seasons")}</dt><dd>${seasons}</dd></div>` +
+    `<div><dt>${T("ex.fs.card.shift")}</dt><dd>${shifts || "–"} <small>(${T("ex.fs.card.largest", { a: fmt(sh.max, 1), p: fmt(sh.max / PIXEL, 2) })})</small></dd></div>` +
+    `<div><dt>${T("ex.fs.card.vis")}</dt><dd>${visText(s)}</dd></div>` +
     `</dl><p class="fine">${blinkText(sh.max)}</p>`;
   el.hidden = false;
 }
@@ -234,21 +239,21 @@ export function openSurprise() {
   const det = document.getElementById("catDetail");
   det.hidden = false;
   det.style.setProperty("--c", "#ff8a5c");
-  document.getElementById("catTitle").innerHTML = `<span aria-hidden="true">🎲</span> Surprise me`;
-  document.getElementById("catDesc").textContent = "Pick the kind of surprise.";
+  document.getElementById("catTitle").innerHTML = `<span aria-hidden="true">🎲</span> ${T("ex.sp.title")}`;
+  document.getElementById("catDesc").textContent = T("ex.sp.desc");
   const disc = document.getElementById("catDisclaimer");
   disc.hidden = true; disc.innerHTML = "";
   const ul = document.getElementById("points");
   ul.innerHTML = "";
   const opts = [
-    { k: "fast", name: "🏃 Fast star", desc: "A random star from our Gaia list of stars that move more than 0.5″ a year, picked among those that shift enough to notice between SPHEREx seasons. Motion guaranteed." },
-    { k: "random", name: "🎯 Random sky", desc: "A truly random spot that SPHEREx has seen. Honest warning: most places on the sky show nothing moving." },
+    { k: "fast", name: T("ex.sp.fast"), descKey: "ex.sp.fast.d", desc: "A random star from our Gaia list of stars that move more than 0.5″ a year, picked among those that shift enough to notice between SPHEREx seasons. Motion guaranteed." },
+    { k: "random", name: T("ex.sp.random"), descKey: "ex.sp.random.d", desc: "A truly random spot that SPHEREx has seen. Honest warning: most places on the sky show nothing moving." },
   ];
   for (const o of opts) {
     const li = document.createElement("li");
     const b = document.createElement("button");
     b.type = "button"; b.className = "pt"; b.dataset.surprise = o.k;
-    b.innerHTML = `<span class="pn">${o.name}</span><span class="pd">${esc(o.desc)}</span>`;
+    b.innerHTML = `<span class="pn">${o.name}</span><span class="pd">${esc(T(o.descKey, null, o.desc))}</span>`;
     b.onclick = () => (o.k === "fast" ? surpriseFast() : surpriseRandom());
     li.appendChild(b); ul.appendChild(li);
   }
@@ -259,7 +264,7 @@ export function openSurprise() {
 
 export async function surpriseFast() {
   let d;
-  try { d = await loadFastStars(); } catch { toastErr("The fast-star list could not be loaded."); return null; }
+  try { d = await loadFastStars(); } catch { toastErr(T("ex.fs.loadFail")); return null; }
   // Motion guaranteed, and big enough to notice: SPHEREx sees the star and it shifts by at least a third of a
   // pixel (2") between its seasons (about 1 in 10 stars of the list).
   if (!d.blinkable) d.blinkable = d.stars.filter((s) => s.vis === "yes" && seasonShifts(s).max >= 2);
@@ -295,7 +300,7 @@ export function surpriseRandom() {
   }
   q = q || randomSky();
   const p = {
-    id: null, name: "Random sky spot", ra: q.ra, dec: q.dec, cat: null, type: "Random sky",
+    id: null, name: "Random sky spot", nameKey: "ex.sp.randName", noteKey: "ex.sp.randNote", ra: q.ra, dec: q.dec, cat: null, type: "Random sky",
     note: "Most places on the sky show nothing moving. This spot was picked at random, evenly over the whole sky that SPHEREx has seen in 2 or more seasons.",
   };
   showAboveCard(p, 1);
@@ -309,6 +314,7 @@ export function initFastStars(e) {
   legend = document.getElementById("fastLegend");
   btn?.addEventListener("click", () => setFastOn(!on));
   e.hooks.card.push(renderCardInfo);
+  document.addEventListener("fazari:lang", () => { if (on && data) renderLegend(data); });
   // Card info for our own named points (Barnard's Star, ...) even when the layer is off.
   loadFastStars().then(() => { if (ext.state.selected) renderCardInfo(ext.state.selected); }).catch(() => {});
   if (startParams().get("fast") === "1") setFastOn(true);

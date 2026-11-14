@@ -226,7 +226,7 @@
     .tiles { grid-template-columns:repeat(4, minmax(0, 1fr)); }
     .tile.hero b, .tile.ref b { font-size:1.6rem; }
     .controls { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:8px 18px; }
-    .lower { grid-template-columns:1fr; }
+    .lower { grid-template-columns:minmax(0, 1fr); }
     .diffview { max-height:none; max-width:560px; }
     .real { margin-left:0; }
   }
@@ -378,6 +378,12 @@ if (v) {
   import("./js/marking.js").then(x => v.setMarking(x.mountMarking({ meta: v.meta, base: v.base, current: v.current })))
     .catch(e => console.warn("marking.js", e));
   import("./explore/candidates.js").then(x => x.mountCandidates(v)).catch(e => console.warn("candidates.js", e));   // candidate finder: list + rings
+  // local engine: the result is shown before its post-steps finish (status post_pending); mount each
+  // output when its step is done (faint_view.js and others listen to the "fazari:post" event)
+  import("./js/post_watch.js").then(x => x.watchPostSteps(v.base, (step) => {
+    if (step === "spectrum") import("./js/spectrum_chart.js").then(s => s.mountFromUrl(document.getElementById("spectrum"), v.base));
+    if (step === "candidates") import("./explore/candidates.js").then(c => c.mountCandidates(v));
+  })).catch(e => console.warn("post_watch.js", e));
 }
 </script>
 <script src="js/faint_view.js"></script>

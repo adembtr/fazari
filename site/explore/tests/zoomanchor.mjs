@@ -47,7 +47,7 @@ async function browser(pageUrl, { W, H, mobile = false }) {
     "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--hide-scrollbars", "--no-first-run", "--no-default-browser-check",
     `--window-size=${W},${H}`, "about:blank"], { stdio: "ignore" });
   const gone = new Promise((r) => proc.on("exit", r));
-  const kill = () => { try { proc.kill("SIGKILL"); } catch { /* gone */ } try { rmSync(prof, { recursive: true, force: true }); } catch { /* ignore */ } };
+  const kill = () => { try { proc.kill("SIGKILL"); } catch { /* gone */ } try { rmSync(prof, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); } catch { /* ignore */ } };
   procs.push(kill);
   let list;
   for (let i = 0; i < 80; i++) { try { list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json(); break; } catch { await sleep(200); } }
@@ -132,6 +132,15 @@ for (const t of ["touchstart", "touchmove"]) addEventListener(t, (e) => {
 const frames = (n) => `new Promise((r) => { let k = ${n}; const f = () => (--k <= 0 ? r(1) : requestAnimationFrame(f)); requestAnimationFrame(f); })`;
 
 const wait = async (b, expr, ms = 20000) => { for (let t = 0; t < ms; t += 200) { if (await b.ev(expr)) return true; await sleep(200); } return false; };
+// Wait for the page to start; reload and try again (slow network, or a file caught mid-edit), up to 4 times.
+async function boot(b, expr) {
+  for (let i = 0; i < 4; i++) {
+    if (await wait(b, expr, 30000)) return;
+    console.error("page not ready, reloading");
+    await b.send("Page.reload", { ignoreCache: true });
+  }
+  throw new Error("the page did not start: " + expr);
+}
 // Wait until the field of view has not changed for 6 frames (the wheel zoom is smoothed over frames).
 async function settle(b, view) {
   await b.ev(`new Promise((res) => { const v = __za.views.${view}(); let last = v.fov(), same = 0; const t0 = performance.now();
@@ -178,7 +187,7 @@ async function wheelRun(b, view, { fov, x, y, rect, notch = 100, ctrl = false, b
 {
   const W = 1400, H = 900;
   const b = await browser(withQuery(url, "engine=browser&hero=0"), { W, H });
-  await wait(b, "!!(window.__explore && __explore.state.al && __explore.state.cats.length)");
+  await boot(b, "!!(window.__explore && __explore.state.al && __explore.state.cats.length)");
   await sleep(4500);                                            // the opening glide
   await b.ev(`document.querySelector('.panel').style.display='none'; ${HELPERS}`);
   report.aladin_anchor_module = await b.ev("!!__explore.state.zoomAnchor");
@@ -239,7 +248,7 @@ async function pinchRun(b, view, { rect, mid0, mid1 = mid0, d0, d1, steps = 5, f
 {
   const W = 390, H = 844;
   const b = await browser(withQuery(url, "engine=browser&hero=0"), { W, H, mobile: true });
-  await wait(b, "!!(window.__explore && __explore.state.al && __explore.state.cats.length)");
+  await boot(b, "!!(window.__explore && __explore.state.al && __explore.state.cats.length)");
   await sleep(4500);
   await b.ev(HELPERS);
   const rect = await b.ev(`JSON.stringify(document.getElementById('sky').getBoundingClientRect())`).then(JSON.parse);
@@ -259,7 +268,7 @@ async function pinchRun(b, view, { rect, mid0, mid1 = mid0, d0, d1, steps = 5, f
 {
   const W = 1400, H = 900;
   const b = await browser(withQuery(url, "flat&engine=browser&hero=0"), { W, H });
-  await wait(b, "!!(window.__explore && __explore.state.flat)");
+  await boot(b, "!!(window.__explore && __explore.state.flat)");
   await sleep(500);
   await b.ev(`document.querySelector('.panel').style.display='none'; ${HELPERS}`);
   const rect = await b.ev(`JSON.stringify(document.getElementById('sky').getBoundingClientRect())`).then(JSON.parse);

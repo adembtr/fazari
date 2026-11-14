@@ -238,7 +238,7 @@ function brightnessSentence(meta, ph, S, named, L) {
 function brightnessSentenceTr(ph, c, S, named) {
   const cand = named ? "" : ": parlaklığı değişen bir aday, doğrulanmadı";
   const sat = (ph.bins || []).some((b) => b.saturated || (b.flags || []).some((f) => /saturat/i.test(f)));
-  const note = sat ? "Kaba tahmin: yıldız çok parlak, merkezi dedektörde doyuyor. Bu yüzden dıştaki ışığı ölçülüyor." : "";
+  const note = sat ? "Kaba tahmin: yıldız çok parlak, merkezi dedektörde doyuyor. Bu yüzden yıldızın dış kısmındaki ışık ölçülüyor." : "";
   if (!c) return { text: `Burada karşılaştırma yıldızı çok az; ${named ? S : "merkezdeki kaynak"} için parlaklık değişimi ölçülemiyor.`, note: "" };
   const between = `${monthName(c.from, "tr")} ile ${monthName(c.to, "tr")} arasında`;
   if (c.flat) {

@@ -15,6 +15,7 @@
 // Credit: ESA/Gaia/DPAC, Gaia DR3 (Gaia Collaboration, Vallenari et al. 2023), via CDS VizieR.
 
 import { ang2pixNest } from "../js/skyindex.js";
+import { t as T, lang as iLang } from "../js/i18n.js";
 
 const MIRRORS = [                   // VizieR mirrors that answer with CORS (see site/js/gaia.js)
   "https://vizier.idia.ac.za/viz-bin/asu-tsv",
@@ -232,6 +233,8 @@ export function initStarsNow(e) {
   btn = document.getElementById("tgStarsNow");
   sub = btn?.querySelector("small");
   btn?.addEventListener("click", () => setOn(!on));
+  if (!on) status(T("ex.ss.zoom"));
+  document.addEventListener("fazari:lang", () => { if (on && current && view && view.fov < FOV_MAX) draw(current.lod, current.pixes, true); else status(T("ex.ss.zoom")); });
   if (startParams().get("gaia") === "1") setOn(true);
   return api;
 }
@@ -241,7 +244,7 @@ function setOn(v) {
   btn?.setAttribute("aria-pressed", String(on));
   document.body.classList.toggle("gaia-now", on);
   syncCredit();
-  if (!on) { cat?.hide(); status("zoom in below 1°"); return; }
+  if (!on) { cat?.hide(); status(T("ex.ss.zoom")); return; }
   if (!view && ext?.state.al) { const [ra, dec] = ext.state.al.getRaDec(); view = { ra, dec, fov: ext.state.al.getFov()[0] }; }
   schedule(0);
 }
@@ -255,7 +258,7 @@ function status(text) { if (sub) sub.textContent = text; }
 
 function schedule(ms = DEBOUNCE_MS) {
   clearTimeout(timer);
-  if (view && view.fov >= FOV_MAX) { cat?.hide(); status("zoom in below 1°"); return; }
+  if (view && view.fov >= FOV_MAX) { cat?.hide(); status(T("ex.ss.zoom")); return; }
   timer = setTimeout(refresh, ms);
 }
 
@@ -278,7 +281,7 @@ function viewTiles(order) {
 
 function refresh() {
   if (!on || !view || !ext) return;
-  if (view.fov >= FOV_MAX) { cat.hide(); status("zoom in below 1°"); return; }
+  if (view.fov >= FOV_MAX) { cat.hide(); status(T("ex.ss.zoom")); return; }
   const lod = LODS.find((l) => view.fov >= l.fovMin);
   // nearest tiles first, so the middle of the screen fills in first
   const pixes = viewTiles(lod.order).map((p) => [p, pixGeometry(lod.order, p).centre])
@@ -288,19 +291,19 @@ function refresh() {
   pump();
   draw(lod, pixes);
   const pending = want.filter((t) => !t.stars).length;
-  if (pending) status(`loading Gaia stars… (${want.length - pending}/${want.length})`);
+  if (pending) status(T("ex.ss.loading", { a: want.length - pending, b: want.length }));
 }
 
-function draw(lod, pixes) {
+function draw(lod, pixes, textOnly = false) {
   const ready = pixes.map((p) => tiles.get(`${lod.order}/${p}`)).filter((t) => t && t.stars);
   const pending = pixes.length - ready.length;
   const k = zoomStep(view.fov);
   const key = k + ":" + ready.map((t) => t.key).sort().join(",");
   if (!ready.length) {                                    // keep what is shown until the first tile arrives
-    if (failures > 3) status("Gaia server not answering; move to retry");
+    if (failures > 3) status(T("ex.ss.down"));
     return;
   }
-  if (key !== shownKey) {
+  if (key !== shownKey && !textOnly) {
     shownKey = key;
     let all = ready.flatMap((t) => t.stars);
     if (all.length > MAX_STARS) all = all.sort((a, b) => (a.g || 99) - (b.g || 99)).slice(0, MAX_STARS);
@@ -310,8 +313,8 @@ function draw(lod, pixes) {
     stats.drawn = all.length; stats.tiles = ready.length;
   }
   cat.show();
-  status(pending ? (failures > 3 ? "Gaia server not answering; move to retry" : `loading Gaia stars… (${ready.length}/${pixes.length})`)
-    : `${stats.drawn.toLocaleString("en")} stars at 2026.0 · Gaia DR3 (ESA)`);
+  status(pending ? (failures > 3 ? T("ex.ss.down") : T("ex.ss.loading", { a: ready.length, b: pixes.length }))
+    : T("ex.ss.count", { n: stats.drawn.toLocaleString(iLang() === "tr" ? "tr-TR" : "en") }));
 }
 
 const api = {
