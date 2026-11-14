@@ -1,0 +1,8 @@
+{
+ "_note": "Extra target data blink.py needs that pipeline/targets.json does not carry. plx = parallax in mas; a 'plx' in targets.json takes precedence.",
+ "barnard":    {"plx": 546.976, "plx_source": "Gaia DR3 4472832130942575872 (546.976 +- 0.040 mas)"},
+ "eps_indi_b": {"plx": 270.658, "plx_source": "Gaia DR3 6412596012146801152 (270.658 +- 0.690 mas)"},
+ "wise0855":   {"plx": 439.0,   "plx_source": "Kirkpatrick et al. 2021, Spitzer (439.0 +- 2.4 mas); not in Gaia"},
+ "rw_aur":     {"plx": 5.454,   "plx_source": "Gaia DR3 156430817820015232 (5.454 +- 0.332 mas)"},
+ "r_dra":      {"plx": 1.251,   "plx_source": "Gaia DR3 1648328016354496384 (1.251 +- 0.065 mas)"}
+}

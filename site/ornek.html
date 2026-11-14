@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fazari Blink Preview</title>
+<style>
+  :root { --bg:#0b0d12; --fg:#e8eaf0; --mut:#9aa3b2; --acc:#ffb347; --card:#151925; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.45 system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; }
+  .sub { color: var(--mut); margin: 0 0 14px; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; background:var(--card);
+              padding:10px 12px; border-radius:8px; margin-bottom:10px; }
+  label { color: var(--mut); font-size: .9rem; }
+  select, button { font: inherit; background:#222838; color:var(--fg); border:1px solid #333b50;
+                   border-radius:6px; padding:4px 10px; }
+  button { cursor:pointer; min-width: 70px; }
+  .stage { position:relative; width:100%; aspect-ratio:720/770; background:#000; border-radius:6px; overflow:hidden; }
+  .zoom { position:absolute; inset:0; transition: transform .25s ease; }
+  .stage img { position:absolute; inset:0; width:100%; height:100%; image-rendering: pixelated; }
+  .stage svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .info { display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; margin:8px 0 14px; }
+  .date { font-size:1.15rem; color:var(--acc); font-variant-numeric: tabular-nums; }
+  .card { background:var(--card); border-radius:8px; padding:10px 12px; margin-top:10px; }
+  .card h2 { font-size: 1rem; margin: 0 0 6px; }
+  table { border-collapse: collapse; width:100%; font-size:.9rem; }
+  td, th { text-align:left; padding:3px 6px; border-bottom:1px solid #262c3c; }
+  .diff img { width:100%; image-rendering: pixelated; border-radius:6px; }
+  small { color: var(--mut); }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">SPHEREx blink</h1>
+  <p class="sub" id="subtitle">Loading meta.json ...</p>
+
+  <div class="controls">
+    <label>Wavelength <select id="wl"></select></label>
+    <button id="play">Pause</button>
+    <label>Frame time <input id="speed" type="range" min="150" max="2000" step="50" value="800"></label>
+    <span id="speedv" class="sub" style="margin:0">800 ms</span>
+    <label>Zoom <select id="zoom"><option value="1">1×</option><option value="2">2×</option><option value="3" selected>3×</option></select></label>
+    <label><input id="mark" type="checkbox" checked> Gaia marker</label>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="zoom" id="zoomer">
+      <img id="frame" alt="SPHEREx frame">
+      <svg id="ov" viewBox="0 0 720 770"></svg>
+    </div>
+  </div>
+  <div class="info">
+    <span class="date" id="date"></span>
+    <span id="detail" class="sub" style="margin:0"></span>
+  </div>
+
+  <div class="card">
+    <h2>Measured motion</h2>
+    <div id="measure"></div>
+  </div>
+  <div class="card diff">
+    <h2>Difference (last minus first season)</h2>
+    <img id="diff" alt="difference image">
+    <small>Red = later, blue = earlier. Stars that do not move cancel out.</small>
+  </div>
+  <p><small id="src"></small></p>
+</main>
+<script>
+const BASE = new URLSearchParams(location.search).get("data") || "data/barnard/";
+let meta, bin, idx = 0, timer = null, playing = true;
+const $ = id => document.getElementById(id);
+
+function show() {
+  const f = bin.frames[idx];
+  $("frame").src = BASE + f.file;
+  $("date").textContent = f.epoch + "  (" + f.date + ")";
+  $("detail").textContent = `${f.detectors.join("+")} · ${f.wavelength_um.toFixed(2)} µm · ${f.n_images} images stacked`;
+  drawMarker(f.epoch);
+}
+function pngSize() { return (meta.grid && meta.grid.png_px) || [720, 720]; }
+function applyZoom() {
+  // zoom around the target (mean predicted position over the seasons); the label strip on
+  // top of each PNG is cut off when zoomed, the date is shown below the image instead
+  const [W, H] = pngSize();
+  const z = +$("zoom").value;
+  const ps = (meta.measured && meta.measured.positions) || [];
+  let cx = W / 2, cy = (H + ((meta.grid && meta.grid.label_strip_px) || 0)) / 2;
+  if (ps.length) {
+    cx = ps.reduce((a, p) => a + p.png_xy_gaia[0], 0) / ps.length;
+    cy = ps.reduce((a, p) => a + p.png_xy_gaia[1], 0) / ps.length;
+  }
+  $("zoomer").style.transformOrigin = `${(100 * cx / W).toFixed(2)}% ${(100 * cy / H).toFixed(2)}%`;
+  $("zoomer").style.transform = `scale(${z})`;
+}
+function drawMarker(epoch) {
+  const ov = $("ov");
+  const [W, H] = pngSize();
+  ov.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  ov.innerHTML = "";
+  if (!$("mark").checked) return;
+  const p = (meta.measured.positions || []).find(q => q.epoch === epoch);
+  if (!p) return;
+  const [x, y] = p.png_xy_gaia;
+  const sw = 3 / +$("zoom").value;
+  // ring = where Gaia says the star is at this season; small cross = its exact centre
+  ov.innerHTML = `<circle cx="${x}" cy="${y}" r="34" fill="none" stroke="#ffb347" stroke-width="${sw}"/>` +
+    `<path d="M${x-6} ${y}H${x+6}M${x} ${y-6}V${y+6}" stroke="#ffb347" stroke-width="${sw}"/>`;
+}
+function tick() { idx = (idx + 1) % bin.frames.length; show(); }
+function restart() {
+  clearInterval(timer);
+  if (playing) timer = setInterval(tick, +$("speed").value);
+}
+function selectBin(i) {
+  bin = meta.wavelength_bins[i]; idx = 0;
+  $("diff").src = BASE + bin.diff;
+  show(); restart();
+}
+fetch(BASE + "meta.json").then(r => r.json()).then(m => {
+  meta = m;
+  const [W, H] = pngSize();
+  $("stage").style.aspectRatio = `${W} / ${H}`;
+  applyZoom();
+  $("title").textContent = m.target + " — SPHEREx blink";
+  $("subtitle").textContent = `Centre RA ${m.ra.toFixed(4)}°, Dec ${m.dec.toFixed(4)}° (epoch ${m.epoch_center}). ` +
+    `Background stars stay still; the target moves.`;
+  m.wavelength_bins.forEach((b, i) => {
+    const o = document.createElement("option");
+    o.value = i; o.textContent = b.wavelength_um.toFixed(1) + " µm (" + b.frames.length + " seasons)";
+    $("wl").appendChild(o);
+  });
+  const ms = m.measured || {};
+  let rows = (ms.positions || []).map(p =>
+    `<tr><td>${p.epoch}</td><td>${p.date}</td><td>${p.n_images}</td>` +
+    `<td>${p.minus_gaia_east_arcsec.toFixed(2)}", ${p.minus_gaia_north_arcsec.toFixed(2)}"</td></tr>`).join("");
+  let html = "";
+  if (ms.shift_arcsec != null) {
+    html += `<p>${ms.from_epoch} → ${ms.to_epoch}: moved <b>${ms.shift_arcsec.toFixed(2)}"</b> toward PA ${ms.pa_deg.toFixed(0)}°. ` +
+      `Gaia predicts <b>${ms.gaia_predicted_arcsec.toFixed(2)}"</b> toward PA ${ms.gaia_pa_deg.toFixed(0)}°.` +
+      (ms.same_orientation === false ? ` <small>(seasons seen with the telescope turned 180°)</small>` : "") + `</p>`;
+  }
+  if (ms.fit) {
+    html += `<p><small>Proper motion from ${ms.fit.n_used} images: ${ms.fit.pmra_mas_yr.toFixed(0)} ± ${ms.fit.pmra_err_mas_yr.toFixed(0)}, ` +
+      `${ms.fit.pmdec_mas_yr.toFixed(0)} ± ${ms.fit.pmdec_err_mas_yr.toFixed(0)} mas/yr (Gaia ${ms.fit.gaia_pmra_mas_yr.toFixed(0)}, ${ms.fit.gaia_pmdec_mas_yr.toFixed(0)}).</small></p>`;
+  }
+  if (rows) html += `<table><tr><th>Season</th><th>Mean date</th><th>Images</th><th>Measured − Gaia (E, N)</th></tr>${rows}</table>`;
+  if (rows && ms.positions.some(p => p.bias_corrected) && ms.same_orientation === true)
+    html += `<small>Positions corrected for a small detector-fixed centroid bias of the saturated star; ` +
+    `the main result above uses two seasons seen in the same orientation, where that bias cancels.</small>`;
+  if (ms.note) html += `<p><small>${ms.note}</small></p>`;
+  $("measure").innerHTML = html;
+  $("src").textContent = "Data: " + m.data_source + ". Generated " + m.generated + ".";
+  selectBin(0);
+}).catch(e => { $("subtitle").textContent = "Could not load " + BASE + "meta.json (" + e + "). Serve this folder with: python -m http.server"; });
+
+$("wl").onchange = e => selectBin(+e.target.value);
+$("play").onclick = () => { playing = !playing; $("play").textContent = playing ? "Pause" : "Play"; restart(); };
+$("speed").oninput = e => { $("speedv").textContent = e.target.value + " ms"; restart(); };
+$("mark").onchange = () => show();
+$("zoom").onchange = () => { applyZoom(); show(); };
+</script>
+</body>
+</html>
