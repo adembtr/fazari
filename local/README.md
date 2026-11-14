@@ -45,10 +45,10 @@ preview is queued or running the full job starts no new image download (flag fil
 2. **selection** (not for local targets, which use all their cutouts): per observing season and per
    single-detector wavelength bin (1.0 D1, 1.5 D2, 2.0 D3, 3.0 D4, 4.0 D5, 4.6 D6 um), the `cap` exposures
    closest to the bin centre; bins seen in fewer than 2 seasons are skipped.
-3. **downloading**: cutouts of `FULL_CUTOUT_DEG` = 0.4 deg (`local/serve.py`; request option `cutout_deg`)
+3. **downloading**: cutouts of `FULL_CUTOUT_DEG` = 0.2 deg (`local/serve.py`; request option `cutout_deg`)
    are read from the public SPHEREx S3 bucket with HTTP Range (`pipeline/fetch_region.py`, at most 4
-   requests in flight, User-Agent `fazari-spaceapps/1.0`), about 7 MB per image (0.2 deg: about 3.6 MB).
-   0.4 deg holds 4-6x the Gaia reference stars and halves the field-calibration error
+   requests in flight, User-Agent `fazari-spaceapps/1.0`), about 3.6 MB per image (0.4 deg: about 7 MB).
+   0.2 deg is the default for the fastest first result; 0.4 deg (on request) holds 4-6x the Gaia reference stars and halves the field-calibration error
    (`pipeline/ACCURACY.md`). The EPSF extension (same for every file of a detector) is cached once per
    calibration. The challenge targets use their local cutouts: `../veri/real_spherex_<size>/` if it has
    that size (`pipeline/download.py --size`), else the 0.2 deg ones (no multi-GB download on a click).
@@ -92,7 +92,7 @@ and its status shows `post_pending: {steps, state}` meanwhile. Without the cutou
   `bins` subset of `[1.0, 1.5, 2.0, 3.0, 4.0, 4.6]` (default all); `cap` 1..30 exposures per season and bin
   (default 6). Optional: `pmra`, `pmdec` (mas/yr), `epoch` (Julian year), `parallax`
   (mas, 0..2000; the explorer sends it for category points and fast stars), `kind` (`motion`|`brightness`), `force`.
-- `cutout_deg`: cutout size of a full job, one of 0.2, 0.3, 0.4, 0.5, 0.6 (default `FULL_CUTOUT_DEG` = 0.4).
+- `cutout_deg`: cutout size of a full job, one of 0.2, 0.3, 0.4, 0.5, 0.6 (default `FULL_CUTOUT_DEG` = 0.2).
   It is part of the job id (`...-s0.4`; 0.2 deg ids have no tag, as before) and of the cutout store
   (`cache/local/cutouts/<point>-s0.4/`), so sizes never mix. Previews keep their own small region.
   In the explorer the user picks it with the Field selector on the place card (`?fov=0.3` in the

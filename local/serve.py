@@ -82,11 +82,12 @@ EST_POST_S = 180.0                # the post-steps of a full job (spectrum ~10 s
 
 BINS_ALL = [1.0, 1.5, 2.0, 3.0, 4.0, 4.6]
 CAP_DEFAULT, CAP_MIN, CAP_MAX = 6, 1, 30
-# Cutout size of FULL results (degrees). 0.4 deg holds ~4-6x the Gaia reference stars of 0.2 deg and
-# halves the field-calibration error (pipeline/ACCURACY.md). The preview keeps its own small region
-# (local/preview.py REGION_DEG). The size is part of the job id and of the cutout store, so products
-# of different sizes never mix; 0.2 deg jobs keep their old ids (no size tag).
-FULL_CUTOUT_DEG = 0.4
+# Cutout size of FULL results (degrees). Default 0.2 deg (14 November 2026): the smallest download and
+# the fastest first result. 0.3-0.6 deg stay on request ("cutout_deg"); 0.4 deg holds ~4-6x the Gaia
+# reference stars of 0.2 deg and halves the field-calibration error (pipeline/ACCURACY.md). The preview
+# keeps its own small region (local/preview.py REGION_DEG). The size is part of the job id and of the
+# cutout store, so products of different sizes never mix; 0.2 deg jobs keep their old ids (no size tag).
+FULL_CUTOUT_DEG = 0.2
 LEGACY_CUTOUT_DEG = 0.2           # the local IRSA cutouts (../veri/real_spherex) and jobs made before
 CUTOUT_CHOICES = (0.2, 0.3, 0.4, 0.5, 0.6)   # allowed "cutout_deg" in POST /api/jobs
 MATCH_ARCSEC = 60.0               # a posted point this close to a known target is that target

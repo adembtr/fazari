@@ -111,7 +111,7 @@ export function runLocalPreviewJob({ ra, dec, name, pmra, pmdec, epoch, parallax
         ...(pmra != null && pmdec != null && epoch != null ? { pmra, pmdec, epoch } : {}),
         ...(parallax > 0 ? { parallax } : {}),                     // mas, known distance (nearby star)
         ...(force ? { force: true } : {}),
-        ...(fov ? { cutout_deg: fov } : {}),                       // field of the full result (0.2-0.6 deg; else 0.4)
+        ...(fov ? { cutout_deg: fov } : {}),                       // field of the full result (0.2-0.6 deg; else 0.2)
         preview: true,
       }),
     });

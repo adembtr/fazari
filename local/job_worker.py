@@ -52,7 +52,7 @@ BIN_TOL = 0.06                    # blink.py tolerance (+-6 %)
 SELECT_TOL = 0.055                # a bit tighter: the index wavelength is an approximation
 EPOCH_GAP_DAYS = 30               # season separator, as in blink.py
 CUTOUT_DEG = 0.2                  # cutout size when request.json has no "cutout_deg" (older jobs); the
-                                  # server sets it (local/serve.py FULL_CUTOUT_DEG, 0.4 for full results)
+                                  # server sets it (local/serve.py FULL_CUTOUT_DEG, 0.2 by default)
 IMAGE_WORKERS = 6                 # images in parallel (S3 test: no 429/5xx up to 128 requests in flight)
 S3_HTTP_SLOTS = int(os.environ.get("FAZARI_S3_SLOTS") or 12)               # requests in flight for the S3 downloads (fetch_region's polite 4 stays for IRSA)
 PRIORITY_DETECTORS = (3, 6)       # 2.0 and 4.6 um first: the blink fills those bins early

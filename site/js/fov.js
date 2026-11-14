@@ -1,7 +1,7 @@
 // Field of view (FOV) of a full result: the choices, the URL parameter and a rough cost estimate.
 // Used by the explorer (explore/fov_ui.js) and sky.html (js/app.js).
 //
-//   ?fov=0.3   field width in degrees; absent = the engine's default (local 0.4, browser 0.15)
+//   ?fov=0.3   field width in degrees; absent = the engine's default (local 0.2, browser 0.15)
 //
 // Local Python engine: cutout_deg of POST /api/jobs (0.2-0.6, local/serve.py CUTOUT_CHOICES); each
 // size has its own job id (-s0.3), cutout store and products, so sizes never overwrite each other.
@@ -10,7 +10,9 @@
 // The quick preview keeps its small 0.1 deg field in both engines.
 //
 // The estimate follows timing runs on the team's computer (14 November 2026, home connection):
-//   local, 0.4 deg (default): 314 MB for 94 images, full result in 162 s (download 136 s at ~2.3 MB/s,
+//   local, 0.2 deg (default): 160 MB for 93 images, full result in 67 s (download 55 s at ~2.9 MB/s, blink.py
+//     11 s; fresh point RA 210.0 Dec -5.0, nothing cached, 14 November 23:36, sparse VARIANCE/ZODI reader);
+//   local, 0.4 deg: 314 MB for 94 images, full result in 162 s (download 136 s at ~2.3 MB/s,
 //     blink.py 26 s; independent test run, 14 November 22:30, sparse VARIANCE/ZODI reader; before it 541 MB,
 //     ~4 min); bytes grow with the field width (only the rows of the field are read).
 //   browser, 0.15 deg (default), desktop: ~100 MB (default sky.html run, sparse ZODI reader; two headless runs on the
@@ -19,11 +21,11 @@
 import { t, num } from "./i18n.js";
 
 export const FOV_CHOICES = { local: [0.2, 0.3, 0.4, 0.5, 0.6], browser: [0.15, 0.2, 0.3, 0.4, 0.5, 0.6] };
-export const FOV_DEFAULT = { local: 0.4, browser: 0.15 };
+export const FOV_DEFAULT = { local: 0.2, browser: 0.15 };
 export const FOV_PHONE_MAX = 0.3;
 export const PREVIEW_FOV = 0.1;
 
-const LOCAL = { mb04: 314, min04: 2.7 };
+const LOCAL = { mb02: 160, min02: 1.1, mb04: 314, min04: 2.7 };
 const BROWSER = { mb015: 100, min015: 2, phoneMb015: 25, phoneSec015: [20, 40] };
 
 /** ?fov= of a URL search string as a number, or null when absent/invalid. */
@@ -44,6 +46,10 @@ export function fovFor(kind, fov, { phone = false } = {}) {
 export function fovEstimate(kind, fov, { phone = false, saved = false } = {}) {
   if (kind === "local") {
     if (saved) return { mb: 0, min: 2, saved: true };            // Barnard, 358 saved cutouts: about 2 min (113 s measured, blink.py 68 s)
+    if (fov <= 0.4) {                                             // between the two measured sizes: straight line
+      const f = (fov - 0.2) / 0.2;
+      return { mb: LOCAL.mb02 + (LOCAL.mb04 - LOCAL.mb02) * f, min: LOCAL.min02 + (LOCAL.min04 - LOCAL.min02) * f };
+    }
     const k = fov / 0.4;
     return { mb: LOCAL.mb04 * k, min: LOCAL.min04 * (0.85 * k + 0.15 * k * k) };
   }
