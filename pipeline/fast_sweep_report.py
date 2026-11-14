@@ -23,14 +23,50 @@ def stats(rows):
     pct = np.array([r["diff"]["pct"] for r in m])
     ab = np.array([r["diff"]["abs_mas_yr"] for r in m]) / 1000
     err = np.array([math.hypot(r["eE"], r["eN"]) / math.sqrt(2) for r in m]) / 1000
+    chi2 = np.array([r["diff"]["chi2"] for r in m])
     return {"n": len(m),
             "median_abs_diff_pct": round(_q(pct, 50), 2), "p90_abs_diff_pct": round(_q(pct, 90), 2),
             "median_abs_diff_arcsec_yr": round(_q(ab, 50), 4), "p90_abs_diff_arcsec_yr": round(_q(ab, 90), 4),
             "frac_within_1sigma": round(float(np.mean([r["diff"]["within1"] for r in m])), 3),
             "frac_within_2sigma": round(float(np.mean([r["diff"]["within2"] for r in m])), 3),
             "frac_within_3sigma_pass": round(float(np.mean([r["diff"]["pass3"] for r in m])), 3),
+            "n_within_1_2_3sigma": [int(sum(r["diff"][k] for r in m)) for k in ("within1", "within2", "pass3")],
+            "median_chi2_2d": round(_q(chi2, 50), 3),
+            # median chi2 of a correct 2-D error ellipse = 1.386; ratio > 1: error bars too small, < 1: too large
+            "error_scale_from_median_chi2": round(math.sqrt(_q(chi2, 50) / EXPECT_MEDIAN_CHI2), 3),
             "median_error_arcsec_yr_per_axis": round(_q(err, 50), 4),
             "min_motion_5sigma_arcsec_yr": round(5 * _q(err, 50), 3)}
+
+
+EXPECT = {"1sigma": 0.683, "2sigma": 0.954, "3sigma": 0.997}      # 2-D chi2 <= 2.30 / 6.18 / 11.83
+EXPECT_MEDIAN_CHI2 = 1.386                                        # median of chi2 with 2 dof
+
+
+def error_bar_check(st):
+    """Observed vs expected number within 1 / 2 / 3 sigma, with the binomial spread of the expectation."""
+    n = st.get("n") or 0
+    if not n:
+        return None
+    out = {}
+    for (k, p), obs in zip(EXPECT.items(), st["n_within_1_2_3sigma"]):
+        out[k] = {"observed": obs, "expected": round(n * p, 1), "binomial_sd": round(math.sqrt(n * p * (1 - p)), 1),
+                  "z": round((obs - n * p) / math.sqrt(n * p * (1 - p)), 2)}
+    return out
+
+
+def gaia_source(r, s):
+    """Service that served the star's Gaia DR3 field rows: IRSA TAP (the code's own query) or the ESA Gaia
+    Archive fallback (frozen launcher v3, 14 Nov 20:41; same rows, see FAST_SWEEP.md)."""
+    src = r.get("gaia_rows_source")
+    if not src:
+        p = FS.CACHE / "gaia" / s["sid"] / "gaia_field.json"
+        try:
+            src = json.loads(p.read_text()).get("source") if p.exists() else None
+        except (OSError, ValueError):
+            src = None
+    if not src:
+        return ""
+    return "ESA" if "ESA" in src else ("IRSA" if "IRSA" in src else src)
 
 
 def flags_of(r):
@@ -72,7 +108,7 @@ def report(a):
             "pair_from", "pair_to", "pair_dt_yr", "pair_shift_arcsec", "pair_shift_err_arcsec", "pair_pa_deg",
             "pair_speed_arcsec_yr", "pair_diff_pct", "independence_pull", "saturated", "flags", "status", "reason",
             "n_exposures", "n_seasons", "ref_stars_per_exposure", "registration_own_frac", "box_deg", "k_per_det_season",
-            "mb_read", "code_version"]
+            "mb_read", "gaia_rows_source", "code_version"]
     led0 = json.loads((FS.CACHE / "ledger.json").read_text())
     sid_bytes = {}
     for e in led0["entries"]:
@@ -116,7 +152,7 @@ def report(a):
             "ref_stars_per_exposure": f(r.get("n_ref_in_box_median"), 1),
             "registration_own_frac": f((r.get("reg") or {}).get("frac_own"), 3),
             "box_deg": a.box, "k_per_det_season": a.k, "mb_read": round(sid_bytes.get(s["sid"], 0) / 1e6, 2),
-            "code_version": r.get("code_version")})
+            "gaia_rows_source": gaia_source(r, s), "code_version": r.get("code_version")})
     with open(OUT / "stars.csv", "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=cols)
         w.writeheader()
@@ -139,8 +175,10 @@ def report(a):
     for e in led["entries"]:
         per_sid[e["sid"]] = per_sid.get(e["sid"], 0) + e["bytes"]
     pair_ok = [r for r in m if r.get("pair")]
-    status = (f"interim: {len(attempted)} of {len(S)} pre-registered stars (target 100), sweep continuing"
-              if len(attempted) < len(S) else "final")
+    status = (f"interim: {len(attempted)} of {len(S)} pre-registered stars, sweep continuing"
+              if len(attempted) < len(S) else
+              f"final: {len(attempted)} of {len(S)} pre-registered stars attempted, {len(m)} measured, "
+              f"{len(attempted) - len(m)} failed")
     summ = {
         "status": status,
         "built": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
@@ -149,9 +187,15 @@ def report(a):
         "preregistered": "pipeline/FAST_SWEEP.md (rule written 2026-11-14 17:06 +03 before any measurement)",
         "box_deg": a.box, "k_exposures_per_detector_per_season": a.k,
         "code_version": cv["tag"], "code_files_sha1": cv["files"], "versions_in_table": versions,
+        "sweep_script_note": ("stars 1-14 ran with fast_sweep.py sha1 121da536ab (edited 2 min after that run started), "
+                              "stars 15-90 with 4b3e306b49 (commit 522d3ab, frozen copy); the core (measuring) files are "
+                              "identical (tag above) and star 1 re-measured with 4b3e306b49 reproduces its stored "
+                              "result bit for bit"),
+        "expected_fraction_within": EXPECT,
+        "gaia_rows_source_counts": {k: sum(1 for r in attempted if gaia_source(r, r["_s"]) == k) for k in ("IRSA", "ESA", "")},
         "sample_size": len(S), "attempted": len(attempted), "measured": len(m), "failed": len(attempted) - len(m),
         "failures": fails,
-        "all": stats(m), "clean_no_flags": clean, "saturated": sat, "not_saturated": uns, "by_speed_class": by_class,
+        "all": stats(m), "error_bar_check_all": error_bar_check(stats(m)), "clean_no_flags": clean, "saturated": sat, "not_saturated": uns, "by_speed_class": by_class,
         "fastest_set": stats([r for r in m if r["_s"]["set"] == "F"]),
         "random_set": stats([r for r in m if r["_s"]["set"] == "R"]),
         "same_orientation_pair": {"n": len(pair_ok),
@@ -188,7 +232,7 @@ def report(a):
             g = np.array([p["gaia"] for p in P]); y = np.array([p["meas"] for p in P]); e = np.array([p["err"] for p in P])
             a1.errorbar(g, y, yerr=e, fmt="o", ms=3.5, color=c, label=lab, lw=0.8)
             a2.errorbar(g, 100 * (y / g - 1), yerr=100 * e / g, fmt="o", ms=3.5, color=c, lw=0.8)
-        lim = [0.4, 12]
+        lim = [0.25, 12]
         a1.plot(lim, lim, color="#888", lw=0.8, zorder=0)
         a1.set_xscale("log"); a1.set_yscale("log"); a1.set_xlim(lim); a1.set_ylim(lim)
         a1.set_xlabel("Gaia DR3 proper motion (arcsec/yr)"); a1.set_ylabel("SPHEREx measured (arcsec/yr)")

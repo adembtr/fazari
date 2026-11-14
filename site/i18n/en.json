@@ -1469,7 +1469,7 @@
  "gr.v.fig1": "targets measured: for {m} of {n} moving stars our measured motion agrees with the catalogue within 3σ (see the table), and the brightness change of {b} variable stars is measured.",
  "gr.v.of": "{a} of {b}",
  "gr.v.fig2": "known asteroids brighter than magnitude {v} found without being told where to look; median position difference {d}″.",
- "gr.v.fig3": "fast stars checked against Gaia DR3 so far agree within 3σ (median difference {p} %); {k} were chosen in advance.",
+ "gr.v.fig3": "fast stars checked against Gaia DR3 agree within 3σ (median difference {p} %); all {k} were chosen in advance.",
  "gr.v.two": "Two kinds of Barnard number: the speed per year ({v} ± {e} in our fit of all images, {bv} ± {be} in the blind search {id}; Gaia DR3: {p}) and the shift between two seasons {dt} yr apart ({s}), which also holds Earth's yearly parallax wobble.",
  "gr.v.twoNoTest": "Two kinds of Barnard number: the speed per year ({v} ± {e} in our fit of all images; Gaia DR3: {p}) and the shift between two seasons {dt} yr apart ({s}), which also holds Earth's yearly parallax wobble.",
  "gr.v.what": "Speed per year (fit of all images)",

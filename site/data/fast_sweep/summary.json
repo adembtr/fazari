@@ -1,6 +1,6 @@
 {
- "status": "interim: 14 of 90 pre-registered stars (target 100), sweep continuing",
- "built": "2026-11-14T18:09:57+0300",
+ "status": "final: 90 of 90 pre-registered stars attempted, 86 measured, 4 failed",
+ "built": "2026-11-15T01:43:58+0300",
  "what": "Proper motions of Gaia DR3 fast stars measured in SPHEREx images (detector B path, Gaia-registered on the other stars of the box) compared with Gaia DR3",
  "preregistered": "pipeline/FAST_SWEEP.md (rule written 2026-11-14 17:06 +03 before any measurement)",
  "box_deg": 0.12,
@@ -15,166 +15,283 @@
   "data.py": "3c7c14f713",
   "run.py": "e83d9f9b17",
   "blink.py": "756bee0dcc",
-  "fast_sweep.py": "121da536ab"
+  "fast_sweep.py": "4b3e306b49"
  },
  "versions_in_table": [
   "1370ca11c5"
  ],
+ "sweep_script_note": "stars 1-14 ran with fast_sweep.py sha1 121da536ab (edited 2 min after that run started), stars 15-90 with 4b3e306b49 (commit 522d3ab, frozen copy); the core (measuring) files are identical (tag above) and star 1 re-measured with 4b3e306b49 reproduces its stored result bit for bit",
+ "expected_fraction_within": {
+  "1sigma": 0.683,
+  "2sigma": 0.954,
+  "3sigma": 0.997
+ },
+ "gaia_rows_source_counts": {
+  "IRSA": 15,
+  "ESA": 75,
+  "": 0
+ },
  "sample_size": 90,
- "attempted": 14,
- "measured": 14,
- "failed": 0,
- "failures": {},
+ "attempted": 90,
+ "measured": 86,
+ "failed": 4,
+ "failures": {
+  "no drift fit": [
+   "HD 125455B",
+   "omi02 Eri B",
+   "EGGR 536"
+  ],
+  "target not in the Gaia field list": [
+   "2MASS J05325346+8246465"
+  ]
+ },
  "all": {
-  "n": 14,
-  "median_abs_diff_pct": 6.07,
-  "p90_abs_diff_pct": 16.96,
-  "median_abs_diff_arcsec_yr": 0.2241,
-  "p90_abs_diff_arcsec_yr": 0.4584,
-  "frac_within_1sigma": 0.714,
-  "frac_within_2sigma": 0.929,
-  "frac_within_3sigma_pass": 1.0,
-  "median_error_arcsec_yr_per_axis": 0.1385,
-  "min_motion_5sigma_arcsec_yr": 0.692
+  "n": 86,
+  "median_abs_diff_pct": 7.1,
+  "p90_abs_diff_pct": 25.23,
+  "median_abs_diff_arcsec_yr": 0.1662,
+  "p90_abs_diff_arcsec_yr": 0.5095,
+  "frac_within_1sigma": 0.605,
+  "frac_within_2sigma": 0.837,
+  "frac_within_3sigma_pass": 0.942,
+  "n_within_1_2_3sigma": [
+   52,
+   72,
+   81
+  ],
+  "median_chi2_2d": 1.397,
+  "error_scale_from_median_chi2": 1.004,
+  "median_error_arcsec_yr_per_axis": 0.1286,
+  "min_motion_5sigma_arcsec_yr": 0.643
+ },
+ "error_bar_check_all": {
+  "1sigma": {
+   "observed": 52,
+   "expected": 58.7,
+   "binomial_sd": 4.3,
+   "z": -1.56
+  },
+  "2sigma": {
+   "observed": 72,
+   "expected": 82.0,
+   "binomial_sd": 1.9,
+   "z": -5.17
+  },
+  "3sigma": {
+   "observed": 81,
+   "expected": 85.7,
+   "binomial_sd": 0.5,
+   "z": -9.35
+  }
  },
  "clean_no_flags": {
-  "n": 3,
-  "median_abs_diff_pct": 7.46,
-  "p90_abs_diff_pct": 34.91,
-  "median_abs_diff_arcsec_yr": 0.0532,
-  "p90_abs_diff_arcsec_yr": 0.2803,
-  "frac_within_1sigma": 1.0,
-  "frac_within_2sigma": 1.0,
-  "frac_within_3sigma_pass": 1.0,
-  "median_error_arcsec_yr_per_axis": 0.0906,
-  "min_motion_5sigma_arcsec_yr": 0.453
+  "n": 36,
+  "median_abs_diff_pct": 9.45,
+  "p90_abs_diff_pct": 44.36,
+  "median_abs_diff_arcsec_yr": 0.1481,
+  "p90_abs_diff_arcsec_yr": 0.746,
+  "frac_within_1sigma": 0.583,
+  "frac_within_2sigma": 0.806,
+  "frac_within_3sigma_pass": 0.917,
+  "n_within_1_2_3sigma": [
+   21,
+   29,
+   33
+  ],
+  "median_chi2_2d": 1.769,
+  "error_scale_from_median_chi2": 1.13,
+  "median_error_arcsec_yr_per_axis": 0.0975,
+  "min_motion_5sigma_arcsec_yr": 0.487
  },
  "saturated": {
-  "n": 8,
-  "median_abs_diff_pct": 3.21,
-  "p90_abs_diff_pct": 14.05,
-  "median_abs_diff_arcsec_yr": 0.2529,
-  "p90_abs_diff_arcsec_yr": 0.5481,
-  "frac_within_1sigma": 0.5,
-  "frac_within_2sigma": 0.875,
-  "frac_within_3sigma_pass": 1.0,
-  "median_error_arcsec_yr_per_axis": 0.1631,
-  "min_motion_5sigma_arcsec_yr": 0.815
+  "n": 33,
+  "median_abs_diff_pct": 5.28,
+  "p90_abs_diff_pct": 16.27,
+  "median_abs_diff_arcsec_yr": 0.2171,
+  "p90_abs_diff_arcsec_yr": 0.4293,
+  "frac_within_1sigma": 0.636,
+  "frac_within_2sigma": 0.879,
+  "frac_within_3sigma_pass": 0.97,
+  "n_within_1_2_3sigma": [
+   21,
+   29,
+   32
+  ],
+  "median_chi2_2d": 1.364,
+  "error_scale_from_median_chi2": 0.992,
+  "median_error_arcsec_yr_per_axis": 0.1445,
+  "min_motion_5sigma_arcsec_yr": 0.722
  },
  "not_saturated": {
-  "n": 6,
-  "median_abs_diff_pct": 8.66,
-  "p90_abs_diff_pct": 28.78,
-  "median_abs_diff_arcsec_yr": 0.0797,
-  "p90_abs_diff_arcsec_yr": 0.2702,
-  "frac_within_1sigma": 1.0,
-  "frac_within_2sigma": 1.0,
-  "frac_within_3sigma_pass": 1.0,
-  "median_error_arcsec_yr_per_axis": 0.0952,
-  "min_motion_5sigma_arcsec_yr": 0.476
+  "n": 53,
+  "median_abs_diff_pct": 8.72,
+  "p90_abs_diff_pct": 37.47,
+  "median_abs_diff_arcsec_yr": 0.1441,
+  "p90_abs_diff_arcsec_yr": 0.5812,
+  "frac_within_1sigma": 0.585,
+  "frac_within_2sigma": 0.811,
+  "frac_within_3sigma_pass": 0.925,
+  "n_within_1_2_3sigma": [
+   31,
+   43,
+   49
+  ],
+  "median_chi2_2d": 1.657,
+  "error_scale_from_median_chi2": 1.094,
+  "median_error_arcsec_yr_per_axis": 0.0942,
+  "min_motion_5sigma_arcsec_yr": 0.471
  },
  "by_speed_class": {
   "0.5-0.7": {
-   "n": 2,
-   "median_abs_diff_pct": 9.72,
-   "p90_abs_diff_pct": 14.57,
-   "median_abs_diff_arcsec_yr": 0.0533,
-   "p90_abs_diff_arcsec_yr": 0.0773,
-   "frac_within_1sigma": 1.0,
-   "frac_within_2sigma": 1.0,
-   "frac_within_3sigma_pass": 1.0,
-   "median_error_arcsec_yr_per_axis": 0.0796,
-   "min_motion_5sigma_arcsec_yr": 0.398
+   "n": 9,
+   "median_abs_diff_pct": 19.75,
+   "p90_abs_diff_pct": 27.3,
+   "median_abs_diff_arcsec_yr": 0.1121,
+   "p90_abs_diff_arcsec_yr": 0.1675,
+   "frac_within_1sigma": 0.667,
+   "frac_within_2sigma": 0.889,
+   "frac_within_3sigma_pass": 0.889,
+   "n_within_1_2_3sigma": [
+    6,
+    8,
+    8
+   ],
+   "median_chi2_2d": 0.912,
+   "error_scale_from_median_chi2": 0.811,
+   "median_error_arcsec_yr_per_axis": 0.0921,
+   "min_motion_5sigma_arcsec_yr": 0.461
   },
   "0.7-1": {
-   "n": 2,
-   "median_abs_diff_pct": 24.62,
-   "p90_abs_diff_pct": 38.35,
-   "median_abs_diff_arcsec_yr": 0.1951,
-   "p90_abs_diff_arcsec_yr": 0.3087,
-   "frac_within_1sigma": 1.0,
-   "frac_within_2sigma": 1.0,
+   "n": 10,
+   "median_abs_diff_pct": 23.8,
+   "p90_abs_diff_pct": 38.58,
+   "median_abs_diff_arcsec_yr": 0.2005,
+   "p90_abs_diff_arcsec_yr": 0.3061,
+   "frac_within_1sigma": 0.6,
+   "frac_within_2sigma": 0.9,
    "frac_within_3sigma_pass": 1.0,
-   "median_error_arcsec_yr_per_axis": 0.3504,
-   "min_motion_5sigma_arcsec_yr": 1.752
+   "n_within_1_2_3sigma": [
+    6,
+    9,
+    10
+   ],
+   "median_chi2_2d": 1.971,
+   "error_scale_from_median_chi2": 1.193,
+   "median_error_arcsec_yr_per_axis": 0.1275,
+   "min_motion_5sigma_arcsec_yr": 0.638
   },
   "1-2": {
-   "n": 1,
-   "median_abs_diff_pct": 4.69,
-   "p90_abs_diff_pct": 4.69,
-   "median_abs_diff_arcsec_yr": 0.0761,
-   "p90_abs_diff_arcsec_yr": 0.0761,
-   "frac_within_1sigma": 1.0,
-   "frac_within_2sigma": 1.0,
-   "frac_within_3sigma_pass": 1.0,
-   "median_error_arcsec_yr_per_axis": 0.0902,
-   "min_motion_5sigma_arcsec_yr": 0.451
+   "n": 9,
+   "median_abs_diff_pct": 8.25,
+   "p90_abs_diff_pct": 127.87,
+   "median_abs_diff_arcsec_yr": 0.0946,
+   "p90_abs_diff_arcsec_yr": 1.4873,
+   "frac_within_1sigma": 0.889,
+   "frac_within_2sigma": 0.889,
+   "frac_within_3sigma_pass": 0.889,
+   "n_within_1_2_3sigma": [
+    8,
+    8,
+    8
+   ],
+   "median_chi2_2d": 0.671,
+   "error_scale_from_median_chi2": 0.696,
+   "median_error_arcsec_yr_per_axis": 0.1414,
+   "min_motion_5sigma_arcsec_yr": 0.707
   },
   "2-4": {
-   "n": 2,
-   "median_abs_diff_pct": 13.67,
-   "p90_abs_diff_pct": 16.71,
-   "median_abs_diff_arcsec_yr": 0.2847,
-   "p90_abs_diff_arcsec_yr": 0.3497,
-   "frac_within_1sigma": 1.0,
-   "frac_within_2sigma": 1.0,
-   "frac_within_3sigma_pass": 1.0,
-   "median_error_arcsec_yr_per_axis": 0.2315,
-   "min_motion_5sigma_arcsec_yr": 1.158
+   "n": 42,
+   "median_abs_diff_pct": 6.17,
+   "p90_abs_diff_pct": 17.44,
+   "median_abs_diff_arcsec_yr": 0.1849,
+   "p90_abs_diff_arcsec_yr": 0.4431,
+   "frac_within_1sigma": 0.571,
+   "frac_within_2sigma": 0.786,
+   "frac_within_3sigma_pass": 0.929,
+   "n_within_1_2_3sigma": [
+    24,
+    33,
+    39
+   ],
+   "median_chi2_2d": 1.713,
+   "error_scale_from_median_chi2": 1.112,
+   "median_error_arcsec_yr_per_axis": 0.1127,
+   "min_motion_5sigma_arcsec_yr": 0.564
   },
   ">4": {
-   "n": 7,
-   "median_abs_diff_pct": 3.15,
-   "p90_abs_diff_pct": 10.81,
-   "median_abs_diff_arcsec_yr": 0.2385,
-   "p90_abs_diff_arcsec_yr": 0.5648,
-   "frac_within_1sigma": 0.429,
-   "frac_within_2sigma": 0.857,
+   "n": 16,
+   "median_abs_diff_pct": 3.97,
+   "p90_abs_diff_pct": 14.26,
+   "median_abs_diff_arcsec_yr": 0.2272,
+   "p90_abs_diff_arcsec_yr": 0.7268,
+   "frac_within_1sigma": 0.5,
+   "frac_within_2sigma": 0.875,
    "frac_within_3sigma_pass": 1.0,
-   "median_error_arcsec_yr_per_axis": 0.1401,
-   "min_motion_5sigma_arcsec_yr": 0.701
+   "n_within_1_2_3sigma": [
+    8,
+    14,
+    16
+   ],
+   "median_chi2_2d": 1.936,
+   "error_scale_from_median_chi2": 1.182,
+   "median_error_arcsec_yr_per_axis": 0.177,
+   "min_motion_5sigma_arcsec_yr": 0.885
   }
  },
  "fastest_set": {
-  "n": 7,
-  "median_abs_diff_pct": 3.15,
-  "p90_abs_diff_pct": 10.81,
-  "median_abs_diff_arcsec_yr": 0.2385,
-  "p90_abs_diff_arcsec_yr": 0.5648,
-  "frac_within_1sigma": 0.429,
-  "frac_within_2sigma": 0.857,
-  "frac_within_3sigma_pass": 1.0,
-  "median_error_arcsec_yr_per_axis": 0.1401,
-  "min_motion_5sigma_arcsec_yr": 0.701
+  "n": 48,
+  "median_abs_diff_pct": 5.24,
+  "p90_abs_diff_pct": 16.3,
+  "median_abs_diff_arcsec_yr": 0.1935,
+  "p90_abs_diff_arcsec_yr": 0.6168,
+  "frac_within_1sigma": 0.542,
+  "frac_within_2sigma": 0.792,
+  "frac_within_3sigma_pass": 0.938,
+  "n_within_1_2_3sigma": [
+   26,
+   38,
+   45
+  ],
+  "median_chi2_2d": 1.635,
+  "error_scale_from_median_chi2": 1.086,
+  "median_error_arcsec_yr_per_axis": 0.1363,
+  "min_motion_5sigma_arcsec_yr": 0.681
  },
  "random_set": {
-  "n": 7,
-  "median_abs_diff_pct": 9.87,
-  "p90_abs_diff_pct": 27.19,
-  "median_abs_diff_arcsec_yr": 0.0833,
-  "p90_abs_diff_arcsec_yr": 0.3486,
-  "frac_within_1sigma": 1.0,
-  "frac_within_2sigma": 1.0,
-  "frac_within_3sigma_pass": 1.0,
-  "median_error_arcsec_yr_per_axis": 0.0998,
-  "min_motion_5sigma_arcsec_yr": 0.499
+  "n": 38,
+  "median_abs_diff_pct": 14.24,
+  "p90_abs_diff_pct": 39.29,
+  "median_abs_diff_arcsec_yr": 0.1305,
+  "p90_abs_diff_arcsec_yr": 0.3457,
+  "frac_within_1sigma": 0.684,
+  "frac_within_2sigma": 0.895,
+  "frac_within_3sigma_pass": 0.947,
+  "n_within_1_2_3sigma": [
+   26,
+   34,
+   36
+  ],
+  "median_chi2_2d": 1.085,
+  "error_scale_from_median_chi2": 0.885,
+  "median_error_arcsec_yr_per_axis": 0.1189,
+  "min_motion_5sigma_arcsec_yr": 0.594
  },
  "same_orientation_pair": {
-  "n": 14,
-  "median_abs_diff_pct": 3.37,
-  "frac_within_2sigma": 0.857
+  "n": 86,
+  "median_abs_diff_pct": 4.26,
+  "frac_within_2sigma": 0.802
  },
  "independence": {
   "test": "starting track wrong by +10% of the Gaia motion (same 2026.0 position)",
-  "n": 14,
-  "median_pull": 0.0005,
-  "p90_abs_pull": 0.285,
+  "n": 86,
+  "median_pull": 0.0032,
+  "p90_abs_pull": 0.2299,
   "meaning": "pull = fraction of a wrong starting motion that survives in the result (0 = the result does not depend on Gaia's value of the target's motion)"
  },
- "bytes_read_total_mb": 338.7,
- "bytes_read_disk_reconstruction_mb": 342.0,
+ "bytes_read_total_mb": 2216.9,
+ "bytes_read_disk_reconstruction_mb": 2220.2,
  "registration": {
-  "median_frac_exposure_or_cell_offsets": 0.188,
-  "n_with_unregistered_exposures": 7
+  "median_frac_exposure_or_cell_offsets": 0.326,
+  "n_with_unregistered_exposures": 37
  }
 }

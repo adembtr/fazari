@@ -1532,7 +1532,7 @@
  "gr.v.fig1": "hedef ölçüldü: {n} hareketli yıldızın {m} tanesinde ölçtüğümüz hareket kataloğuyla 3σ içinde uyuşuyor (tabloya bakın); {b} değişen yıldızın parlaklık değişimi ölçüldü.",
  "gr.v.of": "{a} / {b}",
  "gr.v.fig2": "{v}. kadirden parlak bilinen asteroit, nerede olduğu söylenmeden bulundu; ortanca konum farkı {d}″.",
- "gr.v.fig3": "Şu ana kadar Gaia DR3 ile karşılaştırılan hızlı yıldız 3σ içinde uyuşuyor (ortanca fark %{p}); önceden {k} yıldız seçildi.",
+ "gr.v.fig3": "Gaia DR3 ile karşılaştırılan hızlı yıldız 3σ içinde uyuşuyor (ortanca fark %{p}); {k} yıldızın hepsi önceden seçildi.",
  "gr.v.two": "Barnard için iki tür sayı var: yıllık hız (tüm görüntülerin birlikte uydurmasında {v} ± {e}, konum verilmeden yapılan aramada ({id}) {bv} ± {be}; Gaia DR3: {p}) ve {dt} yıl arayla iki sezon arasındaki kayma ({s}); kayma, Dünya'nın yıllık paralaks salınımını da içerir.",
  "gr.v.twoNoTest": "Barnard için iki tür sayı var: yıllık hız (tüm görüntülerin birlikte uydurmasında {v} ± {e}; Gaia DR3: {p}) ve {dt} yıl arayla iki sezon arasındaki kayma ({s}); kayma, Dünya'nın yıllık paralaks salınımını da içerir.",
  "gr.v.what": "Yıllık hız (tüm görüntülerin birlikte uydurması)",

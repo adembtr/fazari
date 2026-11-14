@@ -83,7 +83,7 @@ Beyond the list:
 | NASA Exoplanet Archive link for stars with known planets | Explorer and viewer cards; `site/data/exoplanet_hosts.json` | Done |
 | English / Turkish on every page | `site/i18n/en.json`, `site/i18n/tr.json`, `site/js/i18n.js` | Done |
 | Comets in SPHEREx: three comets (3I/ATLAS, C/2025 R2 (SWAN), C/2025 A6 (Lemmon)) and Pluto as a labelled bonus, selected over all public SPHEREx images with JPL SBDB and Horizons, then measured in the SPHEREx pixels (position, motion, coma, brightness per wavelength); known objects, not discoveries | `site/comets.html`, `site/data/comets/`, [`pipeline/COMETS.md`](pipeline/COMETS.md) | Done |
-| Fast-star sweep: proper motions of Gaia DR3 fast stars measured in SPHEREx with one pre-registered procedure and compared with Gaia DR3 | [`pipeline/FAST_SWEEP.md`](pipeline/FAST_SWEEP.md), `site/data/fast_sweep/summary.json` | Interim: 14 of 90 pre-registered stars measured, 0 failed; median difference 6.07 % (0.224″/yr), 14/14 within 3σ, 13/14 within 2σ |
+| Fast-star sweep: proper motions of Gaia DR3 fast stars measured in SPHEREx with one pre-registered procedure and compared with Gaia DR3 | [`pipeline/FAST_SWEEP.md`](pipeline/FAST_SWEEP.md), `site/data/fast_sweep/summary.json` | Done: 86 of 90 pre-registered stars measured, 4 failed (kept in the table); median difference to Gaia 7 % (5 % for the fastest 48; 0.17″/yr); 60.5 / 83.7 / 94.2 % within 1 / 2 / 3σ (ideal 68.3 / 95.4 / 99.7); smallest motion seen at 5σ 0.64″/yr; see [Fast-star sweep](#fast-star-sweep-90-pre-registered-stars) |
 | Numbered verification data (V1–V11) | [`site/data/verify/tests.json`](site/data/verify/tests.json), evidence in `site/data/verify/evidence/`; summary in [`pipeline/ACCURACY.md`](pipeline/ACCURACY.md) | Done (7 pass, 3 fail, 1 limit) |
 
 ## What runs where
@@ -131,7 +131,7 @@ otherwise it uses the browser engine. It adds:
 - `site/asteroids.html` — known-asteroid recovery results; `site/verify.html` — evidence page.
 - `site/vr.html` — look around the sky (not yet linked from the site); its sky picture `site/data/vr/` (`sky_2k.jpg`, `sky_4k.jpg`, `sky.json`) is made by `pipeline/vr_sky.py` from the SPHEREx DR1 all-sky HiPS at IRSA.
 - `site/comets.html` (+ `site/comets.js`) — comets in SPHEREx (three comets and Pluto), data in `site/data/comets/`; method and results in `pipeline/COMETS.md`.
-- `pipeline/FAST_SWEEP.md` — fast-star sweep (SPHEREx vs Gaia DR3 proper motions, pre-registered rule); output in `site/data/fast_sweep/` (interim, 14 stars).
+- `pipeline/FAST_SWEEP.md` — fast-star sweep (SPHEREx vs Gaia DR3 proper motions, pre-registered rule); output in `site/data/fast_sweep/` (final, 86 of 90 stars measured).
 - `pipeline/detect/` — candidate finder (see `pipeline/DETECTION.md`); `pipeline/finds.py` — finds list of the local engine.
 - `site/data/verify/tests.json` — numbered verification tests V1–V11, evidence in `site/data/verify/evidence/`.
 - `docs/img/` — screenshots used in this README.
@@ -355,6 +355,21 @@ the first season.
 - R Dra is a Mira variable (P ≈ 245 d), so changes of a factor of 2 are expected.
 - These are differential wing measurements of saturated stars. Treat them as indicative, not
   as calibrated light curves. Full tables with errors and flags are in the viewer.
+
+## Fast-star sweep (90 pre-registered stars)
+
+Before measuring anything we wrote down a list of 90 fast-moving stars: the 50 fastest that SPHEREx saw twice from
+the same angle, plus 40 picked at random across five speed ranges. We then measured every one of them in real
+SPHEREx images with a single fixed method, using ESA's Gaia catalogue only to line up the other stars in each image,
+never the star being measured. 86 of the 90 gave a motion; the 4 that did not are kept in the table with the reason.
+The typical star agrees with Gaia to 7 % (5 % for the fastest 48), which is about 0.17 arcseconds per year. When we
+deliberately started the fit from a motion that was 10 % wrong, the answer typically moved by well under 1 % of that
+error, so the result comes from the images, not from Gaia. Our error bars are right for the typical star, but a few
+stars miss by more than their error bars say: 94 % agree within 3 sigma, where 99.7 % would be ideal. We publish
+those misses, and their likely causes in our code, instead of hiding them. The full table, the figure and every
+number are in site/data/fast_sweep/ and pipeline/FAST_SWEEP.md.
+
+Known issues, stated rather than fixed tonight: 8 stars have fits with no degrees of freedom left (dof = 0; HD 132142 is the worst), and LAWD 37 and Ross 578 come out about 22 % slow. The 5 stars outside 3σ are HD 132142, LAWD 37, Ross 578, BD+02 348 and G 254-24.
 
 ## Known limitations
 

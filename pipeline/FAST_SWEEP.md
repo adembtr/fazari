@@ -5,9 +5,11 @@ Code: `pipeline/fast_sweep.py` (selection, S3 box reads, measurement) and `pipel
 Working state and byte ledger: `ajan_durumu/hizli_yildiz.md`, `cache/fast_sweep/ledger.json`.
 
 ```
-uv run --no-project --with astropy --with reproject --with numpy --with scipy --with matplotlib --with pillow \
-    python -I -u pipeline/fast_sweep.py run --box 0.12 --k 3 --max 90 --budget-mb 1150   # restartable
-... python -I -u pipeline/fast_sweep.py report --box 0.12 --k 3 --max 90
+# the final table was run from a frozen copy of commit 522d3ab (see "How the run was done"):
+setsid nohup bash /home/adem/Desktop/COMPETITION/NASA/fazari_sweep_v1/run_sweep.sh >/dev/null 2>&1 < /dev/null &
+cd /home/adem/Desktop/COMPETITION/NASA/fazari_sweep_v1 && FAST_SWEEP_OUT=<repo>/site/data/fast_sweep \
+  uv run --no-project --with astropy --with reproject --with numpy --with scipy --with matplotlib --with pillow \
+  python -I report_frozen.py           # pipeline/fast_sweep_report.py of the repo on the frozen module
 ```
 
 ## Question
@@ -44,6 +46,9 @@ measured with one fixed procedure and compared with ESA Gaia DR3. Failures stay 
    box that leaves no exposure without a Gaia registration on all three test stars": 0.12 deg.
 5. The "weak registration" flag became "some exposures without any Gaia registration" (the 80 % rule
    would flag almost every star).
+6. (20:41, 14 Nov; no result existed for the stars it affects) Gaia DR3 field rows may come from the ESA Gaia
+   Archive when IRSA's TAP fails (IRSA returned HTTP 502 all evening): same rows, checked equal on 3 measured fields.
+   A data source, not a change of the measurement or the sample.
 
 ## Data and cost
 
@@ -55,7 +60,7 @@ row: each tile is a full 2,040-pixel row), the IMAGE rows of the box (284 bytes 
 tail (5.8 kB); EPSF tables once per calibration id (all six were already in the project's cache).
 VARIANCE = box robust noise^2 and ZODI = box median are synthetic, as in `local/quick.py` (each would
 cost as much as IMAGE). At most 4 requests in flight (`fetch_region.http_get` semaphore), backoff on
-errors. Measured throughput 20 requests/s (latency 0.17-0.19 s); a star costs 15-26 MB and ~3.5 min of
+errors. Measured throughput 20 requests/s (latency 0.17-0.19 s); a star cost 9-33 MB (median 25 MB) and ~3.5 min of
 reading; the measurement (~40 s) overlaps the next star's reading.
 
 ## Measurement (detector B path of the tree)
@@ -81,63 +86,116 @@ toward it. Every star is therefore measured a second time with its starting trac
 +10 % of its Gaia motion (same 2026.0 position); pull = (shift of the result) / (shift of the start).
 Pull 0 = independent, pull 1 = the result just repeats the start. Results below.
 
-## Results — INTERIM: 14 of 90 pre-registered stars (target 100), sweep continuing
+## How the run was done
 
-Built 2026-11-14 18:10 +03 from `site/data/fast_sweep/summary.json`. Code version (core tag) 1370ca11c5 =
-the tree's v1 detection core (TEST-READY v1 16:58); sha1 of every file in `summary.json`. Box 0.12 deg,
-K = 3 exposures per season and detector (52-54 exposures, 2-3 seasons per star). MB read so far: 338.7
-(ledger) / 342.0 (reconstructed from the disk cache), including 85 MB of box-size tests.
+- One measurement version for the whole table: core tag 1370ca11c5 (the v1 detection core, TEST-READY v1 16:58),
+  every star. Stars 1-14 ran from the repo tree (17:31-18:09); stars 15-90 ran from a frozen copy of commit 522d3ab
+  (`git archive` of pipeline/, site/index and site/data/fast_stars.json.gz into `../fazari_sweep_v1/`, cache linked
+  to the repo's `cache/`), because the core of the tree was being changed to v1.1. The core file hashes of the copy
+  equal those in `summary.json` (`code_files_sha1`). `fast_sweep.py` itself differs (stars 1-14: 121da536ab, edited
+  two minutes after that run started; 15-90: 4b3e306b49); star 1 re-measured with the frozen copy reproduces its
+  stored result bit for bit.
+- The run was started 5 times; every restart skips finished stars (same frozen code, same results):
+  17:31 (stars 1-14, stopped 18:09 for the move), 20:20 (frozen copy), 20:37 and 20:41 (deliberate stops to add
+  network patience and the second Gaia source, below), 23:09 (**1 restart for memory**: the process grows about
+  250 MB per star, 7.3 GB at star 44, and the PC froze; clean STOP and relaunch, no further memory restart was needed).
+  Stars 15-90: 20:20 to 01:39.
+- Launcher additions (`../fazari_sweep_v1/launch_sweep.py`; measurement code untouched, core tag asserted at start):
+  network requests retried for hours instead of ~31 s (a fetch that fails because of our own network is not a
+  property of the star; no star needed a network repair); the Gaia TAP query shares the 4 request slots, so at most
+  4 requests were in flight at any time.
+- Second Gaia DR3 source (decided 20:41, before any result of the affected stars existed): IRSA's TAP returned
+  HTTP 502 all evening, so the same rows were taken from the ESA Gaia Archive (`gaiadr3.gaia_source`, same cone,
+  columns, units, epoch, rounded to IRSA's decimals). Checked first on 3 already-measured fields (Barnard's Star,
+  DENIS J1253-5709, 61 Cygni A: 1908 / 3987 / 3254 rows, identical source ids, positions, proper motions and
+  parallaxes; only last-digit rounding, 1e-6 mag in G and 1e-7 deg in one dec). Gaia rows per star: IRSA 15, ESA 75
+  (`stars.csv` column `gaia_rows_source`).
+- Bytes: 2,216.9 MB of S3 range reads in the ledger (2,220.2 MB reconstructed from the disk cache), including the
+  85 MB of box-size tests; budget 2,600 MB. Per star 9-33 MB (median 25 MB).
 
-- Attempted 14 (the first 14 of the order: 7 fastest + 7 random), measured 14, failed 0.
-- |measured - Gaia| (vector): median 6.1 %, 90th percentile 17.0 %; median 0.22"/yr, P90 0.46"/yr.
-- Error bars: 71 % within 1 sigma (expected 68 %), 93 % within 2 sigma (expected 95 %), 100 % within 3 sigma
-  (pass). Median calibrated error 0.14"/yr per axis -> smallest motion seen at 5 sigma ~0.7"/yr
-  (unsaturated stars: 0.10"/yr, 0.48"/yr at 5 sigma; saturated wing fits: 0.16"/yr, 0.82"/yr).
-- Saturated (8): median 3.2 %, 88 % within 2 sigma. Not saturated (6): median 8.7 % (slower stars: a
-  larger percentage for a similar error in "/yr), 100 % within 2 sigma.
-- Fastest set (7, 5.2-10.4"/yr): median 3.2 %; random set (7, 0.53-2.1"/yr): median 9.9 %.
-- Same-orientation season pair (displacement over ~1 yr / dt): median |speed - Gaia| 3.4 %, 86 % within 2 sigma.
-- Independence: median pull 0.0005, 90th percentile |pull| 0.29 (two stars above 0.1: PM J12445-1306N 0.35,
-  a 0.53"/yr star where the 10 % test step is 0.05"/yr, half its 0.10"/yr error; HD 112943 -1.0, the dof = 0 fit below).
+## Results — FINAL: 90 of 90 pre-registered stars attempted, 86 measured, 4 failed
 
-| # | star | Gaia "/yr | measured "/yr | diff % | sigma (2-D) | pair "/yr | pull | flags |
-|---|---|---|---|---|---|---|---|---|
-| 1 | Barnard's Star | 10.393 | 10.368 +- 0.120 | 2.3 | 1.08 | 10.337 | -0.075 | saturated |
-| 2 | DENIS J125310.8-570924 | 1.622 | 1.571 +- 0.100 | 4.7 | 0.37 | 1.584 | 0.019 | blended (1.7") |
-| 3 | Kapteyn's Star | 8.644 | 8.900 +- 0.137 | 3.1 | 1.73 | 9.027 | 0.000 | saturated |
-| 4 | HD 219134 | 2.095 | 1.729 +- 0.248 | 17.5 | 0.96 | 1.834 | 0.000 | saturated |
-| 5 | Groombridge 1830 | 7.062 | 6.923 +- 0.132 | 3.3 | 1.20 | 7.010 | -0.001 | saturated, unregistered exp. |
-| 6 | PM J12445-1306N | 0.528 | 0.610 +- 0.099 | 15.8 | 0.38 | 0.589 | 0.350 | unregistered exp. |
-| 7 | Lacaille 9352 | 6.896 | 6.784 +- 0.189 | 3.2 | 0.67 | 6.761 | -0.004 | saturated, unregistered exp. |
-| 8 | G 198-58 | 0.714 | 0.731 +- 0.105 | 7.5 | 0.28 | 0.710 | 0.003 | |
-| 9 | HD 225213 | 6.098 | 6.071 +- 0.137 | 1.0 | 0.11 | 6.085 | 0.002 | saturated, unregistered exp. |
-| 10 | HD 112943 | 0.807 | 1.141 +- 0.757 | 41.8 | 0.13 | 1.000 | -1.007 | dof = 0 fit (core issue) |
-| 11 | 61 Cygni A | 5.282 | 5.754 +- 0.271 | 12.6 | 2.75 | 5.744 | 0.133 | saturated, unregistered exp. |
-| 12 | SCR J1053-3858 | 0.633 | 0.620 +- 0.059 | 3.7 | 0.11 | 0.638 | 0.001 | |
-| 13 | 61 Cyg B | 5.179 | 5.552 +- 0.414 | 9.6 | 0.59 | 5.479 | 0.000 | saturated, unregistered exp. |
-| 14 | G 158-27 | 2.060 | 1.857 +- 0.187 | 9.9 | 0.62 | 1.911 | 0.021 | unregistered exp. |
+Built 2026-11-15 from `site/data/fast_sweep/summary.json`; full table `stars.csv`. Box 0.12 deg, K = 3
+exposures per season and detector (42-66 exposures used, 2-4 seasons per star).
+
+- |measured - Gaia| (vector), 86 stars: median 7.1 %, 90th percentile 25.2 %; median 0.17"/yr, P90 0.51"/yr.
+- Error bars (2-D, calibrated): within 1 / 2 / 3 sigma 60.5 / 83.7 / 94.2 % (52 / 72 / 81 stars) against the
+  expected 68.3 / 95.4 / 99.7 % (58.7 +- 4.3 / 82.0 +- 1.9 / 85.7 +- 0.5 stars). Median chi2 1.40 against the expected
+  1.39: **for the typical star the error bars are right (scale 1.00), but the tail is too heavy**: 14 stars lie beyond
+  2 sigma (4.0 expected) and 5 beyond 3 sigma (0.26 expected). The quoted errors are too small for roughly 5-10 % of
+  the stars (listed below). Nothing was tuned after seeing this.
+- Fastest set (48 measured of 50, 2.39-10.39"/yr): median 5.2 %, P90 16.3 % (0.19"/yr); 54 / 79 / 94 % within
+  1 / 2 / 3 sigma; median chi2 1.64 (errors ~9 % small). Random set (38 of 40, 0.51-2.38"/yr): median 14.2 %,
+  P90 39.3 % (0.13"/yr); 68 / 89 / 95 %; median chi2 1.09 (errors ~12 % large).
+- Saturated (wing fit, 33): median 5.3 % (0.22"/yr), 64 / 88 / 97 %. Not saturated (53): median 8.7 % (0.14"/yr),
+  58 / 81 / 92 %.
+- By speed class ("/yr; n; median %; median "/yr; within 1/2/3 sigma): 0.5-0.7: 9, 19.8 %, 0.11, 67/89/89 %;
+  0.7-1: 10, 23.8 %, 0.20, 60/90/100 %; 1-2: 9, 8.3 %, 0.09, 89/89/89 %; 2-4: 42, 6.2 %, 0.18, 57/79/93 %;
+  > 4: 16, 4.0 %, 0.23, 50/88/100 %. The error in "/yr is similar in every class, so the percentage grows for
+  slow stars.
+- Smallest motion seen at 5 sigma: 0.64"/yr (median per-axis error 0.13"/yr); unsaturated 0.47"/yr, saturated 0.72"/yr.
+- Same-orientation season pair (displacement over ~1 yr / dt): 86 stars, median |speed - Gaia| 4.3 %, 80 % within 2 sigma.
+- Independence (starting track wrong by +10 %): median pull 0.003, 90th percentile |pull| 0.23; 18 of 86 stars above
+  0.1, 6 above 0.3 (PM J12445-1306N 0.35, eps Ind 0.35, HD 217357 0.46, PM 13391-3400 0.61, HD 112943 -1.01,
+  L 205-56 -3.28; the last two are dof = 0 fits). For the typical star the result does not depend on Gaia's value.
+- Registration: median 33 % of exposures get their own exposure/cell Gaia offset; 37 of 86 stars have some
+  exposures with no Gaia registration.
+
+Stars beyond 3 sigma (kept in every statistic):
+
+| # | star | Gaia "/yr | measured "/yr | diff % | sigma | pair "/yr | note |
+|---|---|---|---|---|---|---|---|
+| 62 | HD 132142 | 1.082 | 5.091 +- 0.831 | 370 | 4.4 | 1.118 | dof = 0 two-season fit (core issue below); its own season pair agrees with Gaia |
+| 69 | LAWD 37 | 2.684 | 2.244 +- 0.094 | 22 | 6.4 | 2.209 | 18 of 54 exposures unregistered; the code's judge flags "position at 2026 within 0.2" of Gaia but drift implies 6" since 2016" |
+| 57 | Ross 578 | 3.066 | 2.389 +- 0.119 | 22 | 5.3 | 2.749 | same judge flag; Gaia RUWE 1.4 (possible binary) |
+| 82 | BD+02 348 | 2.557 | 2.242 +- 0.107 | 17 | 3.7 | 2.256 | saturated wing fit |
+| 48 | G 254-24 | 0.614 | 0.327 +- 0.085 | 47 | 3.0 | 0.335 | only 42 exposures planned (all read); third season 5 exposures |
+
+Failures (stay in the table):
+
+| # | star | Gaia "/yr | SPHEREx AB | reason |
+|---|---|---|---|---|
+| 32 | HD 125455B | 0.643 | 11.3 | no drift fit (target S/N < 10 or < 3 exposures in < 2 seasons) |
+| 33 | omi02 Eri B | 4.019 | 10.8 | no drift fit (same) |
+| 46 | EGGR 536 | 1.284 | 16.7 | no drift fit (same) |
+| 73 | 2MASS J05325346+8246465 | 2.631 | 16.1 | target not in the Gaia field list: Gaia DR3 has no G magnitude for this L subdwarf, so the field query's G < 19 cut leaves it out (same query at IRSA and ESA) |
 
 ## Limits (numbers)
 
-- Cost: 15-27 MB and ~3.3 min of S3 reading per star (FLAGS rows are ~70 % of the bytes; 4 requests in
-  flight at ~20 requests/s). 100 stars need ~2.3 GB and ~5.5 h.
-- Only 54 of the ~360 exposures per star are used: errors are ~2.5x those of a full run (Barnard: 0.12"/yr
-  here vs 0.05"/yr with all exposures in the targeted pipeline).
-- Registration: median 19 % of the exposures get their own exposure/cell Gaia offset, the rest a season
-  median; 7 of 14 stars have some exposures with no Gaia registration at all (raw SPHEREx WCS for those).
-- Saturated stars measured on two seasons only (the single opposite-orientation season of a wing fit only
-  fixes its own offset).
-- Open core issue (reported to the core author): `astrometry._fit_cells` uses the unsaturated (EPSF) cells
-  alone whenever they give a fit, even a 2-season fit with dof = 0; for HD 112943 (8.3 AB) that gives
-  0.76"/yr error where the wing-fit cells would constrain the motion far better.
+- Cost: 9-33 MB and ~3.5 min of S3 reading per star (FLAGS rows are ~70 % of the bytes; 4 requests in flight).
+- Only 54 of the ~360 exposures per star are used: errors are ~2.5x those of a full run (Barnard: 0.12"/yr here
+  vs 0.05"/yr with all exposures in the targeted pipeline).
+- Error-bar tail: 5 of 86 stars beyond 3 sigma (0.26 expected). Two symptoms in the v1 core, reported, not fixed:
+  (a) `astrometry._fit_cells` returns two-season fits with dof = 0 for 8 of 86 stars (HD 112943, Teegarden's Star,
+  omi02 Eri C, L 205-56, G 215-50, G 3-33, HD 132142, Ross 47): the permutation error cannot be calibrated with no
+  residuals, and these give the two largest pulls and the largest percentage miss (HD 132142); (b) two faint stars
+  (LAWD 37, Ross 578) measured ~22 % slow while their 2026 positions match Gaia to 0.2", which the judge itself flags.
+- Saturated stars measured on two seasons only (the single opposite-orientation season of a wing fit only fixes its
+  own offset).
 - VARIANCE and ZODI are not read (synthetic, as in local/quick.py); per-exposure weights are therefore uniform.
+- The sweep process grows ~250 MB per star (not in the launcher; not investigated in the frozen code).
 
 ## Two-line summary for the evidence page
 
-EN: We measured the motion of 14 fast stars from a pre-registered list of 90 in real SPHEREx images, all with
-one method, and compared with ESA Gaia DR3: median difference 6 % (3 % for the 7 fastest), 93 % agree within
-2 sigma and all 14 within 3 sigma; interim result, the sweep continues.
+EN: We measured the motion of 86 of a pre-registered list of 90 fast stars in real SPHEREx images with one fixed
+method: the median difference from ESA Gaia DR3 is 7 % (5 % for the 48 fastest; 0.17"/yr).
+EN: The error bars are right for the typical star (median chi2 1.40, expected 1.39) but too small for a few:
+84 % agree within 2 sigma and 94 % within 3 sigma (expected 95 / 99.7 %); the 4 stars we could not measure stay in the table.
 
-TR: Önceden kayda geçirilmiş 90 yıldızlık listeden 14 hızlı yıldızın hareketini gerçek SPHEREx görüntülerinde
-tek bir yöntemle ölçtük ve ESA Gaia DR3 ile karşılaştırdık: ortanca fark %6 (en hızlı 7 yıldızda %3), %93'ü
-2 sigma, 14'ünün hepsi 3 sigma içinde uyuşuyor; ara sonuç, tarama sürüyor.
+TR: Önceden kayda geçirilmiş 90 hızlı yıldızdan 86'sının hareketini gerçek SPHEREx görüntülerinde tek bir sabit
+yöntemle ölçtük: ESA Gaia DR3'ten ortanca fark %7 (en hızlı 48 yıldızda %5; 0,17″/yıl).
+TR: Hata çubukları tipik yıldız için doğru (ortanca χ² 1,40, beklenen 1,39) ama birkaç yıldızda küçük: %84'ü 2σ,
+%94'ü 3σ içinde uyuşuyor (beklenen %95 / %99,7); ölçemediğimiz 4 yıldız tabloda duruyor.
+
+## README paragraph (how well do our motions agree with ESA Gaia over many stars?)
+
+Before measuring anything we wrote down a list of 90 fast-moving stars: the 50 fastest that SPHEREx saw twice from
+the same angle, plus 40 picked at random across five speed ranges. We then measured every one of them in real
+SPHEREx images with a single fixed method, using ESA's Gaia catalogue only to line up the other stars in each image,
+never the star being measured. 86 of the 90 gave a motion; the 4 that did not are kept in the table with the reason.
+The typical star agrees with Gaia to 7 % (5 % for the fastest 48), which is about 0.17 arcseconds per year. When we
+deliberately started the fit from a motion that was 10 % wrong, the answer typically moved by well under 1 % of that
+error, so the result comes from the images, not from Gaia. Our error bars are right for the typical star, but a few
+stars miss by more than their error bars say: 94 % agree within 3 sigma, where 99.7 % would be ideal. We publish
+those misses, and their likely causes in our code, instead of hiding them. The full table, the figure and every
+number are in site/data/fast_sweep/ and pipeline/FAST_SWEEP.md.

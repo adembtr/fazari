@@ -1,6 +1,6 @@
 {
  "title": "SPHEREx-measured vs Gaia DR3 proper motion",
- "status": "interim: 14 of 90 pre-registered stars (target 100), sweep continuing",
+ "status": "final: 90 of 90 pre-registered stars attempted, 86 measured, 4 failed",
  "code_version": "1370ca11c5",
  "x": "Gaia DR3 total proper motion (arcsec/yr)",
  "y": "measured / Gaia - 1 (%)",
@@ -144,18 +144,745 @@
    "diff_pct": 9.87,
    "sigma": 0.62,
    "saturated": false
+  },
+  {
+   "sid": "35227046884571776",
+   "name": "Teegarden's Star",
+   "gaia": 5.1226,
+   "meas": 4.3304,
+   "err": 0.386,
+   "diff_pct": 15.92,
+   "sigma": 1.8,
+   "saturated": false
+  },
+  {
+   "sid": "3377365057060447616",
+   "name": "Ross 64",
+   "gaia": 0.7496,
+   "meas": 0.8352,
+   "err": 0.0883,
+   "diff_pct": 17.04,
+   "sigma": 1.21,
+   "saturated": false
+  },
+  {
+   "sid": "762815470562110464",
+   "name": "HD 95735",
+   "gaia": 4.8117,
+   "meas": 4.7016,
+   "err": 0.2069,
+   "diff_pct": 3.16,
+   "sigma": 0.29,
+   "saturated": true
+  },
+  {
+   "sid": "2828928008202069376",
+   "name": "HD 216899",
+   "gaia": 1.073,
+   "meas": 1.0649,
+   "err": 0.1174,
+   "diff_pct": 8.82,
+   "sigma": 0.28,
+   "saturated": true
+  },
+  {
+   "sid": "3864972938605115520",
+   "name": "Wolf 359",
+   "gaia": 4.7153,
+   "meas": 4.9382,
+   "err": 0.099,
+   "diff_pct": 4.74,
+   "sigma": 1.76,
+   "saturated": true
+  },
+  {
+   "sid": "6254033894121581952",
+   "name": "L 768-119",
+   "gaia": 2.2619,
+   "meas": 2.3241,
+   "err": 0.1387,
+   "diff_pct": 3.57,
+   "sigma": 0.2,
+   "saturated": true
+  },
+  {
+   "sid": "6412595290592307840",
+   "name": "eps Ind",
+   "gaia": 4.7082,
+   "meas": 4.9893,
+   "err": 0.1883,
+   "diff_pct": 6.63,
+   "sigma": 1.07,
+   "saturated": true
+  },
+  {
+   "sid": "6855358349537379840",
+   "name": "HD 196998",
+   "gaia": 0.8489,
+   "meas": 0.8822,
+   "err": 0.1147,
+   "diff_pct": 20.14,
+   "sigma": 0.92,
+   "saturated": false
+  },
+  {
+   "sid": "6412596012146801152",
+   "name": "Epsilon Indi B",
+   "gaia": 4.6842,
+   "meas": 4.6728,
+   "err": 0.0647,
+   "diff_pct": 0.9,
+   "sigma": 0.41,
+   "saturated": false
+  },
+  {
+   "sid": "5224460173763882496",
+   "name": "SCR J1138-7721",
+   "gaia": 2.1539,
+   "meas": 2.1754,
+   "err": 0.0643,
+   "diff_pct": 8.72,
+   "sigma": 2.44,
+   "saturated": false
+  },
+  {
+   "sid": "778947814402602752",
+   "name": "BD+44 2051",
+   "gaia": 4.5053,
+   "meas": 4.3672,
+   "err": 0.1447,
+   "diff_pct": 3.07,
+   "sigma": 0.48,
+   "saturated": true
+  },
+  {
+   "sid": "3022956969731332096",
+   "name": "HL 4",
+   "gaia": 2.378,
+   "meas": 2.4697,
+   "err": 0.0594,
+   "diff_pct": 4.35,
+   "sigma": 1.22,
+   "saturated": false
+  },
+  {
+   "sid": "778947608243864320",
+   "name": "PM I11055+4331",
+   "gaia": 4.4449,
+   "meas": 5.0008,
+   "err": 0.3002,
+   "diff_pct": 17.74,
+   "sigma": 2.05,
+   "saturated": true
+  },
+  {
+   "sid": "6792467005983280000",
+   "name": "LP 927-37",
+   "gaia": 0.5068,
+   "meas": 0.4704,
+   "err": 0.0511,
+   "diff_pct": 22.12,
+   "sigma": 1.4,
+   "saturated": false
+  },
+  {
+   "sid": "3195919528989223040",
+   "name": "Keid",
+   "gaia": 4.0898,
+   "meas": 4.0187,
+   "err": 0.1745,
+   "diff_pct": 4.78,
+   "sigma": 0.62,
+   "saturated": true
+  },
+  {
+   "sid": "3718762218805509888",
+   "name": "BD+08 2735",
+   "gaia": 0.8555,
+   "meas": 0.7645,
+   "err": 0.2726,
+   "diff_pct": 28.43,
+   "sigma": 1.26,
+   "saturated": false
+  },
+  {
+   "sid": "3195919254111314816",
+   "name": "omi02 Eri C",
+   "gaia": 4.0837,
+   "meas": 4.0095,
+   "err": 0.3059,
+   "diff_pct": 4.67,
+   "sigma": 0.15,
+   "saturated": true
+  },
+  {
+   "sid": "4924948121112352128",
+   "name": "L 219-53",
+   "gaia": 0.707,
+   "meas": 0.5504,
+   "err": 0.0623,
+   "diff_pct": 22.15,
+   "sigma": 2.06,
+   "saturated": false
+  },
+  {
+   "sid": "3713594960831605760",
+   "name": "Wolf 489",
+   "gaia": 3.8982,
+   "meas": 3.9667,
+   "err": 0.1649,
+   "diff_pct": 2.39,
+   "sigma": 0.23,
+   "saturated": false
+  },
+  {
+   "sid": "5920162274906124032",
+   "name": "L 205-56",
+   "gaia": 0.7214,
+   "meas": 0.4735,
+   "err": 0.9288,
+   "diff_pct": 34.47,
+   "sigma": 0.04,
+   "saturated": false
+  },
+  {
+   "sid": "5853498713190525696",
+   "name": "Proxima Centauri",
+   "gaia": 3.8592,
+   "meas": 4.0489,
+   "err": 0.1733,
+   "diff_pct": 4.96,
+   "sigma": 0.61,
+   "saturated": true
+  },
+  {
+   "sid": "5183457632811832960",
+   "name": "2MASS J03060140-0330438",
+   "gaia": 1.3316,
+   "meas": 1.3577,
+   "err": 0.1601,
+   "diff_pct": 2.39,
+   "sigma": 0.03,
+   "saturated": false
+  },
+  {
+   "sid": "411413822074322432",
+   "name": "mu. Cas",
+   "gaia": 3.805,
+   "meas": 3.5778,
+   "err": 0.2071,
+   "diff_pct": 6.75,
+   "sigma": 0.68,
+   "saturated": true
+  },
+  {
+   "sid": "2338249503830292352",
+   "name": "LP 824-3",
+   "gaia": 0.5058,
+   "meas": 0.4562,
+   "err": 0.0939,
+   "diff_pct": 9.85,
+   "sigma": 0.17,
+   "saturated": false
+  },
+  {
+   "sid": "6307374845312759552",
+   "name": "HD 134439",
+   "gaia": 3.6802,
+   "meas": 3.4963,
+   "err": 0.1371,
+   "diff_pct": 12.05,
+   "sigma": 2.87,
+   "saturated": false
+  },
+  {
+   "sid": "92597914738232448",
+   "name": "LP 409-28",
+   "gaia": 0.7917,
+   "meas": 0.5285,
+   "err": 0.3943,
+   "diff_pct": 38.22,
+   "sigma": 0.32,
+   "saturated": false
+  },
+  {
+   "sid": "6307365499463905536",
+   "name": "HD 134440",
+   "gaia": 3.6788,
+   "meas": 3.6036,
+   "err": 0.0897,
+   "diff_pct": 3.92,
+   "sigma": 1.09,
+   "saturated": false
+  },
+  {
+   "sid": "1909518584084205312",
+   "name": "G 215-50",
+   "gaia": 1.2745,
+   "meas": 2.0967,
+   "err": 0.7339,
+   "diff_pct": 67.21,
+   "sigma": 0.68,
+   "saturated": false
+  },
+  {
+   "sid": "1711005951573009792",
+   "name": "EGGR 199",
+   "gaia": 3.6125,
+   "meas": 3.5464,
+   "err": 0.0582,
+   "diff_pct": 2.13,
+   "sigma": 0.65,
+   "saturated": false
+  },
+  {
+   "sid": "6281432246412503424",
+   "name": "SSSPM J1444-2019",
+   "gaia": 3.5079,
+   "meas": 3.4759,
+   "err": 0.0691,
+   "diff_pct": 0.92,
+   "sigma": 0.13,
+   "saturated": false
+  },
+  {
+   "sid": "1080623048803799040",
+   "name": "G 254-24",
+   "gaia": 0.6141,
+   "meas": 0.3269,
+   "err": 0.0846,
+   "diff_pct": 46.95,
+   "sigma": 3.01,
+   "saturated": false
+  },
+  {
+   "sid": "6583272171336048640",
+   "name": "Lacaille 8760",
+   "gaia": 3.4546,
+   "meas": 3.7461,
+   "err": 0.1563,
+   "diff_pct": 11.24,
+   "sigma": 2.0,
+   "saturated": true
+  },
+  {
+   "sid": "3623886631755122944",
+   "name": "LP 737-32",
+   "gaia": 0.5628,
+   "meas": 0.5656,
+   "err": 0.073,
+   "diff_pct": 0.96,
+   "sigma": 0.0,
+   "saturated": false
+  },
+  {
+   "sid": "5140693571158739840",
+   "name": "G 272-61A",
+   "gaia": 3.4288,
+   "meas": 3.4981,
+   "err": 0.1127,
+   "diff_pct": 2.11,
+   "sigma": 0.24,
+   "saturated": true
+  },
+  {
+   "sid": "76868614540049408",
+   "name": "G 3-33",
+   "gaia": 2.0834,
+   "meas": 1.5691,
+   "err": 0.2097,
+   "diff_pct": 25.01,
+   "sigma": 1.98,
+   "saturated": false
+  },
+  {
+   "sid": "5140693571158946048",
+   "name": "G 272-61B",
+   "gaia": 3.2319,
+   "meas": 3.498,
+   "err": 0.1127,
+   "diff_pct": 8.75,
+   "sigma": 2.02,
+   "saturated": true
+  },
+  {
+   "sid": "4721111481504887040",
+   "name": "L 127-97",
+   "gaia": 1.1674,
+   "meas": 1.1198,
+   "err": 0.1405,
+   "diff_pct": 8.25,
+   "sigma": 0.27,
+   "saturated": true
+  },
+  {
+   "sid": "4847957293278177024",
+   "name": "e Eri",
+   "gaia": 3.1209,
+   "meas": 3.3052,
+   "err": 0.1607,
+   "diff_pct": 6.01,
+   "sigma": 0.67,
+   "saturated": true
+  },
+  {
+   "sid": "2532421608028190592",
+   "name": "LP 586-57",
+   "gaia": 0.5301,
+   "meas": 0.5299,
+   "err": 0.1133,
+   "diff_pct": 22.39,
+   "sigma": 0.48,
+   "saturated": false
+  },
+  {
+   "sid": "5115463180914712448",
+   "name": "Ross 578",
+   "gaia": 3.0655,
+   "meas": 2.3893,
+   "err": 0.1192,
+   "diff_pct": 22.06,
+   "sigma": 5.32,
+   "saturated": false
+  },
+  {
+   "sid": "2396530698208685312",
+   "name": "HD 217357",
+   "gaia": 0.904,
+   "meas": 0.9032,
+   "err": 0.1238,
+   "diff_pct": 25.45,
+   "sigma": 1.31,
+   "saturated": true
+  },
+  {
+   "sid": "2552928187080872832",
+   "name": "Van Maanen's Star",
+   "gaia": 2.9784,
+   "meas": 3.1049,
+   "err": 0.0648,
+   "diff_pct": 4.74,
+   "sigma": 1.65,
+   "saturated": false
+  },
+  {
+   "sid": "6625743625454560512",
+   "name": "L 716-108",
+   "gaia": 1.0713,
+   "meas": 1.0483,
+   "err": 0.0629,
+   "diff_pct": 6.26,
+   "sigma": 0.41,
+   "saturated": false
+  },
+  {
+   "sid": "6663600360560306560",
+   "name": "L 347-14",
+   "gaia": 2.9701,
+   "meas": 2.8172,
+   "err": 0.1431,
+   "diff_pct": 6.13,
+   "sigma": 0.76,
+   "saturated": false
+  },
+  {
+   "sid": "1606148310770764288",
+   "name": "HD 132142",
+   "gaia": 1.0824,
+   "meas": 5.0913,
+   "err": 0.8314,
+   "diff_pct": 370.49,
+   "sigma": 4.44,
+   "saturated": false
+  },
+  {
+   "sid": "385334230892516480",
+   "name": "HD 1326",
+   "gaia": 2.9207,
+   "meas": 2.781,
+   "err": 0.1392,
+   "diff_pct": 6.68,
+   "sigma": 0.82,
+   "saturated": true
+  },
+  {
+   "sid": "3741297293732404352",
+   "name": "HD 119850",
+   "gaia": 2.296,
+   "meas": 2.0702,
+   "err": 0.1387,
+   "diff_pct": 10.09,
+   "sigma": 1.11,
+   "saturated": true
+  },
+  {
+   "sid": "385334196532776576",
+   "name": "HD 1326B",
+   "gaia": 2.8825,
+   "meas": 2.7962,
+   "err": 0.25,
+   "diff_pct": 3.24,
+   "sigma": 0.1,
+   "saturated": true
+  },
+  {
+   "sid": "219057458247921536",
+   "name": "HD 25329",
+   "gaia": 2.2045,
+   "meas": 2.2128,
+   "err": 0.1106,
+   "diff_pct": 3.43,
+   "sigma": 0.26,
+   "saturated": true
+  },
+  {
+   "sid": "5339892367684811520",
+   "name": "Innes' star",
+   "gaia": 2.7378,
+   "meas": 2.9239,
+   "err": 0.2693,
+   "diff_pct": 8.51,
+   "sigma": 0.37,
+   "saturated": true
+  },
+  {
+   "sid": "6822119013515006592",
+   "name": "GRH 2208-20",
+   "gaia": 0.6952,
+   "meas": 0.7815,
+   "err": 0.1004,
+   "diff_pct": 19.75,
+   "sigma": 0.88,
+   "saturated": false
+  },
+  {
+   "sid": "5332606522595645952",
+   "name": "LAWD 37",
+   "gaia": 2.6839,
+   "meas": 2.2444,
+   "err": 0.0941,
+   "diff_pct": 22.21,
+   "sigma": 6.36,
+   "saturated": false
+  },
+  {
+   "sid": "3425318817510655360",
+   "name": "LSR J0609+2319",
+   "gaia": 1.1124,
+   "meas": 1.1713,
+   "err": 0.0903,
+   "diff_pct": 5.53,
+   "sigma": 0.29,
+   "saturated": false
+  },
+  {
+   "sid": "6439125097427143808",
+   "name": "SCR J1845-6357",
+   "gaia": 2.6494,
+   "meas": 2.5299,
+   "err": 0.0817,
+   "diff_pct": 4.96,
+   "sigma": 1.1,
+   "saturated": false
+  },
+  {
+   "sid": "2859027409595355776",
+   "name": "G 130-68",
+   "gaia": 0.586,
+   "meas": 0.6093,
+   "err": 0.0672,
+   "diff_pct": 22.36,
+   "sigma": 1.64,
+   "saturated": false
+  },
+  {
+   "sid": "6282457918962299776",
+   "name": "LP 801-9",
+   "gaia": 1.1508,
+   "meas": 1.2445,
+   "err": 0.1853,
+   "diff_pct": 12.71,
+   "sigma": 0.37,
+   "saturated": false
+  },
+  {
+   "sid": "2611561706216413696",
+   "name": "EGGR 453",
+   "gaia": 2.5775,
+   "meas": 2.7616,
+   "err": 0.0887,
+   "diff_pct": 8.45,
+   "sigma": 2.04,
+   "saturated": false
+  },
+  {
+   "sid": "1005873614080407296",
+   "name": "G 249-36",
+   "gaia": 0.8405,
+   "meas": 0.9112,
+   "err": 0.1309,
+   "diff_pct": 18.04,
+   "sigma": 0.86,
+   "saturated": false
+  },
+  {
+   "sid": "6165095738576250624",
+   "name": "PM 13391-3400",
+   "gaia": 2.5713,
+   "meas": 2.5477,
+   "err": 1.3336,
+   "diff_pct": 10.17,
+   "sigma": 0.05,
+   "saturated": false
+  },
+  {
+   "sid": "5273943488410008832",
+   "name": "LAWD 26",
+   "gaia": 2.0908,
+   "meas": 2.1605,
+   "err": 0.0999,
+   "diff_pct": 6.21,
+   "sigma": 0.87,
+   "saturated": false
+  },
+  {
+   "sid": "2338944532617922304",
+   "name": "CD-24 17814",
+   "gaia": 2.5647,
+   "meas": 2.5036,
+   "err": 0.0685,
+   "diff_pct": 2.4,
+   "sigma": 0.43,
+   "saturated": false
+  },
+  {
+   "sid": "4937000898856156288",
+   "name": "HD 13445",
+   "gaia": 2.2191,
+   "meas": 2.1993,
+   "err": 0.1345,
+   "diff_pct": 5.28,
+   "sigma": 0.34,
+   "saturated": true
+  },
+  {
+   "sid": "2338943673624461440",
+   "name": "G 275-92",
+   "gaia": 2.564,
+   "meas": 2.4194,
+   "err": 0.0557,
+   "diff_pct": 5.85,
+   "sigma": 2.21,
+   "saturated": false
+  },
+  {
+   "sid": "2515037264041041536",
+   "name": "BD+02 348",
+   "gaia": 2.5572,
+   "meas": 2.242,
+   "err": 0.1072,
+   "diff_pct": 17.19,
+   "sigma": 3.69,
+   "saturated": true
+  },
+  {
+   "sid": "3519785523672576384",
+   "name": "Ross 695",
+   "gaia": 2.5557,
+   "meas": 2.7124,
+   "err": 0.2998,
+   "diff_pct": 7.54,
+   "sigma": 0.24,
+   "saturated": false
+  },
+  {
+   "sid": "4780100658292046592",
+   "name": "L 230-188",
+   "gaia": 2.5527,
+   "meas": 2.3685,
+   "err": 0.0762,
+   "diff_pct": 7.61,
+   "sigma": 1.94,
+   "saturated": false
+  },
+  {
+   "sid": "3340477717172813568",
+   "name": "Ross 47",
+   "gaia": 2.5401,
+   "meas": 3.9623,
+   "err": 0.481,
+   "diff_pct": 61.17,
+   "sigma": 2.65,
+   "saturated": false
+  },
+  {
+   "sid": "5184938400096586112",
+   "name": "LP 651-7",
+   "gaia": 2.5295,
+   "meas": 2.3708,
+   "err": 0.0736,
+   "diff_pct": 6.38,
+   "sigma": 1.65,
+   "saturated": false
+  },
+  {
+   "sid": "2519329585637068160",
+   "name": "Wolf 110",
+   "gaia": 2.429,
+   "meas": 2.3571,
+   "err": 0.1251,
+   "diff_pct": 5.51,
+   "sigma": 0.78,
+   "saturated": false
+  },
+  {
+   "sid": "470826482637310080",
+   "name": "Stein 2051A",
+   "gaia": 2.4244,
+   "meas": 2.3866,
+   "err": 0.1062,
+   "diff_pct": 2.24,
+   "sigma": 0.15,
+   "saturated": true
+  },
+  {
+   "sid": "4736655036868019072",
+   "name": "LEHPM 3396",
+   "gaia": 2.4095,
+   "meas": 2.4405,
+   "err": 0.0492,
+   "diff_pct": 1.73,
+   "sigma": 0.38,
+   "saturated": false
+  },
+  {
+   "sid": "4588438567346043776",
+   "name": "LSR J1826+3014",
+   "gaia": 2.3905,
+   "meas": 2.3589,
+   "err": 0.0448,
+   "diff_pct": 1.91,
+   "sigma": 0.52,
+   "saturated": false
   }
  ],
  "summary": {
-  "n": 14,
-  "median_abs_diff_pct": 6.07,
-  "p90_abs_diff_pct": 16.96,
-  "median_abs_diff_arcsec_yr": 0.2241,
-  "p90_abs_diff_arcsec_yr": 0.4584,
-  "frac_within_1sigma": 0.714,
-  "frac_within_2sigma": 0.929,
-  "frac_within_3sigma_pass": 1.0,
-  "median_error_arcsec_yr_per_axis": 0.1385,
-  "min_motion_5sigma_arcsec_yr": 0.692
+  "n": 86,
+  "median_abs_diff_pct": 7.1,
+  "p90_abs_diff_pct": 25.23,
+  "median_abs_diff_arcsec_yr": 0.1662,
+  "p90_abs_diff_arcsec_yr": 0.5095,
+  "frac_within_1sigma": 0.605,
+  "frac_within_2sigma": 0.837,
+  "frac_within_3sigma_pass": 0.942,
+  "n_within_1_2_3sigma": [
+   52,
+   72,
+   81
+  ],
+  "median_chi2_2d": 1.397,
+  "error_scale_from_median_chi2": 1.004,
+  "median_error_arcsec_yr_per_axis": 0.1286,
+  "min_motion_5sigma_arcsec_yr": 0.643
  }
 }
