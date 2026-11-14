@@ -152,6 +152,11 @@ for (const lg of ["en", "tr"]) {
   const G = {
     degenerate: { ...plain, wavelength_bins: bins([4.6]), measured: { status: "detected", shift_arcsec: 0, shift_err_arcsec: 0, dt_years: 1.0, pa_deg: 0,
       from_epoch: "2025-08", to_epoch: "2026-08", positions: pos3([0, 0, 0], 0) } },
+    // the saturated free point RA 158.0488 Dec +14.1371: shift with a zero error bar, joint fit 119.7 ± 1.5 mas/yr
+    degenerate_zero_err: { ...plain, wavelength_bins: bins([1.0, 4.6]), measured: { status: "detected", shift_arcsec: 0.123, shift_err_arcsec: 0, dt_years: 1.022, pa_deg: 269,
+      from_epoch: "2025-04", to_epoch: "2026-05", positions: [P("2025-04", 60797.7, 158.04882, 14.1371, 0), P("2025-11", 61009.4, 158.0488, 14.1371, 0, { err_north_arcsec: 0.001 }),
+        P("2026-05", 61170.9, 158.04878, 14.1371, 0)],
+      fit: { pmra_mas_yr: -119.7, pmdec_mas_yr: -2.2, pmra_err_mas_yr: 1.5, pmdec_err_mas_yr: 1.5, gaia_pmra_mas_yr: 0, gaia_pmdec_mas_yr: 0 } } },
     saturated: { ...plain, wavelength_bins: bins([2.0]), measured: { status: "detected", shift_arcsec: 2.8, shift_err_arcsec: 0.3, dt_years: 1.0, pa_deg: 100,
       from_epoch: "2025-08", to_epoch: "2026-08", positions: [P("2025-08", 60900, 100, 10, 0.2, { saturated: true, bias_corrected: false }), P("2026-08", 61265, 100, 10 + 2.8 / 3600, 0.2)] } },
     implausible_speed: { ...plain, wavelength_bins: bins([1.0, 2.0]), measured: { status: "detected", shift_arcsec: 18.05, shift_err_arcsec: 1.2, dt_years: 0.99, pa_deg: 212,
@@ -165,12 +170,13 @@ for (const lg of ["en", "tr"]) {
       from_epoch: "2025-05", to_epoch: "2026-05", positions: [P("2025-05", 60800, 100, 10, 0.9), P("2026-05", 61172, 100, 10 + 2.8 / 3600, 0.9)] } },
   };
   const WHY = { degenerate: [/No error bar could be measured in 4\.6 µm/, /hata payı ölçülemedi/],
+    degenerate_zero_err: [/No error bar could be measured in 1, 4\.6 µm/, /hata payı ölçülemedi/],
     saturated: [/saturated \(too bright\) in 2 µm/, /doymuş/], implausible_speed: [/faster than any known star/, /bilinen her yıldızdan hızlı/],
     inconsistent: [/do not line up on one steady motion/, /tek bir düzgün harekete oturmuyor/],
     disagrees_with_catalogue: [/disagrees with the catalogue and the measurement is weak/, /katalogla uyuşmuyor/],
     large_error: [/The error bar \(2\.77 ± 1\.27″ per year, 4\.6 µm\) is too large to tell whether it moves/, /çok büyük/] };
   for (const [k, m] of Object.entries(G)) {
-    check(answerGuard(m) === k, `guard ${k}: got ${answerGuard(m)}`);
+    check(answerGuard(m) === k.replace(/_zero_err$/, ""), `guard ${k}: got ${answerGuard(m)}`);
     for (const [i, lg] of [[0, "en"], [1, "tr"]]) {
       const s = plainSentence(m, { lang: lg });
       console.log(`(guard, ${lg}) ${k}: ${s && s.text}`);

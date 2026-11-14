@@ -112,9 +112,10 @@ export function answerFrom(astro, session, version, binsUsed, catalogue = "loade
     else if (sig) code = "moving";
     else if (psig) code = "too_uncertain";
     else code = "not_moving";
-    let why = code === "too_uncertain" ? null : unreliable(astro, session, h, s, eU, p, true);
+    // degenerate: the shift has no error bar of its own (0 or missing): a "± 0.00" result is never stated
+    let why = code === "too_uncertain" ? null : e == null ? "degenerate" : unreliable(astro, session, h, s, eU, p, true);
     if (!why && code === "not_moving" && h.dtYears > 0 && eU / h.dtYears > MAX_NOT_MOVING_ERR) why = "large_error";
-    if (why) { reason = why; code = "too_uncertain"; }
+    if (why) { reason = why; code = why === "degenerate" ? "no_measurement" : "too_uncertain"; }
     Object.assign(out, { shift_arcsec: +s.toFixed(3), shift_err_arcsec: e != null ? +e.toFixed(3) : null, dt_years: h.dtYears,
                          pa_deg: h.pa, predicted_arcsec: p, speed_arcsec_yr: h.dtYears ? +(s / h.dtYears).toFixed(3) : null,
                          speed_err_arcsec_yr: h.dtYears && e != null ? +(e / h.dtYears).toFixed(3) : null,
@@ -126,6 +127,8 @@ export function answerFrom(astro, session, version, binsUsed, catalogue = "loade
     const sp = out.speed_arcsec_yr != null ? f(out.speed_arcsec_yr) + (out.speed_err_arcsec_yr != null ? ` ± ${f(out.speed_err_arcsec_yr)}` : "") : "";
     const se = out.speed_err_arcsec_yr != null ? f(out.speed_err_arcsec_yr) : "?";
     const R = {
+      degenerate: [`No error bar could be measured in ${b} µm (one exposure per season, or the position fit did not move from its start): no motion can be stated.`,
+                   `${b} µm'de hata payı ölçülemedi (sezon başına tek görüntü ya da konum ölçümü başlangıçtan ayrılmadı): hareket söylenemez.`],
       saturated: [`The source is saturated (too bright) in ${b} µm, so its position there is not reliable: too uncertain so far. A longer wavelength (4.0 / 4.6 µm) may settle it.`,
                   `Kaynak ${b} µm'de doymuş (fazla parlak); oradaki konumu güvenilir değil: şimdilik fazla belirsiz. Daha uzun bir dalga boyu (4,0 / 4,6 µm) netleştirebilir.`],
       implausible_speed: [`The measured shift (${sp}″ per year, ${b} µm) is faster than any known star: most likely a different source was measured in each season. Too uncertain; check the blink by eye.`,

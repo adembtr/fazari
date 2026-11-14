@@ -483,9 +483,18 @@ def answer_guard(ms, s, dt, claims_motion):
     """Why a measured shift must not be stated (None = it can be); contract v1.2. degenerate: every season
     position has a zero error bar (the fit never left its start); implausible_speed: faster than any known
     star (a different source in each season); inconsistent: >= 3 seasons and one is > max(4 err, 1.5")
-    off the straight-line motion. The measured numbers are kept as they are."""
+    off the straight-line motion. The measured numbers are kept as they are. degenerate also: the stated shift
+    (or the joint-fit speed) has no error bar of its own (0 or missing), e.g. a saturated star's wing fit whose
+    errors come out as 0.00: a "± 0.00" result is never stated as a measurement (site/js/verdict_strip.js)."""
     pos = [q for q in ms.get("positions") or [] if q.get("mjd") is not None]
     if pos and all(not (q.get("err_east_arcsec") or q.get("err_north_arcsec")) for q in pos):
+        return "degenerate"
+    e = ms.get("shift_err_arcsec")
+    if s is not None and not (e is not None and float(e) > 0):
+        return "degenerate"
+    f = ms.get("fit") or {}
+    if f.get("pmra_mas_yr") is not None and f.get("pmra_err_mas_yr") is not None \
+            and not (float(f["pmra_err_mas_yr"] or 0) > 0 or float(f.get("pmdec_err_mas_yr") or 0) > 0):
         return "degenerate"
     if claims_motion and dt and s / dt > MAX_STAR_SPEED:
         return "implausible_speed"

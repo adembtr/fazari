@@ -142,6 +142,10 @@ export function answerGuard(meta) {
   const notMoving = !sig && !psig;
   const pos = (ms.positions || []).filter((q) => ok(q.mjd));
   if (pos.length && pos.every((q) => !(+q.err_east_arcsec || +q.err_north_arcsec))) return "degenerate";
+  // no error bar of its own (0 or missing; e.g. a saturated star's wing fit): a "± 0.00" result is never stated
+  if (e == null) return "degenerate";
+  const f = ms.fit || {};
+  if (ok(f.pmra_mas_yr) && ok(f.pmra_err_mas_yr) && !(+f.pmra_err_mas_yr > 0 || +f.pmdec_err_mas_yr > 0)) return "degenerate";
   // saturated (browser-made results): a season of the headline pair is saturated with no bias-corrected position
   const pair = [ms.from_epoch, ms.to_epoch];
   if (pos.some((q) => pair.includes(q.epoch) && q.saturated === true && (q.bias_corrected === false || q.calibrated === false))) return "saturated";
@@ -167,7 +171,7 @@ function guardSentence(reason, meta, L) {
   const e = ok(ms.shift_err_arcsec) && +ms.shift_err_arcsec > 0 ? +ms.shift_err_arcsec : null;
   const f = (v) => (L === "tr" ? dc(v.toFixed(2)) : v.toFixed(2));
   const sp = dt ? f(s / dt) + (e != null ? ` ± ${f(e / dt)}` : "") : "";
-  const b = ((meta.wavelength_bins || []).map((x) => +x.wavelength_um)).map((x) => (L === "tr" ? dc(String(x)) : String(x))).join(", ");
+  const b = ((meta.wavelength_bins || []).map((x) => +x.wavelength_um)).map((x) => (L === "tr" ? dc(String(x)) : String(x))).join(L === "tr" ? "; " : ", ");   // as the engine
   const T = {
     degenerate: ["No error bar could be measured in {b} µm (one exposure per season, or the position fit did not move from its start): no motion can be stated.",
                  "{b} µm'de hata payı ölçülemedi (sezon başına tek görüntü ya da konum ölçümü başlangıçtan ayrılmadı): hareket söylenemez."],
