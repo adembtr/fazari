@@ -49,6 +49,16 @@ function month(ep) {                         // "2025-08" -> "Aug 2025" / "Ağu 
   catch (e) { return ep; }
 }
 
+/** Speed per year (″/yr) ± error from meta.measured.fit, and the catalogue's; null without a fit (grafikler). */
+function speedPerYear(f) {
+  const ok = (v) => v != null && Number.isFinite(+v);
+  if (!f || !ok(f.pmra_mas_yr) || !ok(f.pmdec_mas_yr) || !ok(f.pmra_err_mas_yr) || !ok(f.pmdec_err_mas_yr)) return null;
+  const v = Math.hypot(f.pmra_mas_yr, f.pmdec_mas_yr);
+  const e = v > 0 ? Math.hypot(f.pmra_mas_yr * f.pmra_err_mas_yr, f.pmdec_mas_yr * f.pmdec_err_mas_yr) / v : 0;
+  const p = ok(f.gaia_pmra_mas_yr) && ok(f.gaia_pmdec_mas_yr) ? Math.hypot(f.gaia_pmra_mas_yr, f.gaia_pmdec_mas_yr) / 1000 : null;
+  return { v: v / 1000, e: e / 1000, p };
+}
+
 /** Everything the hero shows, from meta.json. */
 function numbers(meta) {
   const m = meta.measured || {};
@@ -61,6 +71,7 @@ function numbers(meta) {
     images: meta.n_cutouts, seasons: eps.length, first: eps[0], last: eps[eps.length - 1],
     from: m.from_epoch, to: m.to_epoch, dt: m.dt_years,
     shift: m.shift_arcsec, err: m.shift_err_arcsec, gaia: m.gaia_predicted_arcsec,
+    pm: speedPerYear(m.fit),                       // grafikler: the card shows the speed per year (as the result card)
     um: bin?.wavelength_um, frameA: fr(m.from_epoch), frameB: fr(m.to_epoch), xyA: mk(m.from_epoch), xyB: mk(m.to_epoch),
     png: meta.grid?.png_px || [720, 770],
   };
@@ -110,9 +121,9 @@ function render(meta) {
         <ul class="fz-cards">
           <li><b>${esc(n.images)}</b><small data-i18n="hero.card.images">${esc(t("hero.card.images"))}</small></li>
           <li><b>${esc(n.seasons)}</b><small>${esc(t("hero.card.seasons", { from: month(n.first), to: month(n.last) }))}</small></li>
-          <li class="me"><b>${esc(arcsec(n.shift))}</b><span class="err">± ${esc(arcsec(n.err))}</span>
+          <li class="me"><b>${esc(n.pm ? arcsec(n.pm.v) + "/" + t("gr.yr") : arcsec(n.shift))}</b><span class="err">± ${esc(n.pm ? arcsec(n.pm.e) + "/" + t("gr.yr") : arcsec(n.err))}</span>
             <small>${esc(t("hero.card.measured"))}, ${esc(t("hero.card.measuredSub", { from: month(n.from), to: month(n.to) }))}</small></li>
-          <li class="gaia"><b>${esc(arcsec(n.gaia))}</b><small data-i18n="hero.card.gaia">${esc(t("hero.card.gaia"))}</small></li>
+          <li class="gaia"><b>${esc(n.pm && n.pm.p != null ? arcsec(n.pm.p) + "/" + t("gr.yr") : arcsec(n.gaia))}</b><small data-i18n="hero.card.gaia">${esc(t("hero.card.gaia"))}</small></li>
         </ul>
         <div class="fz-actions">
           <button type="button" class="fz-go" data-close autofocus><span data-i18n="hero.explore">${esc(t("hero.explore"))}</span>
@@ -122,6 +133,7 @@ function render(meta) {
             <a href="verify.html"><span data-i18n="hero.evidence">${esc(t("hero.evidence"))}</span> →</a>
             <a href="story.html"><span data-i18n="hero.story">${esc(t("hero.story"))}</span> →</a>
             <a href="comets.html"><span data-i18n="hero.comets">${esc(t("hero.comets"))}</span> →</a>
+            <a href="vr.html"><span data-i18n="vr.nav">${esc(t("vr.nav"))}</span> →</a>
           </span>
         </div>
       </div>
@@ -167,7 +179,8 @@ async function open() {
   dlg.lang = lang();
   if (!dlg.open) dlg.showModal();
   setPlaying(playing);
-  dlg.querySelector(".fz-go")?.focus();
+  dlg.querySelector(".fz-go")?.focus({ preventScroll: true });
+  dlg.scrollTop = 0;                 // phones: the blink (on top) stays in view, not scrolled away to the button
 }
 
 // ---- opening demo (explore/demo.js): something moves at once; any click / key / "Skip demo" ends it all.

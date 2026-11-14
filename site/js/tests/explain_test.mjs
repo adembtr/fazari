@@ -16,9 +16,9 @@ const fails = [];
 const check = (cond, msg) => { if (!cond) fails.push(msg); };
 
 const EXPECT = {
-  barnard: [/^Barnard's Star moved 10\.2″ north in one year, as Gaia predicts\.$/],
-  eps_indi_b: [/^Epsilon Indi B moved 4\.5″ south-east in one year, as Gaia predicts\.$/],
-  wise0855: [/moved 8\.4″ west in one year \(seen only at 4–5 µm\)/, /Spitzer/],
+  barnard: [/^Barnard's Star moves 10\.4″ north per year, as Gaia predicts\.$/],
+  eps_indi_b: [/^Epsilon Indi B moves 4\.6″ south-east per year, as Gaia predicts\.$/],
+  wise0855: [/moves 8\.4″ west per year \(seen only at 4–5 µm\)/, /Spitzer/],
   rw_aur: [/^RW Aurigae got about half as bright at 4–5 µm between September 2025 and September 2026\.$/],
   r_dra: [/^R Draconis got about half as bright .*between June 2025 and June 2026\.$/],
 };
@@ -88,9 +88,9 @@ check(/^We measured the star 8″ from where you clicked\. This star did not mov
 
 // Turkish (plainSentence(meta, { lang: "tr" }); on the page the language comes from js/i18n.js)
 const EXPECT_TR = {
-  barnard: [/^Barnard Yıldızı bir yılda 10,2″ kuzeye kaydı; Gaia'nın tahminiyle aynı\.$/],
-  eps_indi_b: [/^Epsilon Indi B bir yılda 4,5″ güneydoğuya kaydı; Gaia'nın tahminiyle aynı\.$/],
-  wise0855: [/bir yılda 8,4″ batıya kaydı \(yalnızca 4–5 µm'de görüldü\)/, /Spitzer/],
+  barnard: [/^Barnard Yıldızı yılda 10,4″ kuzeye kayıyor; Gaia'nın tahminiyle aynı\.$/],
+  eps_indi_b: [/^Epsilon Indi B yılda 4,6″ güneydoğuya kayıyor; Gaia'nın tahminiyle aynı\.$/],
+  wise0855: [/yılda 8,4″ batıya kayıyor \(yalnızca 4–5 µm'de görüldü\)/, /Spitzer/],
   rw_aur: [/^RW Aurigae, Eylül 2025 ile Eylül 2026 arasında 4–5 µm'de yaklaşık yarı yarıya sönükleşti\.$/],
   r_dra: [/^R Draconis, Haziran 2025 ile Haziran 2026 arasında .*sönükleşti\.$/],
 };
@@ -136,9 +136,9 @@ for (const lg of ["en", "tr"]) {
 {
   const bm = JSON.parse(readFileSync(`${SITE}/data/barnard/meta.json`, "utf8"));
   globalThis.__fzI18n = { lang: () => "tr", tname: (n) => (n === "Barnard's Star" ? "Barnard Yıldızı" : n) };
-  check(/^Barnard Yıldızı bir yılda/.test((plainSentence(bm) || {}).text || ""), "global tr: not Turkish");
+  check(/^Barnard Yıldızı yılda/.test((plainSentence(bm) || {}).text || ""), "global tr: not Turkish");
   globalThis.__fzI18n = { lang: () => "en" };
-  check(/^Barnard's Star moved 10\.2″ north/.test((plainSentence(bm) || {}).text || ""), "global en: not English");
+  check(/^Barnard's Star moves 10\.4″ north/.test((plainSentence(bm) || {}).text || ""), "global en: not English");
   delete globalThis.__fzI18n;
 }
 

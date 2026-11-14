@@ -118,9 +118,21 @@ function draw(root, spec, state) {
                           "aria-label": T("sp.aria", "Spectrum of {name}: flux against wavelength", { name: spec.target ? I18N.tname(spec.target) : T("sp.theSource", "the source") }) }, plot);
   const seasons = spec.seasons || [];
   const sIdx = (s) => Math.max(0, seasons.indexOf(s));
-  // saturated exposures without an estimate are shown as ticks in both views
-  const pts = viewPoints(spec, state.mode).concat(state.mode === "binned" ? viewPoints(spec, "exposures").filter((p) => p.kind === "sat") : [])
-    .filter((p) => !state.off.has(p.season) && fin(p.x));
+  // saturated exposures without an estimate are not drawn as points (they are not measurements): the wavelength
+  // ranges where every exposure is saturated become one grey band "too bright for the camera here"
+  const pts = viewPoints(spec, state.mode).filter((p) => p.kind !== "sat" && !state.off.has(p.season) && fin(p.x));
+  const satBands = (() => {
+    const all = viewPoints(spec, "exposures").filter((p) => !state.off.has(p.season) && fin(p.x) && p.kind !== "flag").sort((a, b) => a.x - b.x);
+    const runs = []; let cur = null;
+    for (const p of all) {
+      if (p.kind === "sat") { if (!cur) cur = { lo: p.x, hi: p.x, n: 0 }; cur.hi = p.x; cur.n++; }
+      else if (cur) { runs.push(cur); cur = null; }
+    }
+    if (cur) runs.push(cur);
+    const out = [];
+    for (const b of runs) { const l = out[out.length - 1]; if (l && b.lo - l.hi < 0.03) { l.hi = b.hi; l.n += b.n; } else out.push({ ...b }); }
+    return out.filter((b) => b.n >= 3);
+  })();
   // y range from what is drawn
   const vals = [];
   for (const p of pts) {
@@ -155,6 +167,7 @@ function draw(root, spec, state) {
     return t;
   })()
     : niceTicks(y0, y1, small ? 4 : 5);
+  if (!pts.length) yt.length = 0;                // nothing measured in this view (e.g. saturated everywhere): no empty flux axis
   for (const v of yt) el("line", { x1: m.l, x2: W - m.r, y1: sy(v), y2: sy(v) }, gGrid);
   const gTxt = el("g", { fill: "var(--mut)", "font-size": small ? 11 : 12.5, "font-family": "system-ui, sans-serif" }, svg);
   for (const v of yt) {
@@ -174,9 +187,18 @@ function draw(root, spec, state) {
     t.textContent = L1(String(v));
   }
   const xl = el("text", { x: (m.l + W - m.r) / 2, y: H - 6, "text-anchor": "middle" }, gTxt);
-  xl.textContent = T("sp.xAxis", "Wavelength (µm)");
+  xl.textContent = T("gr.sp.xAxis", "Wavelength of the infrared light (µm)");
   const yl = el("text", { x: 12, y: (m.t + H - m.b) / 2, "text-anchor": "middle", transform: `rotate(-90 12 ${(m.t + H - m.b) / 2})` }, gTxt);
-  yl.textContent = T("sp.yAxis", "Flux density");
+  yl.textContent = pts.length ? T("gr.sp.yAxis", "Brightness (flux density)") : "";
+  // grey bands: too bright for the camera (saturated, no estimate)
+  for (const b of satBands) {
+    const xa = sx(Math.max(X0, b.lo - 0.01)), xb = sx(Math.min(X1, b.hi + 0.01));
+    el("rect", { x: xa, y: m.t - 2, width: Math.max(2, xb - xa), height: H - m.b - m.t + 2, fill: "#9aa3b2", "fill-opacity": 0.13 }, svg);
+    if (xb - xa > 110) {
+      const tl = el("text", { x: (xa + xb) / 2, y: (m.t + H - m.b) / 2, "text-anchor": "middle", fill: "#c9d2e3", "font-size": small ? 11.5 : 13, "font-family": "system-ui, sans-serif" }, svg);
+      tl.textContent = T("gr.sp.band", "Too bright for the camera here (saturated): no measurement");
+    }
+  }
   // marks: faint exposures behind the binned view, then the view's points
   const gData = el("g", {}, svg);
   if (state.mode === "binned") {
@@ -241,7 +263,7 @@ function draw(root, spec, state) {
   };
   svg.addEventListener("pointermove", move);
   svg.addEventListener("pointerleave", () => { tip.hidden = true; ring.setAttribute("visibility", "hidden"); });
-  if (!pts.length) {
+  if (!pts.length && !satBands.length) {
     const t = el("text", { x: (m.l + W - m.r) / 2, y: (m.t + H - m.b) / 2, "text-anchor": "middle" }, gTxt);
     t.textContent = T("sp.noPoints", "No measured points in this view.");
   }
@@ -289,13 +311,16 @@ export function renderSpectrum(box, spec, { csvUrl = null, csvName = null, jsonU
   h("p", { class: "spx-note" },
     (seasons.length === 1 ? T("sp.sum.one", "{n} exposures in {s} season, each at its own wavelength. ", { n: sm.n_exposures || 0, s: 1 })
       : T("sp.sum.other", "{n} exposures in {s} seasons, each at its own wavelength. ", { n: sm.n_exposures || 0, s: seasons.length })) +
-    (dr ? T("sp.detAt", "Detected at {lo}–{hi} µm (S/N ≥ 3 in season bins). ", { lo: L1(dr[0].toFixed(2)), hi: L1(dr[1].toFixed(2)) }) : T("sp.noDet", "No wavelength bin with S/N ≥ 3. ")) +
-    (nSat ? (nSat === 1 ? T("sp.sat.one", "{n} saturated exposure", { n: nSat }) : T("sp.sat.other", "{n} saturated exposures", { n: nSat })) + (sm.n_saturated_wing ? T("sp.satWing", " ({n} with a wing estimate, hollow markers)", { n: sm.n_saturated_wing }) : "") + ". " : "") +
+    (dr ? T("sp.detAt", "Detected at {lo}–{hi} µm (S/N ≥ 3 in season bins). ", { lo: L1(dr[0].toFixed(2)), hi: L1(dr[1].toFixed(2)) })
+      : nSat ? "" : T("sp.noDet", "No wavelength bin with S/N ≥ 3. ")) +
+    (nSat ? T("gr.sp.sat", "The star is too bright for the camera in {n} of them (grey band: no measurement there)", { n: nSat }) +
+      (sm.n_saturated_wing ? T("gr.sp.satWing", "; hollow markers are rough estimates from its outer glow ({n} exposures)", { n: sm.n_saturated_wing }) : "") + ". " : "") +
     (spec.engine === "browser" ? T("sp.browser", "Measured in your browser from the exposures loaded so far.") : ""), box);
   const head = h("div", { class: "spx-head" }, null, box);
   const anyBins = (spec.binned || []).some((b) => b.kind === "measured" || b.kind === "saturated_wing");
   const det = (spec.points || []).filter((p) => p.status === "detection" || p.status === "saturated_wing").map((p) => num(p.flux_ujy)).filter((v) => v > 0);
-  const wide = det.length > 3 && Math.max(...det) / Math.min(...det) > 20;
+  const drawn = det.concat((spec.points || []).filter((p) => p.status === "nondetection").map((p) => num(p.upper_limit_ujy)).filter((v) => v > 0));
+  const wide = drawn.length > 3 && Math.max(...drawn) / Math.min(...drawn) > 10;
   const state = keep || { mode: anyBins ? "binned" : "exposures", log: wide || (!det.length && nSat > 0), off: new Set() };
   const seg = (labels, key, vals) => {
     const s = h("div", { class: "spx-seg", role: "group" }, null, head);
@@ -334,11 +359,12 @@ export function renderSpectrum(box, spec, { csvUrl = null, csvName = null, jsonU
     s.appendChild(ic);
     s.appendChild(document.createTextNode(" " + txt));
   };
-  item(T("sp.k.measured", "measured"), (g) => marker(g, "circle", 7, 7, 4, { fill: "#9aa3b2", stroke: "none" }));
-  item(T("sp.k.ul", "3σ upper limit (not detected)"), (g) => el("path", { d: "M7 2v9m-3.5 -4.5l3.5 4.5l3.5 -4.5M3 2h8", fill: "none", stroke: "#9aa3b2", "stroke-width": 1.5 }, g));
-  item(T("sp.k.wing", "saturated (wing estimate)"), (g) => marker(g, "circle", 7, 7, 4.5, { fill: "none", stroke: "#9aa3b2", sw: 1.6 }));
-  item(T("sp.k.sat", "saturated, no estimate"), (g) => el("path", { d: "M7 12l-4 -8h8z", fill: "none", stroke: "#9aa3b2", "stroke-width": 1.3 }, g));
-  item(T("sp.k.flag", "flagged pixels"), (g) => el("path", { d: "M3 3l8 8m0 -8l-8 8", stroke: "#9aa3b2", "stroke-width": 1.5 }, g));
+  const has = (st) => (spec.points || []).some((p) => p.status === st);
+  if (has("detection")) item(T("sp.k.measured", "measured"), (g) => marker(g, "circle", 7, 7, 4, { fill: "#9aa3b2", stroke: "none" }));
+  if (has("nondetection")) item(T("gr.sp.k.ul", "not seen: fainter than this"), (g) => el("path", { d: "M7 2v9m-3.5 -4.5l3.5 4.5l3.5 -4.5M3 2h8", fill: "none", stroke: "#9aa3b2", "stroke-width": 1.5 }, g));
+  if (has("saturated_wing")) item(T("gr.sp.k.wing", "too bright: rough estimate from the outer glow"), (g) => marker(g, "circle", 7, 7, 4.5, { fill: "none", stroke: "#9aa3b2", sw: 1.6 }));
+  if (has("saturated")) item(T("gr.sp.k.sat", "too bright for the camera (saturated): no measurement"), (g) => el("rect", { x: 1, y: 1, width: 12, height: 12, fill: "#9aa3b2", "fill-opacity": 0.35 }, g));
+  if (has("flagged")) item(T("sp.k.flag", "flagged pixels"), (g) => el("path", { d: "M3 3l8 8m0 -8l-8 8", stroke: "#9aa3b2", "stroke-width": 1.5 }, g));
   const links = h("p", { class: "spx-note spx-links" }, null, box);
   if (csvUrl) h("a", { href: csvUrl, download: csvName || "spectrum.csv" }, T("sp.csv", "Download CSV"), links);
   if (jsonUrl) h("a", { href: jsonUrl, target: "_blank", rel: "noopener" }, "spectrum.json", links);

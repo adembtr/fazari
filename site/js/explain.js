@@ -125,7 +125,24 @@ function subject(meta) {
 }
 const angDiff = (a, b) => Math.abs((((a - b) % 360) + 540) % 360 - 180);
 
+/** The sentence says the speed per year (meta.measured.fit: the joint fit of every exposure) when the result
+ *  has one, like the result tiles; the shift between two seasons (it also holds the yearly parallax wobble)
+ *  is shown on the card as a second line. Without a fit: the shift, as before. */
 function motionSentence(meta, ms, S, L) {
+  const f = ms.fit;
+  if (!f || !ok(f.pmra_mas_yr) || !ok(f.pmdec_mas_yr) || !ok(f.pmra_err_mas_yr) || !ok(f.pmdec_err_mas_yr)) return motionSentenceShift(meta, ms, S, L);
+  const a = +f.pmra_mas_yr, d = +f.pmdec_mas_yr, v = Math.hypot(a, d);
+  const e = v > 0 ? Math.hypot(a * f.pmra_err_mas_yr, d * f.pmdec_err_mas_yr) / v : Math.max(+f.pmra_err_mas_yr, +f.pmdec_err_mas_yr);
+  const g = ok(f.gaia_pmra_mas_yr) && ok(f.gaia_pmdec_mas_yr) && (+f.gaia_pmra_mas_yr || +f.gaia_pmdec_mas_yr) ? [+f.gaia_pmra_mas_yr, +f.gaia_pmdec_mas_yr] : null;
+  const pa = (x, y) => ((Math.atan2(x, y) * 180 / Math.PI) + 360) % 360;
+  const yr = { ...ms, shift_arcsec: v / 1000, shift_err_arcsec: e / 1000, pa_deg: pa(a, d), dt_years: 1,
+    gaia_predicted_arcsec: g ? Math.hypot(g[0], g[1]) / 1000 : null, gaia_pa_deg: g ? pa(g[0], g[1]) : null };
+  const s = motionSentenceShift(meta, yr, S, L);
+  return L === "tr"
+    ? s.replace(/\bbir yılda\b/g, "yılda").replace(/ kaydı(?![a-zçğıöşü])/g, " kayıyor").replace(/kaymış görünüyor/g, "kayıyor gibi görünüyor").replace(/ölçülen kayma/g, "ölçülen hız")
+    : s.replace(/ in one year\b/g, " per year").replace(/ moved /g, " moves ").replace(/seems to have moved/g, "seems to move").replace(/measured shift/g, "measured speed");
+}
+function motionSentenceShift(meta, ms, S, L) {
   const s = +ms.shift_arcsec;
   const e = ok(ms.shift_err_arcsec) && ms.shift_err_arcsec > 0 ? +ms.shift_err_arcsec : null;
   const eU = e ?? Math.max(0.1, 0.05 * s);                     // no error bar: be conservative

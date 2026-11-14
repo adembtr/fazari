@@ -23,18 +23,55 @@ function month(ep) {
 }
 const fmtA = (v, d = 2) => `${num(v, d)}″`;
 const fmtS = (v, d = 2) => `${sgn(v, d).replace(".", lang() === "tr" ? "," : ".")}″`;
+/** Speed per year: "10.37″/yr" (signed for a difference). */
+const fmtR = (v, signed = false) => `${signed ? sgn(v, 2) : num(v, 2)}″/${t("gr.yr")}`;
+/** Speed per year from table.json proper_motion: { v, e, p } in ″/yr, or null. */
+function speedOf(r) {
+  const pm = r && r.proper_motion;
+  if (!pm || !Array.isArray(pm.measured_mas_yr) || pm.measured_mas_yr[0] == null || !Array.isArray(pm.err_mas_yr)) return null;
+  const [a, d] = pm.measured_mas_yr, [ea, ed] = pm.err_mas_yr, v = Math.hypot(a, d);
+  const ref = Array.isArray(pm.reference_mas_yr) && pm.reference_mas_yr[0] != null ? Math.hypot(...pm.reference_mas_yr) : (r.reference && r.reference.pm_total_mas_yr) || null;
+  return { v: v / 1000, e: (v > 0 ? Math.hypot(a * ea, d * ed) / v : Math.max(ea, ed)) / 1000, p: ref != null ? ref / 1000 : null };
+}
 
-let TABLE = null, NAIVE = null, NULLT = null;
+let TABLE = null, NAIVE = null, NULLT = null, HEAD = null;
+
+// ------------------------------------------------------------------------------- headline figures (grafikler)
+// Three big numbers with one sentence each, and why Barnard's Star has two numbers. All from the JSON files.
+function renderHead() {
+  const box = $("grHead");
+  if (!box || !HEAD) return;
+  const [tests, ast, fs] = HEAD;
+  const figs = [];
+  const rows = TABLE?.rows || [];
+  const mot = rows.filter((r) => r.kind === "motion" && r.measured), bri = rows.filter((r) => r.kind === "brightness");
+  if (rows.length) figs.push(`<li class="ok"><b>${esc(num(mot.length + bri.length, 0))}</b><small>${esc(t("gr.v.fig1", { m: mot.filter((r) => r.status === "pass").length, n: mot.length, b: bri.length }))}</small></li>`);
+  const tt = ast?.totals;
+  if (tt && tt.known_v18) figs.push(`<li><b>${esc(t("gr.v.of", { a: num(tt.found_v18, 0), b: num(tt.known_v18, 0) }))}</b><small>${esc(t("gr.v.fig2", { v: 18, d: num(ast.offset_arcsec?.median ?? 0, 1) }))}</small></li>`);
+  const fa = fs?.all;
+  if (fa && fs.measured) figs.push(`<li><b>${esc(t("gr.v.of", { a: num(Math.round(fa.frac_within_3sigma_pass * fs.measured), 0), b: num(fs.measured, 0) }))}</b><small>${esc(t("gr.v.fig3", { n: fs.measured, p: num(fa.median_abs_diff_pct, 0), k: fs.sample_size }))}</small></li>`);
+  $("grFigs").innerHTML = figs.join("");
+  // why two Barnard numbers
+  const b = rows.find((r) => r.id === "barnard"), sp = speedOf(b), v1 = (tests?.tests || []).find((x) => /barnard/i.test(x.title?.en || ""));
+  const two = $("grTwo");
+  if (b && sp && sp.p != null) {
+    two.textContent = t(v1?.numbers?.speed_arcsec_yr != null ? "gr.v.two" : "gr.v.twoNoTest", { v: fmtR(sp.v), e: fmtR(sp.e), p: fmtR(sp.p),
+      s: fmtA(b.measured.shift_arcsec), dt: num(b.measured.dt_years, 2), id: v1?.id || "", bv: v1?.numbers?.speed_arcsec_yr != null ? fmtR(v1.numbers.speed_arcsec_yr) : "",
+      be: v1?.numbers?.err_speed != null ? fmtR(v1.numbers.err_speed) : "" });
+    two.hidden = false;
+  } else two.hidden = true;
+  box.hidden = !figs.length;
+}
 
 // ------------------------------------------------------------------------------------------ table
 function motionRow(r) {
   const m = r.measured, ref = r.reference, d = r.diff;
   const tag = r.challenge ? `<span class="tag ch">${esc(t("v.tag.challenge"))}</span>` : `<span class="tag">${esc(t("v.tag.extra"))}</span>`;
   const bins = r.detection === "partial" && r.detected_bins_um ? `<small>${esc(t("v.onlyBins", { bins: r.detected_bins_um.map((b) => num(b, 1)).join(", ") }))}</small>` : "";
-  const pm = r.proper_motion;
-  const pmTxt = pm && pm.measured_mas_yr[0] != null ? `<small>${esc(t("v.pm", {
-    m1: sgn(pm.measured_mas_yr[0], 0), m2: sgn(pm.measured_mas_yr[1], 0), e: Math.round(pm.err_mas_yr[0]),
-    r1: sgn(pm.reference_mas_yr[0], 0), r2: sgn(pm.reference_mas_yr[1], 0), s1: num(pm.diff_sigma[0], 1), s2: num(pm.diff_sigma[1], 1) }))}</small>` : "";
+  // grafikler: the speed per year (″/yr, our joint fit of all images vs the catalogue's proper motion) is the
+  // headline; the shift between the two same-orientation seasons (what the pass rule tests) is the small line
+  const sp = speedOf(r);
+  const pmTxt = "";
   const refName = r.id === "luhman16" ? t("v.ref.simbad") : r.id === "wise0855" ? t("v.ref.kirk") : t("v.ref.gaia");
   const extra = r.id === "luhman16" && r.reference.parallax_residual_max_arcsec != null ? `<small>${esc(t("v.luhmanRef", { p: num(r.reference.parallax_residual_max_arcsec, 2) }))}</small>` : "";
   const res = (r.status === "pass" ? `<span class="res pass">✓ ${esc(t("v.pass"))}</span>` : `<span class="res fail">✗ ${esc(t("v.fail"))}</span>`)
@@ -42,12 +79,17 @@ function motionRow(r) {
   const view = r.local_job ? `<small>${esc(t("v.localJob"))}</small>` : `<small><a href="${esc(r.viewer)}">${esc(t("v.open"))} →</a></small>`;
   return `<tr>
     <td data-h="${esc(t("v.col.target"))}"><span class="nm">${esc(tname(r.name))}</span><br>${tag}${view}</td>
-    <td data-h="${esc(t("v.col.what"))}">${esc(t("v.what", { from: month(m.from), to: month(m.to), dt: num(m.dt_years, 2) }))}
+    <td data-h="${esc(t("v.col.what"))}">${esc(sp ? t("gr.v.what") : t("v.what", { from: month(m.from), to: month(m.to), dt: num(m.dt_years, 2) }))}
       <small>${esc(t("v.images", { n: r.n_images, s: (r.seasons || []).length }))}</small>${bins}${pmTxt}</td>
-    <td class="num" data-h="${esc(t("v.col.measured"))}"><b class="me">${fmtA(m.shift_arcsec)} ± ${fmtA(m.err_arcsec)}</b><small>PA ${num(m.pa_deg, 1)}°</small></td>
-    <td class="num" data-h="${esc(t("v.col.ref"))}"><b class="ref">${fmtA(ref.shift_arcsec)}</b><small>PA ${num(ref.pa_deg, 1)}° · ${esc(refName)}</small>${extra}</td>
-    <td class="num" data-h="${esc(t("v.col.diff"))}">${fmtS(d.shift_arcsec)} <span class="fine">(${sgn(d.percent, 1).replace(".", lang() === "tr" ? "," : ".")} %)</span>
-      <small>${esc(t("v.sigma", { s: num(d.sigma, 1), v: num(d.vector_arcsec, 2) }))}</small></td>
+    <td class="num" data-h="${esc(t("v.col.measured"))}">${sp ? `<b class="me">${fmtR(sp.v)} ± ${fmtR(sp.e)}</b>` : `<b class="me">${fmtA(m.shift_arcsec)} ± ${fmtA(m.err_arcsec)}</b>`}
+      <small>${sp ? esc(t("gr.v.shiftSmall", { s: fmtA(m.shift_arcsec), e: fmtA(m.err_arcsec), from: month(m.from), to: month(m.to), dt: num(m.dt_years, 2) })) + " · " : ""}PA ${num(m.pa_deg, 1)}°</small></td>
+    <td class="num" data-h="${esc(t("v.col.ref"))}">${sp && sp.p != null ? `<b class="ref">${fmtR(sp.p)}</b>` : `<b class="ref">${fmtA(ref.shift_arcsec)}</b>`}
+      <small>${sp && sp.p != null ? esc(t("gr.v.refShift", { s: fmtA(ref.shift_arcsec) })) + " · " : ""}PA ${num(ref.pa_deg, 1)}° · ${esc(refName)}</small>${extra}</td>
+    <td class="num" data-h="${esc(t("v.col.diff"))}">${sp && sp.p != null
+      ? `${fmtR(sp.v - sp.p, true)} <span class="fine">(${sgn(100 * (sp.v / sp.p - 1), 1).replace(".", lang() === "tr" ? "," : ".")} %)</span>
+      <small>${esc(t("gr.v.sig", { s: num(Math.abs(sp.v - sp.p) / sp.e, 1), k: num(d.sigma, 1) }))}</small>`
+      : `${fmtS(d.shift_arcsec)} <span class="fine">(${sgn(d.percent, 1).replace(".", lang() === "tr" ? "," : ".")} %)</span>
+      <small>${esc(t("v.sigma", { s: num(d.sigma, 1), v: num(d.vector_arcsec, 2) }))}</small>`}</td>
     <td data-h="${esc(t("v.col.result"))}">${res}</td>
   </tr>`;
 }
@@ -74,7 +116,7 @@ function brightRow(r, bestErr) {
       <small><a href="${esc(r.viewer)}">${esc(t("v.open"))} →</a></small></td>
     <td data-h="${esc(t("v.col.what"))}">${esc(t("v.motionOnly"))}<small>${esc(t("v.images", { n: r.n_images, s: (r.seasons || []).length }))}</small>${br}</td>
     <td class="num" data-h="${esc(t("v.col.measured"))}">—</td>
-    <td class="num" data-h="${esc(t("v.col.ref"))}"><b class="ref">${fmtA(r.expected_motion_arcsec_yr, 3)}</b><small>${esc(t("v.perYear"))} · ${esc(t("v.ref.gaia"))}</small></td>
+    <td class="num" data-h="${esc(t("v.col.ref"))}"><b class="ref">${num(r.expected_motion_arcsec_yr, 3)}″/${esc(t("gr.yr"))}</b><small>${esc(t("v.ref.gaia"))}</small></td>
     <td class="num" data-h="${esc(t("v.col.diff"))}">—</td>
     <td data-h="${esc(t("v.col.result"))}"><span class="res na">${esc(t("v.na"))}</span><small>${esc(t("v.naWhy", { lo: num(bestErr[0], 2), hi: num(bestErr[1], 2) }))}</small></td>
   </tr>`;
@@ -250,6 +292,7 @@ function renderAll() {
   apply(document);
   document.title = t("v.title");
   if (TABLE) { renderTable(); renderOpen(); }
+  renderHead();
   renderTrust();
   renderControl();
 }
@@ -259,6 +302,7 @@ onLang(() => { document.documentElement.lang = lang(); renderAll(); });
 document.documentElement.lang = lang();
 const [tb, nv, nl] = await Promise.all([get("data/verify/table.json"), get("data/verify/naive_barnard.json"), get("data/verify/null_barnard.json")]);
 TABLE = tb; NAIVE = nv; NULLT = nl;
+HEAD = await Promise.all([get("data/verify/tests.json"), get("data/asteroids/summary.json"), get("data/fast_sweep/summary.json")]);
 if (!TABLE) $("vtBox").innerHTML = `<p class="fine">${esc(t("v.noData"))}</p>`;
 renderAll();
 if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();

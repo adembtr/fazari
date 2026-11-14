@@ -13,6 +13,7 @@ import { highPmStars } from "./gaia.js";
 import { propagate, offsetArcsec, jyearToMjd } from "./astro.js";
 import { t, tn, num, loc, lang, tname, onLang } from "./i18n.js";
 import { fovFromUrl, fovFor, fillFovSelect, fovEstimateText, setFovInUrl } from "./fov.js";
+import * as GR from "./gr.js";   // speed per year, number line, catalogue at a free point, limit line (grafikler)
 import { drawScale, speedOf, speedText, scaleText, significant } from "./motion_arrow.js";   // measured-motion arrow (ilk_izlenim)
 
 // Sky index: the real module (skyindex.js) when it is there, else the dev stand-in.
@@ -292,15 +293,39 @@ function showPreliminary(r) {
 function showMotion() {
   const el = $("measure");
   const a = run.astro;
+  GR.ensureStyle();
   if (!a || !a.positions.length) {
-    el.innerHTML = `<p>${t("sk.m.none")}</p>`;
+    // grafikler: nothing measured at the point: the honest limit from this run's field stars and seasons
+    const c = a && a.calibration, fr = current && current.frames;
+    const dt = fr && fr.length > 1 && fr[0].mjdMean && fr[fr.length - 1].mjdMean ? (fr[fr.length - 1].mjdMean - fr[0].mjdMean) / 365.25 : null;
+    const v = c ? GR.limitFromField(c.rms, dt) : null;
+    el.innerHTML = `<p>${t("sk.m.none")}</p>` + (v ? GR.limitHtml({ v }, t("gr.lim.tipField", { r: num(c.rms, 2) }), true) : "");
     return;
   }
   const who = run.target ? tname(run.target.name) : t("sk.m.who");
   let html = "";
   if (a.pairs.length) {
     const p = a.pairs.find((q) => q.from === a.positions[0].season && q.to === a.positions[a.positions.length - 1].season);
-    html += `<p class="big">${t("sk.m.shift", { who, from: p.from, to: p.to, shift: fmtArc(p.shift), pa: num(p.pa, 1), err: num(p.err, 2) })}`;
+    // grafikler: the headline is the speed per year = shift ÷ time, from the same-orientation pair closest to a year
+    // (there the yearly parallax wobble nearly cancels); the shift itself follows as a second line
+    const q = a.pairs.filter((x) => x.sameOrientation && x.dtYears > 0.3).sort((x, y) => Math.abs(x.dtYears - 1) - Math.abs(y.dtYears - 1))[0] || (p && p.dtYears > 0.3 ? p : null);
+    const sp = q ? { v: q.shift / q.dtYears, e: q.err / q.dtYears, p: q.gaiaShift != null ? q.gaiaShift / q.dtYears : null } : null;
+    if (sp) {
+      html += `<p class="big">${t(sp.v < 3 * sp.e ? "gr.sk.noClear" : "gr.sk.speed", { who, v: GR.rateTxt(sp.v, sp.e), e: GR.rateTxt(sp.e, sp.e) })}${sp.p != null ? t("gr.sk.cat", { p: GR.rateTxt(sp.p, sp.e) }) : ""}</p>`
+        + `<div id="grSkyNl">${GR.numberLine({ v: sp.v, e: sp.e, p: sp.p, refLabel: t("gr.sk.catLabel"), unit: t("gr.unit") })}</div>`
+        + `<p class="small">${t("gr.sk.how", { from: q.from, to: q.to, dt: num(q.dtYears, 2) })}</p>`;
+      if (sp.v < 3 * sp.e) html += GR.limitHtml({ v: 3 * sp.e }, t("gr.sk.limTip", { dt: num(q.dtYears, 2) }), true);
+      if (!run.target) {                               // a free point: the catalogued star there (Gaia DR3, else SIMBAD)
+        const myA = a;
+        GR.catalogueAt({ measured: { positions: a.positions.map((x) => ({ ra: x.ra, dec: x.dec, mjd: x.mjd })) } }, "").then((c) => {
+          const box = $("grSkyNl");
+          if (!c || run.astro !== myA || !box) return;
+          box.innerHTML = GR.numberLine({ v: sp.v, e: sp.e, p: c.v, refLabel: c.src, unit: t("gr.unit") })
+            + `<p class="small">${t("gr.sk.catAt", { src: c.src === "SIMBAD" ? "SIMBAD" : "ESA Gaia DR3", p: GR.rateTxt(c.v, sp.e), d: num(c.sep, 1) })}</p>`;
+        });
+      }
+    }
+    html += `<p${sp ? "" : ' class="big"'}>${t("sk.m.shift", { who, from: p.from, to: p.to, shift: fmtArc(p.shift), pa: num(p.pa, 1), err: num(p.err, 2) })}`;
     if (p.gaiaShift != null) html += t("sk.m.cat", { shift: fmtArc(p.gaiaShift), pa: num(p.gaiaPa, 1) });
     html += "</p>";
   }

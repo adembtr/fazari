@@ -8,7 +8,15 @@
 <meta name="theme-color" content="#05070d">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22 fill=%22%2305070d%22 stroke=%22%237fd4ff%22 stroke-width=%221.6%22/%3E%3Ccircle cx=%2216.5%22 cy=%228%22 r=%222%22 fill=%22%23ffc94d%22/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/fz_pages.css">
-<link rel="stylesheet" href="css/ui_shell.css"><script src="js/ui_boot.js"></script><!-- ui layer (arayuz) -->
+<style>
+  /* headline figures (grafikler) */
+  .gr-head { padding-top: 6px; }
+  .gr-figs li b { font-size: clamp(30px, 5vw, 40px); color: var(--fg); }
+  .gr-figs li.ok b { color: var(--good); }
+  .gr-figs small b { display: inline; font-size: inherit; color: var(--soft); }
+  .gr-two { max-width: 56em; }
+</style>
+<link rel="stylesheet" href="css/ui_shell.css"><link rel="stylesheet" href="css/phone.css"><script src="js/ui_boot.js"></script><!-- ui layer (arayuz) -->
 </head>
 <body>
 <header class="pg-top">
@@ -33,6 +41,11 @@
     <p class="lead" data-i18n="v.lead">We measured how far each target moved between two SPHEREx observing seasons, from the images alone. Then we compared that with the best independent prediction: Gaia DR3, or published astrometry where Gaia has none. Here is every target, including the ones we could not measure.</p>
   </div>
 
+  <section class="blk gr-head" id="grHead" aria-label="Headline figures" data-i18n-attr="aria-label:gr.v.headAria" hidden>
+    <ul class="tiles gr-figs" id="grFigs"></ul>
+    <p class="crit gr-two" id="grTwo" hidden></p>
+  </section>
+
   <section class="blk" id="tests" aria-labelledby="testsTitle">
     <h2 id="testsTitle" data-i18n="vf.h">Numbered tests: was it tested, and is it right?</h2>
     <p class="sub" data-i18n="vf.sub">Each test was run in a separate test round on the final code. The pass thresholds were fixed before the run. Tests that did not pass stay in the list, in their place; a re-test will update this page.</p>
@@ -41,7 +54,7 @@
 
   <section class="blk" id="table" aria-labelledby="tableTitle">
     <h2 id="tableTitle" data-i18n="v.table.h">Measured motion against the catalogue</h2>
-    <p class="sub" data-i18n="v.table.sub">One row per target. The shift is between two seasons seen with the same telescope orientation, about a year apart.</p>
+    <p class="sub" data-i18n="gr.v.table.sub">One row per target. The big numbers are the speed per year: our fit of all images against the catalogue. The small lines give the shift between two seasons seen with the same telescope orientation, about a year apart; the pass rule (fixed before testing) is on that shift.</p>
     <div id="vtBox"><p class="fine" data-i18n="v.loading">Loading the measurements…</p></div>
     <p class="crit" id="crit"></p>
     <p class="fine" id="tableSrc"></p>

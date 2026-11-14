@@ -18,6 +18,9 @@
 // letterboxing). Every frame change fires document event "fazari:frame" ({ epoch, bin_um, file }).
 
 import { t, lang, loc, month, tname, onLang, ptext } from "./i18n.js";
+import * as GR from "./gr.js";   // answer card: speed per year, number line, ratio chart, catalogue at a free point, limits (grafikler)
+import { drawScale, speedOf, speedText, scaleText, significant } from "./motion_arrow.js";   // measured-motion arrow: scale + speed label (ilk_izlenim)
+import { findNeighbours, neighbourLayout, neighbourSvg } from "./neighbours.js";   // static catalogue stars near the track (ilk_izlenim)
 
 const $ = (id) => document.getElementById(id);
 const ok = (v) => v != null && v !== "" && Number.isFinite(+v);
@@ -247,6 +250,7 @@ function arrowText(mp) {
   return { long: `≈${arcsec(s)}${dt ? " " + span(dt) : ""} (${L("vw.predOf", "{who} prediction", { who: S.ref.short })})`, short: "≈" + arcsec(s) };
 }
 const RING = 34;                  // ring radius in PNG px (about 25″ on the sky)
+let arrowLabel = "";              // the arrow's speed label, added after the ring so nothing covers it
 function motionSvg(u, legend) {
   const mp = motionPoints();
   if (!mp) return "";
@@ -259,16 +263,25 @@ function motionSvg(u, legend) {
     mp.path.filter((p) => p !== a && p !== b).forEach((p) => { s += `<circle cx="${p[0]}" cy="${p[1]}" r="${3 * u}" fill="#c9d2e3" stroke="#05070d" stroke-width="${1.2 * u}"/>`; });
   }
   const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy);
+  let N = 1;
   if (len > 0.2) {
     const ux = dx / len, uy = dy / len;
-    const hl = Math.min(12 * u, len * 0.75), hw = 6.5 * u;
-    const bx = b[0] - ux * hl, by = b[1] - uy * hl;
-    const head = `M${b[0].toFixed(2)} ${b[1].toFixed(2)}L${(bx - uy * hw).toFixed(2)} ${(by + ux * hw).toFixed(2)}L${(bx + uy * hw).toFixed(2)} ${(by - ux * hw).toFixed(2)}Z`;
+    // measured motion: drawn N times longer (a round factor, written on the image), from the measured first position
+    const Sw = $("stage").clientWidth, Sh = $("stage").clientHeight;
+    const mv = mp.kind === "measured" ? motionPair(mp.ea, mp.eb) : null;
+    if (mv && significant(mv.s, mv.e)) N = drawScale(len, Math.max(RING * 1.8, Math.min(150, 0.3 * Math.min(Sw || 300, Sh || 300)) * u));
+    const tip = [a[0] + dx * N, a[1] + dy * N], tl = len * N;
+    const hl = Math.min((N > 1 ? 15 : 12) * u, tl * 0.75), hw = (N > 1 ? 8 : 6.5) * u;
+    const bx = tip[0] - ux * hl, by = tip[1] - uy * hl;
+    const head = `M${tip[0].toFixed(2)} ${tip[1].toFixed(2)}L${(bx - uy * hw).toFixed(2)} ${(by + ux * hw).toFixed(2)}L${(bx + uy * hw).toFixed(2)} ${(by - ux * hw).toFixed(2)}Z`;
     const line = `M${a[0].toFixed(2)} ${a[1].toFixed(2)}L${bx.toFixed(2)} ${by.toFixed(2)}`;
     const col = mp.kind === "measured" ? "#ffffff" : "#ffd08a";
-    s += halo(line, 7 * u) + halo(head, 3.5 * u) +
-      `<path d="${line}" stroke="${col}" stroke-width="${3 * u}" stroke-linecap="round"${mp.kind === "measured" ? "" : ` stroke-dasharray="${5 * u} ${3 * u}"`}/>` +
+    const sw = N > 1 ? 3.6 : 3;
+    s += halo(line, (sw + 4) * u) + halo(head, 3.5 * u) +
+      `<path d="${line}" stroke="${col}" stroke-width="${sw * u}" stroke-linecap="round"${mp.kind === "measured" ? "" : ` stroke-dasharray="${5 * u} ${3 * u}"`}/>` +
       `<path d="${head}" fill="${col}"/>`;
+    if (N > 1) s += `<circle cx="${b[0]}" cy="${b[1]}" r="${4 * u}" fill="none" stroke="#05070d" stroke-width="${3.6 * u}"/>` +
+      `<circle cx="${b[0]}" cy="${b[1]}" r="${4 * u}" fill="none" stroke="#ff6b6b" stroke-width="${2 * u}"/>`;   // the true end
     // first and last position (blue = before, red = after, like the difference image)
     s += `<circle cx="${a[0]}" cy="${a[1]}" r="${5.5 * u}" fill="none" stroke="#05070d" stroke-width="${4 * u}"/>` +
       `<circle cx="${a[0]}" cy="${a[1]}" r="${5.5 * u}" fill="none" stroke="#5aa9ff" stroke-width="${2.2 * u}"/>`;
@@ -277,9 +290,28 @@ function motionSvg(u, legend) {
       `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" fill="${c}" font-size="${size * u}" font-weight="700" text-anchor="${anchor}" ` +
       `dominant-baseline="middle" stroke="#05070d" stroke-width="${3.2 * u}" paint-order="stroke" font-family="system-ui, sans-serif">${esc(t)}</text>`;
     const off = RING + (11 + 30 * Math.abs(ux)) * u;       // clear of the ring, also for sideways motion
-    s += lab(a[0] - ux * off, a[1] - uy * off, season(mp.ea), "#8cc4ff") +
-      lab(b[0] + ux * off, b[1] + uy * off, season(mp.eb), "#ff8f8a");
-    const at = arrowText(mp);
+    s += lab(a[0] - ux * off, a[1] - uy * off, season(mp.ea), "#8cc4ff");
+    if (N === 1) s += lab(b[0] + ux * off, b[1] + uy * off, season(mp.eb), "#ff8f8a");
+    const sp = mp.kind === "measured" ? speedOf((S.meta.measured || {}).fit, motionPair(mp.ea, mp.eb)) : null;
+    if (sp) {
+      // speed ± error and direction, and the drawing scale, just past the arrow head; kept inside the stage
+      const l1 = speedText(sp), l2 = scaleText(N), side = Math.abs(ux) > 0.55;
+      const P = (x, y) => [S.tx + x * S.k, S.ty + y * S.k];
+      const [ax, ay] = P(a[0], a[1]), [qx, qy] = P(tip[0], tip[1]), mx = (ax + qx) / 2, my = (ay + qy) / 2;
+      const lg = $("hudLegend"), legH = lg && !lg.hidden ? lg.offsetHeight + 10 : 10;
+      const bw = Math.max(l1.length * 15, l2.length * 12.5) * 0.56, bh = 36;       // label box in screen px (estimate)
+      const hx = (x0) => Math.min(Math.max(x0, 6), Sw - 6 - bw);                  // above / below the arrow: slide sideways freely
+      const clear = (x0, y0) => !(S.nbBoxes || []).some((b) => x0 < b[2] + 4 && x0 + bw > b[0] - 4 && y0 < b[3] + 4 && y0 + bh > b[1] - 4);
+      const fits = (bottom) => ([x0, y0]) => x0 >= 6 && y0 >= 46 && x0 + bw <= Sw - 6 && y0 + bh <= Sh - bottom && clear(x0, y0);
+      const cands = [side ? (ux > 0 ? [qx + 12, qy - bh / 2] : [qx - 12 - bw, qy - bh / 2]) : [qx - bw / 2, uy < 0 ? qy - 12 - bh : qy + 12],
+        [hx(mx - bw / 2), Math.min(ay, qy) - 14 - bh], [hx(mx - bw / 2), Math.max(ay, qy) + 14],
+        [Math.max(ax, qx) + 14, my - bh / 2], [Math.min(ax, qx) - 14 - bw, my - bh / 2]];
+      const c0 = cands[0];
+      const box = cands.find(fits(legH)) || cands.find(fits(6)) || [Math.min(Math.max(c0[0], 6), Sw - 6 - bw), Math.min(Math.max(c0[1], 46), Sh - legH - bh)];
+      const lx = (box[0] + bw / 2 - S.tx) / S.k, ly = (box[1] + 10 - S.ty) / S.k;
+      arrowLabel = lab(lx, ly, l1, "#ffffff", "middle", 15) + lab(lx, ly + 17 * u, l2, "#ffd08a", "middle", 12);   // drawn last (over the ring)
+    }
+    const at = mp.kind === "measured" ? null : arrowText(mp);
     if (at) {
       const t = at.long, short = at.short;
       // beside the ring, on the side with room on screen (right, else left, else below)
@@ -298,9 +330,10 @@ function motionSvg(u, legend) {
       s += lab(pick.x, pick.y, pick.str, "#ffffff", pick.anchor, 15);
     }
   }
-  legend.push(mp.kind === "measured" ? `<span><i class="lg arrow"></i>${esc(L("vw.lg.measured", "measured motion"))}</span>`
+  legend.push(mp.kind === "measured" ? `<span><i class="lg arrow"></i>${esc(N > 1 ? t("fi.lg.measuredx", { n: N }) : L("vw.lg.measured", "measured motion"))}</span>`
     : `<span><i class="lg arrow dash"></i>${esc(L("vw.lg.predPath", "{who} predicted path", { who: S.ref.short }))}</span>`);
   legend.push(`<span><i class="lg first"></i>${esc(L("vw.lg.first", "first season"))}</span>`);
+  if (N > 1) legend.push(`<span><i class="lg" style="width:9px;height:9px;border:2px solid #ff6b6b;border-radius:50%;display:inline-block"></i>${esc(t("fi.lg.last"))}</span>`);
   return s;
 }
 function ringSvg(u, legend) {
@@ -337,8 +370,15 @@ function drawOverlay() {
   const hide = S.game && !S.game.revealed;
   const legend = [];
   let s = "";
+  // static catalogue stars near the track: labelled first, so the arrow's label can keep clear of them
+  const nbItems = !hide && $("mark").checked && S.nb && S.nb.length ? neighbourLayout(S.nb, S.meta,
+    ((S.meta.measured || {}).positions || []).map((p) => p.png_xy_measured).filter(Boolean),
+    { tx: S.tx, ty: S.ty, k: S.k, Sw: $("stage").clientWidth, Sh: $("stage").clientHeight }) : [];
+  S.nbBoxes = nbItems.map((it) => it.box);
   if (!hide && $("arrowOn").checked) s += motionSvg(u, legend);
   if (!hide && $("mark").checked) s += ringSvg(u, legend);
+  if (nbItems.length) s += neighbourSvg(nbItems, u, legend);
+  s += arrowLabel; arrowLabel = "";
   if (S.game && S.game.click) {
     const [x, y] = S.game.click, c = S.game.hit ? "#5dd39e" : "#7fd4ff";
     const d = `M${x - 9 * u} ${y - 9 * u}L${x + 9 * u} ${y + 9 * u}M${x + 9 * u} ${y - 9 * u}L${x - 9 * u} ${y + 9 * u}`;
@@ -759,6 +799,66 @@ function satHere(ms, bin, eps) {
   if (!cells.length) return true;                                       // photometry flag only
   return cells.some((c) => c.saturated_frac > 0.5 && (!eps || eps.includes(c.epoch)));
 }
+// --- grafikler: number line, shift line, ratio chart, limit line (js/gr.js) under the result tiles ---------
+let grCatState = { base: null, val: undefined };
+/** The catalogued star at a free point (Gaia DR3, else SIMBAD), or null; asks once per result and repaints. */
+function grCat(m) {
+  if (grCatState.base !== S.base) {
+    const my = grCatState = { base: S.base, val: undefined };
+    GR.catalogueAt(m, S.base).then((c) => { my.val = c || null; if (c && S.meta === m && grCatState === my) renderResult(); });
+  }
+  return grCatState.val || null;
+}
+let grToken = 0;
+/** The catalogue's name for people: "SIMBAD" rather than a file path in the label. */
+function grRefName(m) {
+  const R = S.ref, ref = String(((m && m.gaia) || {}).reference || "");
+  if (/[\/]|\.json/.test(R.label)) return /simbad/i.test(ref) ? "SIMBAD" : R.Short;
+  return R.label;
+}
+function grPaint(g, m, ms) {
+  GR.ensureStyle();
+  let box = $("grBox");
+  if (!box) { $("tiles").insertAdjacentHTML("afterend", `<div id="grBox" class="gr-box" hidden></div>`); box = $("grBox"); }
+  const my = ++grToken;
+  let html = "";
+  if (g && g.speed) {
+    html += GR.numberLine({ v: g.speed.v, e: g.speed.e, p: g.ref ? g.ref.v : null, refLabel: g.ref ? g.ref.label : "",
+      unit: L("gr.unit", "arcseconds per year (″/yr)") });
+    const sh = g.shift;
+    if (sh && ok(sh.s) && sh.pair) {
+      html += `<p class="gr-line gr-det">` + L("gr.shift", "Shift you see in the blink, {pair}{dt}: <b>{s}</b>{e}{p}. It is not exactly speed × time: Earth's yearly orbit adds a small wobble (parallax).", {
+        pair: `${esc(season(sh.pair[0]))} → ${esc(season(sh.pair[1]))}`, dt: ok(sh.dt) ? ` (${loc((+sh.dt).toFixed(2))} ${L("gr.yr", "yr")})` : "",
+        s: arcsec(sh.s, sh.e), e: ok(sh.e) ? ` ± ${arcsec(sh.e, sh.e)}` : "",
+        p: ok(sh.p) ? L("gr.shiftPred", " ({who}: {p})", { who: esc(grRefName(m)), p: arcsec(sh.p, sh.e) }) : "" }) + `</p>`;
+    }
+  }
+  box.innerHTML = html;
+  box.hidden = !html;
+  // the ratio chart sits under the blink (after the "how to read" strip), not in the answer card: the blink stays
+  // the first thing on screen
+  let rbox = $("grRatio");
+  const rc = g && g.ratio ? GR.ratioChart(g.ratio, m.epochs, (ep) => season(ep)) : "";
+  if (!rbox && rc) { $("explainStrip").insertAdjacentHTML("afterend", `<section id="grRatio" class="gr-box gr-ratio" hidden></section>`); rbox = $("grRatio"); }
+  if (rbox) { rbox.innerHTML = rc; rbox.hidden = !rc; }
+  if (g && g.empty) {                                       // nothing measured at a free point: the honest limit, from this run's data
+    GR.candidates(S.base).then((doc) => {
+      if (my !== grToken) return;
+      let lim = GR.limitFromSensitivity(doc && doc.sensitivity), how = "";
+      if (!lim) {
+        const cells = ((ms.field_calibration || {}).cells || []).filter((c) => Array.isArray(c.star_rms_arcsec));
+        const rms = cells.map((c) => (c.star_rms_arcsec[0] + c.star_rms_arcsec[1]) / 2).sort((a, b) => a - b)[cells.length >> 1];
+        const eps = (m.epochs || []).map((e) => /^(\d{4})-(\d{2})/.exec(e)).filter(Boolean).map((x) => +x[1] + (+x[2] - 1) / 12);
+        const v = eps.length > 1 ? GR.limitFromField(rms, eps[eps.length - 1] - eps[0]) : null;
+        if (v) { lim = { v }; how = L("gr.lim.tipField", "Three times the scatter of single field-star positions ({r}″, √2 for two seasons), divided by the time between the first and last season. A season averages many images, so the real limit is lower: this is a safe upper value.", { r: loc(rms.toFixed(2)) }); }
+      }
+      const found = !!(doc && doc.summary && doc.summary.n_moving > 0);
+      const line = GR.limitHtml(lim, how, found);
+      if (line) { box.insertAdjacentHTML("beforeend", line); box.hidden = false; }
+    });
+  }
+}
+
 function renderResult() {
   const m = S.meta, ms = m.measured || {}, pv = m.preview, R = S.ref;
   const nImg = pv ? pv.n_images : ok(m.n_cutouts) ? m.n_cutouts : S.bins.reduce((a, b) => a + b.frames.reduce((s, f) => s + (f.n_images || 0), 0), 0);
@@ -769,7 +869,7 @@ function renderResult() {
   const pe = (S.bin && pairEpochs()) || headEpochs() || null;
   const pairTxt = pe ? `${esc(season(pe[0]))} → ${esc(season(pe[1]))}` : "";
   const back = `<button type="button" class="linkbtn" data-headline>${esc(L("vw.r.showHead", "Show the headline pair"))}</button>`;
-  let tMeas, tRef, verdict = "", note = "", mainNote = false;
+  let tMeas, tRef, verdict = "", note = "", mainNote = false, grc = null;
   const tMeasured = esc(L("vw.t.measured", "Measured by us")), tPredicts = esc(L("vw.t.predicts", "{who} predicts", { who: R.Short }));
   const headTxt = () => L("vw.r.headlineIs", "Headline: {v} ({a} → {b}).", { v: arcsec(ms.shift_arcsec, ms.shift_err_arcsec), a: esc(season(ms.from_epoch)), b: esc(season(ms.to_epoch)) });
   if (ok(ms.shift_arcsec)) {
@@ -801,6 +901,33 @@ function renderResult() {
           esc(L("vw.t.gaiaPm", "Gaia DR3 {v} mas/yr; ours {a}, {b} ± {e}: {k}σ", { v: `${pmS(gc.gaia_pmra_mas_yr)}, ${pmS(gc.gaia_pmdec_mas_yr)}`,
             a: pmS(gc.pmra_mas_yr), b: pmS(gc.pmdec_mas_yr), e: loc(Math.max(gc.pmra_err_mas_yr, gc.pmdec_err_mas_yr).toFixed(0)), k: loc((+gc.sigma).toFixed(1)) })), "ref");
       }
+      // grafikler: the speed per year (joint fit of every exposure) is the headline; the shift of the pair on screen
+      // becomes a second line (it also holds the yearly parallax wobble, so it is not exactly speed x time)
+      const sp = GR.speedFit(ms, R.none);
+      grc = { shift: { s, e, p: R.none ? null : p, dt: v.dt, pair: pe }, speed: sp, ref: null };
+      if (sp) {
+        tMeas = tile(tMeasured, GR.rateTxt(sp.v, sp.e), `${sp.e != null ? `± ${GR.rateTxt(sp.e, sp.e)}` : ""}<span class="x"> · ${esc(L("gr.t.speed", "speed per year"))}</span>`, "hero");
+        let ref = null;
+        if (gc) ref = { v: Math.hypot(gc.gaia_pmra_mas_yr, gc.gaia_pmdec_mas_yr) / 1000, label: "Gaia DR3", head: esc(L("vw.t.compared", "Compared with")), sub: esc(L("gr.t.gcSub", "Gaia DR3: the star we measured")) };
+        else if (!R.none && sp.p != null) {
+          const dirTxt = ok(sp.ppa) ? L("vw.t.toward", "toward {dir}(PA {pa}°", { dir: S.ex.compass ? L("vw.dir." + S.ex.compass(sp.ppa), S.ex.compass(sp.ppa)) + " " : "", pa: fx(sp.ppa, 0) }) +
+            L("vw.t.weDeg", "; we {pa}°)", { pa: fx(sp.pa, 0) }) : "";
+          const rn = grRefName(m);
+          ref = { v: sp.p, label: rn, head: rn === R.label ? tPredicts : esc(L("vw.t.predicts", "{who} predicts", { who: rn })), sub: dirTxt };
+        } else if (R.none) {
+          const c = grCat(m);                                // the catalogued star at a free point (async; repaints when known)
+          if (c) ref = { v: c.v, label: c.src, head: esc(c.src === "SIMBAD" ? L("gr.t.simbad", "SIMBAD catalogue") : L("gr.t.gaia", "ESA Gaia DR3 catalogue")),
+            sub: esc(L("gr.t.catSub", "the star at this point ({d}″ away)", { d: loc(c.sep.toFixed(1)) })) };
+        }
+        if (ref) {
+          grc.ref = ref;
+          tRef = tile(ref.head, GR.rateTxt(ref.v, sp.e), ref.sub, "ref");
+          const d = Math.abs(sp.v - ref.v), pct = ref.v > 0.05 ? 100 * d / ref.v : null;
+          const agree = sp.e != null ? (d <= 2 * sp.e ? L("vw.r.within", ", within the error") : L("vw.r.times", ", {k} times the error", { k: loc((d / sp.e).toFixed(1)) })) : "";
+          verdict = L("vw.r.cmp", "<b>Measured by us from SPHEREx images</b>, compared with {ref}: {d} apart", { ref: esc(ref.label), d: GR.rateTxt(d, sp.e) }) +
+            (pct != null ? ` (${pct < 1 ? loc(pct.toFixed(1)) : Math.round(pct)} %)` : "") + `${agree}.`;
+        }
+      }
       mainNote = !!v.headline;
       note = v.headline
         ? `<b>${pairTxt}</b>: ${esc(L("vw.r.isHead", "the headline pair (same spacecraft orientation, where detector offsets cancel)."))}`
@@ -822,6 +949,7 @@ function renderResult() {
       tRef = tile(esc(L("vw.t.compared", "Compared with")), "–", esc(L("vw.t.starsSame", "stars in the same images")), "ref");
     }
     verdict = L("vw.r.brightVerdict", "<b>Measured by us from SPHEREx images</b>: the target's brightness relative to comparison stars in the same images.");
+    grc = { ratio: ms.photometry };
     if (c && c.main) {
       const mpc = Math.round(100 * (c.main.r - 1));
       mainNote = !!(v && v.main);
@@ -839,8 +967,10 @@ function renderResult() {
     tMeas = tile(esc(L("vw.t.measuredPlain", "Measured")), "–", st === "not_detected" ? esc(L("vw.t.notDet", "not detected above the noise")) : st === "preview" ? esc(L("vw.t.fullFollows", "full result follows")) : esc(ptext(ms.message) || L("vw.t.noMeas", "no measurement")), "hero");
     tRef = tile(R.none ? esc(L("vw.t.compared", "Compared with")) : tPredicts, "–", esc(R.none ? L("vw.t.nothingPicked", "nothing: a picked sky position has no catalogue motion") : L("vw.t.noPred", "no prediction for this result")), "ref");
     verdict = pv ? "" : esc(ptext(ms.message || ""));       // a preview: the stage line says it once (no repeat here)
+    if (!pv && st !== "preview" && R.none) grc = { empty: true };
   }
   $("tiles").innerHTML = tMeas + tRef + tImg + tSea;
+  grPaint(grc, m, ms);
   $("verdict").innerHTML = verdict;
   const pn = $("pairNote");
   pn.hidden = !note;
@@ -1147,6 +1277,8 @@ export async function startViewer() {
     return null;
   }
   S.meta = m;
+  S.nb = [];
+  findNeighbours(S.base, m).then((nb) => { S.nb = nb; if (nb.length && S.bin) drawOverlay(); }).catch(() => {});
   S.bins = m.wavelength_bins || [];
   S.ref = refInfo(m);
   const tid = targetIdOf(S.base);
@@ -1281,5 +1413,20 @@ export async function startViewer() {
       box.innerHTML = t ? `<p>${esc(t)}</p>` : "";
     },
     on(fn) { if (typeof fn === "function") S.listeners.push(fn); },
+    // wavelength-by-wavelength run (js/bins_bar.js): the next stage folder in place, at wavelength um (else the same one)
+    async swapData(base, { meta, um } = {}) {
+      const nm = meta || await fetch(base + "meta.json", { cache: "no-store" }).then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
+      if (!(nm.wavelength_bins || []).length) return null;
+      const keep = um ?? (S.bin && S.bin.wavelength_um);
+      m = nm; S.base = base; S.meta = nm; S.bins = nm.wavelength_bins; S.ref = refInfo(nm); this.meta = nm; this.base = base;
+      $("wl").replaceChildren(...nm.wavelength_bins.map((b, i) => { const o = document.createElement("option"); o.value = i; return o; }));
+      paintFixed(); renderHeader(); renderStagebar(); renderMeasure();
+      const k = Math.max(0, S.bins.findIndex((b) => Math.abs(b.wavelength_um - keep) < 0.05));
+      $("wl").value = k;
+      selectBin(k);
+      $("gameBtn").hidden = !canPlay();
+      findNeighbours(base, nm).then((nb) => { if (S.meta === nm) { S.nb = nb; if (nb.length && S.bin) drawOverlay(); } }).catch(() => {});
+      return nm;
+    },
   };
 }

@@ -59,6 +59,11 @@ function style() {
 #tests .vf-csv th, #tests .vf-csv td { padding: 3px 8px; border-bottom: 1px solid var(--line); text-align: left; }
 #tests .vf-csv th { color: var(--mut); font-weight: 600; }
 #tests .res.limit { background: rgba(255, 179, 107, .12); color: var(--warn); border: 1px solid rgba(255, 179, 107, .5); }
+#tests .vf-item.fail { border-left-color: #ff9a5a; }
+#tests .res.fail { background: rgba(255, 154, 90, .12); color: #ff9a5a; border: 1px solid rgba(255, 154, 90, .5); }
+#tests .vf-short { margin: 6px 0 0; font-size: 15px; line-height: 1.45; color: var(--fg); }
+#tests .vf-short b { color: #ff9a5a; font-weight: 700; }
+#tests .vf-item.fail .vf-mean b { color: #ff9a5a; }
 #tests .res.other { background: rgba(169, 179, 201, .08); color: var(--soft); border: 1px solid var(--line); }
 `;
   document.head.append(s);
@@ -105,12 +110,40 @@ function pairs(n) {
   return { out, used };
 }
 
+// ------------------------------------------------------------------------------------------------ plain words (grafikler)
+/** The finder's labels in a result sentence -> plain words (the sentence itself comes from tests.json). */
+function plain(s) {
+  return String(s || "")
+    .replace(/^Found blind as gaia-known \([^)]*\):/, t("gr.vf.known"))
+    .replace(/^Found blind as candidate \([^)]*\):/, t("gr.vf.cand"))
+    .replace(/^Konum verilmeden bilinen Gaia hareketlisi olarak bulundu \([^)]*\):/, t("gr.vf.known"))
+    .replace(/^Konum verilmeden aday olarak bulundu \([^)]*\):/, t("gr.vf.cand"))
+    .replace(/(\d)"\/(yr|yıl)/g, "$1″/$2").replace(/(\d)"(?=[ ,;.)]|$)/g, "$1″")
+    .replace(/ sigma\b/g, "σ");
+}
+/** A test that did not pass: what it tested and how far it fell short, from its own numbers; null if unknown. */
+function shortfall(x) {
+  const n = x.numbers || {}, f = (v, d = 1) => num(+(+v).toFixed(d));
+  const crit = n.criterion_sigma;
+  if (crit != null && (n.d_pa_sigma != null || n.d_speed_sigma != null)) {
+    const off = [];
+    if (Math.abs(n.d_speed_sigma) > crit) off.push(t("gr.vf.offSpeed", { s: f(Math.abs(n.d_speed_sigma)), c: crit }));
+    if (Math.abs(n.d_pa_sigma) > crit) off.push(t("gr.vf.offDir", { s: f(Math.abs(n.d_pa_sigma)), c: crit }));
+    return off.length ? { what: t("gr.vf.wSpeed"), short: off.join("; ") } : null;
+  }
+  if (n.best_bin_percent != null && n.target_percent != null) return { what: t("gr.vf.wInject"), short: t("gr.vf.sInject", { a: f(n.best_bin_percent), b: f(n.target_percent, 0) }) };
+  if (n.fake_movers != null && n.criterion_fake_movers != null) return { what: t("gr.vf.wShuffle"), short: t("gr.vf.sShuffle", { a: f(n.fake_movers, 0), n: f(n.field_shuffles ?? 0, 0), b: f(n.criterion_fake_movers, 0) }) };
+  if (n.brightness_found != null && n.brightness_targets != null) return { what: t("gr.vf.wBright"), short: t("gr.vf.sBright", { a: f(n.brightness_found, 0), b: f(n.brightness_targets, 0) }) };
+  return null;
+}
+
 // ------------------------------------------------------------------------------------------------ one test
 function item(x) {
   const k = stKey(x.status);
   const n = x.numbers && typeof x.numbers === "object" ? x.numbers : {};
   const v0 = x.v0 && typeof x.v0 === "object" ? x.v0 : null;
-  const title = tx(x.title), res = tx(x.result);
+  const title = tx(x.title), res = plain(tx(x.result));
+  const sf = k === "fail" ? shortfall(x) : null;
 
   // what a failed test means for someone using the tool (per test if written, else the general sentence)
   let mean = "";
@@ -146,6 +179,7 @@ function item(x) {
 
   return `<li class="vf-item ${k}" id="vf-${esc(x.id)}">
     <div class="vf-head"><span class="vf-id">${esc(x.id)}</span><span class="vf-title">${esc(title)}</span>${badge(x.status)}</div>
+    ${sf ? `<p class="vf-short">${esc(t("gr.vf.tested"))} ${esc(sf.what)} · <b>${esc(t("gr.vf.short"))}</b> ${esc(sf.short)}</p>` : ""}
     ${res ? `<p class="vf-res">${esc(res)}</p>` : ""}
     ${mean}
     ${ev || more ? `<p class="vf-foot">${ev ? `<a href="${esc(ev)}" download="${esc(evName)}">${esc(t("vf.evidence"))}: ${esc(evName)} ↓</a>` : ""}${more ? `<button type="button" class="vf-mt" aria-controls="vfm-${esc(x.id)}" aria-expanded="${isDetailed()}">${esc(t("vf.more"))}</button>` : ""}</p>` : ""}
