@@ -142,42 +142,116 @@ function scaleBar() {
     `<span class="bar" style="width:${px.toFixed(0)}px"></span><span>${pick >= 60 ? pick / 60 + "′" : pick + "″"}</span>`;
 }
 
-// --- overlay: motion arrow, path, catalogue ring, measured point, game click ---------------------
-function motionPoints() {
-  const eps = selFrames().map((f) => f.epoch);
-  const meas = eps.map((e) => { const p = measuredPos(e); return p ? { e, xy: p.png_xy_measured } : null; }).filter(Boolean);
-  if (meas.length >= 2) return { kind: "measured", pts: meas };
-  if (S.ref.none) return null;
-  const cat = eps.map((e) => { const xy = markerXY(e); return xy ? { e, xy } : null; }).filter(Boolean);
-  if (cat.length >= 2) {
-    const a = cat[0].xy, b = cat[cat.length - 1].xy;
-    if (Math.hypot(b[0] - a[0], b[1] - a[1]) > 1) return { kind: "predicted", pts: cat };
+// --- the season pair: the arrow, the result card, Before/After and the compare line all use it ---------
+const idxIn = (bin, ep) => (bin ? bin.frames.findIndex((f) => f.epoch === ep) : -1);
+/** The result's headline pair [from, to] (epochs): the pipeline's same-orientation pair for motion,
+ *  the preview's rough pair, or the strongest brightness change (in `bin` only). */
+function headEpochs(bin = S.bin) {
+  const ms = (S.meta && S.meta.measured) || {};
+  if (ok(ms.shift_arcsec) && ms.from_epoch && ms.to_epoch) return [ms.from_epoch, ms.to_epoch];
+  const pre = ms.preliminary;
+  if (pre && pre.from_epoch && pre.to_epoch) return [pre.from_epoch, pre.to_epoch];
+  if (ms.photometry && bin) {
+    const c = bestChange(ms.photometry);
+    if (c && c.main && Math.abs(c.main.b.wavelength_um - bin.wavelength_um) < 0.05) return [c.from, c.to];
   }
   return null;
 }
-/** Measured shift between two seasons: the pipeline's pair (or headline) value, else from the PNG. */
-function pairShift(ea, eb, pts) {
-  const ms = S.meta.measured || {};
-  if (ms.from_epoch === ea && ms.to_epoch === eb && ok(ms.shift_arcsec)) return { s: +ms.shift_arcsec, e: ms.shift_err_arcsec, dt: ms.dt_years };
-  const p = (ms.pairs || []).find((q) => q.from === ea && q.to === eb && ok(q.shift_arcsec));
-  if (p) return { s: +p.shift_arcsec, e: p.shift_err_arcsec, dt: p.dt_years };
-  const a = pngArcsec();
-  if (!a || !pts) return null;
-  const A = pts[0].xy, B = pts[pts.length - 1].xy;
-  const fa = S.bin.frames.find((f) => f.epoch === ea), fb = S.bin.frames.find((f) => f.epoch === eb);
-  return { s: Math.hypot(B[0] - A[0], B[1] - A[1]) * a, e: null, dt: fa && fb ? daysApart(fa, fb) / 365.25 : null, approx: true };
+function headIdx(bin = S.bin) {
+  const h = headEpochs(bin);
+  if (!h) return null;
+  const a = idxIn(bin, h[0]), b = idxIn(bin, h[1]);
+  return a >= 0 && b > a ? [a, b] : null;
+}
+/** Seasons shown on opening a bin: the headline pair when this bin has it, else the two most distant. */
+function defaultSel(bin = S.bin) { const n = bin.frames.length; return headIdx(bin) || (n > 1 ? [0, n - 1] : [0]); }
+/** The pair on screen [iA, iB] (frame indices): the two selected seasons; with more selected, the
+ *  headline pair if it is among them, else the first and last selected. */
+function pairIdx() {
+  if (!S.bin || S.sel.length < 2) return null;
+  if (S.sel.length === 2) return S.sel.slice();
+  const h = headIdx();
+  if (h && S.sel.includes(h[0]) && S.sel.includes(h[1])) return h;
+  return [S.sel[0], S.sel[S.sel.length - 1]];
+}
+const pairEpochs = () => { const p = pairIdx(); return p ? [S.bin.frames[p[0]].epoch, S.bin.frames[p[1]].epoch] : null; };
+/** Measured motion between two seasons: the pipeline's value for that pair (meta.measured.pairs, or
+ *  the headline), else from the per-season positions. { s, e, p, pa, ppa, dt, headline, same } | null */
+function motionPair(ea, eb) {
+  const ms = (S.meta && S.meta.measured) || {};
+  const num = (v) => (ok(v) ? +v : null);
+  if (ms.from_epoch === ea && ms.to_epoch === eb && ok(ms.shift_arcsec))
+    return { s: +ms.shift_arcsec, e: num(ms.shift_err_arcsec), p: num(ms.gaia_predicted_arcsec), pa: num(ms.pa_deg), ppa: num(ms.gaia_pa_deg),
+      dt: num(ms.dt_years), headline: true, same: ms.same_orientation };
+  const q = (ms.pairs || []).find((x) => x.from === ea && x.to === eb && ok(x.shift_arcsec));
+  if (q) return { s: +q.shift_arcsec, e: num(q.shift_err_arcsec), p: num(q.gaia_predicted_arcsec), pa: num(q.pa_deg), ppa: num(q.gaia_pa_deg),
+    dt: num(q.dt_years), headline: !!q.headline, same: q.same_orientation };
+  const pos = ms.positions || [];
+  const A = pos.find((x) => x.epoch === ea), B = pos.find((x) => x.epoch === eb);
+  if (!A || !B || !ok(A.ra) || !ok(B.ra)) return null;
+  const cosd = Math.cos(((+A.dec + +B.dec) / 2) * Math.PI / 180);
+  const vec = (ra0, de0, ra1, de1) => { const dE = (ra1 - ra0) * cosd * 3600, dN = (de1 - de0) * 3600;
+    return { s: Math.hypot(dE, dN), pa: ((Math.atan2(dE, dN) * 180 / Math.PI) + 360) % 360, dE, dN }; };
+  const m = vec(+A.ra, +A.dec, +B.ra, +B.dec);
+  const sq = (v) => (ok(v) ? v * v : 0);
+  const e = m.s > 0 ? Math.sqrt((m.dE / m.s) ** 2 * (sq(A.err_east_arcsec) + sq(B.err_east_arcsec)) + (m.dN / m.s) ** 2 * (sq(A.err_north_arcsec) + sq(B.err_north_arcsec))) : null;
+  const g = ok(A.gaia_ra) && ok(B.gaia_ra) && !S.ref.none ? vec(+A.gaia_ra, +A.gaia_dec, +B.gaia_ra, +B.gaia_dec) : null;
+  const od = ok(A.orient_deg) && ok(B.orient_deg) ? Math.abs(((B.orient_deg - A.orient_deg) % 360 + 540) % 360 - 180) : null;
+  return { s: m.s, e, p: g ? g.s : null, pa: m.pa, ppa: g ? g.pa : null, dt: ok(A.mjd) && ok(B.mjd) ? (B.mjd - A.mjd) / 365.25 : null,
+    headline: false, same: od == null ? null : od < 90, fromPositions: true };
+}
+/** Brightness change between two seasons in the bin on screen: { r, er, n, main } | { none, why } */
+function brightPair(ea, eb) {
+  const ph = ((S.meta && S.meta.measured) || {}).photometry;
+  const pb = ph && (ph.bins || []).find((b) => Math.abs(b.wavelength_um - S.bin.wavelength_um) < 0.05);
+  if (!pb || !(pb.seasons || []).length) return { none: true, why: ((pb && pb.flags) || []).join("; ") || "no photometry at this wavelength" };
+  const A = pb.seasons.find((x) => x.epoch === ea), B = pb.seasons.find((x) => x.epoch === eb);
+  if (!A || !B || !(+A.ratio_to_first > 0) || !ok(B.ratio_to_first)) return { none: true, why: "no photometry for this pair of seasons" };
+  const rA = +A.ratio_to_first, rB = +B.ratio_to_first, r = rB / rA;
+  const er = r * Math.hypot((+A.ratio_err || 0) / rA, (+B.ratio_err || 0) / rB);
+  const c = bestChange(ph);
+  return { r, er, n: pb.n_comparison, main: !!(c && c.main && c.main.b === pb && c.from === ea && c.to === eb) };
+}
+
+// --- overlay: motion arrow, path, catalogue ring, measured point, game click ---------------------
+function motionPoints() {
+  const pe = pairEpochs();
+  if (!pe) return null;
+  const [ea, eb] = pe;
+  const eps = selFrames().map((f) => f.epoch);
+  const mA = measuredPos(ea), mB = measuredPos(eb);
+  if (mA && mB) return { kind: "measured", ea, eb, a: mA.png_xy_measured, b: mB.png_xy_measured,
+    path: eps.map((e) => measuredPos(e)).filter(Boolean).map((p) => p.png_xy_measured) };
+  if (S.ref.none) return null;
+  const cA = markerXY(ea), cB = markerXY(eb);
+  if (cA && cB && Math.hypot(cB[0] - cA[0], cB[1] - cA[1]) > 1) return { kind: "predicted", ea, eb, a: cA, b: cB, path: eps.map((e) => markerXY(e)).filter(Boolean) };
+  return null;
+}
+/** The arrow's label: the same number the result card shows for this pair. */
+function arrowText(mp) {
+  if (mp.kind === "measured") {
+    const v = motionPair(mp.ea, mp.eb);
+    return v ? { long: arcsec(v.s, v.e) + (v.dt ? " " + span(v.dt) : ""), short: arcsec(v.s, v.e) } : null;
+  }
+  const pre = ((S.meta.measured || {}).preliminary) || {};
+  let s = pre.from_epoch === mp.ea && pre.to_epoch === mp.eb && ok(pre.catalogue_shift_arcsec) ? +pre.catalogue_shift_arcsec : null;
+  if (s == null && pngArcsec()) s = Math.hypot(mp.b[0] - mp.a[0], mp.b[1] - mp.a[1]) * pngArcsec();
+  if (s == null) return null;
+  const fa = S.bin.frames.find((f) => f.epoch === mp.ea), fb = S.bin.frames.find((f) => f.epoch === mp.eb);
+  const dt = fa && fb ? daysApart(fa, fb) / 365.25 : null;
+  return { long: `≈${arcsec(s)}${dt ? " " + span(dt) : ""} (${S.ref.short} prediction)`, short: "≈" + arcsec(s) };
 }
 const RING = 34;                  // ring radius in PNG px (about 25″ on the sky)
 function motionSvg(u, legend) {
   const mp = motionPoints();
   if (!mp) return "";
-  const pts = mp.pts, a = pts[0].xy, b = pts[pts.length - 1].xy;
+  const a = mp.a, b = mp.b;
   const halo = (d, w) => `<path d="${d}" fill="none" stroke="#05070d" stroke-opacity=".8" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
   let s = "";
-  if (pts.length > 2) {                    // path through every compared season
-    const d = "M" + pts.map((p) => p.xy.map((v) => v.toFixed(1)).join(" ")).join("L");
+  if (mp.path.length > 2) {                // path through every season in the blink
+    const d = "M" + mp.path.map((p) => p.map((v) => v.toFixed(1)).join(" ")).join("L");
     s += halo(d, 3.5 * u) + `<path d="${d}" fill="none" stroke="#e8eaf0" stroke-width="${1.4 * u}" stroke-dasharray="${4 * u} ${3 * u}"/>`;
-    pts.slice(1, -1).forEach((p) => { s += `<circle cx="${p.xy[0]}" cy="${p.xy[1]}" r="${3 * u}" fill="#c9d2e3" stroke="#05070d" stroke-width="${1.2 * u}"/>`; });
+    mp.path.filter((p) => p !== a && p !== b).forEach((p) => { s += `<circle cx="${p[0]}" cy="${p[1]}" r="${3 * u}" fill="#c9d2e3" stroke="#05070d" stroke-width="${1.2 * u}"/>`; });
   }
   const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy);
   if (L > 0.2) {
@@ -198,18 +272,17 @@ function motionSvg(u, legend) {
       `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" fill="${c}" font-size="${size * u}" font-weight="700" text-anchor="${anchor}" ` +
       `dominant-baseline="middle" stroke="#05070d" stroke-width="${3.2 * u}" paint-order="stroke" font-family="system-ui, sans-serif">${esc(t)}</text>`;
     const off = RING + (11 + 30 * Math.abs(ux)) * u;       // clear of the ring, also for sideways motion
-    s += lab(a[0] - ux * off, a[1] - uy * off, season(pts[0].e), "#8cc4ff") +
-      lab(b[0] + ux * off, b[1] + uy * off, season(pts[pts.length - 1].e), "#ff8f8a");
-    const sh = pairShift(pts[0].e, pts[pts.length - 1].e, pts);
-    if (sh) {
-      const t = (sh.approx ? "≈" : "") + arcsec(sh.s, sh.e) + (sh.dt ? " " + span(sh.dt) : "") + (mp.kind === "measured" ? "" : ` (${S.ref.short} prediction)`);
+    s += lab(a[0] - ux * off, a[1] - uy * off, season(mp.ea), "#8cc4ff") +
+      lab(b[0] + ux * off, b[1] + uy * off, season(mp.eb), "#ff8f8a");
+    const at = arrowText(mp);
+    if (at) {
+      const t = at.long, short = at.short;
       // beside the ring, on the side with room on screen (right, else left, else below)
       let px = -uy, py = ux;
       if (px < 0 || (Math.abs(px) < 0.3 && py < 0)) { px = -px; py = -py; }
       const cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2, d = RING + (8 + 14 * Math.abs(py)) * u;
       const Sw = $("stage").clientWidth, scr = (x) => S.tx + x * S.k;
       const width = (str) => str.length * 15 * 0.56;                       // text width in screen px (estimate)
-      const short = (sh.approx ? "≈" : "") + arcsec(sh.s, sh.e);
       let pick = null;
       for (const str of [t, short]) {
         if (px <= 0.3) { pick = { str, x: cx + px * d, y: cy + py * d, anchor: "middle" }; break; }
@@ -268,14 +341,15 @@ function drawOverlay() {
 // --- frames, modes, seasons ------------------------------------------------------------------
 function setSrc(img, url) { if (img.getAttribute("src") !== url) img.setAttribute("src", url); }
 function roleOf(i) {
-  if (S.sel.length < 2) return "";
-  return i === S.sel[0] ? "before" : i === S.sel[S.sel.length - 1] ? "after" : "";
+  const p = pairIdx();
+  return !p ? "" : i === p[0] ? "before" : i === p[1] ? "after" : "";
 }
 function show() {
   if (!S.bin) return;
   const f = S.bin.frames[S.idx];
   setSrc($("frame"), S.base + f.file);
-  const fs = selFrames(), A = fs[0], B = fs[fs.length - 1];
+  const fs = selFrames(), pr = pairIdx() || [S.sel[0], S.sel[S.sel.length - 1]];
+  const A = S.bin.frames[pr[0]], B = S.bin.frames[pr[1]];
   if (S.mode === "swipe") setSrc($("frameB"), S.base + B.file);
   const hd = $("hudDate");
   if (S.mode === "swipe") {
@@ -326,14 +400,14 @@ function setMode(md, quiet) {
   $("trail").hidden = md !== "trail";
   $("swipeUi").hidden = md !== "swipe";
   $("play").disabled = md !== "blink";
-  if (md === "swipe") S.idx = S.sel[0];
+  if (md === "swipe") S.idx = (pairIdx() || S.sel)[0];
   if (md === "trail") { S.idx = S.sel[S.sel.length - 1]; buildTrail(); }
   if (md === "blink") S.playing = true;
   if (md === "swipe") applySwipe();
   $("modeHint").textContent = {
     blink: "Blink: the compared seasons, one after the other.",
     step: "Step: one season at a time (← → keys).",
-    swipe: "Swipe: drag the slider to compare the first and last season.",
+    swipe: "Swipe: drag the slider to compare the two seasons of the pair.",
     trail: "Trail: the brightest value of each pixel over the seasons; a mover leaves a streak.",
   }[md];
   show(); restart();
@@ -382,15 +456,26 @@ function renderSeasons() {
   });
   $("seasons").innerHTML = h;
   $("seasons").querySelectorAll(".chip").forEach((c) => { c.onclick = () => toggleSeason(+c.dataset.i); });
-  const fs = selFrames(), A = fs[0], B = fs[fs.length - 1];
-  const all = S.sel.length === fr.length;
+  const all = S.sel.length === fr.length, hi = headIdx();
   $("allSeasons").hidden = fr.length < 3;
-  $("allSeasons").textContent = all ? "First and last only" : "All seasons";
-  const far = S.sel.length === 2 && S.sel[0] === 0 && S.sel[1] === fr.length - 1;
-  $("compareLine").innerHTML = S.sel.length > 1
-    ? `<b class="before">${esc(season(A.epoch))}</b> ↔ <b class="after">${esc(season(B.epoch))}</b>: ` +
-      `<b>${daysApart(A, B)} days apart</b>${far && fr.length > 2 ? " (most distant seasons)" : ""}${S.sel.length > 2 ? ` · ${S.sel.length} seasons` : ""}`
-    : `One season selected: add another to compare.`;
+  $("allSeasons").textContent = all ? (hi ? "Headline pair only" : "First and last only") : "All seasons";
+  const pr = pairIdx();
+  let line = `One season selected: add another to compare.`;
+  if (pr) {
+    const A = fr[pr[0]], B = fr[pr[1]], ms = S.meta.measured || {};
+    const isHead = !!(hi && hi[0] === pr[0] && hi[1] === pr[1]);
+    let what = "";
+    if (ok(ms.shift_arcsec)) {
+      const v = motionPair(A.epoch, B.epoch);
+      what = isHead ? "headline pair, same spacecraft orientation" : v && v.same === false ? "different spacecraft orientation"
+        : v && v.same ? "same spacecraft orientation" : "";
+    } else if (ms.photometry && isHead) what = "strongest brightness change";
+    else if (pr[0] === 0 && pr[1] === fr.length - 1 && fr.length > 2) what = "most distant seasons";
+    line = `<b class="before">${esc(season(A.epoch))}</b> ↔ <b class="after">${esc(season(B.epoch))}</b>: ` +
+      `<b>${daysApart(A, B)} days apart</b>${what ? ` (${what})` : ""}`;
+    if (S.sel.length > 2) line = `${S.sel.length} seasons in the blink; ${ok(ms.shift_arcsec) ? "arrow and result" : "result"}: ` + line;
+  }
+  $("compareLine").innerHTML = line;
   fairBadge();
 }
 function toggleSeason(i) {
@@ -403,11 +488,13 @@ function toggleSeason(i) {
 function afterSelection() {
   renderSeasons();
   if (S.mode === "trail") { buildTrail(); S.idx = S.sel[S.sel.length - 1]; }
-  if (S.mode === "swipe") S.idx = S.sel[0];
+  if (S.mode === "swipe") S.idx = (pairIdx() || S.sel)[0];
+  renderResult(); pairDiff(); watchHint();
   show(); restart(); writeUrl();
 }
 function fairBadge() {
-  const fs = selFrames(), el = $("fairBadge");
+  const pr = pairIdx(), el = $("fairBadge");
+  const fs = pr ? pr.map((i) => S.bin.frames[i]) : [];
   if (fs.length < 2) { el.hidden = true; return; }
   const dets = [...new Set(fs.flatMap((f) => f.detectors || []))];
   const lam = fs.map((f) => +f.wavelength_um).filter(ok);
@@ -432,19 +519,11 @@ async function gifUrl(bin) {
 function selectBin(i, sel) {
   S.bi = i; S.bin = S.bins[i];
   const n = S.bin.frames.length;
-  S.sel = sel && sel.length ? sel : n > 1 ? [0, n - 1] : [0];
+  S.sel = sel && sel.length ? sel : defaultSel();
   S.idx = S.sel[0];
   S.trailKey = null;
   S.bin.frames.forEach((f) => { const im = new Image(); im.src = S.base + f.file; });   // smooth blinking
-  const A = S.bin.frames[0], B = S.bin.frames[n - 1];
   setSrc($("diff"), S.base + S.bin.diff);
-  $("diffKey").innerHTML =
-    `<span class="k"><i class="sw blue"></i><b>Blue = before</b><small>brighter in ${esc(season(A.epoch))}</small></span>` +
-    `<span class="k"><i class="sw white"></i><b>White</b><small>no change</small></span>` +
-    `<span class="k"><i class="sw red"></i><b>Red = after</b><small>brighter in ${esc(season(B.epoch))}</small></span>`;
-  $("diffCap").textContent = `${season(B.epoch)} minus ${season(A.epoch)} at ${S.bin.wavelength_um.toFixed(1)} µm (last season minus first). ` +
-    `Stars that stay the same cancel out. A star that moved leaves blue where it was and red where it went; ` +
-    `a star that got brighter turns red, one that got fainter turns blue.`;
   const g = $("saveGif");
   g.hidden = true;
   gifUrl(S.bin).then((u) => {
@@ -454,9 +533,51 @@ function selectBin(i, sel) {
     g.hidden = false;
   });
   renderSeasons();
+  renderResult();
+  pairDiff();
+  watchHint();
   setMode(S.mode, true);
   layout();
   writeUrl();
+}
+
+// --- difference image of the pair on screen ----------------------------------------------------------
+// blink.py writes last-minus-first-season (diverging_rgb: RdBu_r, +-0.6 of the stretched range). For
+// any other pair the same is computed here from the two frame PNGs (their grey = the stretched value).
+const RDBU_R = ["#053061", "#2166ac", "#4393c3", "#92c5de", "#d1e5f0", "#f7f7f7", "#fddbc7", "#f4a582", "#d6604d", "#b2182b", "#67001f"]
+  .map((h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)));
+let diffToken = 0;
+async function pairDiff() {
+  if (!S.bin) return;
+  const fr = S.bin.frames, pr = pairIdx() || [0, fr.length - 1];
+  const A = fr[pr[0]], B = fr[pr[1]];
+  const own = pr[0] === 0 && pr[1] === fr.length - 1;          // the pipeline's own difference image
+  $("diffKey").innerHTML =
+    `<span class="k"><i class="sw blue"></i><b>Blue = before</b><small>brighter in ${esc(season(A.epoch))}</small></span>` +
+    `<span class="k"><i class="sw white"></i><b>White</b><small>no change</small></span>` +
+    `<span class="k"><i class="sw red"></i><b>Red = after</b><small>brighter in ${esc(season(B.epoch))}</small></span>`;
+  $("diffCap").textContent = `${season(B.epoch)} minus ${season(A.epoch)} at ${S.bin.wavelength_um.toFixed(1)} µm` +
+    (own ? " (made by the pipeline). " : " (computed in your browser from these two frames, the same way as the pipeline). ") +
+    `Stars that stay the same cancel out. A star that moved leaves blue where it was and red where it went; ` +
+    `a star that got brighter turns red, one that got fainter turns blue.`;
+  const cv = $("diffPair"), my = ++diffToken;
+  if (own) { cv.hidden = true; return; }
+  try {
+    const [ia, ib] = await Promise.all([loadImg(S.base + A.file), loadImg(S.base + B.file)]);
+    if (my !== diffToken) return;
+    const W = ia.naturalWidth, H = ia.naturalHeight;
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext("2d", { willReadFrequently: true });
+    ctx.drawImage(ia, 0, 0); const da = ctx.getImageData(0, 0, W, H).data;
+    ctx.drawImage(ib, 0, 0); const out = ctx.getImageData(0, 0, W, H), db = out.data;
+    for (let i = 0; i < db.length; i += 4) {
+      const v = Math.min(1, Math.max(0, ((db[i] - da[i]) / 255 / 0.6 + 1) / 2)) * 10;
+      const k = Math.min(9, Math.floor(v)), t = v - k, c0 = RDBU_R[k], c1 = RDBU_R[k + 1];
+      db[i] = c0[0] + (c1[0] - c0[0]) * t; db[i + 1] = c0[1] + (c1[1] - c0[1]) * t; db[i + 2] = c0[2] + (c1[2] - c0[2]) * t; db[i + 3] = 255;
+    }
+    ctx.putImageData(out, 0, 0);
+    cv.hidden = false;
+  } catch (e) { console.warn("pair difference", e); cv.hidden = true; }
 }
 
 // --- URL -----------------------------------------------------------------------------------------
@@ -467,8 +588,8 @@ function writeUrl() {
   p.set("data", S.base);
   p.set("um", S.bin.wavelength_um.toFixed(1));
   if (S.mode !== "blink") p.set("mode", S.mode); else p.delete("mode");
-  const n = S.bin.frames.length;
-  const dflt = n > 1 ? S.sel.length === 2 && S.sel[0] === 0 && S.sel[1] === n - 1 : true;
+  const n = S.bin.frames.length, ds = defaultSel();
+  const dflt = n > 1 ? S.sel.length === ds.length && S.sel.every((v, k) => v === ds[k]) : true;
   if (dflt) p.delete("s"); else p.set("s", selFrames().map((f) => f.epoch).join(","));
   if (S.zoom !== S.defaultZoom) p.set("z", String(S.zoom)); else p.delete("z");
   const q = p.toString().replace(/%2F/gi, "/").replace(/%2C/gi, ",");
@@ -492,34 +613,59 @@ function renderResult() {
   const eps = m.epochs || [];
   const tImg = tile("SPHEREx images", String(nImg), `${S.bins.length} wavelength bin${S.bins.length === 1 ? "" : "s"}${pv ? " (preview)" : ""}`);
   const tSea = tile("Seasons", String(eps.length), eps.length ? `${esc(season(eps[0]))} – ${esc(season(eps[eps.length - 1]))}` : "");
-  let tMeas, tRef, verdict = "";
+  // the card describes the pair on screen (the arrow's pair); without one (a single season), the headline
+  const pe = (S.bin && pairEpochs()) || headEpochs() || null;
+  const pairTxt = pe ? `${esc(season(pe[0]))} → ${esc(season(pe[1]))}` : "";
+  const back = `<button type="button" class="linkbtn" data-headline>Show the headline pair</button>`;
+  let tMeas, tRef, verdict = "", note = "";
   if (ok(ms.shift_arcsec)) {
-    const s = +ms.shift_arcsec, e = ok(ms.shift_err_arcsec) ? +ms.shift_err_arcsec : null, p = ok(ms.gaia_predicted_arcsec) ? +ms.gaia_predicted_arcsec : null;
-    tMeas = tile("Measured by us", arcsec(s, e), `${e != null ? `± ${arcsec(e, e)}` : ""}<span class="x">${e != null ? " · " : ""}${esc(season(ms.from_epoch))} → ${esc(season(ms.to_epoch))}</span>`, "hero");
-    if (R.none || p == null) {
-      tRef = tile("Compared with", "–", R.none ? "nothing: a picked sky position has no catalogue motion" : "no prediction for this result");
-      verdict = `Measured by us from SPHEREx images${R.none ? "; there is no catalogue motion to compare with" : ""}.`;
+    const v = pe ? motionPair(pe[0], pe[1]) : null;
+    if (!v) {
+      tMeas = tile("Measured by us", "–", `not measured between ${pairTxt}`, "hero");
+      tRef = tile(`${esc(R.Short)} predicts`, "–", "", "ref");
+      verdict = `The target was not measured in both of these seasons.`;
+      note = `<b>${pairTxt}</b>. Headline: ${arcsec(ms.shift_arcsec, ms.shift_err_arcsec)} (${esc(season(ms.from_epoch))} → ${esc(season(ms.to_epoch))}). ${back}`;
     } else {
-      const dirTxt = ok(ms.gaia_pa_deg) ? `toward ${S.ex.compass ? S.ex.compass(ms.gaia_pa_deg) + " " : ""}(PA ${fx(ms.gaia_pa_deg, 0)}°` +
-        (ok(ms.pa_deg) ? `; we ${fx(ms.pa_deg, 0)}°)` : ")") : "";
-      tRef = tile(`${esc(R.Short)} predicts`, arcsec(p, e), dirTxt, "ref");
-      const d = Math.abs(s - p), pct = p > 0 ? 100 * d / p : null;
-      const agree = e != null ? (d <= 2 * e ? ", within the error" : `, ${(d / e).toFixed(1)} times the error`) : "";
-      verdict = `<b>Measured by us from SPHEREx images</b>, compared with ${esc(R.label)}: ${arcsec(d, e)} apart` +
-        (pct != null ? ` (${pct < 1 ? pct.toFixed(1) : Math.round(pct)} %)` : "") + `${agree}.`;
+      const s = v.s, e = v.e, p = v.p;
+      tMeas = tile("Measured by us", arcsec(s, e), `${e != null ? `± ${arcsec(e, e)}` : ""}<span class="x">${e != null ? " · " : ""}${pairTxt}</span>`, "hero");
+      if (R.none || p == null) {
+        tRef = tile("Compared with", "–", R.none ? "nothing: a picked sky position has no catalogue motion" : "no prediction for this result");
+        verdict = `Measured by us from SPHEREx images${R.none ? "; there is no catalogue motion to compare with" : ""}.`;
+      } else {
+        const dirTxt = ok(v.ppa) ? `toward ${S.ex.compass ? S.ex.compass(v.ppa) + " " : ""}(PA ${fx(v.ppa, 0)}°` +
+          (ok(v.pa) ? `; we ${fx(v.pa, 0)}°)` : ")") : "";
+        tRef = tile(`${esc(R.Short)} predicts`, arcsec(p, e), dirTxt, "ref");
+        const d = Math.abs(s - p), pct = p > 0 ? 100 * d / p : null;
+        const agree = e != null ? (d <= 2 * e ? ", within the error" : `, ${(d / e).toFixed(1)} times the error`) : "";
+        verdict = `<b>Measured by us from SPHEREx images</b>, compared with ${esc(R.label)}: ${arcsec(d, e)} apart` +
+          (pct != null ? ` (${pct < 1 ? pct.toFixed(1) : Math.round(pct)} %)` : "") + `${agree}.`;
+      }
+      note = v.headline
+        ? `<b>${pairTxt}</b>: the headline pair (same spacecraft orientation, where detector offsets cancel).`
+        : `<b>${pairTxt}</b> (${v.same === false ? "different spacecraft orientation; headline uses same-orientation seasons"
+            : v.same ? "same spacecraft orientation, but not the headline pair" : "not the headline pair"}` +
+          `${v.fromPositions ? "; from the per-season positions" : ""}). ` +
+          `Headline: ${arcsec(ms.shift_arcsec, ms.shift_err_arcsec)} (${esc(season(ms.from_epoch))} → ${esc(season(ms.to_epoch))}). ${back}`;
     }
   } else if (ms.photometry) {
     const c = bestChange(ms.photometry);
-    if (c && c.main) {
-      const r = c.main.r, er = c.main.er, b = c.main.b;
-      const pc = Math.round(100 * (r - 1)), pe = Math.max(1, Math.round(100 * er));
-      tMeas = tile("Brightness change", `${pc > 0 ? "+" : "−"}${Math.abs(pc)} %`, `± ${pe} %<span class="x"> · ${b.wavelength_um.toFixed(1)} µm · ${esc(season(c.from))} → ${esc(season(c.to))}</span>`, "hero");
-      tRef = tile("Compared with", String(b.n_comparison || "–"), "stars in the same images", "ref");
+    const v = pe && S.bin ? brightPair(pe[0], pe[1]) : null;
+    const um = S.bin ? S.bin.wavelength_um.toFixed(1) : "";
+    if (v && !v.none) {
+      const pc = Math.round(100 * (v.r - 1)), pce = Math.max(1, Math.round(100 * v.er));
+      tMeas = tile("Brightness change", `${pc > 0 ? "+" : pc < 0 ? "−" : "±"}${Math.abs(pc)} %`, `± ${pce} %<span class="x"> · ${um} µm · ${pairTxt}</span>`, "hero");
+      tRef = tile("Compared with", String(v.n || "–"), "stars in the same images", "ref");
     } else {
-      tMeas = tile("Brightness change", c && c.flat ? "none" : "–", c && c.flat ? "no change larger than the errors" : "too few comparison stars", "hero");
+      tMeas = tile("Brightness change", "–", v ? esc(v.why) : "select two seasons", "hero");
       tRef = tile("Compared with", "–", "stars in the same images", "ref");
     }
-    verdict = `<b>Measured by us from SPHEREx images</b>: the target's brightness relative to comparison stars in the same images (1st season = 100 %).`;
+    verdict = `<b>Measured by us from SPHEREx images</b>: the target's brightness relative to comparison stars in the same images.`;
+    if (c && c.main) {
+      const mpc = Math.round(100 * (c.main.r - 1));
+      note = v && v.main ? `<b>${um} µm, ${pairTxt}</b>: the strongest change in this result.`
+        : `<b>${um} µm, ${pairTxt}</b>. Strongest change: ${mpc > 0 ? "+" : "−"}${Math.abs(mpc)} % at ${c.main.b.wavelength_um.toFixed(1)} µm ` +
+          `(${esc(season(c.from))} → ${esc(season(c.to))}). <button type="button" class="linkbtn" data-headline>Show it</button>`;
+    }
   } else if (ms.preliminary && ok(ms.preliminary.shift_arcsec)) {
     const pre = ms.preliminary;
     tMeas = tile("Rough first look", "≈" + arcsec(pre.shift_arcsec), `${esc(season(pre.from_epoch))} → ${esc(season(pre.to_epoch))}, no error bars`, "hero");
@@ -533,6 +679,12 @@ function renderResult() {
   }
   $("tiles").innerHTML = tMeas + tRef + tImg + tSea;
   $("verdict").innerHTML = verdict;
+  const pn = $("pairNote");
+  pn.hidden = !note;
+  pn.className = "pairnote" + (note && !/headline pair \(same|strongest change in this/.test(note) ? " alt" : "");
+  pn.innerHTML = note;
+  const hb = pn.querySelector("[data-headline]");
+  if (hb) hb.onclick = goHeadline;
   // badge: saturated core, measured from the wings
   const det = ms.detection || {};
   const satBins = new Set();
@@ -546,6 +698,26 @@ function renderResult() {
       `${[...satBins].sort((a, b) => a - b).map((v) => v.toFixed(1)).join(", ")} µm. ` +
       (ms.photometry ? "Its brightness is measured in a ring around the core." : "Its position is fitted to the unsaturated outer glow (the wings) only.");
   }
+}
+
+/** Back to the headline pair (motion) or the strongest change (brightness), switching bins if needed. */
+function goHeadline() {
+  const ms = S.meta.measured || {};
+  let k = S.bi;
+  if (ms.photometry) {
+    const c = bestChange(ms.photometry);
+    const j = c && c.main ? S.bins.findIndex((b) => Math.abs(b.wavelength_um - c.main.b.wavelength_um) < 0.05) : -1;
+    if (j >= 0) k = j;
+  } else if (!headIdx(S.bins[k])) {
+    const j = S.bins.findIndex((b) => headIdx(b));
+    if (j >= 0) k = j;
+  }
+  const h = headIdx(S.bins[k]);
+  if (!h) return;
+  if (k !== S.bi) { $("wl").value = k; selectBin(k, h); return; }
+  S.sel = h;
+  if (!S.sel.includes(S.idx)) S.idx = S.sel[0];
+  afterSelection();
 }
 
 function renderHeader() {
@@ -678,13 +850,13 @@ function renderStagebar() {
 }
 
 function watchHint() {
-  const fs = S.bin ? selFrames() : [];
+  const pe = S.bin ? pairEpochs() : null;
   const ms = S.meta.measured || {};
-  if (fs.length < 2) { $("watch").textContent = ""; return; }
-  const A = season(fs[0].epoch, true), B = season(fs[fs.length - 1].epoch, true);
+  if (!pe) { $("watch").textContent = ""; return; }
+  const A = season(pe[0], true), B = season(pe[1], true);
   const tail = ms.photometry ? "the star in the ring changes brightness."
     : (ok(ms.shift_arcsec) || ms.preliminary) && !S.ref.none ? "the arrow shows where it went." : "anything that jumps has moved.";
-  $("watch").innerHTML = `<b>Watch it.</b><span class="x"> The image switches between ${esc(A)} and ${esc(B)}; ${tail}</span>`;
+  $("watch").innerHTML = `<b>Watch it.</b><span class="x"> ${S.sel.length > 2 ? `The image steps through ${S.sel.length} seasons; the pair is` : "The image switches between"} ${esc(A)} and ${esc(B)}; ${tail}</span>`;
 }
 
 // --- "Find the mover" game ---------------------------------------------------------------------------
@@ -727,13 +899,14 @@ function reveal(hit) {
   const m = S.meta, ms = m.measured || {}, name = esc(m.target || "the target");
   let msg;
   if (ms.photometry) {
-    const c = bestChange(ms.photometry);
-    const what = c && c.main ? ` Our measurement: ${Math.abs(Math.round(100 * (c.main.r - 1)))} % ${c.main.r < 1 ? "fainter" : "brighter"} at ${c.main.b.wavelength_um.toFixed(1)} µm.` : "";
+    const pe = pairEpochs(), v = pe ? brightPair(pe[0], pe[1]) : null;
+    const what = v && !v.none ? ` Our measurement: ${Math.abs(Math.round(100 * (v.r - 1)))} % ${v.r < 1 ? "fainter" : "brighter"} at ${S.bin.wavelength_um.toFixed(1)} µm, ${season(pe[0])} → ${season(pe[1])}.` : "";
     msg = hit ? `<b>Correct!</b> That is ${name}.${what}` : `<b>Not quite: here it is</b> (in the orange ring).${what}`;
   } else {
     const who = S.ref.who;
-    const nums = ok(ms.shift_arcsec) ? ` We measured ${arcsec(ms.shift_arcsec, ms.shift_err_arcsec)}` +
-      (who && ok(ms.gaia_predicted_arcsec) ? `; ${who} predicts ${arcsec(ms.gaia_predicted_arcsec, ms.shift_err_arcsec)}.` : ".") : "";
+    const pe = pairEpochs(), v = pe ? motionPair(pe[0], pe[1]) : null;
+    const nums = v ? ` ${season(pe[0])} → ${season(pe[1])}: we measured ${arcsec(v.s, v.e)}` +
+      (who && v.p != null ? `; ${who} predicts ${arcsec(v.p, v.e)}.` : ".") : "";
     msg = hit ? `<b>${who ? `${who} confirms!` : "Yes!"}</b> You found ${name}.${nums}` : `<b>Not quite: here it is</b> (follow the arrow).${nums}`;
   }
   gameMsg(msg + ` <button type="button" id="gameAgain">Play again</button>`, hit ? "hit" : "miss");
@@ -870,9 +1043,9 @@ export async function startViewer() {
   document.querySelectorAll("#modes button").forEach((b) => { b.onclick = () => setMode(b.dataset.mode); });
   $("allSeasons").onclick = () => {
     const n = S.bin.frames.length;
-    S.sel = S.sel.length === n ? [0, n - 1] : S.bin.frames.map((_, i) => i);
+    S.sel = S.sel.length === n ? defaultSel() : S.bin.frames.map((_, i) => i);
     if (!S.sel.includes(S.idx)) S.idx = S.sel[0];
-    afterSelection(); watchHint();
+    afterSelection();
   };
   $("swipe").oninput = applySwipe;
   $("copyLink").onclick = copyLink;

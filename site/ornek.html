@@ -160,6 +160,10 @@
   .tile.ref b { font-size:1.9rem; }
   .verdict { margin:9px 0 0; font-size:.9rem; line-height:1.4; color:#c9d2e3; }
   .verdict b { color:var(--fg); }
+  .pairnote { margin:8px 0 0; font-size:.84rem; line-height:1.4; color:var(--mut); }
+  .pairnote b { color:var(--fg); font-weight:600; }
+  .pairnote.alt { color:#ffdf9e; background:#2a1f08; border:1px solid #8a6a1f; border-radius:8px; padding:6px 9px; }
+  .linkbtn { background:none; border:0; padding:0; color:var(--acc); text-decoration:underline; font:inherit; cursor:pointer; }
   .badges { margin:8px 0 0; }
   .badges:has(> [hidden]:only-child) { display:none; }
 
@@ -192,7 +196,7 @@
   .sw { width:30px; height:22px; border-radius:5px; flex:none; border:1px solid #05070d; }
   .sw.blue { background:#2166ac; } .sw.red { background:#b2182b; } .sw.white { background:#f7f7f7; }
   .diffview { position:relative; aspect-ratio:1 / 1; max-height:520px; width:100%; background:#000; border-radius:8px; overflow:hidden; }
-  #diffZoom > img { position:absolute; left:0; top:0; width:100%; height:100%; image-rendering:pixelated; }
+  #diffZoom > img, #diffZoom > canvas { position:absolute; left:0; top:0; width:100%; height:100%; image-rendering:pixelated; }
   .diff small { display:block; margin-top:8px; line-height:1.4; }
   table { border-collapse:collapse; width:100%; font-size:.88rem; }
   td, th { text-align:left; padding:3px 6px; border-bottom:1px solid #262c3c; }
@@ -239,6 +243,7 @@
     .tile:not(.hero) small, .tile small .x, .watch .x { display:none; }
     .tile b, .tile.hero b, .tile.ref b { font-size:1.08rem; }
     .verdict { font-size:.8rem; }
+    .pairnote { font-size:.78rem; } .pairnote:not(.alt) { display:none; }
     .hud-date { font-size:.9rem; left:6px; top:6px; }
     .hud-legend { font-size:.7rem; right:6px; bottom:6px; max-width:calc(100% - 12px); gap:0 8px; }
     .hud-scale { bottom:auto; top:6px; left:auto; right:6px; font-size:.72rem; }
@@ -320,6 +325,7 @@
       <section class="result" id="result" aria-label="Our result">
         <h2>Our result</h2>
         <div class="tiles" id="tiles"></div>
+        <p class="pairnote" id="pairNote" hidden></p>
         <p class="verdict" id="verdict"></p>
         <p class="badges"><span id="satBadge" class="badge sat" hidden></span></p>
       </section>
@@ -346,7 +352,7 @@
     <section class="card diff">
       <h2>Difference image: what changed</h2>
       <div class="key" id="diffKey"></div>
-      <div class="diffview" id="diffView"><div class="zoom" id="diffZoom"><img id="diff" alt="Difference image: last season minus first season"></div></div>
+      <div class="diffview" id="diffView"><div class="zoom" id="diffZoom"><img id="diff" alt="Difference image: last season minus first season"><canvas id="diffPair" aria-label="Difference image of the two seasons on screen" hidden></canvas></div></div>
       <small id="diffCap"></small>
     </section>
     <section class="card">
