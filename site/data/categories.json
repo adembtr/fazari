@@ -1,0 +1,1184 @@
+{
+ "_note": "Named sky categories for explore.html. ra/dec in degrees (ICRS) at 'epoch' (Julian year). pmra = mu_alpha*cos(dec), pmdec in mas/yr when known. ra_2026/dec_2026 = position linearly moved to 2026.0 (use these to centre cutouts on fast movers). Points with 'challenge': true are the 5 official targets; 'gallery' is the precomputed product folder (may not exist yet). Built by a script from SIMBAD (CDS Sesame), Gaia DR3 (pipeline/targets.json) and astropy.",
+ "generated": "2026-11-14",
+ "categories": [
+  {
+   "id": "challenge",
+   "name": "Challenge targets",
+   "icon": "🏁",
+   "highlight": true,
+   "description": "The five official test targets of the NASA Space Apps 2026 \"Planet X and SPHEREx\" challenge.",
+   "points": [
+    {
+     "id": "barnard",
+     "name": "Barnard's Star",
+     "ra": 269.448503,
+     "dec": 4.73942,
+     "epoch": 2016.0,
+     "pmra": -801.551,
+     "pmdec": 10362.394,
+     "ra_2026": 269.446268,
+     "dec_2026": 4.768204,
+     "source": "Gaia DR3 4472832130942575872; cross-checked with SIMBAD (NAME Barnard's star): 0.0\" apart, retrieved 2026-11-14",
+     "note": "The fastest-moving star in our sky. It shifts about 10 arcseconds every year, enough to see between SPHEREx seasons.",
+     "challenge": true,
+     "gallery": "data/barnard/"
+    },
+    {
+     "id": "eps_indi_b",
+     "name": "Epsilon Indi B",
+     "ra": 331.076453,
+     "dec": -56.793812,
+     "epoch": 2016.0,
+     "pmra": 3981.977,
+     "pmdec": -2466.832,
+     "ra_2026": 331.09665,
+     "dec_2026": -56.800664,
+     "source": "Gaia DR3 6412596012146801152; cross-checked with SIMBAD (* eps Ind B): 0.0\" apart, retrieved 2026-11-14",
+     "note": "A pair of cold brown dwarfs orbiting a nearby Sun-like star. They move fast across the sky.",
+     "challenge": true,
+     "gallery": "data/eps_indi_b/"
+    },
+    {
+     "id": "wise0855",
+     "name": "WISE 0855-0714",
+     "ra": 133.780984,
+     "dec": -7.243932,
+     "epoch": 2016.67047,
+     "pmra": -8123.7,
+     "pmdec": 673.2,
+     "ra_2026": 133.759762,
+     "dec_2026": -7.242187,
+     "source": "Not in Gaia (too faint in G). Spitzer astrometry from Kirkpatrick et al. 2021, ApJS 253, 7, Table 5 (VizieR J/ApJS/253/7): RA 133.780984, Dec -7.243932 (+-2.3 mas) at MJD 57633.39 (epoch 2016.67047), pmRA*cos(Dec) = -8123.7 +- 1.3, pmDec = 673.2 +- 1.3 mas/yr; parallax in targets_extra.json.; cross-checked with SIMBAD (WISEA J085510.74-071442.5): 0.0\" apart, retrieved 2026-11-14",
+     "note": "The coldest known brown dwarf, about as cold as the North Pole. Very faint, but bright in the infrared.",
+     "challenge": true,
+     "gallery": "data/wise0855/"
+    },
+    {
+     "id": "rw_aur",
+     "name": "RW Aurigae",
+     "ra": 76.956544,
+     "dec": 30.401316,
+     "epoch": 2016.0,
+     "pmra": 4.906,
+     "pmdec": -24.578,
+     "ra_2026": 76.95656,
+     "dec_2026": 30.401248,
+     "source": "Gaia DR3 156430817820015232; cross-checked with SIMBAD (V* RW Aur): 0.1\" apart, retrieved 2026-11-14",
+     "note": "A young star still surrounded by dust. Its brightness changes as dust clouds pass in front of it.",
+     "challenge": true,
+     "gallery": "data/rw_aur/"
+    },
+    {
+     "id": "r_dra",
+     "name": "R Draconis",
+     "ra": 248.167378,
+     "dec": 66.755007,
+     "epoch": 2016.0,
+     "pmra": -20.643,
+     "pmdec": 6.149,
+     "ra_2026": 248.167233,
+     "dec_2026": 66.755024,
+     "source": "Gaia DR3 1648328016354496384; cross-checked with SIMBAD (V* R Dra): 0.0\" apart, retrieved 2026-11-14",
+     "note": "A pulsing red giant. It brightens and fades over about eight months.",
+     "challenge": true,
+     "gallery": "data/r_dra/"
+    }
+   ]
+  },
+  {
+   "id": "fast_stars",
+   "name": "Fast nearby stars",
+   "icon": "🏃",
+   "description": "Close neighbours of the Sun that crawl across the sky fast enough to notice between observing seasons.",
+   "points": [
+    {
+     "id": "barnard",
+     "name": "Barnard's Star",
+     "ra": 269.448503,
+     "dec": 4.73942,
+     "epoch": 2016.0,
+     "pmra": -801.551,
+     "pmdec": 10362.394,
+     "ra_2026": 269.446268,
+     "dec_2026": 4.768204,
+     "source": "Gaia DR3 4472832130942575872; cross-checked with SIMBAD (NAME Barnard's star): 0.0\" apart, retrieved 2026-11-14",
+     "note": "The fastest-moving star in our sky. It shifts about 10 arcseconds every year, enough to see between SPHEREx seasons.",
+     "challenge": true,
+     "gallery": "data/barnard/"
+    },
+    {
+     "id": "kapteyn",
+     "name": "Kapteyn's Star",
+     "ra": 77.919124,
+     "dec": -45.018434,
+     "epoch": 2000.0,
+     "pmra": 6491.223,
+     "pmdec": -5708.614,
+     "ra_2026": 77.985445,
+     "dec_2026": -45.059663,
+     "note": "An old halo star passing through our neighbourhood; the second-fastest star in the sky.",
+     "source": "SIMBAD via CDS Sesame (HD 33793, type PM*), retrieved 2026-11-14"
+    },
+    {
+     "id": "groombridge1830",
+     "name": "Groombridge 1830",
+     "ra": 178.244864,
+     "dec": 37.718682,
+     "epoch": 2000.0,
+     "pmra": 4002.655,
+     "pmdec": -5817.8,
+     "ra_2026": 178.281409,
+     "dec_2026": 37.676664,
+     "note": "An old, metal-poor star racing through the Sun's neighbourhood.",
+     "source": "SIMBAD via CDS Sesame (HD 103095, type Pe*), retrieved 2026-11-14"
+    },
+    {
+     "id": "61cyg_a",
+     "name": "61 Cygni A",
+     "ra": 316.724748,
+     "dec": 38.749417,
+     "epoch": 2000.0,
+     "pmra": 4164.209,
+     "pmdec": 3249.614,
+     "ra_2026": 316.763311,
+     "dec_2026": 38.772887,
+     "note": "The first star to have its distance measured (1838), thanks to its fast motion.",
+     "source": "SIMBAD via CDS Sesame (* 61 Cyg A, type BY*), retrieved 2026-11-14"
+    },
+    {
+     "id": "lacaille9352",
+     "name": "Lacaille 9352",
+     "ra": 346.466816,
+     "dec": -35.853071,
+     "epoch": 2000.0,
+     "pmra": 6765.995,
+     "pmdec": 1330.285,
+     "ra_2026": 346.527105,
+     "dec_2026": -35.843463,
+     "note": "A bright red dwarf about 11 light-years away.",
+     "source": "SIMBAD via CDS Sesame (HD 217987, type PM*), retrieved 2026-11-14"
+    },
+    {
+     "id": "van_maanen",
+     "name": "Van Maanen's Star",
+     "ra": 12.291243,
+     "dec": 5.388609,
+     "epoch": 2000.0,
+     "pmra": 1231.399,
+     "pmdec": -2711.883,
+     "ra_2026": 12.300176,
+     "dec_2026": 5.369024,
+     "note": "The closest single white dwarf, a burnt-out star core.",
+     "source": "SIMBAD via CDS Sesame (Wolf 28, type WD*), retrieved 2026-11-14"
+    },
+    {
+     "id": "proxima",
+     "name": "Proxima Centauri",
+     "ra": 217.428942,
+     "dec": -62.67949,
+     "epoch": 2000.0,
+     "pmra": -3781.741,
+     "pmdec": 769.465,
+     "ra_2026": 217.369434,
+     "dec_2026": -62.673933,
+     "note": "The closest star to the Sun, 4.2 light-years away.",
+     "source": "SIMBAD via CDS Sesame (NAME Proxima Centauri, type PM*), retrieved 2026-11-14"
+    },
+    {
+     "id": "wolf359",
+     "name": "Wolf 359",
+     "ra": 164.120504,
+     "dec": 7.014723,
+     "epoch": 2000.0,
+     "pmra": -3866.338,
+     "pmdec": -2699.215,
+     "ra_2026": 164.092369,
+     "dec_2026": 6.995229,
+     "note": "One of the closest and faintest red dwarfs.",
+     "source": "SIMBAD via CDS Sesame (Wolf 359, type PM*), retrieved 2026-11-14"
+    },
+    {
+     "id": "teegarden",
+     "name": "Teegarden's Star",
+     "ra": 43.253716,
+     "dec": 16.881287,
+     "epoch": 2000.0,
+     "pmra": 3429.083,
+     "pmdec": -3805.541,
+     "ra_2026": 43.279597,
+     "dec_2026": 16.853802,
+     "note": "A tiny red dwarf with planets, found only in 2003 because of its fast motion.",
+     "source": "SIMBAD via CDS Sesame (NAME Teegarden's Star, type LM*), retrieved 2026-11-14"
+    }
+   ]
+  },
+  {
+   "id": "brown_dwarfs",
+   "name": "Brown dwarfs",
+   "icon": "🟤",
+   "description": "\"Failed stars\": too small to shine like the Sun, they glow faintly in infrared light, which is what SPHEREx sees.",
+   "points": [
+    {
+     "id": "luhman16",
+     "name": "Luhman 16AB",
+     "ra": 162.328814,
+     "dec": -53.319466,
+     "epoch": 2000.0,
+     "pmra": -2767.502,
+     "pmdec": 356.856,
+     "ra_2026": 162.295354,
+     "dec_2026": -53.316889,
+     "note": "The closest brown dwarfs to the Sun, a pair 6.5 light-years away.",
+     "source": "SIMBAD via CDS Sesame (NAME Luhman 16, type **), retrieved 2026-11-14"
+    },
+    {
+     "id": "wise0855",
+     "name": "WISE 0855-0714",
+     "ra": 133.780984,
+     "dec": -7.243932,
+     "epoch": 2016.67047,
+     "pmra": -8123.7,
+     "pmdec": 673.2,
+     "ra_2026": 133.759762,
+     "dec_2026": -7.242187,
+     "source": "Not in Gaia (too faint in G). Spitzer astrometry from Kirkpatrick et al. 2021, ApJS 253, 7, Table 5 (VizieR J/ApJS/253/7): RA 133.780984, Dec -7.243932 (+-2.3 mas) at MJD 57633.39 (epoch 2016.67047), pmRA*cos(Dec) = -8123.7 +- 1.3, pmDec = 673.2 +- 1.3 mas/yr; parallax in targets_extra.json.; cross-checked with SIMBAD (WISEA J085510.74-071442.5): 0.0\" apart, retrieved 2026-11-14",
+     "note": "The coldest known brown dwarf, about as cold as the North Pole. Very faint, but bright in the infrared.",
+     "challenge": true,
+     "gallery": "data/wise0855/"
+    },
+    {
+     "id": "eps_indi_b",
+     "name": "Epsilon Indi B",
+     "ra": 331.076453,
+     "dec": -56.793812,
+     "epoch": 2016.0,
+     "pmra": 3981.977,
+     "pmdec": -2466.832,
+     "ra_2026": 331.09665,
+     "dec_2026": -56.800664,
+     "source": "Gaia DR3 6412596012146801152; cross-checked with SIMBAD (* eps Ind B): 0.0\" apart, retrieved 2026-11-14",
+     "note": "A pair of cold brown dwarfs orbiting a nearby Sun-like star. They move fast across the sky.",
+     "challenge": true,
+     "gallery": "data/eps_indi_b/"
+    },
+    {
+     "id": "gj229",
+     "name": "Gliese 229 (B)",
+     "ra": 92.644229,
+     "dec": -21.864627,
+     "epoch": 2000.0,
+     "pmra": -135.692,
+     "pmdec": -719.178,
+     "ra_2026": 92.643173,
+     "dec_2026": -21.869821,
+     "note": "The first brown dwarf ever imaged (1995) orbits this red dwarf. Point is the host star, Gliese 229 A.",
+     "source": "SIMBAD via CDS Sesame (HD 42581, type PM*), retrieved 2026-11-14"
+    },
+    {
+     "id": "2m0415",
+     "name": "2MASS J0415-0935",
+     "ra": 63.831432,
+     "dec": -9.585187,
+     "epoch": 2000.0,
+     "pmra": 2193.0,
+     "pmdec": 527.0,
+     "ra_2026": 63.847495,
+     "dec_2026": -9.581381,
+     "note": "One of the coldest T-type brown dwarfs.",
+     "source": "SIMBAD via CDS Sesame (2MASSI J0415195-093506, type BD*), retrieved 2026-11-14"
+    },
+    {
+     "id": "ugps0722",
+     "name": "UGPS J0722-0540",
+     "ra": 110.616275,
+     "dec": -5.675994,
+     "epoch": 2000.0,
+     "pmra": -903.738,
+     "pmdec": 351.808,
+     "ra_2026": 110.609716,
+     "dec_2026": -5.673453,
+     "note": "A very cold brown dwarf found in an infrared survey.",
+     "source": "SIMBAD via CDS Sesame (WISE J072227.27-054029.9, type BD*), retrieved 2026-11-14"
+    },
+    {
+     "id": "gj570d",
+     "name": "Gliese 570 D",
+     "ra": 224.312344,
+     "dec": -21.363264,
+     "epoch": 2000.0,
+     "pmra": 1038.08,
+     "pmdec": -1677.69,
+     "ra_2026": 224.320394,
+     "dec_2026": -21.375381,
+     "note": "A cold brown dwarf orbiting a triple star system.",
+     "source": "SIMBAD via CDS Sesame (GJ 570 D, type BD*), retrieved 2026-11-14"
+    },
+    {
+     "id": "ross458c",
+     "name": "Ross 458 C",
+     "ra": 195.175333,
+     "dec": 12.354111,
+     "epoch": 2000.0,
+     "pmra": -639.0,
+     "pmdec": -24.0,
+     "ra_2026": 195.170609,
+     "dec_2026": 12.353938,
+     "note": "A planet-mass brown dwarf companion of a double star.",
+     "source": "SIMBAD via CDS Sesame (BD+13 2618C, type BD*), retrieved 2026-11-14"
+    }
+   ]
+  },
+  {
+   "id": "variable_stars",
+   "name": "Variable stars",
+   "icon": "✨",
+   "description": "Stars that brighten and fade. In a blink they stay in place but change brightness.",
+   "points": [
+    {
+     "id": "r_dra",
+     "name": "R Draconis",
+     "ra": 248.167378,
+     "dec": 66.755007,
+     "epoch": 2016.0,
+     "pmra": -20.643,
+     "pmdec": 6.149,
+     "ra_2026": 248.167233,
+     "dec_2026": 66.755024,
+     "source": "Gaia DR3 1648328016354496384; cross-checked with SIMBAD (V* R Dra): 0.0\" apart, retrieved 2026-11-14",
+     "note": "A pulsing red giant. It brightens and fades over about eight months.",
+     "challenge": true,
+     "gallery": "data/r_dra/"
+    },
+    {
+     "id": "rw_aur",
+     "name": "RW Aurigae",
+     "ra": 76.956544,
+     "dec": 30.401316,
+     "epoch": 2016.0,
+     "pmra": 4.906,
+     "pmdec": -24.578,
+     "ra_2026": 76.95656,
+     "dec_2026": 30.401248,
+     "source": "Gaia DR3 156430817820015232; cross-checked with SIMBAD (V* RW Aur): 0.1\" apart, retrieved 2026-11-14",
+     "note": "A young star still surrounded by dust. Its brightness changes as dust clouds pass in front of it.",
+     "challenge": true,
+     "gallery": "data/rw_aur/"
+    },
+    {
+     "id": "mira",
+     "name": "Mira (omicron Ceti)",
+     "ra": 34.836634,
+     "dec": -2.977638,
+     "epoch": 2000.0,
+     "pmra": 9.33,
+     "pmdec": -237.36,
+     "ra_2026": 34.836701,
+     "dec_2026": -2.979352,
+     "note": "The original 'wonderful' variable star; it fades over about 11 months.",
+     "source": "SIMBAD via CDS Sesame (* omi Cet, type Mi*), retrieved 2026-11-14"
+    },
+    {
+     "id": "chi_cyg",
+     "name": "chi Cygni",
+     "ra": 297.641339,
+     "dec": 32.914049,
+     "epoch": 2000.0,
+     "pmra": -24.085,
+     "pmdec": -41.239,
+     "ra_2026": 297.641132,
+     "dec_2026": 32.913751,
+     "note": "A pulsing giant with one of the largest brightness swings known.",
+     "source": "SIMBAD via CDS Sesame (* chi Cyg, type S*), retrieved 2026-11-14"
+    },
+    {
+     "id": "r_leo",
+     "name": "R Leonis",
+     "ra": 146.889517,
+     "dec": 11.42884,
+     "epoch": 2000.0,
+     "pmra": 6.132,
+     "pmdec": -53.097,
+     "ra_2026": 146.889562,
+     "dec_2026": 11.428456,
+     "note": "A bright red pulsing star in Leo.",
+     "source": "SIMBAD via CDS Sesame (V* R Leo, type Mi*), retrieved 2026-11-14"
+    },
+    {
+     "id": "r_cas",
+     "name": "R Cassiopeiae",
+     "ra": 359.603618,
+     "dec": 51.388809,
+     "epoch": 2000.0,
+     "pmra": 82.847,
+     "pmdec": 17.485,
+     "ra_2026": 359.604577,
+     "dec_2026": 51.388935,
+     "note": "A pulsing red giant that changes by a factor of thousands in visible light.",
+     "source": "SIMBAD via CDS Sesame (V* R Cas, type Mi*), retrieved 2026-11-14"
+    },
+    {
+     "id": "t_tau",
+     "name": "T Tauri",
+     "ra": 65.497633,
+     "dec": 19.53512,
+     "epoch": 2000.0,
+     "pmra": 11.682,
+     "pmdec": -14.341,
+     "ra_2026": 65.497723,
+     "dec_2026": 19.535017,
+     "note": "The prototype of young, flickering Sun-like stars.",
+     "source": "SIMBAD via CDS Sesame (V* T Tau, type TT*), retrieved 2026-11-14"
+    },
+    {
+     "id": "betelgeuse",
+     "name": "Betelgeuse",
+     "ra": 88.792939,
+     "dec": 7.407064,
+     "epoch": 2000.0,
+     "pmra": 27.54,
+     "pmdec": 11.3,
+     "ra_2026": 88.79314,
+     "dec_2026": 7.407146,
+     "note": "A red supergiant in Orion that dimmed strongly in 2019-2020.",
+     "source": "SIMBAD via CDS Sesame (* alf Ori, type s*r), retrieved 2026-11-14"
+    },
+    {
+     "id": "irc10216",
+     "name": "CW Leonis (IRC +10216)",
+     "ra": 146.989193,
+     "dec": 13.278768,
+     "epoch": 2000.0,
+     "pmra": 33.84,
+     "pmdec": 10.0,
+     "ra_2026": 146.989444,
+     "dec_2026": 13.27884,
+     "note": "A carbon star wrapped in dust; one of the brightest objects in the near-infrared sky.",
+     "source": "SIMBAD via CDS Sesame (IRC +10216, type C*), retrieved 2026-11-14"
+    }
+   ]
+  },
+  {
+   "id": "planet_nine",
+   "name": "Planet Nine search zone",
+   "icon": "🔭",
+   "description": "A band of sky where theory says a hidden giant planet could be. It has NOT been detected; this is a place to look, not a discovery.",
+   "disclaimer": "Planet Nine is a hypothesis. No detection has been confirmed. Any moving dot you see here is far more likely an asteroid, an artifact or a known star.",
+   "path": [
+    [
+     97.622,
+     23.254
+    ],
+    [
+     102.969,
+     24.286
+    ],
+    [
+     108.395,
+     25.128
+    ],
+    [
+     113.886,
+     25.77
+    ],
+    [
+     119.428,
+     26.203
+    ],
+    [
+     125.001,
+     26.424
+    ],
+    [
+     130.585,
+     26.427
+    ],
+    [
+     136.159,
+     26.215
+    ],
+    [
+     141.702,
+     25.788
+    ],
+    [
+     147.196,
+     25.154
+    ],
+    [
+     152.624,
+     24.319
+    ],
+    [
+     157.974,
+     23.293
+    ],
+    [
+     163.234,
+     22.09
+    ],
+    [
+     168.4,
+     20.721
+    ],
+    [
+     173.468,
+     19.201
+    ],
+    [
+     178.439,
+     17.545
+    ],
+    [
+     183.318,
+     15.767
+    ],
+    [
+     188.109,
+     13.882
+    ],
+    [
+     192.82,
+     11.905
+    ],
+    [
+     197.463,
+     9.852
+    ],
+    [
+     202.047,
+     7.736
+    ],
+    [
+     206.585,
+     5.571
+    ],
+    [
+     211.09,
+     3.372
+    ],
+    [
+     215.574,
+     1.152
+    ],
+    [
+     220.051,
+     -1.074
+    ],
+    [
+     224.535,
+     -3.295
+    ],
+    [
+     229.038,
+     -5.495
+    ],
+    [
+     233.575,
+     -7.66
+    ],
+    [
+     238.157,
+     -9.779
+    ],
+    [
+     242.798,
+     -11.835
+    ],
+    [
+     247.507,
+     -13.814
+    ],
+    [
+     252.295,
+     -15.702
+    ],
+    [
+     257.17,
+     -17.484
+    ],
+    [
+     262.138,
+     -19.145
+    ],
+    [
+     267.203,
+     -20.67
+    ],
+    [
+     272.365,
+     -22.045
+    ],
+    [
+     277.622,
+     -23.254
+    ],
+    [
+     282.969,
+     -24.286
+    ],
+    [
+     288.395,
+     -25.128
+    ],
+    [
+     293.886,
+     -25.77
+    ],
+    [
+     299.428,
+     -26.203
+    ],
+    [
+     305.001,
+     -26.424
+    ],
+    [
+     310.585,
+     -26.427
+    ],
+    [
+     316.159,
+     -26.215
+    ],
+    [
+     321.702,
+     -25.788
+    ],
+    [
+     327.196,
+     -25.154
+    ],
+    [
+     332.624,
+     -24.319
+    ],
+    [
+     337.974,
+     -23.293
+    ],
+    [
+     343.234,
+     -22.09
+    ],
+    [
+     348.4,
+     -20.721
+    ],
+    [
+     353.468,
+     -19.201
+    ],
+    [
+     358.439,
+     -17.545
+    ],
+    [
+     3.318,
+     -15.767
+    ],
+    [
+     8.109,
+     -13.882
+    ],
+    [
+     12.82,
+     -11.905
+    ],
+    [
+     17.463,
+     -9.852
+    ],
+    [
+     22.047,
+     -7.736
+    ],
+    [
+     26.585,
+     -5.571
+    ],
+    [
+     31.09,
+     -3.372
+    ],
+    [
+     35.574,
+     -1.152
+    ],
+    [
+     40.051,
+     1.074
+    ],
+    [
+     44.535,
+     3.295
+    ],
+    [
+     49.038,
+     5.495
+    ],
+    [
+     53.575,
+     7.66
+    ],
+    [
+     58.157,
+     9.779
+    ],
+    [
+     62.798,
+     11.835
+    ],
+    [
+     67.507,
+     13.814
+    ],
+    [
+     72.295,
+     15.702
+    ],
+    [
+     77.17,
+     17.484
+    ],
+    [
+     82.138,
+     19.145
+    ],
+    [
+     87.203,
+     20.67
+    ],
+    [
+     92.365,
+     22.045
+    ],
+    [
+     97.622,
+     23.254
+    ]
+   ],
+   "path_halfwidth_deg": 12.0,
+   "citation": "Brown, M. E. & Batygin, K. 2021, AJ 162, 219, 'The Orbit of Planet Nine' (arXiv:2108.09868); Brown, Holman & Batygin 2024, 'A Pan-STARRS1 Search for Planet Nine' (arXiv:2401.17977).",
+   "points": [
+    {
+     "id": "p9_ra45",
+     "name": "Most likely stretch (RA ≈ 3h)",
+     "ra": 44.983845,
+     "dec": 3.515691,
+     "epoch": 2000.0,
+     "note": "The predicted path's peak probability, near the far point of the orbit. Theory only, nothing has been found here.",
+     "source": "Brown & Batygin 2021, AJ 162, 219 (arXiv:2108.09868): ~95% of the predicted probability lies within +/-12 deg of an orbit with i=16 deg, Omega=97 deg; density peaks near RA 45 deg (aphelion). Computed on that path."
+    },
+    {
+     "id": "p9_ra25",
+     "name": "Predicted path (RA ≈ 1.7h)",
+     "ra": 25.00155,
+     "dec": -6.333221,
+     "epoch": 2000.0,
+     "note": "A point on the predicted path. Theory only.",
+     "source": "Brown & Batygin 2021, AJ 162, 219 (arXiv:2108.09868): ~95% of the predicted probability lies within +/-12 deg of an orbit with i=16 deg, Omega=97 deg; density peaks near RA 45 deg (aphelion). Computed on that path."
+    },
+    {
+     "id": "p9_ra65",
+     "name": "Predicted path (RA ≈ 4.3h)",
+     "ra": 64.907656,
+     "dec": 12.735634,
+     "epoch": 2000.0,
+     "note": "A point on the predicted path. Theory only.",
+     "source": "Brown & Batygin 2021, AJ 162, 219 (arXiv:2108.09868): ~95% of the predicted probability lies within +/-12 deg of an orbit with i=16 deg, Omega=97 deg; density peaks near RA 45 deg (aphelion). Computed on that path."
+    },
+    {
+     "id": "p9_galactic_crossing",
+     "name": "Where the path meets the Milky Way (RA ≈ 6.5h)",
+     "ra": 97.622472,
+     "dec": 23.254251,
+     "epoch": 2000.0,
+     "note": "Searches up to 2024 ruled out about 78% of the predicted parameter space; much of what is left is where the northern Milky Way crosses the ecliptic, near here. Theory only.",
+     "source": "Brown, Holman & Batygin 2024, AJ (arXiv:2401.17977); point = ascending node of the Brown & Batygin 2021 median orbit (i=16 deg, Omega=97 deg)."
+    }
+   ]
+  },
+  {
+   "id": "milky_way",
+   "name": "Milky Way center",
+   "icon": "🌌",
+   "description": "The crowded heart of our galaxy, hidden behind dust in visible light but much clearer in the infrared.",
+   "points": [
+    {
+     "id": "sgr_a",
+     "name": "Sgr A* (our galaxy's black hole)",
+     "ra": 266.416817,
+     "dec": -29.007825,
+     "epoch": 2000.0,
+     "note": "The supermassive black hole at the centre of the Milky Way, 26,000 light-years away.",
+     "source": "SIMBAD via CDS Sesame (NAME Sgr A*, type X), retrieved 2026-11-14"
+    },
+    {
+     "id": "baade",
+     "name": "Baade's Window",
+     "ra": 270.88,
+     "dec": -30.02,
+     "epoch": 2000.0,
+     "note": "A gap in the dust where we can see deep into the galactic bulge.",
+     "source": "SIMBAD via CDS Sesame (NAME Baade Window, type reg), retrieved 2026-11-14"
+    },
+    {
+     "id": "gal_anticenter",
+     "name": "Galactic anticenter",
+     "ra": 86.404988,
+     "dec": 28.936178,
+     "epoch": 2000.0,
+     "note": "The point straight away from the galactic centre, in Taurus/Auriga.",
+     "source": "Computed: Galactic l=180 deg, b=0 deg (astropy)."
+    },
+    {
+     "id": "cygnus_x",
+     "name": "Cygnus X star-forming region",
+     "ra": 307.519989,
+     "dec": 40.860001,
+     "epoch": 2000.0,
+     "note": "A huge star factory in the Milky Way's disk, glowing in the infrared.",
+     "source": "SIMBAD via CDS Sesame (NAME Cyg X, type Cld), retrieved 2026-11-14"
+    }
+   ]
+  },
+  {
+   "id": "nebulae",
+   "name": "Nebulae",
+   "icon": "☁️",
+   "description": "Clouds of gas and dust where stars are born or have died; infrared light shines through the dust.",
+   "points": [
+    {
+     "id": "m42",
+     "name": "Orion Nebula (M42)",
+     "ra": 83.8201,
+     "dec": -5.3876,
+     "epoch": 2000.0,
+     "note": "The closest big star nursery, visible to the naked eye.",
+     "source": "SIMBAD via CDS Sesame (M 42, type HII), retrieved 2026-11-14"
+    },
+    {
+     "id": "horsehead",
+     "name": "Horsehead Nebula",
+     "ra": 85.24583,
+     "dec": -2.45833,
+     "epoch": 2000.0,
+     "note": "A dark dust cloud shaped like a horse's head.",
+     "source": "SIMBAD via CDS Sesame (NAME Horsehead Nebula, type DNe), retrieved 2026-11-14"
+    },
+    {
+     "id": "m16",
+     "name": "Eagle Nebula (M16)",
+     "ra": 274.688,
+     "dec": -13.792,
+     "epoch": 2000.0,
+     "note": "Home of the 'Pillars of Creation'.",
+     "source": "SIMBAD via CDS Sesame (M 16, type OpC), retrieved 2026-11-14"
+    },
+    {
+     "id": "m8",
+     "name": "Lagoon Nebula (M8)",
+     "ra": 270.9042,
+     "dec": -24.3867,
+     "epoch": 2000.0,
+     "note": "A bright star-forming cloud in Sagittarius.",
+     "source": "SIMBAD via CDS Sesame (M 8, type OpC), retrieved 2026-11-14"
+    },
+    {
+     "id": "m17",
+     "name": "Omega Nebula (M17)",
+     "ra": 275.1958,
+     "dec": -16.1717,
+     "epoch": 2000.0,
+     "note": "One of the brightest star-forming regions in the galaxy.",
+     "source": "SIMBAD via CDS Sesame (NGC 6618, type OpC), retrieved 2026-11-14"
+    },
+    {
+     "id": "carina",
+     "name": "Carina Nebula",
+     "ra": 161.259292,
+     "dec": -59.699944,
+     "epoch": 2000.0,
+     "note": "A giant cloud around the massive star Eta Carinae.",
+     "source": "SIMBAD via CDS Sesame (NGC 3372, type HII), retrieved 2026-11-14"
+    },
+    {
+     "id": "rho_oph",
+     "name": "Rho Ophiuchi cloud",
+     "ra": 247.025,
+     "dec": -24.5417,
+     "epoch": 2000.0,
+     "note": "One of the nearest star nurseries, full of young stars hidden in dust.",
+     "source": "SIMBAD via CDS Sesame (NAME Ophiuchus Molecular Cloud, type SFR), retrieved 2026-11-14"
+    },
+    {
+     "id": "m1",
+     "name": "Crab Nebula (M1)",
+     "ra": 83.6324,
+     "dec": 22.0174,
+     "epoch": 2000.0,
+     "note": "The remains of a star that exploded in the year 1054.",
+     "source": "SIMBAD via CDS Sesame (M 1, type SNR), retrieved 2026-11-14"
+    },
+    {
+     "id": "helix",
+     "name": "Helix Nebula",
+     "ra": 337.410606,
+     "dec": -20.837152,
+     "epoch": 2000.0,
+     "note": "The glowing shell of a dying Sun-like star.",
+     "source": "SIMBAD via CDS Sesame (NGC 7293, type PN), retrieved 2026-11-14"
+    },
+    {
+     "id": "m57",
+     "name": "Ring Nebula (M57)",
+     "ra": 283.396237,
+     "dec": 33.029134,
+     "epoch": 2000.0,
+     "note": "A small, ring-shaped dying-star shell.",
+     "source": "SIMBAD via CDS Sesame (M 57, type PN), retrieved 2026-11-14"
+    }
+   ]
+  },
+  {
+   "id": "galaxies",
+   "name": "Galaxies",
+   "icon": "🌀",
+   "description": "Other islands of billions of stars, far beyond the Milky Way.",
+   "points": [
+    {
+     "id": "m31",
+     "name": "Andromeda Galaxy (M31)",
+     "ra": 10.684708,
+     "dec": 41.26875,
+     "epoch": 2000.0,
+     "note": "Our big neighbour, 2.5 million light-years away.",
+     "source": "SIMBAD via CDS Sesame (M 31, type AGN), retrieved 2026-11-14"
+    },
+    {
+     "id": "lmc",
+     "name": "Large Magellanic Cloud",
+     "ra": 80.89417,
+     "dec": -69.75611,
+     "epoch": 2000.0,
+     "note": "A small galaxy orbiting the Milky Way, near the south ecliptic pole.",
+     "source": "SIMBAD via CDS Sesame (NAME LMC, type G), retrieved 2026-11-14"
+    },
+    {
+     "id": "smc",
+     "name": "Small Magellanic Cloud",
+     "ra": 13.15833,
+     "dec": -72.80028,
+     "epoch": 2000.0,
+     "note": "The Large Cloud's smaller companion.",
+     "source": "SIMBAD via CDS Sesame (NAME SMC, type G), retrieved 2026-11-14"
+    },
+    {
+     "id": "m33",
+     "name": "Triangulum Galaxy (M33)",
+     "ra": 23.462069,
+     "dec": 30.660175,
+     "epoch": 2000.0,
+     "note": "A face-on spiral in our Local Group.",
+     "source": "SIMBAD via CDS Sesame (M 33, type GiG), retrieved 2026-11-14"
+    },
+    {
+     "id": "m51",
+     "name": "Whirlpool Galaxy (M51)",
+     "ra": 202.469575,
+     "dec": 47.195258,
+     "epoch": 2000.0,
+     "note": "A classic spiral pulling on a smaller companion.",
+     "source": "SIMBAD via CDS Sesame (M 51, type Sy2), retrieved 2026-11-14"
+    },
+    {
+     "id": "m81",
+     "name": "Bode's Galaxy (M81)",
+     "ra": 148.888219,
+     "dec": 69.065295,
+     "epoch": 2000.0,
+     "note": "A bright spiral in Ursa Major, next to M82.",
+     "source": "SIMBAD via CDS Sesame (M 81, type Sy2), retrieved 2026-11-14"
+    },
+    {
+     "id": "m82",
+     "name": "Cigar Galaxy (M82)",
+     "ra": 148.968458,
+     "dec": 69.679703,
+     "epoch": 2000.0,
+     "note": "A galaxy bursting with new stars, very bright in the infrared.",
+     "source": "SIMBAD via CDS Sesame (M 82, type AGN), retrieved 2026-11-14"
+    },
+    {
+     "id": "m104",
+     "name": "Sombrero Galaxy (M104)",
+     "ra": 189.997633,
+     "dec": -11.623054,
+     "epoch": 2000.0,
+     "note": "An edge-on galaxy with a dark dust lane.",
+     "source": "SIMBAD via CDS Sesame (M 104, type LIN), retrieved 2026-11-14"
+    },
+    {
+     "id": "cen_a",
+     "name": "Centaurus A",
+     "ra": 201.365063,
+     "dec": -43.019113,
+     "epoch": 2000.0,
+     "note": "A galaxy with a giant black hole and a dramatic dust band.",
+     "source": "SIMBAD via CDS Sesame (NAME Centaurus A, type BLL), retrieved 2026-11-14"
+    }
+   ]
+  },
+  {
+   "id": "ecliptic",
+   "name": "Asteroid lane (ecliptic)",
+   "icon": "☄️",
+   "description": "The path of the Sun and planets across the sky. Most asteroids live near this line, so moving dots are common here.",
+   "points": [
+    {
+     "id": "ecl_000",
+     "name": "Ecliptic in Pisces (λ = 0°)",
+     "ra": 359.999996,
+     "dec": 5e-06,
+     "epoch": 2000.0,
+     "note": "Asteroids and comets travel close to this line. A dot that jumps between seasons here is most likely an asteroid.",
+     "source": "Computed: ecliptic longitude 0 deg, latitude 0 (J2000 mean ecliptic, astropy)."
+    },
+    {
+     "id": "ecl_030",
+     "name": "Ecliptic in Aries (λ = 30°)",
+     "ra": 27.910548,
+     "dec": 11.471973,
+     "epoch": 2000.0,
+     "note": "Asteroids and comets travel close to this line. A dot that jumps between seasons here is most likely an asteroid.",
+     "source": "Computed: ecliptic longitude 30 deg, latitude 0 (J2000 mean ecliptic, astropy)."
+    },
+    {
+     "id": "ecl_060",
+     "name": "Ecliptic in Taurus (λ = 60°)",
+     "ra": 57.81874,
+     "dec": 20.150363,
+     "epoch": 2000.0,
+     "note": "Asteroids and comets travel close to this line. A dot that jumps between seasons here is most likely an asteroid.",
+     "source": "Computed: ecliptic longitude 60 deg, latitude 0 (J2000 mean ecliptic, astropy)."
+    },
+    {
+     "id": "ecl_090",
+     "name": "Ecliptic in Taurus (λ = 90°)",
+     "ra": 89.999998,
+     "dec": 23.439281,
+     "epoch": 2000.0,
+     "note": "Asteroids and comets travel close to this line. A dot that jumps between seasons here is most likely an asteroid.",
+     "source": "Computed: ecliptic longitude 90 deg, latitude 0 (J2000 mean ecliptic, astropy)."
+    },
+    {
+     "id": "ecl_120",
+     "name": "Ecliptic in Cancer (λ = 120°)",
+     "ra": 122.181255,
+     "dec": 20.150358,
+     "epoch": 2000.0,
+     "note": "Asteroids and comets travel close to this line. A dot that jumps between seasons here is most likely an asteroid.",
+     "source": "Computed: ecliptic longitude 120 deg, latitude 0 (J2000 mean ecliptic, astropy)."
+    },
+    {
+     "id": "ecl_150",
+     "name": "Ecliptic in Leo (λ = 150°)",
+     "ra": 152.089445,
+     "dec": 11.471965,
+     "epoch": 2000.0,
+     "note": "Asteroids and comets travel close to this line. A dot that jumps between seasons here is most likely an asteroid.",
+     "source": "Computed: ecliptic longitude 150 deg, latitude 0 (J2000 mean ecliptic, astropy)."
+    },
+    {
+     "id": "ecl_180",
+     "name": "Ecliptic in Virgo (λ = 180°)",
+     "ra": 179.999996,
+     "dec": -5e-06,
+     "epoch": 2000.0,
+     "note": "Asteroids and comets travel close to this line. A dot that jumps between seasons here is most likely an asteroid.",
+     "source": "Computed: ecliptic longitude 180 deg, latitude 0 (J2000 mean ecliptic, astropy)."
+    },
+    {
+     "id": "ecl_210",
+     "name": "Ecliptic in Virgo (λ = 210°)",
+     "ra": 207.910548,
+     "dec": -11.471973,
+     "epoch": 2000.0,
+     "note": "Asteroids and comets travel close to this line. A dot that jumps between seasons here is most likely an asteroid.",
+     "source": "Computed: ecliptic longitude 210 deg, latitude 0 (J2000 mean ecliptic, astropy)."
+    },
+    {
+     "id": "ecl_240",
+     "name": "Ecliptic in Libra (λ = 240°)",
+     "ra": 237.81874,
+     "dec": -20.150363,
+     "epoch": 2000.0,
+     "note": "Asteroids and comets travel close to this line. A dot that jumps between seasons here is most likely an asteroid.",
+     "source": "Computed: ecliptic longitude 240 deg, latitude 0 (J2000 mean ecliptic, astropy)."
+    },
+    {
+     "id": "ecl_270",
+     "name": "Ecliptic in Sagittarius (λ = 270°)",
+     "ra": 269.999998,
+     "dec": -23.439281,
+     "epoch": 2000.0,
+     "note": "Asteroids and comets travel close to this line. A dot that jumps between seasons here is most likely an asteroid.",
+     "source": "Computed: ecliptic longitude 270 deg, latitude 0 (J2000 mean ecliptic, astropy)."
+    },
+    {
+     "id": "ecl_300",
+     "name": "Ecliptic in Capricornus (λ = 300°)",
+     "ra": 302.181255,
+     "dec": -20.150358,
+     "epoch": 2000.0,
+     "note": "Asteroids and comets travel close to this line. A dot that jumps between seasons here is most likely an asteroid.",
+     "source": "Computed: ecliptic longitude 300 deg, latitude 0 (J2000 mean ecliptic, astropy)."
+    },
+    {
+     "id": "ecl_330",
+     "name": "Ecliptic in Aquarius (λ = 330°)",
+     "ra": 332.089445,
+     "dec": -11.471965,
+     "epoch": 2000.0,
+     "note": "Asteroids and comets travel close to this line. A dot that jumps between seasons here is most likely an asteroid.",
+     "source": "Computed: ecliptic longitude 330 deg, latitude 0 (J2000 mean ecliptic, astropy)."
+    }
+   ]
+  },
+  {
+   "id": "deep_fields",
+   "name": "SPHEREx deep fields",
+   "icon": "🎯",
+   "description": "The two ecliptic poles: SPHEREx passes over them on almost every orbit, so these spots have the most observations.",
+   "points": [
+    {
+     "id": "nep",
+     "name": "North Ecliptic Pole",
+     "ra": 269.999985,
+     "dec": 66.560719,
+     "epoch": 2000.0,
+     "note": "SPHEREx's northern deep field, in Draco. Many repeat visits make blinks rich here.",
+     "source": "Computed: ecliptic latitude +90 deg (J2000 mean ecliptic, astropy)."
+    },
+    {
+     "id": "sep",
+     "name": "South Ecliptic Pole",
+     "ra": 89.999985,
+     "dec": -66.560719,
+     "epoch": 2000.0,
+     "note": "SPHEREx's southern deep field, in Dorado, next to the Large Magellanic Cloud.",
+     "source": "Computed: ecliptic latitude -90 deg (J2000 mean ecliptic, astropy)."
+    }
+   ]
+  },
+  {
+   "id": "surprise",
+   "name": "Surprise me",
+   "icon": "🎲",
+   "random": true,
+   "description": "Jump to a random spot, chosen from all the points above or anywhere on the sky.",
+   "points": []
+  }
+ ]
+}

@@ -3,10 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fazari - SPHEREx blink comparator</title>
-<meta http-equiv="refresh" content="0; url=ornek.html">
+<title>Fazari - SPHEREx Sky Explorer</title>
+<meta http-equiv="refresh" content="0; url=explore.html">
 <script>
-  location.replace("ornek.html" + location.search + location.hash);
+  // Old links with ?data= keep opening the precomputed viewer; everything else goes to the explorer.
+  const q = new URLSearchParams(location.search);
+  location.replace((q.has("data") ? "ornek.html" : "explore.html") + location.search + location.hash);
 </script>
 <style>
   body { font-family: system-ui, sans-serif; background: #0b0f17; color: #e6e9ef; margin: 0; padding: 32px 16px; }
@@ -14,7 +16,7 @@
 </style>
 </head>
 <body>
-<p>Opening the Fazari SPHEREx blink comparator&hellip;</p>
-<p>If nothing happens, <a href="ornek.html">open the viewer</a>.</p>
+<p>Opening the Fazari Sky Explorer&hellip;</p>
+<p>If nothing happens, <a href="explore.html">open the Sky Explorer</a> or the <a href="ornek.html">precomputed blink viewer</a>.</p>
 </body>
 </html>
