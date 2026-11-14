@@ -13,7 +13,7 @@
 //                                own numbers (candidates.json sensitivity, else field-star scatter)
 // Every number comes from the result's own files; nothing is measured or invented here.
 
-import { t, lang, loc } from "./i18n.js";
+import { t, lang, loc, month as monthName } from "./i18n.js";
 import { gaiaStars } from "./gaia.js";
 
 const L = (key, en, p) => (lang() === "tr" ? t(key, p, en) : p ? en.replace(/\{(\w+)\}/g, (m, k) => (p[k] != null ? String(p[k]) : m)) : en);
@@ -74,6 +74,11 @@ export function speedFit(ms, refNone = false) {
 function niceStep(span, n) {
   const s0 = span / n, m = 10 ** Math.floor(Math.log10(s0));
   return [1, 2, 2.5, 5, 10].map((k) => k * m).find((s) => s >= s0) || 10 * m;
+}
+/** Decimals an axis step needs: a 0.25 step is labelled 0.75 / 1.00 / 1.25 (never "0.8" / "1.3" for 0.75 / 1.25). */
+function stepDec(step) {
+  const e10 = Math.floor(Math.log10(step));
+  return Math.max(1, Math.min(3, Math.ceil(-Math.log10(step) - 1e-9) + (Math.abs(step / 10 ** e10 - 2.5) < 1e-9 ? 1 : 0)));
 }
 /** o = { v, e, p, unit: "″/yr", meLabel, refLabel, W } -> HTML (a .gr-nl block) */
 /** Drawing width of a chart: narrower on a phone so the 11-unit labels stay readable once scaled to the screen. */
@@ -151,7 +156,7 @@ export function ratioChart(ph, epochs, month) {
   const step = niceStep(y1 - y0, 4);
   for (let v = Math.ceil(y0 / step) * step; v <= y1 + 1e-9; v += step) {
     s += `<line x1="${ml}" x2="${W - mr}" y1="${sy(v).toFixed(1)}" y2="${sy(v).toFixed(1)}" stroke="#262c3c"/>` +
-      `<text x="${ml - 6}" y="${(sy(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="#9aa3b2">${esc(loc(v.toFixed(step < 0.1 ? 2 : 1)))}</text>`;
+      `<text x="${ml - 6}" y="${(sy(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="#9aa3b2">${esc(loc(v.toFixed(stepDec(step))))}</text>`;
   }
   // how much the comparison stars themselves scatter, per bin (grey)
   for (const b of bins) {
@@ -292,4 +297,261 @@ export function limitHtml(lim, how, foundMovers = false) {
   const tip = how || "";
   return `<p class="gr-limit">${lead}${esc(L("gr.lim.field", "Anything moving slower than about {v}″/yr would not show here.", { v: rate(lim.v) }))}` +
     (tip ? ` <abbr title="${esc(tip)}">${esc(L("gr.lim.how", "How we know"))}</abbr>` : "") + `</p>`;
+}
+
+// ------------------------------------------------------------------------------------------------ brightness over time
+// For any result with a spectrum file (spectrum.json, "fazari-spectrum/1"): every exposure's flux divided by the
+// spot's own average spectrum at that wavelength, against the date. A steady source stays near 1 whatever its
+// colour; a source that fades or brightens between visits leaves 1. Shown for the wavelength button on screen
+// (the exposures of that button's detector band). Where the result has a ring-photometry measurement against
+// comparison stars (meta.measured.photometry: the two variable stars), the visit as a whole is that measurement,
+// put on the same scale (divided by its own average over the visits), and the comparison stars' scatter is the
+// grey band; without it there is no band (spectrum.json "neighbours" holds counts only, no per-exposure values).
+// Thresholds, as in the result card (js/viewer.js bestChange): a change counts when it is larger than 10 % and
+// more than three times its uncertainty; for rough wing estimates of a saturated star only a factor of two counts.
+export const SEASON_COLORS = ["#3987e5", "#d95926", "#199e70", "#c98500", "#9085e9", "#e66767"];   // = js/spectrum_chart.js COLORS
+// How well one visit's brightness scale is known without comparison stars: the spectrum's own flux check (field
+// stars against 2MASS and AllWISE: 0.93-1.06, spectrum.json "caveats"; the chart's note says "within ±7 %").
+const TS_SCALE = 0.07;
+const TS_CSS = `
+.gr-tc { background:rgba(5, 8, 16, .55); border:1px solid rgba(160, 180, 230, .14); border-radius:12px; padding:10px 12px 10px; min-width:0; }
+.gr-tc > svg { display:block; width:100%; height:auto; overflow:visible; }
+.gr-tc h4 { margin:0 0 4px; font-size:.92rem; font-weight:650; color:var(--fg, #e8eaf0); }
+.gr-tc .gr-cap { font-size:.8rem; gap:3px 14px; margin-top:4px; }
+.gr-tv { margin:10px 0 0; font-size:1.05rem; line-height:1.4; font-weight:650; color:var(--fg, #e8eaf0); }
+.gr-tv small { display:block; margin-top:3px; font-size:.84rem; font-weight:400; color:var(--mut, #9aa3b2); }
+.gr-tt { margin:10px 0 0; width:auto; min-width:min(100%, 420px); border-collapse:collapse; font-size:.9rem; font-variant-numeric:tabular-nums; }
+.gr-tt th { text-align:left; font-weight:600; color:var(--mut, #9aa3b2); padding:4px 14px 4px 0; border-bottom:1px solid #2a3246; }
+.gr-tt td { padding:5px 14px 5px 0; border-bottom:1px solid #1d2333; color:var(--fg, #e8eaf0); }
+.gr-tt td small { color:var(--mut, #9aa3b2); }
+.gr-tt i { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:7px; vertical-align:-1px; }
+.gr-tn { margin:8px 0 0; font-size:.86rem; line-height:1.4; color:var(--mut, #9aa3b2); }
+.gr-tb { font:inherit; font-size:.86rem; font-weight:600; color:#ffc94d; background:none; border:1px solid rgba(255, 201, 77, .45); border-radius:999px; padding:3px 11px; margin:2px 4px 2px 0; cursor:pointer; min-height:30px; }
+.gr-tgo { cursor:pointer; outline:none; }
+.gr-tgo:hover, .gr-tgo:focus-visible { fill:rgba(127, 212, 255, .07); stroke:#7fd4ff; stroke-width:1.5; }
+`;
+function tsStyle() {
+  ensureStyle();
+  if (typeof document === "undefined" || document.getElementById("gr-ts-style")) return;
+  const s = document.createElement("style");
+  s.id = "gr-ts-style"; s.textContent = TS_CSS;
+  document.head.append(s);
+}
+const median = (a) => { const s = [...a].sort((x, y) => x - y), n = s.length; return n ? (n % 2 ? s[n >> 1] : (s[n / 2 - 1] + s[n / 2]) / 2) : null; };
+/** The spot's own average spectrum over all visits: [{ x: µm, s: µJy }] from the season bins (each visit's bin counts
+ *  once). Kept: bins whose average is at least three times its uncertainty, and wing estimates of a saturated star. */
+function meanSpectrum(spec) {
+  const g = new Map();
+  for (const b of spec.binned || []) {
+    if (!(b.kind === "measured" || b.kind === "saturated_wing") || !ok(b.flux_ujy) || !ok(b.wavelength_um)) continue;
+    const k = b.detector + "|" + b.lam_lo_um;
+    const o = g.get(k) || { x: 0, s: 0, v: 0, n: 0, wing: 0 };
+    o.x += +b.wavelength_um; o.s += +b.flux_ujy; o.v += ok(b.flux_err_ujy) ? (+b.flux_err_ujy) ** 2 : 0; o.n++;
+    if (b.kind === "saturated_wing") o.wing++;
+    g.set(k, o);
+  }
+  return [...g.values()].map((o) => ({ x: o.x / o.n, s: o.s / o.n, e: Math.sqrt(o.v) / o.n, wing: o.wing > 0 }))
+    .filter((o) => o.s > 0 && (o.wing || o.s > 3 * o.e)).sort((a, b) => a.x - b.x);
+}
+function specAt(nodes, x) {
+  if (!nodes.length) return null;
+  const A = nodes[0], Z = nodes[nodes.length - 1];
+  if (x <= A.x) return x >= A.x - 0.06 ? A.s : null;
+  if (x >= Z.x) return x <= Z.x + 0.06 ? Z.s : null;
+  let i = 1; while (nodes[i].x < x) i++;
+  const a = nodes[i - 1], b = nodes[i];
+  if (b.x - a.x > 0.35) return Math.min(x - a.x, b.x - x) <= 0.06 ? (x - a.x < b.x - x ? a.s : b.s) : null;   // a stretch without an average: no ratio there
+  return a.s + (b.s - a.s) * (x - a.x) / (b.x - a.x);
+}
+/** One visit as a whole from its exposures: the median and its robust uncertainty (few exposures: the mean). */
+function visitStat(P) {
+  const n = P.length;
+  if (!n) return null;
+  const ys = P.map((p) => p.y), es = P.map((p) => p.e || 0);
+  if (n >= 4) {
+    const m = median(ys), sr = 1.4826 * median(ys.map((y) => Math.abs(y - m)));
+    return { y: m, e: Math.max(1.2533 * sr / Math.sqrt(n), (median(es) || 0) / Math.sqrt(n)), n };
+  }
+  return { y: ys.reduce((a, b) => a + b, 0) / n, e: Math.sqrt(es.reduce((a, b) => a + b * b, 0)) / n || null, n };
+}
+const mjdOf = (iso) => { const d = Date.parse(String(iso || "").slice(0, 10) + "T00:00:00Z"); return Number.isFinite(d) ? d / 864e5 + 40587 : null; };
+const isoOf = (mjd) => new Date((mjd - 40587) * 864e5).toISOString().slice(0, 10);
+
+/** The numbers of the chart for one wavelength button: { um, dets, seasons, pts, visits, src, cmp, change }. */
+export function timeSeries({ spec, meta, um }) {
+  const bins = (meta && meta.wavelength_bins) || [];
+  const bin = ok(um) ? bins.find((b) => Math.abs(b.wavelength_um - um) < 0.05) : null;
+  const dets = bin ? [...new Set((bin.frames || []).flatMap((f) => f.detectors || []))] : [];
+  const seasons = (spec && spec.seasons && spec.seasons.length ? spec.seasons : (meta && meta.epochs) || []).slice();
+  const out = { um: bin ? +bin.wavelength_um : null, dets, seasons, pts: [], visits: [], src: null, cmp: null, ncmp: null, change: null };
+  if (spec && Array.isArray(spec.points)) {
+    const nodes = meanSpectrum(spec);
+    for (const p of spec.points) {
+      if (dets.length && !dets.includes(p.detector)) continue;
+      if (!ok(p.mjd) || !ok(p.wavelength_um)) continue;
+      const S = specAt(nodes, +p.wavelength_um);
+      if (!(S > 0)) continue;
+      const base = { t: +p.mjd, season: p.season, lam: +p.wavelength_um, file: p.file || "" };
+      if ((p.status === "detection" || p.status === "saturated_wing") && ok(p.flux_ujy)) {
+        out.pts.push({ ...base, y: p.flux_ujy / S, e: ok(p.flux_err_ujy) ? p.flux_err_ujy / S : 0, kind: p.status === "detection" ? "det" : "wing" });
+      } else if (p.status === "nondetection" && ok(p.upper_limit_ujy)) out.pts.push({ ...base, y: p.upper_limit_ujy / S, e: 0, kind: "ul" });
+    }
+  }
+  const tOf = (s) => {
+    const P = out.pts.filter((p) => p.season === s);
+    if (P.length) return { t: P.reduce((a, p) => a + p.t, 0) / P.length, t0: Math.min(...P.map((p) => p.t)), t1: Math.max(...P.map((p) => p.t)) };
+    const f = bin && (bin.frames || []).find((x) => x.epoch === s);
+    const a = f && mjdOf(f.date_first || f.date), b = f && mjdOf(f.date_last || f.date);
+    return a != null ? { t: (a + (b ?? a)) / 2, t0: a, t1: b ?? a } : null;
+  };
+  const pb = (((meta || {}).measured || {}).photometry || {}).bins || [];
+  const ph = bin ? pb.find((b) => Math.abs(b.wavelength_um - bin.wavelength_um) < 0.05 && (b.seasons || []).filter((s) => ok(s.ratio_to_first)).length > 1) : null;
+  if (ph) {
+    const ss = ph.seasons.filter((s) => ok(s.ratio_to_first));
+    const mean = ss.reduce((a, s) => a + +s.ratio_to_first, 0) / ss.length;
+    out.visits = ss.map((s, i) => ({ season: s.epoch, y: s.ratio_to_first / mean, e: i && ok(s.ratio_err) ? s.ratio_err / mean : null, n: s.n_images, kind: "phot",
+      r: +s.ratio_to_first, re: +s.ratio_err || 0, ...(tOf(s.epoch) || {}) })).filter((v) => ok(v.t));
+    out.src = "phot"; out.cmp = ok(ph.comparison_scatter_frac) ? +ph.comparison_scatter_frac : null; out.ncmp = ok(ph.n_comparison) ? +ph.n_comparison : null;
+  } else {
+    for (const s of seasons) {
+      const det = out.pts.filter((p) => p.season === s && p.kind === "det"), wing = out.pts.filter((p) => p.season === s && p.kind === "wing");
+      const use = det.length >= 2 || !wing.length ? det : wing;
+      const st = visitStat(use), tt = tOf(s);
+      if (st && tt) out.visits.push({ season: s, ...st, kind: use === det ? "median" : "wing", ...tt });
+    }
+    if (out.visits.length) out.src = "spec";
+  }
+  // the change between the first visit and each later one: the most significant
+  const v0 = out.visits[0];
+  if (v0 && out.visits.length > 1) {
+    for (const v of out.visits.slice(1)) {
+      const r = out.src === "phot" ? v.r / v0.r : v.y / v0.y;
+      // ring photometry is measured against comparison stars in the same images (the scale cancels); the exposures of
+      // the spectrum are not, so each visit also carries the brightness scale's own uncertainty (TS_SCALE)
+      const e = out.src === "phot" ? v.re : r * Math.hypot((v.e || 0) / v.y, (v0.e || 0) / v0.y, Math.SQRT2 * TS_SCALE);
+      const z = e > 0 ? Math.abs(r - 1) / e : 0, rough = v.kind === "wing" || v0.kind === "wing";
+      const sig = rough ? z >= 3 && (r >= 2 || r <= 0.5) : z >= 3 && Math.abs(r - 1) >= 0.1;
+      const c = { r, e, z, sig, rough, scale: out.src !== "phot", from: v0.season, to: v.season, um: out.um };
+      if (!out.change || (c.sig && !out.change.sig) || (c.sig === out.change.sig && c.z > out.change.z)) out.change = c;
+    }
+  }
+  return out;
+}
+const xr = (v, e) => "×" + loc((+v).toFixed(2)) + (ok(e) && e > 0 ? " ± " + loc((+e).toFixed(2)) : "");
+function changeText(c) {
+  const mon = (ep) => monthName(ep, true);
+  if (!c) return "";
+  if (!c.sig) {
+    return c.rough ? L("ts.f.vRough", "No change that can be trusted between the visits at this colour.")
+      : L("ts.f.vSteady", "No significant change between the visits at this colour.");
+  }
+  const p = { a: mon(c.from), b: mon(c.to), r: xr(c.r, c.e), pc: String(Math.round(100 * Math.abs(c.r - 1))), x: loc(c.r.toFixed(1)) };
+  if (c.r < 1) return c.r >= 0.4 && c.r <= 0.6 ? L("ts.f.vHalf", "Faded to about half between {a} and {b} ({r}).", p) : L("ts.f.vFaded", "Faded by about {pc} % between {a} and {b} ({r}).", p);
+  return c.r >= 1.8 ? L("ts.f.vTimes", "Became about {x} times brighter between {a} and {b} ({r}).", p) : L("ts.f.vBright", "Brightened by about {pc} % between {a} and {b} ({r}).", p);
+}
+const ruleText = (c) => (c.rough
+  ? L("ts.f.ruleRough", "The star is too bright for the camera at this colour: these are rough estimates from its faint outer glow, so only a change by more than a factor of two would count.")
+  : c.scale ? L("ts.f.ruleScale", "A change counts when it is more than three times its uncertainty. Without comparison stars the brightness scale of a visit is good to about {p} % (our check against 2MASS and WISE), so that means a change of about a third or more.", { p: Math.round(100 * TS_SCALE) })
+    : L("ts.f.rule", "A change counts when it is larger than 10 % and more than three times its uncertainty; the comparison is against ordinary stars in the same images."));
+
+/** HTML of the "brightness over time" block: chart, key, the visits as a small table, one plain verdict. "" = nothing to show.
+ *  jump: the page can show a visit in its image (ornek.html): each visit's panel is then a button (data-ts-go = its season). */
+export function timeChart({ spec, meta, um, jump = false }) {
+  const bins = (meta && meta.wavelength_bins) || [];
+  if (!bins.length || (!spec && !(((meta.measured || {}).photometry || {}).bins || []).length)) return "";
+  tsStyle();
+  const mon = (ep) => monthName(ep, true);
+  const umTxt = (u) => loc((+u).toFixed(1)) + " µm";
+  const all = bins.map((b) => timeSeries({ spec, meta, um: b.wavelength_um }));
+  const cur = all.find((s) => ok(um) && Math.abs(s.um - um) < 0.05) || all.find((s) => s.visits.length) || all[0];
+  const withData = all.filter((s) => s.visits.length);
+  const others = (list) => list.map((s) => `<button type="button" class="gr-tb" data-ts-um="${s.um}">${esc(umTxt(s.um))}</button>`).join("");
+  if (!withData.length) {
+    return `<div class="gr-tc"><p class="gr-tn" style="margin:0">${esc(L("ts.f.none", "Nothing to plot here: no source is bright enough at this spot in any infrared colour, so there is no brightness to follow from visit to visit."))}</p></div>`;
+  }
+  if (!cur.visits.length) {
+    return `<div class="gr-tc"><p class="gr-tn" style="margin:0 0 6px">${esc(L("ts.f.noBand", "No brightness measurement at {um}: the source is either too bright for the camera or not seen at this colour. Colours with measurements:", { um: umTxt(cur.um) }))}</p><p style="margin:0">${others(withData)}</p></div>`;
+  }
+  // ---- chart: one panel per visit (dates inside a visit are real; the months between visits are cut out) ----
+  const V = cur.visits, n = V.length;
+  const W = chartW(), H = W < 560 ? 250 : 240, ml = 46, mr = 10, mt = 14, mb = 44, gap = W < 560 ? 16 : 26;
+  const pw = (W - ml - mr - gap * (n - 1)) / n;
+  const P = cur.pts;
+  const ys = P.flatMap((p) => (p.kind === "ul" ? [p.y] : [p.y - p.e, p.y + p.e])).concat(V.flatMap((v) => [v.y - (v.e || 0), v.y + (v.e || 0)]), [1, 1 - (cur.cmp || 0), 1 + (cur.cmp || 0)]);
+  const sorted = ys.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+  const qv = (f) => sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(f * (sorted.length - 1))))];
+  let y0 = Math.min(qv(0.02), ...V.map((v) => v.y - (v.e || 0)), 0.9), y1 = Math.max(qv(0.98), ...V.map((v) => v.y + (v.e || 0)), 1.1);
+  const pad = 0.1 * (y1 - y0); y0 = Math.max(0, y0 - pad); y1 += pad;
+  const sy = (y) => H - mb - (Math.min(y1, Math.max(y0, y)) - y0) / (y1 - y0) * (H - mt - mb);
+  const col = (s) => SEASON_COLORS[Math.max(0, cur.seasons.indexOf(s)) % SEASON_COLORS.length];
+  let s = "";
+  const step = niceStep(y1 - y0, 4);
+  let near1 = false;                                 // is "×1" (the dashed line) already a labelled tick, or too close to one?
+  const dec = stepDec(step);
+  for (let v = Math.ceil(y0 / step) * step; v <= y1 + 1e-9; v += step) {
+    if (Math.abs(sy(v) - sy(1)) < 13) near1 = true;
+    s += `<line x1="${ml}" x2="${W - mr}" y1="${sy(v).toFixed(1)}" y2="${sy(v).toFixed(1)}" stroke="#222838"/>` +
+      `<text x="${ml - 6}" y="${(sy(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="#9aa3b2">×${esc(loc(v.toFixed(dec)))}</text>`;
+  }
+  if (!near1) s += `<text x="${ml - 6}" y="${(sy(1) + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="#c9d2e3">×1</text>`;
+  if (cur.cmp > 0) s += `<rect x="${ml}" y="${sy(1 + cur.cmp).toFixed(1)}" width="${W - ml - mr}" height="${(sy(1 - cur.cmp) - sy(1 + cur.cmp)).toFixed(1)}" fill="#9aa3b2" fill-opacity=".2"/>`;
+  s += `<line x1="${ml}" x2="${W - mr}" y1="${sy(1).toFixed(1)}" y2="${sy(1).toFixed(1)}" stroke="#c9d2e3" stroke-width="1.3" stroke-dasharray="5 4"/>`;
+  V.forEach((v, k) => {
+    const x0 = ml + k * (pw + gap), c = col(v.season);
+    const span = Math.max(v.t1 - v.t0, 0.5), ta = v.t0 - 0.12 * span - 0.3, tb = v.t1 + 0.12 * span + 0.3;
+    const sx = (t) => x0 + 8 + (t - ta) / (tb - ta) * (pw - 16);
+    s += `<rect x="${x0.toFixed(1)}" y="${mt}" width="${pw.toFixed(1)}" height="${H - mt - mb}" fill="#ffffff" fill-opacity=".025"/>` +
+      `<line x1="${x0.toFixed(1)}" x2="${(x0 + pw).toFixed(1)}" y1="${H - mb}" y2="${H - mb}" stroke="#4a5368"/>`;
+    for (const p of P) {
+      if (p.season !== v.season) continue;
+      const X = sx(p.t).toFixed(1), Y = sy(p.y);
+      if (p.kind === "ul") { s += `<path d="M${X} ${(Y + 4).toFixed(1)}l-3.6 -6.4h7.2z" fill="none" stroke="${c}" stroke-width="1.2" opacity=".75"/>`; continue; }
+      if (p.e > 0) s += `<line x1="${X}" x2="${X}" y1="${sy(p.y + p.e).toFixed(1)}" y2="${sy(p.y - p.e).toFixed(1)}" stroke="${c}" stroke-width="1" opacity=".45"${p.kind === "wing" ? ' stroke-dasharray="2 2"' : ""}/>`;
+      s += p.kind === "wing" ? `<circle cx="${X}" cy="${Y.toFixed(1)}" r="2.9" fill="#0b0e16" stroke="${c}" stroke-width="1.3"/>` : `<circle cx="${X}" cy="${Y.toFixed(1)}" r="2.7" fill="${c}" opacity=".9"/>`;
+    }
+    // the visit as a whole: a wide bar at its value, its uncertainty as a band
+    const Yv = sy(v.y);
+    if (v.e > 0) s += `<rect x="${(x0 + 3).toFixed(1)}" y="${sy(v.y + v.e).toFixed(1)}" width="${(pw - 6).toFixed(1)}" height="${Math.max(1, sy(v.y - v.e) - sy(v.y + v.e)).toFixed(1)}" fill="${c}" fill-opacity=".22"/>`;
+    s += `<line x1="${(x0 + 3).toFixed(1)}" x2="${(x0 + pw - 3).toFixed(1)}" y1="${Yv.toFixed(1)}" y2="${Yv.toFixed(1)}" stroke="${c}" stroke-width="2.6"${v.kind === "wing" ? ' stroke-dasharray="7 4"' : ""}/>` +
+      `<text x="${(x0 + pw / 2).toFixed(1)}" y="${(Yv - 7 < mt + 10 ? Yv + 16 : Yv - 7).toFixed(1)}" text-anchor="middle" font-size="12.5" font-weight="700" fill="#f1f4fa" stroke="#05070d" stroke-width="3" paint-order="stroke">${esc(xr(v.y))}</text>` +
+      `<text x="${(x0 + pw / 2).toFixed(1)}" y="${H - mb + 16}" text-anchor="middle" font-size="12" font-weight="600" fill="${c}">${esc(mon(v.season))}</text>` +
+      `<text x="${(x0 + pw / 2).toFixed(1)}" y="${H - mb + 31}" text-anchor="middle" font-size="10.5" fill="#9aa3b2">${esc(v.t1 - v.t0 >= 1 ? L("ts.f.days", "{n} days", { n: Math.round(v.t1 - v.t0) + 1 }) : loc(isoOf(v.t)))}</text>`;
+    if (jump) {                                    // the whole panel: "show this visit in the image above"
+      s += `<rect class="gr-tgo" data-ts-go="${esc(v.season)}" data-ts-go-um="${cur.um}" x="${x0.toFixed(1)}" y="${mt}" width="${pw.toFixed(1)}" height="${H - mt - mb}" rx="4" fill="transparent" tabindex="0" role="button" ` +
+        `aria-label="${esc(L("ts.f.goAria", "Show the visit of {m} in the image", { m: mon(v.season) }))}"><title>${esc(L("ts.f.goAria", "Show the visit of {m} in the image", { m: mon(v.season) }))}</title></rect>`;
+    }
+    if (k < n - 1) {
+      const gd = Math.round(V[k + 1].t0 - v.t1);
+      s += `<text x="${(x0 + pw + gap / 2).toFixed(1)}" y="${(mt + (H - mt - mb) / 2).toFixed(1)}" text-anchor="middle" font-size="10" fill="#6f7a90" transform="rotate(-90 ${(x0 + pw + gap / 2).toFixed(1)} ${(mt + (H - mt - mb) / 2).toFixed(1)})">${esc(L("ts.f.gap", "{n} days later", { n: gd }))}</text>`;
+    }
+  });
+  const has = (k) => P.some((p) => p.kind === k);
+  const dot = (inner) => `<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">${inner}</svg>`;
+  const key = [
+    `<span><svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true"><line x1="0" x2="18" y1="6" y2="6" stroke="#c9d2e3" stroke-width="1.5" stroke-dasharray="5 4"/></svg> ${esc(L("ts.f.one", "×1 = this spot's own average"))}</span>`,
+    has("det") ? `<span>${dot('<circle cx="6" cy="6" r="3.2" fill="#9aa3b2"/>')} ${esc(L("ts.f.kDet", "one exposure"))}</span>` : "",
+    has("wing") ? `<span>${dot('<circle cx="6" cy="6" r="3.4" fill="none" stroke="#9aa3b2" stroke-width="1.5"/>')} ${esc(L("ts.f.kWing", "one exposure, rough: too bright for the camera here, measured from the faint outer glow"))}</span>` : "",
+    has("ul") ? `<span>${dot('<path d="M6 10l-4 -7h8z" fill="none" stroke="#9aa3b2" stroke-width="1.4"/>')} ${esc(L("ts.f.kUl", "not seen in that exposure: fainter than this"))}</span>` : "",
+    `<span><svg width="16" height="12" viewBox="0 0 16 12" aria-hidden="true"><rect y="3" width="16" height="6" fill="#9aa3b2" fill-opacity=".3"/><line x1="0" x2="16" y1="6" y2="6" stroke="#c9d2e3" stroke-width="2.2"/></svg> ${esc(cur.src === "phot" ? L("ts.f.kVisitPhot", "the visit as a whole, measured against ordinary stars in the same images") : L("ts.f.kVisit", "the visit as a whole (middle value of its exposures) and its uncertainty"))}</span>`,
+    cur.cmp > 0 ? `<span><svg width="14" height="10" viewBox="0 0 14 10" aria-hidden="true"><rect width="14" height="10" fill="#9aa3b2" fill-opacity=".3"/></svg> ${esc(L("ts.f.kGrey", "how much ordinary stars in the same images vary"))}</span>` : "",
+  ].join("");
+  // ---- the visits as a table ----
+  const cmpTxt = cur.cmp > 0 ? L("ts.f.within", "within {p} %", { p: loc((100 * cur.cmp).toFixed(cur.cmp < 0.1 ? 1 : 0)) }) : "";
+  const rows = V.map((v) => `<tr><td><i style="background:${col(v.season)}"></i>${esc(mon(v.season))}${ok(v.n) ? ` <small>· ${esc(L(v.n === 1 ? "ts.f.exp.one" : "ts.f.exp.other", v.n === 1 ? "{n} exposure" : "{n} exposures", { n: v.n }))}</small>` : ""}</td>` +
+    `<td>${esc(xr(v.y, v.e))}${v.kind === "wing" ? ` <small>${esc(L("ts.f.rough", "rough"))}</small>` : ""}</td>${cmpTxt ? `<td>${esc(cmpTxt)}</td>` : ""}</tr>`).join("");
+  const table = `<table class="gr-tt"><thead><tr><th>${esc(L("ts.f.thVisit", "Visit"))}</th><th>${esc(L("ts.f.thSpot", "This spot"))}</th>${cmpTxt ? `<th>${esc(L("ts.f.thStars", "Ordinary stars"))}</th>` : ""}</tr></thead><tbody>${rows}</tbody></table>`;
+  // ---- one plain verdict; the strongest change at another colour, if this one is not it ----
+  const c = cur.change;
+  const best = all.filter((x) => x.change && x.change.sig).sort((a, b) => b.change.z - a.change.z)[0];
+  let verdict = c ? `<p class="gr-tv">${esc(changeText(c))}<small>${esc(ruleText(c))}</small></p>`
+    : `<p class="gr-tv">${esc(L("ts.f.vOne", "Only one visit has a measurement at this colour, so there is nothing to compare yet."))}</p>`;
+  if (best && best !== cur && (!c || !c.sig || best.change.z > 1.5 * c.z)) {
+    verdict += `<p class="gr-tn">${esc(L("ts.f.elsewhere", "Strongest change of this object, at {um}:", { um: umTxt(best.um) }))} ${esc(changeText(best.change))} <button type="button" class="gr-tb" data-ts-um="${best.um}">${esc(L("ts.f.show", "Show {um}", { um: umTxt(best.um) }))}</button></p>`;
+  }
+  const rest = withData.filter((x) => x !== cur);
+  const aria = L("ts.f.aria", "Brightness of this spot divided by its own average, visit by visit, at {um}", { um: umTxt(cur.um) });
+  return `<div class="gr-tc"><h4>${esc(L("ts.f.at", "At {um} (the colour button selected above)", { um: umTxt(cur.um) }))}</h4>` +
+    `<svg viewBox="0 0 ${W} ${H}" role="${jump ? "group" : "img"}" aria-label="${esc(aria)}">${s}</svg><p class="gr-cap">${key}</p>` +
+    (jump ? `<p class="gr-tn" style="margin-top:4px">${esc(L("ts.f.goHint", "Click a visit in the chart to see it in the image above."))}</p>` : "") + `</div>` + verdict + table +
+    (rest.length ? `<p class="gr-tn">${esc(L("ts.f.other", "Other colours:"))} ${others(rest)}</p>` : "");
 }

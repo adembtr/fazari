@@ -128,10 +128,13 @@ function render(meta) {
         <div class="fz-actions">
           <button type="button" class="fz-go" data-close autofocus><span data-i18n="hero.explore">${esc(t("hero.explore"))}</span>
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button type="button" class="fz-tour" data-tour-start${window.FazariTour ? "" : " hidden"} data-i18n="tour.start">${esc(t("tour.start", null, "Guided tour"))}</button>
           <span class="fz-links">
             <a href="ornek.html?data=${encodeURIComponent(DATA)}"><span data-i18n="hero.result">${esc(t("hero.result"))}</span> →</a>
             <a href="verify.html"><span data-i18n="hero.evidence">${esc(t("hero.evidence"))}</span> →</a>
             <a href="story.html"><span data-i18n="hero.story">${esc(t("hero.story"))}</span> →</a>
+            <a href="planetx.html"><span data-i18n="px.nav">${esc(t("px.nav", null, "Planet X"))}</span> →</a>
+            <a href="asteroids.html"><span data-i18n="ts.nav.ast">${esc(t("ts.nav.ast", null, "Asteroids"))}</span> →</a>
             <a href="comets.html"><span data-i18n="hero.comets">${esc(t("hero.comets"))}</span> →</a>
             <a href="vr.html"><span data-i18n="vr.nav">${esc(t("vr.nav"))}</span> →</a>
           </span>
@@ -159,7 +162,7 @@ function setPlaying(on) {
   clearInterval(timer);
   const s = dlg?.querySelector(".fz-blinkbox svg"), pp = dlg?.querySelector(".fz-pp");
   if (pp) { pp.textContent = on ? t("hero.pause") : t("hero.play"); pp.setAttribute("aria-pressed", String(!on)); }
-  if (on && s && dlg.open) timer = setInterval(() => s.classList.toggle("b"), 800);
+  if (on && s && dlg.open) timer = setInterval(() => { if (!document.hidden) s.classList.toggle("b"); }, 800);   // no blink work in a hidden tab (bellek)
 }
 
 async function open() {

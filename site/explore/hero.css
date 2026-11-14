@@ -28,9 +28,13 @@
 .fz-actions .fz-go { display: inline-flex; align-items: center; gap: 8px; border: 0; background: #ffc94d; color: #1a1300; border-radius: 999px;
   padding: 13px 24px; font: inherit; font-size: 16.5px; font-weight: 800; cursor: pointer; box-shadow: 0 6px 24px rgba(255, 201, 77, .25); }
 .fz-actions .fz-go:hover { filter: brightness(1.07); }
-.fz-links { display: flex; flex-direction: column; gap: 4px; font-size: 14.5px; }
+.fz-links { display: grid; grid-template-columns: repeat(2, minmax(0, max-content)); gap: 4px 20px; font-size: 14.5px; flex-basis: 100%; }
 .fz-links a { color: #7fd4ff; text-decoration: none; font-weight: 600; }
 .fz-links a:hover { text-decoration: underline; }
+.fz-actions .fz-tour { border: 1px solid rgba(255, 201, 77, .6); background: rgba(255, 201, 77, .1); color: #ffe3a3; border-radius: 999px;
+  padding: 12px 20px; font: inherit; font-size: 15.5px; font-weight: 700; cursor: pointer; }
+.fz-actions .fz-tour[hidden] { display: none; }
+@media (max-width: 720px) { .fz-links { grid-template-columns: minmax(0, 1fr); } .fz-actions .fz-tour { width: 100%; } }
 
 .fz-blinkbox { position: relative; margin: 0; }
 .fz-blinkbox svg { display: block; width: 100%; height: auto; aspect-ratio: 1; border-radius: 16px; background: #000; cursor: pointer;

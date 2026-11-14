@@ -35,7 +35,7 @@
     <span><b>Fazari</b> <span data-i18n="pg.brand">Sky Explorer</span></span>
   </a>
   <span class="lang-slot" data-i18n-toggle></span>
-  <form id="search" role="search" autocomplete="off">
+  <form id="search" role="search" autocomplete="off" data-tour="search">
     <label class="sr-only" for="q" data-i18n="ex.q.label">Search the sky by name or coordinates</label>
     <svg class="mag" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     <input id="q" type="search" placeholder="Name or coordinates, e.g. M 31 or 269.45 +4.69" data-i18n-attr="placeholder:ex.q.ph" enterkeyhint="go" spellcheck="false" aria-describedby="qHelp">
@@ -48,7 +48,8 @@
       <button id="bg-wise" role="radio" aria-checked="false" title="Mid-infrared (AllWISE)" data-i18n-attr="title:ex.bg.wise.t">WISE</button>
       <button id="bg-spherex" role="radio" aria-checked="false" title="SPHEREx all-sky map (NASA, DR1)" data-i18n-attr="title:ex.bg.spherex.t">SPHEREx</button>
     </div>
-    <button id="btnLayers" class="icon-btn" aria-expanded="false" aria-controls="layers" title="Layers" data-i18n-attr="title:ex.layers">
+    <button type="button" class="icon-btn ts-tourbtn" data-tour-start hidden data-i18n="tour.start">Guided tour</button>
+    <button id="btnLayers" class="icon-btn" aria-expanded="false" aria-controls="layers" title="Layers" data-i18n-attr="title:ex.layers" data-tour="map-layers">
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 3 2 8l10 5 10-5-10-5Z M2 13l10 5 10-5 M2 17.5l10 5 10-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
       <span class="lbl" data-i18n="ex.layers">Layers</span>
     </button>
@@ -61,9 +62,9 @@
 
 <ol id="steps" class="steps" aria-label="How it works, in 4 steps" data-i18n-attr="aria-label:ex.steps.aria">
   <li data-step="1" class="on"><i aria-hidden="true">1</i><span data-i18n-html="ex.step1"><b>Drag &amp; zoom</b> the sky</span></li>
-  <li data-step="2"><i aria-hidden="true">2</i><span data-i18n-html="ex.step2"><b>Tap</b> a point</span></li>
-  <li data-step="3"><i aria-hidden="true">3</i><span data-i18n-html="ex.step3"><b>Fetch</b> SPHEREx images</span></li>
-  <li data-step="4"><i aria-hidden="true">4</i><span data-i18n-html="ex.step4"><b>Watch</b> the blink</span></li>
+  <li data-step="2"><i aria-hidden="true">2</i><span class="st-old" data-i18n-html="ex.step2"><b>Tap</b> a point</span><span class="st-new" data-i18n-html="ts.ex.s1"><b>Pick a point</b>: click the sky or search</span></li>
+  <li data-step="3"><i aria-hidden="true">3</i><span class="st-old" data-i18n-html="ex.step3"><b>Fetch</b> SPHEREx images</span><span class="st-new" data-i18n-html="ts.ex.s2"><b>Press</b> the yellow button</span></li>
+  <li data-step="4"><i aria-hidden="true">4</i><span class="st-old" data-i18n-html="ex.step4"><b>Watch</b> the blink</span><span class="st-new" data-i18n-html="ts.ex.s3"><b>Read</b> the result</span></li>
 </ol>
 <p id="searchMsg" class="msg" role="status" aria-live="polite" hidden></p>
 
@@ -103,12 +104,22 @@
       <ul id="points" class="points"></ul>
     </section>
     <p class="howto"><button type="button" id="btnGuide2" class="linkish" data-i18n="ex.howto">How do I read a blink?</button></p>
+    <nav class="ts-nav ex-nav" id="tsNav" aria-label="Pages" data-i18n-attr="aria-label:ts.nav.aria"><!-- the other pages of the site (single-column layout, site_sade) -->
+      <span class="ts-nav-l" data-i18n="ts.nav.more">More to see</span>
+      <a href="ornek.html?data=data/barnard/" data-i18n="ts.nav.targets">Five targets</a>
+      <a href="verify.html" data-i18n="ts.nav.evidence">Evidence</a>
+      <a href="planetx.html" data-i18n="px.nav">Planet X</a>
+      <a href="asteroids.html" data-i18n="ts.nav.ast">Asteroids</a>
+      <a href="comets.html" data-i18n="ts.nav.comets">Comets</a>
+      <a href="story.html" data-i18n="ts.nav.story">Story</a>
+      <a href="vr.html" data-i18n="ts.nav.vr">Inside the sky (VR)</a>
+    </nav>
     <p class="credits-mini"><span data-i18n="ex.cm.a">SPHEREx data: NASA/IPAC IRSA · Sky viewer: Aladin Lite (CDS) ·</span>
       <button type="button" class="linkish" data-open-about data-i18n="ex.credits">Credits</button> <span data-i18n="ex.cm.b">· Not endorsed by NASA.</span></p>
   </div>
 </aside>
 
-<section id="card" class="card" hidden aria-labelledby="cardTitle">
+<section id="card" class="card" hidden aria-labelledby="cardTitle" data-tour="point-card">
   <button id="cardClose" class="x" aria-label="Close this place" data-i18n-attr="aria-label:ex.card.close">×</button>
   <p id="cardKicker" class="kicker"></p>
   <h2 id="cardTitle"></h2>
@@ -128,7 +139,7 @@
     <small id="fovEst" class="fov-est" aria-live="polite"></small>
   </div>
   <div class="actions">
-    <button id="btnLook" class="primary">
+    <button id="btnLook" class="primary" data-tour="fetch-button">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
       <span data-i18n="ex.card.look">Fetch SPHEREx images here</span></button>
     <button id="btnGallery" class="secondary" hidden data-i18n="ex.card.gallery">Prepared blink</button>
@@ -161,12 +172,13 @@
 <div id="spxBadge" class="badge" hidden><i aria-hidden="true"></i><span>SPHEREx infrared map</span></div>
 
 <!-- Star layers: Gaia DR3 stars where they are in 2026 (explore/starsnow.js) and fast stars (explore/faststars.js). -->
-<div id="starTools" class="star-tools" role="group" aria-label="Star layers" data-i18n-attr="aria-label:ex.stars.aria">
+<div id="starTools" class="star-tools" role="group" aria-label="Star layers" data-i18n-attr="aria-label:ex.stars.aria" data-tour="layers">
   <button type="button" id="tgStarsNow" class="chip" aria-pressed="false" title="Gaia DR3 stars where they are in 2026. The sky maps are older, so fast-moving stars sit off their image." data-i18n-attr="title:ex.ss.title">
     <i aria-hidden="true"></i><span data-i18n="ex.ss.name">Stars now (Gaia 2026)</span><small>zoom in below 1°</small></button>
   <button type="button" id="tgFast" class="chip" aria-pressed="false" title="Gaia DR3 stars that move more than 0.5″ a year and that SPHEREx should see" data-i18n-attr="title:ex.fs.title">
     <i aria-hidden="true"></i><span data-i18n="ex.fs.name">Fast stars</span><small data-i18n="ex.fs.sub">over 0.5″ a year</small></button>
   <div id="fastLegend" class="fast-legend" hidden></div>
+  <p class="star-say" id="starSay" data-i18n="ts.ex.rings">These rings are known catalogue stars; we use them to check that the tool measures correctly. What we look for is something with no ring that still moves between images.</p>
 </div>
 
 <div class="status" aria-hidden="true">
@@ -178,7 +190,7 @@
 
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<aside id="blink" class="blink" hidden role="dialog" aria-modal="false" aria-labelledby="blinkTitle">
+<aside id="blink" class="blink" hidden role="dialog" aria-modal="false" aria-labelledby="blinkTitle" data-tour="result-panel">
   <header>
     <h2 id="blinkTitle">SPHEREx blink</h2>
     <span id="blinkStage" class="stage-badge" hidden></span>
@@ -304,5 +316,6 @@
 <script type="module" src="explore/fov_ui.js"></script>
 <script type="module" src="explore/hero.js"></script>
 <script type="module" src="js/ui_shell.js"></script><!-- ui layer (arayuz) -->
+<script type="module" src="js/tour.js"></script><!-- guided tour (goruntu_tur): starts from any [data-tour-start] button -->
 </body>
 </html>

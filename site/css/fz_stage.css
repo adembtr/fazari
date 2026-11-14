@@ -1,0 +1,107 @@
+/* The picture area of the result viewer (js/viewer.js + js/fz_view.js): processed frame canvas, view tabs,
+   zoom buttons, caption, progress line. Loaded by fz_view.js; colours follow the page's own variables. */
+
+/* the processed frame lies exactly over the pipeline PNG inside the zoom box (geometry: inline, in PNG pixels) */
+#fzView { position:absolute; z-index:1; image-rendering:auto; user-select:none; pointer-events:none; }
+#fzView.fz-raw { image-rendering:pixelated; image-rendering:crisp-edges; }
+#fzView[hidden] { display:none !important; }
+
+/* view tabs: one row right under the picture (the picture stays as high on the page as it can) */
+.fz-views { display:flex; flex-wrap:wrap; gap:4px; margin:8px 0 0; }
+.fz-views button { font:inherit; font-size:.92rem; line-height:1.2; padding:6px 13px; border-radius:999px; border:1px solid var(--line, #2a3246);
+  background:#151a27; color:var(--mut, #9aa3b2); cursor:pointer; white-space:nowrap; }
+.fz-views button[aria-selected="true"] { background:#2f3a55; color:var(--fg, #e8eaf0); border-color:#5b6b92; font-weight:650; }
+.fz-views button:hover { color:var(--fg, #e8eaf0); }
+.fz-views button:disabled { opacity:.4; cursor:default; color:var(--mut, #9aa3b2); }
+.fz-views button:focus-visible { outline:2.5px solid var(--blue, #7fd4ff); outline-offset:1px; }
+.fz-views[hidden] { display:none !important; }
+
+/* one sentence under the picture, and the small line that says what was done to the picture */
+.fz-say { margin:7px 0 0; font-size:.93rem; line-height:1.4; color:#c9d2e3; }
+.fz-say .sw { display:inline-block; width:11px; height:11px; border-radius:50%; margin:0 4px 0 2px; vertical-align:-1px; border:1px solid #05070d; }
+.fz-note { margin:3px 0 0; font-size:.78rem; line-height:1.35; color:#7f8aa0; }
+
+/* stage: focus ring, cursors */
+#stage:focus-visible { outline:2.5px solid var(--blue, #7fd4ff); outline-offset:2px; }
+#stage.fz-pan { cursor:grab; }
+#stage.fz-grabbing, #stage.fz-grabbing * { cursor:grabbing !important; }
+#stage.fz-live .zoom { transition:none !important; }
+
+/* caption on the picture (real text; the label strip of the PNG is cropped away) */
+.hud-date.fz-cap { display:flex; flex-direction:column; gap:1px; max-width:calc(100% - 74px); font-weight:500; font-size:.82rem; line-height:1.3;
+  padding:5px 10px 5px 9px; border-left-width:4px; color:#c9d2e3; }
+.hud-date.fz-cap .c1 { font-size:1.02rem; font-weight:650; color:#f2f4f9; }
+.hud-date.fz-cap .c1 b { display:inline; text-transform:none; letter-spacing:0; font-size:inherit; margin:0; color:inherit; }
+.hud-date.fz-cap .c2, .hud-date.fz-cap .c3 { font-variant-numeric:tabular-nums; }
+.hud-date.fz-cap .c3 { color:#9aa3b2; }
+.hud-date.fz-cap .st { margin-top:3px; font-weight:650; color:#f2f4f9; }
+.hud-date.fz-cap .st.none { color:#9be7b5; } .hud-date.fz-cap .st.unsure { color:#ffd98a; } .hud-date.fz-cap .st.moves { color:#9fd0ff; }
+
+/* zoom buttons: right edge, middle */
+.fz-zoomui { position:absolute; right:8px; top:50%; transform:translateY(-50%); z-index:12; display:flex; flex-direction:column; gap:4px; }
+.fz-zoomui button { width:34px; height:34px; padding:0; display:grid; place-items:center; border-radius:8px; border:1px solid #3a4460;
+  background:rgba(12,16,28,.82); color:#dfe5f2; cursor:pointer; }
+.fz-zoomui button:hover { background:rgba(40,50,78,.95); }
+.fz-zoomui button:disabled { opacity:.38; cursor:default; }
+.fz-zoomui button[aria-pressed="true"] { border-color:var(--acc, #ffb347); color:var(--acc, #ffb347); }
+.fz-zoomui button[data-z="close"] { margin-top:6px; }
+.fz-zoomui button[data-z="raw"] { margin-top:6px; }
+.fz-zoomui button[hidden] { display:none; }
+
+/* short hint (wheel) and the one quiet progress line inside the bottom edge of the picture */
+.fz-hint { position:absolute; left:50%; top:46%; transform:translate(-50%, -50%); z-index:13; background:rgba(12,16,28,.92); color:#f2f4f9;
+  border:1px solid #3a4460; border-radius:999px; padding:7px 14px; font-size:.9rem; pointer-events:none; white-space:nowrap; max-width:calc(100% - 24px); overflow:hidden; text-overflow:ellipsis; }
+.fz-prog { position:absolute; left:0; right:0; bottom:0; z-index:11; padding:3px 10px 4px; font-size:.78rem; line-height:1.3; color:#dfe5f2;
+  background:linear-gradient(to top, rgba(5,7,13,.88), rgba(5,7,13,.55)); pointer-events:none; font-variant-numeric:tabular-nums;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fz-prog i { position:absolute; left:0; bottom:0; height:2px; background:var(--acc, #ffb347); transition:width .5s linear; }
+.fz-prog[hidden], .fz-hint[hidden] { display:none !important; }
+#stage.fz-has-prog .hud-legend, #stage.fz-has-prog .hud-scale { bottom:26px; }
+
+/* still poster with a play button (reduced motion: the film does not start by itself) */
+.fz-play { position:absolute; left:50%; bottom:16%; transform:translateX(-50%); z-index:12; display:inline-flex; align-items:center; gap:8px; font:inherit; font-weight:650;
+  padding:9px 18px; border-radius:999px; border:1px solid #8a6a1f; background:rgba(42,31,8,.94); color:#ffd7a0; cursor:pointer; }
+.fz-play[hidden] { display:none !important; }
+
+/* season buttons: the visit's colour (the same colour as its marks on the picture and its points in the charts) */
+.chip .fz-dot, .fz-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:0; border:1px solid #05070d; flex:none; }
+.chip b { display:inline-flex; align-items:center; }
+.chip.on.before, .chip.on.after { border-color:var(--fz-c, #5b6b92); box-shadow:inset 0 -3px 0 var(--fz-c, #5b6b92); }
+
+/* marks that moved because a later stage of the run brought better numbers: they fade in, they do not jump */
+@keyframes fzUpd { from { opacity:.15; } to { opacity:1; } }
+#ov.fz-upd { animation:fzUpd .55s ease-out; }
+@media (prefers-reduced-motion: reduce) { #ov.fz-upd { animation:none; } }
+
+/* legend swatches */
+.lg.fz-tick { width:14px; height:14px; position:relative; }
+.lg.fz-tick::before, .lg.fz-tick::after { content:""; position:absolute; background:currentColor; }
+.lg.fz-tick::before { left:0; right:0; top:6px; height:2px; -webkit-mask:linear-gradient(90deg, #000 0 4px, transparent 4px 10px, #000 10px); mask:linear-gradient(90deg, #000 0 4px, transparent 4px 10px, #000 10px); }
+.lg.fz-tick::after { top:0; bottom:0; left:6px; width:2px; -webkit-mask:linear-gradient(#000 0 4px, transparent 4px 10px, #000 10px); mask:linear-gradient(#000 0 4px, transparent 4px 10px, #000 10px); }
+.lg.fz-thin { border:1.2px solid var(--acc, #ffb347); border-radius:50%; }
+.lg.fz-star { width:11px; height:11px; border:1px solid #9fb4d8; border-radius:50%; opacity:.8; }
+.lg.fz-sw { width:11px; height:11px; border-radius:50%; border:1px solid #05070d; }
+
+/* the legend again under the picture: only narrow screens show it (there the picture itself stays free) */
+.fz-legend { display:none; flex-wrap:wrap; gap:3px 12px; margin:6px 0 0; font-size:.78rem; color:#c9d2e3; }
+.fz-legend span { display:inline-flex; align-items:center; gap:5px; }
+.fz-legend[hidden] { display:none !important; }
+
+@media (max-width: 560px) {
+  .fz-views button { padding:6px 10px; font-size:.86rem; }
+  #stage .hud-legend { display:none; }
+  .fz-legend { display:flex; }
+  /* zoom buttons: one row in the bottom right corner (the picture is short on a phone) */
+  .fz-zoomui { right:5px; top:auto; bottom:5px; transform:none; flex-direction:row; gap:4px; }
+  .fz-zoomui button { width:36px; height:36px; }
+  .fz-zoomui button[data-z="close"], .fz-zoomui button[data-z="raw"] { margin-top:0; margin-left:5px; }
+  #stage.fz-has-prog .fz-zoomui { bottom:26px; }
+  .hud-date.fz-cap { font-size:.74rem; max-width:calc(100% - 168px); padding:4px 8px 4px 7px; }   /* the scale bar sits top right on a phone */
+  .hud-date.fz-cap .c1 { font-size:.9rem; }
+  .fz-say { font-size:.86rem; }
+}
+@media (max-width: 340px) {
+  .fz-views { gap:3px; }
+  .fz-views button { padding:5px 8px; font-size:.8rem; }
+}
+@media (prefers-reduced-motion: reduce) { .fz-prog i { transition:none; } }

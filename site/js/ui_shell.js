@@ -30,6 +30,7 @@ const EN = {
   "ui.ex.min": "Minimize the result panel", "ui.ex.tab": "Result",
   "ui.pg.collapseAll": "Collapse all", "ui.pg.expandAll": "Expand all",
   "u3.ans.prelim": "Preliminary answer", "u3.card.opts": "Options",
+  "ts.ex.ready": "Show the result (ready)",
 };
 const T = (k, p) => { try { const v = I.t(k, p, EN[k] || k); return v && v !== k ? v : fill(EN[k] || k, p); } catch (e) { return fill(EN[k] || k, p); } };
 
@@ -140,7 +141,7 @@ function modeSwitch(extraClass = "") {
   return w;
 }
 function setMode(m, { save = true, fromOutside = false } = {}) {
-  if (m !== "simple" && m !== "detailed") return;
+  if (m !== "simple") return;                         // one state (site_sade): there is no Detailed mode any more
   H.setAttribute("data-ui-mode", m);
   if (save) store.set("fz-ui-mode", m);
   // a mode switch resets the remembered fold choices to that mode's defaults
@@ -206,7 +207,6 @@ function setupViewer() {
       paint();
       tools.append(b);
     }
-    tools.append(modeSwitch());
     top.append(tools);
   });
 
@@ -395,76 +395,42 @@ function setupExplore() {
     title.after(p);
   });
 
-  // hide / show the left panel (desktop; on phones it is the bottom sheet, which already folds)
-  safe("panel", () => {
-    const hide = el("button", { type: "button", class: "ui-panel-hide ui-shell-own", id: "uiPanelHide", "aria-controls": "panel" });
-    hide.dataset.kAria = "ui.ex.hidePanel"; hide.dataset.kTitle = "ui.ex.hidePanel";
-    hide.setAttribute("aria-label", T("ui.ex.hidePanel")); hide.title = T("ui.ex.hidePanel");
-    hide.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-    panel.prepend(hide);
-    const open = el("button", { type: "button", class: "ui-panel-open ui-shell-own", id: "uiPanelOpen", "aria-controls": "panel" });
-    const paintOpen = () => {
-      const t = (panel.querySelector(".panel-title") || {}).textContent || "Explore the sky";
-      open.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>${t.trim()}</span>`;
-    };
-    paintOpen();
-    document.body.append(open);
-    const paint = () => {
-      const shut = !isOpen("exPanel", "open");
-      document.body.classList.toggle("ui-panel-shut", shut);
-      hide.setAttribute("aria-expanded", String(!shut));
-      open.setAttribute("aria-expanded", String(!shut));
-      paintOpen();
-    };
-    hide.addEventListener("click", () => { saveFold("exPanel", false); paint(); open.focus(); });
-    open.addEventListener("click", () => { saveFold("exPanel", true); paint(); hide.focus(); });
-    document.addEventListener("fazari:lang", () => setTimeout(paint, 50));
-    paint();
-  });
-
-  // the place card: Simple shows the name, one coordinate line, one status line and the big button;
-  // the field size, its estimate, Zoom in, Copy link and the engine line sit under one small "Options"
-  safe("cardOpts", () => {
+  // One state, nothing to open or close (site_sade): the left panel, the star layers and the Finds list are simply
+  // there; no Simple / Detailed switch.
+  // The place card: title, one line, ONE main button; the coordinates, the field size and the two small actions
+  // (Zoom in, Copy link) sit on one quiet line under it. Only the parents change; main.js / fov_ui.js find them by id.
+  safe("card", () => {
     const card = $("card"), acts = card && card.querySelector(".actions");
-    if (!acts || $("uiCardOpts")) return;
-    const b = el("button", { type: "button", class: "ui-card-opts ui-shell-own", id: "uiCardOpts", "aria-expanded": "false" });
-    const paint = () => {
-      const open = isOpen("exCardOpts", "closed");
-      card.classList.toggle("ui-opts-open", open);
-      b.setAttribute("aria-expanded", String(open));
-      b.innerHTML = `<span class="ui-t" data-k="u3.card.opts">${T("u3.card.opts")}</span>${CHEV}`;
+    if (!acts || $("tsCardMore")) return;
+    const more = el("div", { class: "ts-card-more ui-shell-own", id: "tsCardMore" });
+    for (const n of [card.querySelector(".coords"), card.querySelector(".fov-row"), $("btnZoom"), $("btnShare")]) if (n) more.append(n);
+    acts.after(more);
+    const look = $("btnLook"), gal = $("btnGallery");
+    if (gal) gal.removeAttribute("data-i18n");               // its words here: "Show the result (ready)"
+    const paintGal = () => { if (gal) { const s = T("ts.ex.ready"); if (gal.textContent !== s) gal.textContent = s; } };
+    const missing = new Set();
+    let timer = null;
+    const sync = () => {
+      let sel = null;
+      try { sel = window.__explore.state.selected; } catch (e) { /* not started yet */ }
+      card.classList.toggle("ts-manual", !!(sel && sel.manual));
+      card.classList.toggle("ts-place", !!(sel && !sel.manual));
+      // the five targets have a finished result (main.js shows #btnGallery once it has checked the files): that is
+      // the main button, and fetching the images live becomes the small link on the details line. Decided from the
+      // place itself, so the card does not jump while the check runs; taken back if the result is not there.
+      const ready = !!(gal && sel && sel.challenge && sel.gallery && !missing.has(sel.id));
+      clearTimeout(timer);
+      if (ready && gal.hidden) timer = setTimeout(() => { let now = null; try { now = window.__explore.state.selected; } catch (e) { /* ignore */ } if (gal.hidden && now && now.id === sel.id) { missing.add(sel.id); sync(); } }, 2500);
+      if (look && card.classList.contains("ts-ready") !== ready) {
+        card.classList.toggle("ts-ready", ready);
+        if (ready) { more.insertBefore(look, $("btnZoom")); gal.setAttribute("data-tour", "fetch-button"); look.removeAttribute("data-tour"); }
+        else { acts.prepend(look); look.setAttribute("data-tour", "fetch-button"); if (gal) gal.removeAttribute("data-tour"); }
+      }
+      paintGal();
     };
-    b.addEventListener("click", () => { saveFold("exCardOpts", !isOpen("exCardOpts", "closed")); paint(); });
-    document.addEventListener("fazari:lang", paint);
-    acts.append(b);
-    paint();
-  });
-
-  // the "Finds" list (explore/finds.js): closed in Simple mode, heading stays
-  registerFold("exFinds", { find: () => $("findsList"), def: "simple-closed" });
-
-  // Simple/Detailed at the bottom of the panel
-  safe("mode", () => {
-    const cm = body && body.querySelector(".credits-mini");
-    if (cm) cm.before(modeSwitch("ui-mode-panel"));
-  });
-
-  // star layers on the right: one header that folds the chips
-  safe("stars", () => {
-    const st = $("starTools");
-    if (!st || $("uiStarsBtn")) return;
-    const b = el("button", { type: "button", class: "ui-stars-btn ui-shell-own", id: "uiStarsBtn", "aria-controls": "starTools" });
-    const paint = () => {
-      const open = isOpen("exStars", "simple-closed");
-      st.classList.toggle("ui-stars-shut", !open);
-      b.setAttribute("aria-expanded", String(open));
-      b.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span>${T("ui.ex.layers")}</span>${CHEV}`;
-    };
-    b.addEventListener("click", () => { saveFold("exStars", !isOpen("exStars", "simple-closed")); paint(); });
-    document.addEventListener("fazari:ui-mode", paint);
-    document.addEventListener("fazari:lang", paint);
-    st.prepend(b);
-    paint();
+    try { new MutationObserver(sync).observe(card, { attributes: true, attributeFilter: ["hidden"], subtree: true, childList: true, characterData: true }); } catch (e) { /* ignore */ }
+    document.addEventListener("fazari:lang", () => setTimeout(paintGal, 40));
+    sync();
   });
 
   // result panel: minimize to a tab on the right edge, reopen from the tab
@@ -495,42 +461,41 @@ function setupExplore() {
 }
 
 // =============================================================================================================
-// Reading pages (verify.html, story.html, asteroids.html): every section folds by its heading
+// Reading pages (verify, story, planetx, asteroids, comets): one navigation, nothing to open or close (site_sade).
+// Every section stays open (the folds and the "collapse all" bar of the earlier layer are gone).
 // =============================================================================================================
-function setupReading() {
-  const blocks = [...document.querySelectorAll("main section.blk")];
-  if (blocks.length) {
-    H.classList.add("ui-page-reading");
-    blocks.forEach((s, i) => {
-      const id = "pg-" + (location.pathname.split("/").pop() || "index").replace(/\.html$/, "") + "-" + (s.id || i);
-      registerFold(id, { find: () => s, head: (b) => b.querySelector(":scope > h2"), def: "open" });
-    });
-    safe("all", () => {
-      const head = document.querySelector(".pg-head");
-      if (!head || blocks.length < 3) return;
-      const bar = el("p", { class: "ui-allbar ui-shell-own" });
-      const mk = (k, open) => { const b = el("button", { type: "button", class: "ui-pill" }); b.innerHTML = `<span class="ui-t" data-k="${k}">${T(k)}</span>`;
-        b.addEventListener("click", () => { for (const id of FOLDS.keys()) if (id.startsWith("pg-")) toggleFold(id, open); }); return b; };
-      bar.append(mk("ui.pg.collapseAll", false), mk("ui.pg.expandAll", true));
-      head.append(bar);
-    });
-    return;
+// The pages of the site, in the same order and with the same words as the result page's own row (ornek.html #tsNav).
+const NAV = [
+  ["explore.html?hero=0", "ts.nav.sky", "Sky map", "explore.html"], ["ornek.html?data=data/barnard/", "ts.nav.targets", "Five targets", "ornek.html"],
+  ["verify.html", "ts.nav.evidence", "Evidence", "verify.html"], ["planetx.html", "px.nav", "Planet X", "planetx.html"],
+  ["asteroids.html", "ts.nav.ast", "Asteroids", "asteroids.html"], ["comets.html", "ts.nav.comets", "Comets", "comets.html"],
+  ["story.html", "ts.nav.story", "Story", "story.html"], ["vr.html", "ts.nav.vr", "Inside the sky (VR)", "vr.html"],
+];
+/** Make the page's navigation the common one (static markup already has it on most pages; planetx.html gets it here). */
+function commonNav(pg) {
+  let nav = document.querySelector("header .pg-nav");
+  if (!nav) {                                            // pages with a plain ".top" header: the row after the brand
+    const brand = document.querySelector("header.top > .brand");
+    if (!brand) return;
+    nav = el("nav", { class: "pg-nav ui-pgnav", "aria-label": "Pages", "data-i18n-attr": "aria-label:ts.nav.aria" });
+    brand.after(nav);
   }
-  // asteroids.html: flat h2 runs inside .app -> wrap each run (h2 + siblings up to the next h2) in a section
-  const app = document.querySelector("body > .app");
-  if (app && /asteroids/.test(location.pathname)) {
-    H.classList.add("ui-page-reading", "ui-page-ast");
-    const hs = [...app.querySelectorAll(":scope > h2")];
-    hs.forEach((h2, i) => safe("ast " + i, () => {
-      const sec = el("section", { class: "ui-run", id: "uiRun" + i });
-      h2.before(sec);
-      let n = sec.nextSibling;
-      const take = [];
-      while (n && !(n.nodeType === 1 && (n.tagName === "H2" || n.tagName === "SCRIPT" || n.tagName === "FOOTER"))) { take.push(n); n = n.nextSibling; }
-      for (const x of take) sec.append(x);
-      registerFold("ast-" + i, { find: () => $("uiRun" + i), head: (b) => b.querySelector(":scope > h2"), def: "open" });
-    }));
+  const want = NAV.map((x) => x[0]).join("|");
+  if ([...nav.querySelectorAll(":scope > a")].map((a) => a.getAttribute("href")).join("|") !== want) {
+    const keep = [...nav.children].filter((c) => c.tagName !== "A");          // anything else in it (buttons) stays, after the links
+    nav.textContent = "";
+    for (const [href, key, en] of NAV) nav.append(el("a", { href, "data-i18n": key }, en));
+    for (const c of keep) nav.append(c);
+    try { if (I.apply) I.apply(nav); } catch (e) { /* English stays */ }
   }
+  for (const a of nav.querySelectorAll(":scope > a")) {
+    const here = NAV.find((x) => x[0] === a.getAttribute("href"));
+    if (here && here[3] === pg) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  }
+}
+function setupReading(pg) {
+  H.classList.add("ui-page-reading");
+  commonNav(pg);
 }
 
 // =============================================================================================================
@@ -538,14 +503,13 @@ async function main() {
   if (!ON) return;
   try { I = await import("./i18n.js"); } catch (e) { console.warn("ui_shell: i18n.js missing, English only", e); }
   const pg = (location.pathname.split("/").pop() || "").toLowerCase();
-  if ($("stage") && $("tiles")) safe("viewer", setupViewer);
+  // single-column result layout (site_sade): js/ts_flow.js has already built ornek.html / sky.html, one state,
+  // nothing folds. The older answer-card layout below only runs if that script did not load.
+  if (H.classList.contains("ts-on")) { /* nothing to re-organise */ }
+  else if ($("stage") && $("tiles")) safe("viewer", setupViewer);
   else if ($("panel") && $("sky")) safe("explore", setupExplore);
-  else if ($("bins") && $("cancel") && $("viewer")) safe("sky", () => {      // sky.html (in-browser engine)
-    H.classList.add("ui-page-sky");
-    const row = document.querySelector(".titlerow");
-    if (row) row.append(modeSwitch());
-  });
-  else if (/^(verify|story|asteroids)\.html$/.test(pg) || document.querySelector("main section.blk")) safe("reading", setupReading);
+  else if ($("bins") && $("cancel") && $("viewer")) safe("sky", () => { H.classList.add("ui-page-sky"); });      // sky.html (in-browser engine)
+  else if (/^(verify|story|asteroids|comets|planetx)\.html$/.test(pg) || document.querySelector("main section.blk")) safe("reading", () => setupReading(pg));
   ensureFolds();
   try { I.onLang(() => { relabel(); paintFinder(); }); } catch (e) { /* ignore */ }
   document.addEventListener("fazari:lang", () => setTimeout(relabel, 30));

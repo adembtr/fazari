@@ -55,17 +55,30 @@
   .titlerow { display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; margin:0 0 4px; }
   .titlerow h1 { margin:0; }
   @media (max-width: 520px) { body { font-size: 14px; } main { padding: 12px; } }
+  /* single-column layout (js/ts_flow.js + css/ts_flow.css): its parts are not shown in the classic page */
+  #tsFlow, .ts-nav, .ts-tourbtn { display:none; } #fzStage { display:contents; }
 </style>
-<link rel="stylesheet" href="css/ui_shell.css"><link rel="stylesheet" href="css/phone.css"><script src="js/ui_boot.js"></script><!-- ui layer (arayuz) -->
+<link rel="stylesheet" href="css/ui_shell.css"><link rel="stylesheet" href="css/ts_flow.css"><link rel="stylesheet" href="css/phone.css"><script src="js/ui_boot.js"></script><!-- ui layer (arayuz) -->
 </head>
 <body>
 <main>
   <div class="titlerow"><h1 data-i18n="sk.h1">SPHEREx sky blink</h1><span data-i18n-toggle></span></div>
+  <nav class="ts-nav" id="tsNav" aria-label="Pages" data-i18n-attr="aria-label:ts.nav.aria"><!-- the other pages of the site (single-column layout) -->
+    <a href="explore.html?hero=0" data-i18n="ts.nav.sky">Sky map</a>
+    <a href="ornek.html?data=data/barnard/" data-i18n="ts.nav.targets">Five targets</a>
+    <a href="verify.html" data-i18n="ts.nav.evidence">Evidence</a>
+    <a href="planetx.html" data-i18n="px.nav">Planet X</a>
+    <a href="asteroids.html" data-i18n="ts.nav.ast">Asteroids</a>
+    <a href="comets.html" data-i18n="ts.nav.comets">Comets</a>
+    <a href="story.html" data-i18n="ts.nav.story">Story</a>
+    <a href="vr.html" data-i18n="ts.nav.vr">Inside the sky (VR)</a>
+    <button type="button" class="ts-tourbtn" data-tour-start hidden data-i18n="tour.start">Guided tour</button>
+  </nav>
   <p class="sub" data-i18n="sk.intro">Pick any point of the sky. This page finds the SPHEREx exposures that cover it, reads only the
     needed rows of each image from the public archive on AWS (HTTP Range), and builds an aligned blink of the
     observing seasons in your browser. Moving stars jump; everything else stays still.</p>
 
-  <form id="form">
+  <form id="form" data-tour="search">
     <input id="q" type="text" placeholder="Name or RA Dec, e.g. Barnard's Star or 17:57:48.5 +04:41:36" autocomplete="off" aria-label="Name or coordinates" data-i18n-attr="placeholder:sk.q.ph;aria-label:sk.q.aria">
     <button type="submit" data-i18n="sk.go">Go</button>
   </form>
@@ -100,6 +113,49 @@
   </div>
 
   <section id="viewer" hidden>
+    <!-- Single-column layout: the sections of the result, top to bottom (js/ts_flow.js moves the cards below into them;
+         not shown in the classic page). Same ids and order as ornek.html. -->
+    <div class="ts-flow" id="tsFlow">
+      <section class="ts-sec" id="tsA" data-tour="what" aria-labelledby="tsAh">
+        <div class="ts-arow"><h2 class="ts-h" id="tsAh" data-i18n="ts.a.h">What is here</h2><p class="ts-kick" id="tsKick" hidden></p></div>
+        <div class="ts-head" id="tsHead"><p class="ts-name" id="tsName"></p></div>
+        <dl class="ts-facts" id="tsFacts" hidden></dl>
+      </section>
+      <section class="ts-sec" id="tsB" aria-labelledby="tsBh">
+        <h2 class="ts-h" id="tsBh" data-i18n="ts.b.h">Over time</h2>
+        <p class="ts-say" data-i18n="ts.b.say">One SPHEREx image per visit, shown in turn: stars stay still, something that moves jumps.</p>
+        <div class="ts-bins" id="tsBins" data-tour="wavelengths"></div>
+        <p class="ts-say ts-binsay" data-i18n="ts.bins.say">SPHEREx sees infrared light the eye cannot. Each button shows the same spot in another infrared colour; some objects only show in one of them.</p>
+        <div class="ts-diff" id="tsDiff" data-tour="difference">
+          <h3 class="ts-h3" data-i18n="ts.diff.h">What changed between two visits</h3>
+          <p class="ts-say" data-i18n="ts.diff.say">The last visit minus the first. Still stars cancel out; something that moved leaves a blue spot (where it was) and a red spot (where it is now).</p>
+        </div>
+      </section>
+      <section class="ts-sec" id="tsC" data-tour="verdict" aria-labelledby="tsCh">
+        <h2 class="ts-h" id="tsCh" data-i18n="ts.c.h">Verdict</h2>
+        <p class="ts-say" data-i18n="ts.c.say">What the images say about this spot, and how fast something would have to move for us to notice it.</p>
+        <div class="ts-vd" id="tsVd"></div>
+        <div class="ts-lim" id="tsLim" hidden></div>
+      </section>
+      <section class="ts-sec" id="tsD" hidden data-tour="measure" aria-labelledby="tsDh">
+        <h2 class="ts-h" id="tsDh" data-i18n="ts.d.h">Measurement</h2>
+        <p class="ts-say" id="tsDsay" data-i18n="ts.d.say">Our number, measured from these images alone, next to what the star catalogue says about the same object.</p>
+        <div class="tiles ts-tiles" id="tsTiles" hidden></div>
+      </section>
+      <section class="ts-sec" id="tsE" hidden data-tour="spectrum" aria-labelledby="tsEh">
+        <h2 class="ts-h" id="tsEh" data-i18n="ts.e.h">Spectrum</h2>
+        <p class="ts-say" data-i18n="ts.e.say">How bright this spot is in each infrared colour. Every exposure sees it in a different colour, so the exposures together draw the curve.</p>
+      </section>
+      <section class="ts-sec" id="tsF" hidden data-tour="brightness" aria-labelledby="tsFh">
+        <h2 class="ts-h" id="tsFh" data-i18n="ts.f.h">Brightness over time</h2>
+        <p class="ts-say" data-i18n="ts.f.say">Did this spot get brighter or fainter between the visits? Each measurement is divided by this spot's own average brightness at that colour, so a steady source stays near 1.</p>
+        <div class="ts-time" id="tsTime"></div>
+      </section>
+      <section class="ts-sec ts-small" id="tsG" data-tour="small-print" aria-labelledby="tsGh">
+        <h2 class="ts-h" id="tsGh" data-i18n="ts.g.h">Small print</h2>
+        <p class="ts-say" data-i18n="ts.g.sky">For those who want to check: what was downloaded, the technical numbers of the measurement and the settings of this run.</p>
+      </section>
+    </div>
     <div class="card">
       <h2 data-i18n="sk.wl.h">Wavelength</h2>
       <div id="bins"></div>
@@ -109,6 +165,7 @@
       </div>
     </div>
 
+    <div id="fzStage" data-tour="stage"><!-- the image area (its drawing: js/app.js); a plain wrapper in the classic page -->
     <div class="card">
       <div class="controls">
         <button id="prev" type="button" aria-label="Previous season" data-i18n-attr="aria-label:sk.prev">◀</button>
@@ -125,6 +182,7 @@
       <p class="small"><span data-i18n="sk.blink.cap">North up, east left, 3″ pixels. Orange ring: catalogue position moved to the season's mean date
         (proper motion and parallax). White: saturated star core.</span> <span id="fieldnote"></span></p>
     </div>
+    </div><!-- /#fzStage -->
 
     <div class="card">
       <h2 data-i18n="sk.diff.h">Difference (last minus first season)</h2>
@@ -147,9 +205,11 @@
   </footer>
   <pre id="result" data-state="idle"></pre>
 </main>
+<script src="js/ts_flow.js"></script><!-- single-column layout: the cards into their sections before the first paint -->
 <script type="module" src="js/app.js"></script>
 <script type="module" src="js/ui_shell.js"></script><!-- ui layer (arayuz) -->
 <script type="module" src="js/ch_sky.js"></script><!-- challenge items: frame info, new data, deep image, instant spectrum -->
 <script type="module" src="js/verdict_strip.js"></script><!-- verdict strip at the top of the answer (hukum) -->
+<script type="module" src="js/tour.js"></script><!-- guided tour (goruntu_tur): starts from any [data-tour-start] button -->
 </body>
 </html>

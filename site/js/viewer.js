@@ -19,8 +19,10 @@
 
 import { t, lang, loc, month, tname, onLang, ptext } from "./i18n.js";
 import * as GR from "./gr.js";   // answer card: speed per year, number line, ratio chart, catalogue at a free point, limits (grafikler)
-import { drawScale, speedOf, speedText, scaleText, significant } from "./motion_arrow.js";   // measured-motion arrow: scale + speed label (ilk_izlenim)
+import { speedOf, speedText, scaleText, significant } from "./motion_arrow.js";   // measured-motion arrow: speed label; the arrow is drawn at true length (ilk_izlenim, goruntu_tur)
 import { findNeighbours, neighbourLayout, neighbourSvg } from "./neighbours.js";   // static catalogue stars near the track (ilk_izlenim)
+import * as FV from "./fz_view.js";               // picture area: processed frames on a canvas, view tabs, zoom and pan (goruntu_tur)
+import { gridOf } from "./marking.js";            // PNG pixel <-> sky of a result's grid (rings on the catalogue stars)
 
 const $ = (id) => document.getElementById(id);
 const ok = (v) => v != null && v !== "" && Number.isFinite(+v);
@@ -67,6 +69,8 @@ const S = {                 // viewer state
   meta: null, base: "", bins: [], bi: 0, bin: null, sel: [], idx: 0, mode: "blink", playing: true, timer: 0,
   zoom: 3, k: 1, tx: 0, ty: 0, game: null, trailKey: null, gif: new Map(), marking: null, ex: {}, listeners: [],
   ref: null, info: null, defaultZoom: 3,
+  // picture area (goruntu_tur): view tab, the visitor's own zoom / pan (user, cx, cy), processed frames (fv), field stars
+  view: "film", user: false, cx: null, cy: null, fv: null, ui: null, tabs: null, stars: null, starKey: "",
 };
 const Q = new URLSearchParams(location.search);
 
@@ -110,12 +114,38 @@ function centreXY() {
 const selFrames = () => S.sel.map((i) => S.bin.frames[i]);
 
 // --- zoom: the zoomed box is the whole PNG (W x H CSS px), placed with translate + scale ------------
-function place(box, wrap, zoom) {
+// One mechanism (goruntu_tur): S.zoom = scale relative to "the whole field fits", S.cx / S.cy = the PNG pixel in the
+// middle of the stage (null: the target). The default is a close-up around the target (closeUpZoom); the wheel,
+// two fingers, dragging and the buttons on the picture change it (S.user); "close-up" goes back to the default.
+const CLOSE_ARCSEC = 180;            // default close-up: about 3 arcmin across the smaller side of the stage
+function fitScale(wrap) { const [W, H] = pngSize(); return Math.min(wrap.clientWidth / W, wrap.clientHeight / (H - labelStrip())) || 0; }
+/** PNG pixels between the first and last season of the headline pair (measured, else the catalogue's), or null. */
+function headShiftPng() {
+  const h = headEpochs(S.bin || S.bins[0] || null);
+  if (!h) return null;
+  const a = (measuredPos(h[0]) || {}).png_xy_measured || markerXY(h[0]), b = (measuredPos(h[1]) || {}).png_xy_measured || markerXY(h[1]);
+  return a && b ? Math.hypot(b[0] - a[0], b[1] - a[1]) : null;
+}
+/** The default view: ~3 arcmin across; closer when a mover's jump would otherwise be under ~40 screen px. */
+function closeUpZoom() {
+  const st = $("stage"), k1 = fitScale(st), a = pngArcsec();
+  if (!(k1 > 0) || !a) return Math.max(1, S.zoom || 3);
+  if (S.holdScale > 0) return Math.max(1, a / S.holdScale / k1);               // a run in progress: the scale on screen stays (swapData)
+  const m = Math.min(st.clientWidth, st.clientHeight);
+  let k = m * a / ((S.meta.measured || {}).photometry ? 300 : CLOSE_ARCSEC);   // brightness targets: the comparison stars stay in view
+  const d = headShiftPng();
+  if (d != null && d * a >= 2) k = Math.max(k, 40 / d);
+  k = Math.min(k, m * a / 40);                                               // never closer than 40″ across by default
+  return Math.max(1, k / k1);
+}
+/** Closest zoom: about 20″ across the smaller side (three SPHEREx detector pixels). */
+function zoomMax() { const st = $("stage"), k1 = fitScale(st); return k1 > 0 ? Math.max(1, Math.min(st.clientWidth, st.clientHeight) * (pngArcsec() || 0.75) / 20 / k1) : 60; }
+function place(box, wrap, zoom, c) {
   const Sw = wrap.clientWidth, Sh = wrap.clientHeight;
   if (!Sw || !Sh) return null;
   const [W, H] = pngSize(), L = labelStrip();
   const k = Math.min(Sw / W, Sh / (H - L)) * zoom;
-  const [cx, cy] = centreXY();
+  const [cx, cy] = c || centreXY();
   let tx = Sw / 2 - cx * k, ty = Sh / 2 - cy * k;
   const sw = W * k, sh = (H - L) * k;
   tx = sw >= Sw ? Math.min(0, Math.max(Sw - sw, tx)) : (Sw - sw) / 2;
@@ -126,19 +156,68 @@ function place(box, wrap, zoom) {
 }
 function layout() {
   if (!S.meta) return;
-  const p = place($("zoomer"), $("stage"), S.zoom);
-  if (p) Object.assign(S, p);
-  const d = $("diffZoom") && place($("diffZoom"), $("diffView"), Math.max(1, S.zoom * 0.75));
+  const st = $("stage");
+  if (!S.user) { S.zoom = closeUpZoom(); S.cx = S.cy = null; }
+  S.zoom = Math.max(1, Math.min(zoomMax(), S.zoom));
+  const p = place($("zoomer"), st, S.zoom, S.cx != null ? [S.cx, S.cy] : null);
+  if (p) {
+    Object.assign(S, p);
+    if (S.user) { S.cx = (st.clientWidth / 2 - S.tx) / S.k; S.cy = (st.clientHeight / 2 - S.ty) / S.k; }   // as placed (edges clamp)
+  }
+  const dz = $("diffZoom"), dv = $("diffView");
+  if (dz && dv && dv.offsetParent) place(dz, dv, Math.max(1, Math.min(S.zoom, 4) * 0.75));
   if (S.mode === "swipe") applySwipe();
   drawOverlay();
   scaleBar();
+  zoomUi();
+  if (S.marking && S.marking.redraw) { try { S.marking.redraw(); } catch (_) {} }
+}
+/** Zoom by factor f keeping the picture point under stage pixel (x, y) where it is. */
+function zoomAt(f, x, y, smooth) {
+  const st = $("stage"), k1 = fitScale(st);
+  if (!(k1 > 0) || !S.k) return;
+  const z = Math.max(1, Math.min(zoomMax(), S.zoom * f)), k = k1 * z;
+  const px = (x - S.tx) / S.k, py = (y - S.ty) / S.k;
+  S.zoom = z; S.user = true;
+  S.cx = (st.clientWidth / 2 - (x - px * k)) / k; S.cy = (st.clientHeight / 2 - (y - py * k)) / k;
+  if (!smooth) liveZoom();
+  layout(); urlSoon();
+}
+function panBy(dx, dy) {
+  const st = $("stage");
+  if (!S.k) return;
+  S.user = true;
+  S.cx = (st.clientWidth / 2 - S.tx - dx) / S.k; S.cy = (st.clientHeight / 2 - S.ty - dy) / S.k;
+  liveZoom(); layout(); urlSoon();
+}
+let liveT = 0, urlT = 0;
+function liveZoom() { const st = $("stage"); st.classList.add("fz-live"); clearTimeout(liveT); liveT = setTimeout(() => st.classList.remove("fz-live"), 260); }   // no CSS transition while the hand moves
+function urlSoon() { clearTimeout(urlT); urlT = setTimeout(writeUrl, 400); }
+function closeUp() { S.user = false; S.holdScale = 0; S.cx = S.cy = null; layout(); writeUrl(); }
+/** New numbers arrived (a later stage of a run): the marks fade in at their new places instead of jumping. */
+function softUpdate() { const ov = $("ov"); if (!ov) return; ov.classList.remove("fz-upd"); void ov.getBoundingClientRect(); ov.classList.add("fz-upd"); }
+function wholeField() { S.user = true; S.zoom = 1; S.cx = S.cy = null; layout(); writeUrl(); }
+/** Button states, cursor, touch rule, and the old zoom selector kept in step (a hidden control: candidates.js steps it). */
+function zoomUi() {
+  const st = $("stage"), zm = zoomMax();
+  const closer = S.user && S.zoom > closeUpZoom() * 1.05;             // zoomed in by the visitor: one finger moves the picture
+  st.classList.toggle("fz-pan", S.zoom > 1.001 && S.mode !== "swipe" && !(S.game && !S.game.revealed));
+  st.style.touchAction = S.mode === "swipe" || !closer ? "pan-y" : "none";
+  if (S.ui) S.ui.paint({ atMin: S.zoom <= 1.001, atMax: S.zoom >= zm * 0.999, raw: !!(S.fv && S.fv.raw), isClose: !S.user, isWhole: S.zoom <= 1.001, rawOk: !!(S.fv && S.fv.ready) });
+  const z = $("zoom");
+  if (z && z.options.length) {
+    const up = [...z.options].map((o) => +o.value).filter((v) => v >= S.zoom - 0.01).sort((a, b) => a - b)[0];
+    z.value = String(up != null ? up : z.options[z.options.length - 1].value);
+  }
+  const a = pngArcsec();
+  try { document.dispatchEvent(new CustomEvent("fazari:zoom", { detail: { k: S.k, zoom: S.zoom, user: S.user, fov_arcmin: a && S.k ? [st.clientWidth * a / S.k / 60, st.clientHeight * a / S.k / 60] : null } })); } catch (_) {}
 }
 
 function scaleBar() {
   const a = pngArcsec(), el = $("hudScale");
   if (!a || !S.k) { el.hidden = true; return; }
   const perPx = a / S.k;                    // arcsec per screen pixel
-  const pick = [5, 10, 20, 30, 60, 120, 300, 600].find((v) => v / perPx >= 48) || 600;
+  const pick = [1, 2, 5, 10, 20, 30, 60, 120, 300, 600].find((v) => v / perPx >= 48) || 600;
   const px = pick / perPx;
   el.hidden = false;
   const ne = !(S.meta.grid && S.meta.grid.north_up_east_left === false);
@@ -221,19 +300,38 @@ function brightPair(ea, eb) {
   return { r, er, n: pb.n_comparison, main: !!(c && c.main && c.main.b === pb && c.from === ea && c.to === eb) };
 }
 
-// --- overlay: motion arrow, path, catalogue ring, measured point, game click ---------------------
+// --- overlay: season marks, track, true-length arrow, catalogue ring, field stars, game click ---------------------
+const visitIdx = (ep) => Math.max(0, ((S.meta && S.meta.epochs) || []).indexOf(ep));
+const visitCol = (ep) => FV.visitColour(visitIdx(ep));
+/** Where the object was in every season that has a position of this kind: [{ ep, xy }] in time order. */
+function seasonTrack(measured) {
+  return (S.meta.epochs || []).map((ep) => {
+    const p = measured ? measuredPos(ep) : null, xy = measured ? p && p.png_xy_measured : markerXY(ep);
+    return xy ? { ep, xy } : null;
+  }).filter(Boolean);
+}
 function motionPoints() {
   const pe = pairEpochs();
   if (!pe) return null;
   const [ea, eb] = pe;
   const eps = selFrames().map((f) => f.epoch);
   const mA = measuredPos(ea), mB = measuredPos(eb);
-  if (mA && mB) return { kind: "measured", ea, eb, a: mA.png_xy_measured, b: mB.png_xy_measured,
+  if (mA && mB) return { kind: "measured", ea, eb, a: mA.png_xy_measured, b: mB.png_xy_measured, all: seasonTrack(true),
     path: eps.map((e) => measuredPos(e)).filter(Boolean).map((p) => p.png_xy_measured) };
   if (S.ref.none) return null;
   const cA = markerXY(ea), cB = markerXY(eb);
-  if (cA && cB && Math.hypot(cB[0] - cA[0], cB[1] - cA[1]) > 1) return { kind: "predicted", ea, eb, a: cA, b: cB, path: eps.map((e) => markerXY(e)).filter(Boolean) };
+  if (cA && cB && Math.hypot(cB[0] - cA[0], cB[1] - cA[1]) > 1) return { kind: "predicted", ea, eb, a: cA, b: cB, all: seasonTrack(false), path: eps.map((e) => markerXY(e)).filter(Boolean) };
   return null;
+}
+/** A small cross with an open middle at a measured position (the object itself stays visible), in the visit's colour.
+ *  gapPx: the open middle in screen px (at least the old 4.5 / 6.5; wider when the object's light is wider). */
+function tickSvg(x, y, col, u, strong, dir, gapPx = 0) {
+  const g = Math.max(dir ? 4.5 : 6.5, gapPx) * u, l = (dir ? (strong ? 10 : 6) : 6) * u, w = (strong ? 2.6 : 1.8) * u;
+  // along a track (dir): two short bars across it, like the marks of a ruler; a lone position: a cross with an open middle
+  const seg = (ax, ay) => `M${(x + ax * g).toFixed(2)} ${(y + ay * g).toFixed(2)}L${(x + ax * (g + l)).toFixed(2)} ${(y + ay * (g + l)).toFixed(2)}`;
+  const d = dir ? seg(-dir[1], dir[0]) + seg(dir[1], -dir[0]) : seg(-1, 0) + seg(1, 0) + seg(0, -1) + seg(0, 1);
+  return `<path d="${d}" fill="none" stroke="#05070d" stroke-opacity=".85" stroke-width="${w + 2.4 * u}" stroke-linecap="round"/>` +
+    `<path class="fz-tick" d="${d}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"${strong ? "" : ' stroke-opacity=".78"'}/>`;
 }
 /** The arrow's label: the same number the result card shows for this pair. */
 function arrowText(mp) {
@@ -249,67 +347,117 @@ function arrowText(mp) {
   const dt = fa && fb ? daysApart(fa, fb) / 365.25 : null;
   return { long: `≈${arcsec(s)}${dt ? " " + span(dt) : ""} (${L("vw.predOf", "{who} prediction", { who: S.ref.short })})`, short: "≈" + arcsec(s) };
 }
-const RING = 34;                  // ring radius in PNG px (about 25″ on the sky)
+const RING = 15;                  // ring radius in PNG px (about 11″ on the sky)
+const ringR = (u) => Math.min(Math.max(RING, 13 * u), 60 * u);     // never under 13 screen px, never over 60 (a close zoom)
 let arrowLabel = "";              // the arrow's speed label, added after the ring so nothing covers it
+let ticksDrawn = false;           // the season marks are on the picture (the single "we measured" dot is then not needed)
 function motionSvg(u, legend) {
   const mp = motionPoints();
   if (!mp) return "";
   const a = mp.a, b = mp.b;
   const halo = (d, w) => `<path d="${d}" fill="none" stroke="#05070d" stroke-opacity=".8" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
   let s = "";
-  if (mp.path.length > 2) {                // path through every season in the blink
-    const d = "M" + mp.path.map((p) => p.map((v) => v.toFixed(1)).join(" ")).join("L");
-    s += halo(d, 3.5 * u) + `<path d="${d}" fill="none" stroke="#e8eaf0" stroke-width="${1.4 * u}" stroke-dasharray="${4 * u} ${3 * u}"/>`;
-    mp.path.filter((p) => p !== a && p !== b).forEach((p) => { s += `<circle cx="${p[0]}" cy="${p[1]}" r="${3 * u}" fill="#c9d2e3" stroke="#05070d" stroke-width="${1.2 * u}"/>`; });
+  // where the object was in every season: a thin line through the positions and one small mark per visit, in the
+  // visit's colour (measured positions exactly as in meta.json); the mark of the season on screen is the strong one.
+  // They stay put while the film plays: the object jumps from mark to mark.
+  const cur = S.bin.frames[S.idx].epoch, measured = mp.kind === "measured", plain = S.view === "tcol" || S.view === "diff";
+  // colour of a visit's mark: its own colour in the film; in "time as colour" the two colours of that picture; else neutral
+  const markCol = (ep) => (S.view === "tcol" && fvOn() ? (ep === mp.ea ? FV.TIME_FIRST : ep === mp.eb ? FV.TIME_LAST : "#e8eaf0") : plain ? "#e8eaf0" : visitCol(ep));
+  const ext = mp.all.length > 1 ? Math.max(...mp.all.map((q) => Math.hypot(q.xy[0] - mp.all[0].xy[0], q.xy[1] - mp.all[0].xy[1]))) : 0;
+  // the object's own light on screen (the field stars' width, measured on these frames): the marks stay outside it,
+  // so they never cover what they mark. The line through the positions is left out while it would run through that light.
+  const fset = fvOn() ? S.fv.set : null, upP = (S.meta.grid || {}).upscale || 4;
+  const blob = Math.min(70, Math.max(8, ((fset && fset.fwhm) || 3.5) * 1.1 * upP * S.k)), gapPx = 0.5 * blob;
+  if (ext * S.k >= Math.max(12, 2.2 * blob)) {
+    const d = "M" + mp.all.map((q) => q.xy.map((v) => v.toFixed(1)).join(" ")).join("L");
+    s += halo(d, 3 * u) + `<path d="${d}" fill="none" stroke="#e8eaf0" stroke-opacity=".6" stroke-width="${1.2 * u}"${measured ? "" : ` stroke-dasharray="${4 * u} ${3 * u}"`}/>`;
+  }
+  if (measured) {
+    const far = ext * S.k >= 12, p0 = mp.all[0].xy, p1 = mp.all[mp.all.length - 1].xy, pl = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1;
+    const dir = far ? [(p1[0] - p0[0]) / pl, (p1[1] - p0[1]) / pl] : null;
+    const live = S.view === "film" && S.mode !== "trail" && S.mode !== "swipe", q = mp.all.find((x) => x.ep === cur);
+    // apart on screen: one mark per visit; all on one spot (nothing moved): only the mark of the visit on screen
+    if (far) mp.all.forEach((x) => { if (x !== q || !live) s += tickSvg(x.xy[0], x.xy[1], markCol(x.ep), u, false, dir, gapPx); });
+    if (q && live) s += tickSvg(q.xy[0], q.xy[1], visitCol(q.ep), u, true, dir, gapPx);
+    else if (q && !far) s += tickSvg(q.xy[0], q.xy[1], "#e8eaf0", u, false, null, gapPx);
+    ticksDrawn = true;
   }
   const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy);
-  let N = 1;
+  let drawn = false, speedLg = "";
   if (len > 0.2) {
     const ux = dx / len, uy = dy / len;
-    // measured motion: drawn N times longer (a round factor, written on the image), from the measured first position
+    // the arrow: TRUE length (first to last season of the pair, nothing magnified), drawn beside the track so it
+    // never covers the object; only for a shift outside its own noise, and only when it is long enough to see
     const Sw = $("stage").clientWidth, Sh = $("stage").clientHeight;
-    const mv = mp.kind === "measured" ? motionPair(mp.ea, mp.eb) : null;
-    if (mv && significant(mv.s, mv.e)) N = drawScale(len, Math.max(RING * 1.8, Math.min(150, 0.3 * Math.min(Sw || 300, Sh || 300)) * u));
-    const tip = [a[0] + dx * N, a[1] + dy * N], tl = len * N;
-    const hl = Math.min((N > 1 ? 15 : 12) * u, tl * 0.75), hw = (N > 1 ? 8 : 6.5) * u;
+    const mv = measured ? motionPair(mp.ea, mp.eb) : null;
+    const sig = !measured || !!(mv && significant(mv.s, mv.e));
+    drawn = sig && len * S.k >= 16;
+    let px = -uy, py = ux;
+    if (px < 0 || (Math.abs(px) < 0.3 && py > 0)) { px = -px; py = -py; }
+    if (S.tx + (a[0] + b[0]) / 2 * S.k > Sw * 0.62) { px = -px; py = -py; }        // close to the right edge: the other side
+    const o = drawn ? Math.max(26, gapPx + 16) * u : 0;
+    if (drawn && S.nbBoxes && S.nbBoxes.length) {             // a catalogue star's label on that side (WISE 0855): the other side when it is free
+      const hit = (sg) => {
+        const xs = [a[0], b[0]].map((v) => S.tx + (v + sg * px * o) * S.k), ys = [a[1], b[1]].map((v) => S.ty + (v + sg * py * o) * S.k);
+        const x0 = Math.min(...xs) - 8, x1 = Math.max(...xs) + 8, y0 = Math.min(...ys) - 8, y1 = Math.max(...ys) + 8;
+        return S.nbBoxes.some((q) => x0 < q[2] && x1 > q[0] && y0 < q[3] && y1 > q[1]);
+      };
+      if (hit(1) && !hit(-1)) { px = -px; py = -py; }
+    }
+    const a2 = [a[0] + px * o, a[1] + py * o], tip = [b[0] + px * o, b[1] + py * o], tl = len;
+    const hl = Math.min(12 * u, tl * 0.6), hw = Math.min(6.5 * u, tl * 0.33);
     const bx = tip[0] - ux * hl, by = tip[1] - uy * hl;
     const head = `M${tip[0].toFixed(2)} ${tip[1].toFixed(2)}L${(bx - uy * hw).toFixed(2)} ${(by + ux * hw).toFixed(2)}L${(bx + uy * hw).toFixed(2)} ${(by - ux * hw).toFixed(2)}Z`;
-    const line = `M${a[0].toFixed(2)} ${a[1].toFixed(2)}L${bx.toFixed(2)} ${by.toFixed(2)}`;
-    const col = mp.kind === "measured" ? "#ffffff" : "#ffd08a";
-    const sw = N > 1 ? 3.6 : 3;
-    s += halo(line, (sw + 4) * u) + halo(head, 3.5 * u) +
-      `<path d="${line}" stroke="${col}" stroke-width="${sw * u}" stroke-linecap="round"${mp.kind === "measured" ? "" : ` stroke-dasharray="${5 * u} ${3 * u}"`}/>` +
-      `<path d="${head}" fill="${col}"/>`;
-    if (N > 1) s += `<circle cx="${b[0]}" cy="${b[1]}" r="${4 * u}" fill="none" stroke="#05070d" stroke-width="${3.6 * u}"/>` +
-      `<circle cx="${b[0]}" cy="${b[1]}" r="${4 * u}" fill="none" stroke="#ff6b6b" stroke-width="${2 * u}"/>`;   // the true end
-    // first and last position (blue = before, red = after, like the difference image)
-    s += `<circle cx="${a[0]}" cy="${a[1]}" r="${5.5 * u}" fill="none" stroke="#05070d" stroke-width="${4 * u}"/>` +
-      `<circle cx="${a[0]}" cy="${a[1]}" r="${5.5 * u}" fill="none" stroke="#5aa9ff" stroke-width="${2.2 * u}"/>`;
-    // labels: the first season behind the start, the last ahead of the end, the size beside it
+    const line = `M${a2[0].toFixed(2)} ${a2[1].toFixed(2)}L${bx.toFixed(2)} ${by.toFixed(2)}`;
+    const col = measured ? "#ffffff" : "#ffd08a";
+    const sw = 2.6;
+    if (drawn) {
+      const l0 = Math.min(o, (gapPx + 6) * u), la = [a[0] + px * l0, a[1] + py * l0], lb = [b[0] + px * l0, b[1] + py * l0];   // from outside the object's light
+      const lead = `M${la[0].toFixed(2)} ${la[1].toFixed(2)}L${a2[0].toFixed(2)} ${a2[1].toFixed(2)}M${lb[0].toFixed(2)} ${lb[1].toFixed(2)}L${tip[0].toFixed(2)} ${tip[1].toFixed(2)}`;
+      s += `<path d="${lead}" fill="none" stroke="#e8eaf0" stroke-opacity=".5" stroke-width="${1 * u}"/>` +
+        halo(line, (sw + 3.4) * u) + halo(head, 3.2 * u) +
+        `<path class="fz-arrow" d="${line}" stroke="${col}" stroke-width="${sw * u}" stroke-linecap="round"${measured ? "" : ` stroke-dasharray="${5 * u} ${3 * u}"`}/>` +
+        `<path d="${head}" fill="${col}"/>`;
+    }
+    // labels: the first season behind the start, the last ahead of the end, the speed beside the arrow
     const lab = (x, y, t, c, anchor = "middle", size = 13) =>
       `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" fill="${c}" font-size="${size * u}" font-weight="700" text-anchor="${anchor}" ` +
       `dominant-baseline="middle" stroke="#05070d" stroke-width="${3.2 * u}" paint-order="stroke" font-family="system-ui, sans-serif">${esc(t)}</text>`;
-    const off = RING + (11 + 30 * Math.abs(ux)) * u;       // clear of the ring, also for sideways motion
-    s += lab(a[0] - ux * off, a[1] - uy * off, season(mp.ea), "#8cc4ff");
-    if (N === 1) s += lab(b[0] + ux * off, b[1] + uy * off, season(mp.eb), "#ff8f8a");
-    const sp = mp.kind === "measured" ? speedOf((S.meta.measured || {}).fit, motionPair(mp.ea, mp.eb)) : null;
+    const off = ringR(u) + (11 + 30 * Math.abs(ux)) * u;       // clear of the ring, also for sideways motion
+    const seasonBoxes = [];                                   // where the two season labels sit on screen (the speed label keeps clear)
+    if (len * S.k >= 10 && Sw >= 440) {                       // a narrow picture: the coloured marks and the visit buttons say it
+      [[a[0] - ux * off, a[1] - uy * off, mp.ea], [b[0] + ux * off, b[1] + uy * off, mp.eb]].forEach(([x, y, ep]) => {
+        const txt = season(ep), X = S.tx + x * S.k, Y = S.ty + y * S.k, w = txt.length * 13 * 0.6;
+        s += lab(x, y, txt, markCol(ep));
+        seasonBoxes.push([X - w / 2, Y - 9, X + w / 2, Y + 9]);
+      });
+    }
+    let sp = measured && sig ? speedOf((S.meta.measured || {}).fit, motionPair(mp.ea, mp.eb)) : null;
+    if (sp && !(sp.e > 0)) sp = null;                         // a speed without an error bar of its own is not stated
     if (sp) {
-      // speed ± error and direction, and the drawing scale, just past the arrow head; kept inside the stage
-      const l1 = speedText(sp), l2 = scaleText(N), side = Math.abs(ux) > 0.55;
+      // speed ± error and direction, and "true length", beside the arrow; kept inside the stage
+      const l1 = speedText(sp), l2 = drawn ? scaleText(1) : L("fz.arw.small", "too small to draw at this zoom"), side = Math.abs(ux) > 0.55;
       const P = (x, y) => [S.tx + x * S.k, S.ty + y * S.k];
-      const [ax, ay] = P(a[0], a[1]), [qx, qy] = P(tip[0], tip[1]), mx = (ax + qx) / 2, my = (ay + qy) / 2;
+      const [ax, ay] = P(a2[0], a2[1]), [qx, qy] = P(tip[0], tip[1]), mx = (ax + qx) / 2, my = (ay + qy) / 2;
       const lg = $("hudLegend"), legH = lg && !lg.hidden ? lg.offsetHeight + 10 : 10;
       const bw = Math.max(l1.length * 15, l2.length * 12.5) * 0.56, bh = 36;       // label box in screen px (estimate)
       const hx = (x0) => Math.min(Math.max(x0, 6), Sw - 6 - bw);                  // above / below the arrow: slide sideways freely
-      const clear = (x0, y0) => !(S.nbBoxes || []).some((b) => x0 < b[2] + 4 && x0 + bw > b[0] - 4 && y0 < b[3] + 4 && y0 + bh > b[1] - 4);
-      const fits = (bottom) => ([x0, y0]) => x0 >= 6 && y0 >= 46 && x0 + bw <= Sw - 6 && y0 + bh <= Sh - bottom && clear(x0, y0);
-      const cands = [side ? (ux > 0 ? [qx + 12, qy - bh / 2] : [qx - 12 - bw, qy - bh / 2]) : [qx - bw / 2, uy < 0 ? qy - 12 - bh : qy + 12],
+      // never over the object itself: the box of all its positions on screen (with room for the marks) is kept free
+      const tx0 = mp.all.map((q) => S.tx + q.xy[0] * S.k), ty0 = mp.all.map((q) => S.ty + q.xy[1] * S.k);
+      const pad = Math.max(18, gapPx + 10), own = [Math.min(...tx0) - pad, Math.min(...ty0) - pad, Math.max(...tx0) + pad, Math.max(...ty0) + pad];
+      const clear = (x0, y0) => ![own, ...seasonBoxes, ...(S.nbBoxes || [])].some((b) => x0 < b[2] + 4 && x0 + bw > b[0] - 4 && y0 < b[3] + 4 && y0 + bh > b[1] - 4);
+      const fits = (bottom) => ([x0, y0]) => x0 >= 6 && y0 >= 70 && x0 + bw <= Sw - 50 && y0 + bh <= Sh - bottom && clear(x0, y0);   // clear of the caption (top) and the zoom buttons (right)
+      const out = Math.abs(px) >= Math.abs(py) ? (px > 0 ? [Math.max(ax, qx) + 14, my - bh / 2] : [Math.min(ax, qx) - 14 - bw, my - bh / 2])
+        : [hx(mx - bw / 2), py < 0 ? Math.min(ay, qy) - 14 - bh : Math.max(ay, qy) + 14];              // the arrow's outer side first
+      const cands = [out, side ? (ux > 0 ? [qx + 12, qy - bh / 2] : [qx - 12 - bw, qy - bh / 2]) : [qx - bw / 2, uy < 0 ? qy - 12 - bh : qy + 12],
         [hx(mx - bw / 2), Math.min(ay, qy) - 14 - bh], [hx(mx - bw / 2), Math.max(ay, qy) + 14],
         [Math.max(ax, qx) + 14, my - bh / 2], [Math.min(ax, qx) - 14 - bw, my - bh / 2]];
-      const c0 = cands[0];
-      const box = cands.find(fits(legH)) || cands.find(fits(6)) || [Math.min(Math.max(c0[0], 6), Sw - 6 - bw), Math.min(Math.max(c0[1], 46), Sh - legH - bh)];
-      const lx = (box[0] + bw / 2 - S.tx) / S.k, ly = (box[1] + 10 - S.ty) / S.k;
-      arrowLabel = lab(lx, ly, l1, "#ffffff", "middle", 15) + lab(lx, ly + 17 * u, l2, "#ffd08a", "middle", 12);   // drawn last (over the ring)
+      // no free place (a small picture): the number goes into the legend line instead of over the object
+      const box = cands.find(fits(legH)) || cands.find(fits(6)) || null;
+      if (box) {
+        const lx = (box[0] + bw / 2 - S.tx) / S.k, ly = (box[1] + 10 - S.ty) / S.k;
+        arrowLabel = lab(lx, ly, l1, "#ffffff", "middle", 15) + lab(lx, ly + 17 * u, l2, "#ffd08a", "middle", 12);   // drawn last (over the ring)
+      } else speedLg = l1;
     }
     const at = mp.kind === "measured" ? null : arrowText(mp);
     if (at) {
@@ -317,7 +465,7 @@ function motionSvg(u, legend) {
       // beside the ring, on the side with room on screen (right, else left, else below)
       let px = -uy, py = ux;
       if (px < 0 || (Math.abs(px) < 0.3 && py < 0)) { px = -px; py = -py; }
-      const cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2, d = RING + (8 + 14 * Math.abs(py)) * u;
+      const cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2, d = ringR(u) + (30 + 14 * Math.abs(py)) * u;
       const Sw = $("stage").clientWidth, scr = (x) => S.tx + x * S.k;
       const width = (str) => str.length * 15 * 0.56;                       // text width in screen px (estimate)
       let pick = null;
@@ -330,23 +478,22 @@ function motionSvg(u, legend) {
       s += lab(pick.x, pick.y, pick.str, "#ffffff", pick.anchor, 15);
     }
   }
-  legend.push(mp.kind === "measured" ? `<span><i class="lg arrow"></i>${esc(N > 1 ? t("fi.lg.measuredx", { n: N }) : L("vw.lg.measured", "measured motion"))}</span>`
+  if (drawn || speedLg) legend.push(measured ? `<span><i class="lg arrow"></i>${esc(L("fz.lg.arrow", "measured motion, true length"))}${speedLg ? ": " + esc(speedLg) : ""}</span>`
     : `<span><i class="lg arrow dash"></i>${esc(L("vw.lg.predPath", "{who} predicted path", { who: S.ref.short }))}</span>`);
-  legend.push(`<span><i class="lg first"></i>${esc(L("vw.lg.first", "first season"))}</span>`);
-  if (N > 1) legend.push(`<span><i class="lg" style="width:9px;height:9px;border:2px solid #ff6b6b;border-radius:50%;display:inline-block"></i>${esc(t("fi.lg.last"))}</span>`);
   return s;
 }
 function ringSvg(u, legend) {
   const f = S.bin.frames[S.idx];
   const xy = markerXY(f.epoch);
   if (!xy) return "";
-  const [x, y] = xy;
-  const ring = `<circle cx="${x}" cy="${y}" r="${RING}" fill="none" stroke="#05070d" stroke-opacity=".7" stroke-width="${5 * u}"/>` +
-    `<circle cx="${x}" cy="${y}" r="${RING}" fill="none" stroke="#ffb347" stroke-width="${2.4 * u}"/>`;
-  const cross = `M${x - 7 * u} ${y}H${x + 7 * u}M${x} ${y - 7 * u}V${y + 7 * u}`;
-  let s = ring + `<path d="${cross}" stroke="#05070d" stroke-width="${4 * u}"/><path d="${cross}" stroke="#ffb347" stroke-width="${2 * u}"/>`;
+  const [x, y] = xy, r = ringR(u);
+  // a thin ring where the catalogue puts the object in the season on screen (a picked point: the point itself),
+  // and a fainter one around it
+  let s = `<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#05070d" stroke-opacity=".6" stroke-width="${3.4 * u}"/>` +
+    `<circle class="fz-ring" cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#ffb347" stroke-width="${1.5 * u}"/>` +
+    `<circle cx="${x}" cy="${y}" r="${2 * r}" fill="none" stroke="#ffb347" stroke-opacity=".38" stroke-width="${1.1 * u}"/>`;
   const sn = (S.meta.measured || {}).snap;
-  legend.push(`<span><i class="lg ring"></i>${S.ref.none ? esc(sn ? L("vw.lg.snapped", "source we measured") : L("vw.lg.picked", "position you picked")) : esc(L("vw.lg.predicts", "{who} predicts", { who: S.ref.short }))}</span>`);
+  legend.push(`<span><i class="lg fz-thin"></i>${S.ref.none ? esc(sn ? L("vw.lg.snapped", "source we measured") : L("vw.lg.picked", "position you picked")) : esc(L("vw.lg.predicts", "{who} predicts", { who: S.ref.short }))}</span>`);
   if (sn && sn.clicked && sn.clicked.png_xy) {          // moved to the nearest source: the clicked point stays as a small mark
     const [cx, cy] = sn.clicked.png_xy, r = 4.5 * u;
     s += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#05070d" stroke-width="${3.4 * u}"/>` +
@@ -356,10 +503,74 @@ function ringSvg(u, legend) {
   const p = measuredPos(f.epoch);
   if (p) {
     const [mx, my] = p.png_xy_measured;
-    s += `<circle cx="${mx}" cy="${my}" r="${3.6 * u}" fill="#5dd39e" stroke="#05070d" stroke-width="${1.6 * u}"/>`;
+    if (!ticksDrawn) s += `<circle cx="${mx}" cy="${my}" r="${3.6 * u}" fill="#5dd39e" stroke="#05070d" stroke-width="${1.6 * u}"/>`;
     const d = Math.hypot(+p.minus_gaia_east_arcsec || 0, +p.minus_gaia_north_arcsec || 0);
-    legend.push(`<span><i class="lg dot"></i>${esc(L("vw.lg.we", "we measured"))}${ok(p.minus_gaia_east_arcsec) && !S.ref.none ? " " + esc(L("vw.lg.apart", "({d}″ apart)", { d: loc(d.toFixed(2)) })) : ""}</span>`);
+    legend.push(`<span>${ticksDrawn ? `<i class="lg fz-tick" style="color:${visitCol(f.epoch)}"></i>` : `<i class="lg dot"></i>`}${esc(ticksDrawn ? L("fz.lg.meas", "we measured, one colour per visit") : L("vw.lg.we", "we measured"))}${ok(p.minus_gaia_east_arcsec) && !S.ref.none ? " " + esc(L("vw.lg.apart", "({d}″ apart)", { d: loc(d.toFixed(2)) })) : ""}</span>`);
   }
+  return s;
+}
+// --- catalogue stars of the field (the result's own gaia_field.json): faint thin rings at each star's place on the
+// date of the frame on screen (proper motion applied). They show that the picture and the sky grid agree.
+function loadStars() {
+  const key = S.base, m = S.meta;
+  if (S.starKey === key) return;
+  S.starKey = key; S.stars = null;
+  if (m.preview || !gridOf(m)) return;                                   // a preview has no star list
+  const fc = (m.measured || {}).field_calibration;                       // no catalogue stars in the measurement (R Dra, RW Aur, a job whose
+  if (!fc || !(+fc.n_reference_stars > 0)) return;                       // Gaia query timed out): no gaia_field.json either, so no request
+  fetch(S.base + "gaia_field.json").then((r) => (r.ok ? r.text() : null)).then((txt) => {
+    if (!txt || S.starKey !== key) return;
+    const gf = JSON.parse(txt.replace(/\[(\d{16,20}),/g, '["$1",'));     // keep the 19-digit source_id exact
+    const col = (n) => (gf.columns || []).indexOf(n);
+    const [iI, iR, iD, iA, iP, iG] = ["source_id", "ra", "dec", "pmra", "pmdec", "phot_g_mean_mag"].map(col);
+    if (iR < 0 || iD < 0) return;
+    const own = String((m.gaia || {}).source_id || "");
+    const list = (gf.stars || []).filter((s) => ok(s[iR]) && ok(s[iD]) && !(own && iI >= 0 && String(s[iI]) === own))
+      .map((s) => ({ ra: +s[iR], dec: +s[iD], pmra: iA >= 0 && ok(s[iA]) ? +s[iA] : 0, pmdec: iP >= 0 && ok(s[iP]) ? +s[iP] : 0, g: iG >= 0 && ok(s[iG]) ? +s[iG] : 99 }))
+      .sort((a, b) => a.g - b.g);
+    S.stars = { ref: ok(gf.ref_epoch) ? +gf.ref_epoch : 2016, list, at: new Map() };
+    drawOverlay();
+  }).catch(() => {});
+}
+function starsAt(f) {
+  const st = S.stars, g = st && gridOf(S.meta);
+  if (!st || !g || !f) return [];
+  if (!st.at.has(f.epoch)) {
+    const dt = 2000 + (dayNum(f.date) - 10957.5) / 365.25 - st.ref, [W, H] = pngSize(), top = labelStrip(), out = [];
+    for (const s of st.list) {
+      const cd = Math.cos(s.dec * Math.PI / 180) || 1;
+      const [x, y] = g.toPng(s.ra + (Number.isFinite(dt) ? s.pmra * dt / 3.6e6 / cd : 0), s.dec + (Number.isFinite(dt) ? s.pmdec * dt / 3.6e6 : 0));
+      if (x > 3 && y > top + 3 && x < W - 3 && y < H - 3) out.push([x, y, s.g]);
+      if (out.length >= 600) break;
+    }
+    st.at.set(f.epoch, out);
+  }
+  return st.at.get(f.epoch);
+}
+function starSvg(u, legend) {
+  const set = fvOn() ? S.fv.set : null, pts = set ? starsAt(S.bin.frames[S.idx]) : [];
+  if (!pts.length) return "";
+  const Sw = $("stage").clientWidth, Sh = $("stage").clientHeight, r = Math.min(Math.max(4.5, 9 * u), 18 * u);   // 9 to 18 screen px
+  // only stars this wavelength really shows in the visit on screen (a few times the noise at the star's place):
+  // a ring on empty sky would say nothing
+  const up = (S.meta.grid || {}).upscale || 4, top = labelStrip(), lin = set.lin[S.idx], lim = 5 * set.sigmaLin[S.idx], nx = set.nx, ny = set.ny;
+  const RING8 = [[5, 0], [-5, 0], [0, 5], [0, -5], [4, 4], [-4, 4], [4, -4], [-4, -4]];
+  const seen = (x, y) => {          // a peak at the star's place that stands above its own surroundings (not just a bright star's glow)
+    const i = Math.round((x - up / 2) / up), j = Math.round((y - top - up / 2) / up);
+    if (i < 6 || j < 6 || i >= nx - 6 || j >= ny - 6) return false;
+    let mx = -Infinity;
+    for (let b = j - 1; b <= j + 1; b++) for (let a = i - 1; a <= i + 1; a++) if (lin[b * nx + a] > mx) mx = lin[b * nx + a];
+    const around = RING8.map(([a, b]) => lin[(j + b) * nx + i + a]).sort((p, q) => p - q);
+    return mx - (around[3] + around[4]) / 2 >= lim;
+  };
+  let s = "", n = 0;
+  for (const [x, y, g] of pts) {                                           // brightest first; only what is on screen
+    const X = S.tx + x * S.k, Y = S.ty + y * S.k;
+    if (X < -10 || Y < -10 || X > Sw + 10 || Y > Sh + 10 || g > 19 || !seen(x, y)) continue;
+    s += `<circle class="fz-star" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(2)}" fill="none" stroke="#9fb4d8" stroke-opacity=".6" stroke-width="${1 * u}"/>`;
+    if (++n >= 40) break;
+  }
+  if (n) legend.push(`<span><i class="lg fz-star"></i>${esc(L("fz.lg.stars", "catalogue stars (Gaia)"))}</span>`);
   return s;
 }
 function drawOverlay() {
@@ -375,8 +586,13 @@ function drawOverlay() {
     ((S.meta.measured || {}).positions || []).map((p) => p.png_xy_measured).filter(Boolean),
     { tx: S.tx, ty: S.ty, k: S.k, Sw: $("stage").clientWidth, Sh: $("stage").clientHeight }) : [];
   S.nbBoxes = nbItems.map((it) => it.box);
-  if (!hide && $("arrowOn").checked && !S.noArrow) s += motionSvg(u, legend);   // S.noArrow: bins_bar.js, an answer that is too uncertain
+  ticksDrawn = false;
+  const lgStars = [], lgMotion = [];
+  if (S.view === "diff" && fvOn() && S.satMark && S.satMark.html) s += S.satMark.html;   // Difference tab: the saturated core is not data
+  if (!hide && $("mark").checked) s += starSvg(u, lgStars);                   // faint rings on the catalogue stars, under everything else
+  if (!hide && $("arrowOn").checked && !S.noArrow) s += motionSvg(u, lgMotion);   // S.noArrow: bins_bar.js, an answer that is too uncertain
   if (!hide && $("mark").checked) s += ringSvg(u, legend);
+  legend.push(...lgMotion, ...lgStars);
   if (nbItems.length) s += neighbourSvg(nbItems, u, legend);
   s += arrowLabel; arrowLabel = "";
   if (S.game && S.game.click) {
@@ -385,9 +601,11 @@ function drawOverlay() {
     s += `<path d="${d}" stroke="#05070d" stroke-width="${6 * u}"/><path d="${d}" stroke="${c}" stroke-width="${3 * u}"/>`;
   }
   ov.innerHTML = s;
-  const lg = $("hudLegend");
-  lg.innerHTML = legend.join("");
+  const lg = $("hudLegend"), html = legend.join("");
+  if (lg.innerHTML !== html) lg.innerHTML = html;
   lg.hidden = !legend.length;
+  const lg2 = $("fzLegend");            // the same legend under the picture: narrow screens show this one (css/fz_stage.css)
+  if (lg2) { if (lg2.innerHTML !== html) lg2.innerHTML = html; lg2.hidden = !legend.length; }
 }
 
 // --- frames, modes, seasons ------------------------------------------------------------------
@@ -396,6 +614,175 @@ function roleOf(i) {
   const p = pairIdx();
   return !p ? "" : i === p[0] ? "before" : i === p[1] ? "after" : "";
 }
+// --- the picture itself: the processed frames on the canvas (js/fz_view.js), the caption as real text ---------------
+const fvKey = () => `${S.base}|${S.bi}|${S.bin ? S.bin.frames.map((f) => f.file + ":" + (f.n_images || 0)).join(",") : ""}`;
+const fvOn = () => !!(S.fv && S.fv.ready && S.fv.key === fvKey());
+const swipeX = () => Math.max(0, Math.min(1, (($("stage").clientWidth * +$("swipe").value / 100 - S.tx) / (S.k || 1)) / pngSize()[0]));
+/** What the canvas shows for the view tab and the mode on screen. */
+function viewSpec() {
+  const pr = pairIdx() || [S.sel[0], S.sel[S.sel.length - 1]], two = pr[0] !== pr[1];
+  if (S.view === "tcol" && two) return { kind: "tcol", a: pr[0], b: pr[1] };
+  if (S.view === "diff" && two) return { kind: "diff", a: pr[0], b: pr[1] };
+  if (S.view === "deep") return { kind: "deep", idx: S.bin.frames.map((_, i) => i) };
+  if (S.view === "film" && S.mode === "swipe" && two) return { kind: "swipe", a: pr[0], b: pr[1], x: swipeX() };
+  if (S.view === "film" && S.mode === "trail") return { kind: "trail", idx: S.sel.slice() };
+  return { kind: "frame", i: S.idx };
+}
+let holdT = 0;
+function paintStage() {
+  const fv = S.fv;
+  if (!fv || !S.bin) return;
+  let on = false;
+  if (fvOn()) on = fv.paint(viewSpec());
+  else if (fv.ready && performance.now() < (S.fvHold || 0)) {
+    // another wavelength is being prepared: the last picture stays for a moment (no flash of the unprocessed frame)
+    clearTimeout(holdT); holdT = setTimeout(paintStage, Math.max(30, S.fvHold - performance.now() + 10));
+    return;
+  } else fv.hide();
+  const film = S.view === "film";
+  $("frameB").hidden = on || !(film && S.mode === "swipe");
+  $("trail").hidden = on || !(film && S.mode === "trail");
+  $("stage").classList.toggle("fz-on", on);
+}
+/** The target's place in every visit (measured, else the catalogue's), in cells of the frames' grid: a faint target
+ *  sets the brightness scale of the picture (js/fz_frames.js prepare; display only). */
+function targetCells(up, strip) {
+  const eps = (S.meta.epochs || []).length ? S.meta.epochs : S.bin.frames.map((f) => f.epoch);
+  return eps.map((ep) => { const m = measuredPos(ep); return (m && m.png_xy_measured) || markerXY(ep); })
+    .filter((p) => p && ok(p[0]) && ok(p[1])).map(([x, y]) => [x / up - 0.5, (y - strip) / up - 0.5]);
+}
+/** Frames of the bin on screen into the canvas view (decode, sky match, alignment: js/fz_frames.js). */
+function loadFrames() {
+  if (!S.fv || !S.bin) return;
+  const g = S.meta.grid || {}, key = fvKey(), bin = S.bin, up = g.upscale || 4, strip = labelStrip(), c = centreXY();
+  if (S.fv.key === key && S.fv.ready) { paintStage(); return; }
+  S.fvHold = performance.now() + 450;
+  S.fv.load({ key, urls: bin.frames.map((f) => S.base + f.file), up, strip, stretch: bin.stretch || null,
+    cellArcsec: g.pixel_arcsec || null, centre: [c[0] / up, (c[1] - strip) / up], targets: targetCells(up, strip) }).then(() => {
+    if (S.bin !== bin || fvKey() !== key) return;
+    if (!viewOk(S.view)) S.view = "film";
+    viewUi(); paintStage(); caption(); zoomUi(); drawOverlay();
+  });
+}
+const viewOk = (v) => v === "film" || (FV.VIEWS.includes(v) && fvOn() && S.bin.frames.length > 1 && (v === "deep" || S.sel.length > 1));
+/** "24–30 Apr 2026", "29 Aug – 1 Oct 2025": the days the exposures of a visit were taken. */
+function dateRange(d0, d1) {
+  const a = Date.parse(String(d0 || "").slice(0, 10) + "T00:00:00Z"), b = Date.parse(String(d1 || "").slice(0, 10) + "T00:00:00Z");
+  if (!Number.isFinite(a)) return "";
+  const f = (v, o) => new Intl.DateTimeFormat(lang() === "tr" ? "tr-TR" : "en-GB", { timeZone: "UTC", ...o }).format(v);
+  const dmy = { day: "numeric", month: "short", year: "numeric" };
+  if (!Number.isFinite(b) || b === a) return f(a, dmy);
+  const A = new Date(a), B = new Date(b);
+  if (A.getUTCFullYear() !== B.getUTCFullYear()) return `${f(a, dmy)} – ${f(b, dmy)}`;
+  if (A.getUTCMonth() !== B.getUTCMonth()) return `${f(a, { day: "numeric", month: "short" })} – ${f(b, dmy)}`;
+  return `${A.getUTCDate()}–${f(b, dmy)}`;
+}
+const expTxt = (n) => (+n === 1 ? L("fz.cap.exp1", "1 exposure") : L("fz.cap.expN", "{n} exposures", { n: n ?? "?" }));
+/** The verdict strip's own headline (js/verdict_strip.js), repeated on the picture when nothing moved or the answer
+ *  is not sure: the picture must not be left with an empty ring and no word. */
+function statusLine() {
+  const H = document.documentElement.classList, kind = H.contains("vd-k-none") ? "none" : H.contains("vd-k-unsure") ? "unsure" : "";
+  const tEl = kind && $("vdStrip") && !$("vdStrip").hidden ? $("vdStrip").querySelector(".vd-t") : null;
+  if (!tEl) return "";
+  const txt = [...tEl.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").trim();
+  return txt ? `<span class="st ${kind}">${esc(txt)}</span>` : "";
+}
+/** Caption on the picture: which visit, when, wavelength and detector, how many exposures over which days. */
+function caption() {
+  const hd = $("hudDate");
+  if (!hd || !S.bin) return;
+  const f = S.bin.frames[S.idx], fs = selFrames(), pr = pairIdx() || [S.sel[0], S.sel[S.sel.length - 1]];
+  const A = S.bin.frames[pr[0]], B = S.bin.frames[pr[1]], n = (S.meta.epochs || []).length || S.bin.frames.length;
+  const um = loc(S.bin.wavelength_um.toFixed(1)) + " µm", det = (fr) => ((fr.detectors || []).length ? " · " + L("fz.cap.det", "detector {d}", { d: fr.detectors.join("+") }) : "");
+  const sw = (c) => `<i class="fz-dot" style="background:${c}"></i>`;
+  let spec = viewSpec();
+  if (!fvOn() && /^(tcol|diff|deep)$/.test(spec.kind)) spec = { kind: "frame" };   // those need the processed frames: until then the plain frame is on screen
+  let c1, c2, c3, col = "#4a5368";
+  if (spec.kind === "tcol") {
+    c1 = esc(L("fz.tab.tcol", "Time as colour"));
+    c2 = `${sw(FV.TIME_FIRST)}${esc(season(A.epoch))} &nbsp; ${sw(FV.TIME_LAST)}${esc(season(B.epoch))}`;
+    c3 = esc(um);
+  } else if (spec.kind === "diff") {
+    c1 = esc(L("fz.tab.diff", "Difference"));
+    c2 = esc(L("fz.cap.minus", "{b} minus {a}", { a: season(A.epoch), b: season(B.epoch) }));
+    c3 = esc(um);
+  } else if (spec.kind === "deep") {
+    const all = S.bin.frames, tot = all.reduce((a, x) => a + (x.n_images || 0), 0);
+    c1 = esc(L("fz.cap.deep", "All {n} visits added", { n: all.length }));
+    c2 = esc(um + det(f));
+    c3 = esc(expTxt(tot) + " · " + season(all[0].epoch) + " – " + season(all[all.length - 1].epoch));
+  } else if (spec.kind === "swipe") {
+    c1 = `<span style="color:${visitCol(A.epoch)}">${esc(season(A.epoch))}</span> | <span style="color:${visitCol(B.epoch)}">${esc(season(B.epoch))}</span>`;
+    c2 = esc(um + det(A)); c3 = "";
+  } else if (spec.kind === "trail") {
+    c1 = esc(L("vw.trail", "Trail")) + " · " + fs.map((x) => `<span style="color:${visitCol(x.epoch)}">${esc(season(x.epoch))}</span>`).join(" + ");
+    c2 = esc(um + det(f)); c3 = "";
+  } else {
+    col = visitCol(f.epoch);
+    c1 = `<b>${esc(L("fz.cap.visit", "Visit {i} of {n}", { i: visitIdx(f.epoch) + 1, n }))}</b> · ${esc(season(f.epoch))}`;
+    c2 = esc(um + det(f));
+    c3 = esc(expTxt(f.n_images) + (f.date_first || f.date ? " · " + dateRange(f.date_first || f.date, f.date_last || f.date) : ""));
+  }
+  hd.className = "hud-date fz-cap";
+  hd.style.borderLeftColor = col;
+  const html = `<span class="c1">${c1}</span><span class="c2">${c2}</span>${c3 ? `<span class="c3">${c3}</span>` : ""}${statusLine()}`;
+  if (hd.innerHTML !== html) hd.innerHTML = html;
+}
+/** One sentence under the picture for the view on screen, and one small line that says what was done to the picture. */
+function viewSay() {
+  const el = $("fzViewSay");
+  if (!el || !S.bin) return;
+  const pr = pairIdx() || [S.sel[0], S.sel[S.sel.length - 1]], A = S.bin.frames[pr[0]], B = S.bin.frames[pr[1]];
+  const sw = (c) => `<i class="sw" style="background:${c}"></i>`;
+  let say = "";
+  if (S.view === "tcol") say = L("fz.say.tcol", "{sa}{a} is drawn in blue, {sb}{b} in orange. What stayed the same comes out white or grey. Something that moved shows twice: a blue spot where it was, an orange spot where it went.",
+    { sa: sw(FV.TIME_FIRST), sb: sw(FV.TIME_LAST), a: esc(season(A.epoch, true)), b: esc(season(B.epoch, true)) });
+  else if (S.view === "diff") say = L("fz.say.diff", "{b} minus {a}. {s1}brighter before · {s2}no change · {s3}brighter after. Stars that stay the same cancel out; a mover leaves blue where it was and red where it went.",
+    { a: esc(season(A.epoch, true)), b: esc(season(B.epoch, true)), s1: sw("#2166ac"), s2: sw("#f7f7f7"), s3: sw("#b2182b") }) +
+    (S.satMark && S.satMark.text ? " " + esc(S.satMark.text) : "");
+  else if (S.view === "deep") say = L("fz.say.deep", "All {n} visits added together: fainter stars appear. Something that moved is smeared or shows more than once here; use Film to see it jump.", { n: S.bin.frames.length });
+  let note = "";
+  const set = fvOn() ? S.fv.set : null, cell = (S.meta.grid || {}).pixel_arcsec || 3;
+  if (set && S.fv.raw) note = L("fz.note.raw", "Raw pixels: the stacked frame as it is, on its {c}″ grid, no smoothing. One SPHEREx detector pixel is 6.15″.", { c: loc(String(cell)) });
+  else if (set) {
+    const mx = Math.max(0, ...set.shift.map((s) => Math.hypot(s[0], s[1]))) * cell, nst = Math.max(0, ...set.reg.slice(1).map((r) => r.n || 0));
+    note = L("fz.note.smooth", "Picture: one brightness scale for every visit, sky level matched, drawn smooth") +
+      (set.aligned ? L("fz.note.aligned", ", visits lined up on {n} field stars (moved by up to {s}″)", { n: nst, s: loc(mx.toFixed(2)) }) : "") +
+      (set.disp && set.disp.targetPeak != null ? L("fz.note.target", ", brightness set by the faint target so that it shows") : "") +
+      (set.disp && (set.disp.noisy || []).some(Boolean) ? L("fz.note.noisy", ", the faint speckle of the noisier visit cut a little more") : "") +
+      L("fz.note.tail", ". One SPHEREx pixel is 6.15″. The measured numbers are not changed by this.");
+  }
+  const html = (say ? `<span>${say}</span>` : "") + (note ? `<small class="fz-note">${esc(note)}</small>` : "");
+  if (el.innerHTML !== html) el.innerHTML = html;
+  el.hidden = !html;
+}
+/** Tabs, and which controls belong to the view on screen. */
+function viewUi() {
+  const film = S.view === "film";
+  if (S.tabs) {
+    S.tabs.set(S.view);
+    S.tabs.el.querySelectorAll("button").forEach((b) => { b.disabled = !viewOk(b.dataset.view); });
+  }
+  const md = $("modes"); if (md) md.hidden = !film;
+  const mh = $("modeHint"); if (mh) mh.hidden = !film;
+  $("swipeUi").hidden = !(film && S.mode === "swipe");
+  $("stage").dataset.view = S.view;
+  // the processed difference is a tab on the picture: the old block below is shown only while that is not available
+  const on = fvOn(), old = $("tsDiff") || document.querySelector(".card.diff");
+  if (old) old.hidden = on;
+  const pb = $("fzPlay"); if (pb) pb.hidden = !(S.poster && !film);
+  viewSay();
+}
+function setView(v, quiet) {
+  if (!viewOk(v)) v = "film";
+  if (S.game && v !== "film") endGame();
+  const was = S.view;
+  S.view = v;
+  if (v === "film" && S.poster) { S.poster = false; }
+  viewUi(); show(); restart(); layout();
+  if (!quiet) writeUrl();
+  if (was !== v) { try { document.dispatchEvent(new CustomEvent("fazari:view", { detail: { view: v, raw: !!(S.fv && S.fv.raw) } })); } catch (_) {} }
+}
 function show() {
   if (!S.bin) return;
   const f = S.bin.frames[S.idx];
@@ -403,18 +790,8 @@ function show() {
   const fs = selFrames(), pr = pairIdx() || [S.sel[0], S.sel[S.sel.length - 1]];
   const A = S.bin.frames[pr[0]], B = S.bin.frames[pr[1]];
   if (S.mode === "swipe") setSrc($("frameB"), S.base + B.file);
-  const hd = $("hudDate");
-  if (S.mode === "swipe") {
-    hd.className = "hud-date";
-    hd.innerHTML = `<span class="before">${esc(season(A.epoch))}</span> | <span class="after">${esc(season(B.epoch))}</span>`;
-  } else if (S.mode === "trail") {
-    hd.className = "hud-date";
-    hd.innerHTML = `${esc(L("vw.trail", "Trail"))} · ${fs.map((x) => esc(season(x.epoch))).join(" + ")}`;
-  } else {
-    const r = roleOf(S.idx);
-    hd.className = "hud-date " + r;
-    hd.innerHTML = (r ? `<b>${r === "before" ? esc(L("vw.before", "Before")) : esc(L("vw.after", "After"))}</b> ` : "") + esc(season(f.epoch, true));
-  }
+  paintStage();
+  caption();
   $("date").textContent = S.mode === "trail" ? L("vw.dateTrail", "Trail of {n} seasons (brightest value of each pixel)", { n: fs.length })
     : L("vw.dateSeason", "Season {ep} · mean date {date}", { ep: f.epoch, date: f.date });
   $("detail").textContent = L("vw.detail", "SPHEREx {det} · {um} µm · {n} images stacked", { det: (f.detectors || []).join("+"), um: fx(f.wavelength_um), n: f.n_images });
@@ -433,11 +810,13 @@ function tick() {
 function restart() {
   clearInterval(S.timer);
   S.timer = 0;
-  if (S.mode === "blink" && S.playing && S.sel.length > 1) S.timer = setInterval(tick, +$("speed").value);
-  $("play").textContent = S.playing ? L("vw.pause", "Pause") : L("vw.play", "Play");
-  $("play").setAttribute("aria-pressed", String(!S.playing));
+  const run = S.view === "film" && S.mode === "blink" && S.playing && S.sel.length > 1;
+  if (run) S.timer = setInterval(tick, +$("speed").value);
+  $("play").textContent = run ? L("vw.pause", "Pause") : L("vw.play", "Play");
+  $("play").setAttribute("aria-pressed", String(!run));
 }
 function step(d) {
+  if (S.view !== "film") setView("film", true);
   if (S.mode === "swipe" || S.mode === "trail") setMode("step");
   if (S.mode === "blink") S.playing = false;
   const k = S.sel.indexOf(S.idx);
@@ -450,13 +829,11 @@ function setMode(md, quiet) {
   S.mode = md;
   document.querySelectorAll("#modes button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === md)));
   $("stage").dataset.mode = md;
-  $("frameB").hidden = md !== "swipe";
-  $("trail").hidden = md !== "trail";
-  $("swipeUi").hidden = md !== "swipe";
-  $("play").disabled = md !== "blink";
+  $("swipeUi").hidden = md !== "swipe" || S.view !== "film";
+  $("play").disabled = false;
   if (md === "swipe") S.idx = (pairIdx() || S.sel)[0];
-  if (md === "trail") { S.idx = S.sel[S.sel.length - 1]; buildTrail(); }
-  if (md === "blink") S.playing = true;
+  if (md === "trail") { S.idx = S.sel[S.sel.length - 1]; if (!fvOn()) buildTrail(); }
+  if (md === "blink" && !quiet) S.playing = true;
   if (md === "swipe") applySwipe();
   $("modeHint").textContent = L("vw.hint." + md, {
     blink: "Blink: the compared seasons, one after the other.",
@@ -464,7 +841,7 @@ function setMode(md, quiet) {
     swipe: "Swipe: drag the slider to compare the two seasons of the pair.",
     trail: "Trail: the brightest value of each pixel over the seasons; a mover leaves a streak.",
   }[md]);
-  show(); restart();
+  show(); restart(); zoomUi();
   if (!quiet) writeUrl();
 }
 function applySwipe() {
@@ -472,6 +849,7 @@ function applySwipe() {
   const xs = Sw * v, xp = (xs - S.tx) / (S.k || 1);
   $("frameB").style.clipPath = `inset(0 0 0 ${Math.max(0, Math.min(W, xp)).toFixed(1)}px)`;
   $("swipeLine").style.left = xs.toFixed(1) + "px";
+  if (fvOn() && S.view === "film" && S.mode === "swipe") paintStage();
 }
 function loadImg(url) {
   return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error("load " + url)); im.src = url; });
@@ -504,10 +882,10 @@ function renderSeasons() {
   fr.forEach((f, i) => {
     if (i) h += `<span class="gap" aria-hidden="true">${esc(L("vw.days", "{n} days", { n: daysApart(fr[i - 1], f) }))}</span>`;
     const on = S.sel.includes(i), r = roleOf(i);
-    h += `<button type="button" class="chip${on ? " on" : ""}${r ? " " + r : ""}" data-i="${i}" aria-pressed="${on}" ` +
+    h += `<button type="button" class="chip${on ? " on" : ""}${r ? " " + r : ""}" data-i="${i}" data-ep="${esc(f.epoch)}" aria-pressed="${on}" style="--fz-c:${visitCol(f.epoch)}" ` +
       `title="${esc(on ? L("vw.chip.remove", "Remove from the comparison ({n} images, mean date {date})", { n: f.n_images, date: f.date })
         : L("vw.chip.add", "Add to the comparison ({n} images, mean date {date})", { n: f.n_images, date: f.date }))}">` +
-      `<b>${esc(season(f.epoch))}</b><small>${esc(L("vw.chip.img", "{n} img", { n: f.n_images }))}</small></button>`;
+      `<b><i class="fz-dot" style="background:${visitCol(f.epoch)}"></i>${esc(season(f.epoch))}</b><small>${esc(L("vw.chip.img", "{n} img", { n: f.n_images }))}</small></button>`;
   });
   $("seasons").innerHTML = h;
   $("seasons").querySelectorAll(".chip").forEach((c) => { c.onclick = () => toggleSeason(+c.dataset.i); });
@@ -526,7 +904,7 @@ function renderSeasons() {
         : v && v.same ? L("vw.cmp.sameOrient", "same spacecraft orientation") : "";
     } else if (ms.photometry && isHead) what = L("vw.cmp.strongest", "strongest brightness change");
     else if (pr[0] === 0 && pr[1] === fr.length - 1 && fr.length > 2) what = L("vw.cmp.distant", "most distant seasons");
-    line = `<b class="before">${esc(season(A.epoch))}</b> ↔ <b class="after">${esc(season(B.epoch))}</b>: ` +
+    line = `<b class="before" style="color:${visitCol(A.epoch)}">${esc(season(A.epoch))}</b> ↔ <b class="after" style="color:${visitCol(B.epoch)}">${esc(season(B.epoch))}</b>: ` +
       `<b>${esc(L("vw.cmp.apart", "{n} days apart", { n: daysApart(A, B) }))}</b>${what ? ` (${what})` : ""}`;
     if (S.sel.length > 2) line = esc(L("vw.cmp.many", "{n} seasons in the blink; {what}: ", { n: S.sel.length, what: ok(ms.shift_arcsec) ? L("vw.cmp.arrowResult", "arrow and result") : L("vw.cmp.result", "result") })) + line;
   }
@@ -542,9 +920,11 @@ function toggleSeason(i) {
 }
 function afterSelection() {
   renderSeasons();
-  if (S.mode === "trail") { buildTrail(); S.idx = S.sel[S.sel.length - 1]; }
+  if (S.mode === "trail") { if (!fvOn()) buildTrail(); S.idx = S.sel[S.sel.length - 1]; }
   if (S.mode === "swipe") S.idx = (pairIdx() || S.sel)[0];
   renderResult(); pairDiff(); watchHint();
+  if (!viewOk(S.view)) S.view = "film";
+  viewUi();
   show(); restart(); writeUrl();
 }
 function fairBadge() {
@@ -571,14 +951,16 @@ async function gifUrl(bin) {
   if (!S.gif.has(url)) S.gif.set(url, fetch(url, { method: "HEAD" }).then((r) => r.ok).catch(() => false));
   return (await S.gif.get(url)) ? url : null;
 }
-function selectBin(i, sel) {
+function selectBin(i, sel, ep) {
   S.bi = i; S.bin = S.bins[i];
   const n = S.bin.frames.length;
   S.sel = sel && sel.length ? sel : defaultSel();
-  S.idx = S.sel[0];
+  const keepIdx = ep ? S.bin.frames.findIndex((f) => f.epoch === ep) : -1;     // swapData: the visit on screen stays
+  S.idx = keepIdx >= 0 && S.sel.includes(keepIdx) ? keepIdx : S.sel[0];
   S.trailKey = null;
   S.bin.frames.forEach((f) => { const im = new Image(); im.src = S.base + f.file; });   // smooth blinking
-  setSrc($("diff"), S.base + S.bin.diff);
+  loadFrames(); loadStars();
+  if (S.bin.diff) setSrc($("diff"), S.base + S.bin.diff);
   const g = $("saveGif");
   g.hidden = true;
   gifUrl(S.bin).then((u) => {
@@ -591,6 +973,8 @@ function selectBin(i, sel) {
   renderResult();
   pairDiff();
   watchHint();
+  if (!viewOk(S.view) && !(S.fv && !S.fv.failed && S.view !== "film" && S.bin.frames.length > 1)) S.view = "film";   // a tab stays while its frames are prepared
+  viewUi();
   setMode(S.mode, true);
   layout();
   writeUrl();
@@ -715,7 +1099,9 @@ async function diffSaturation(sat, A, B, ms) {
     note = $("diffSat");
   }
   ov.innerHTML = ""; note.hidden = true;
-  if (!sat) return;
+  const onTab = () => { if (S.view === "diff") { drawOverlay(); viewSay(); } };       // the same marking on the Difference tab
+  S.satMark = null;
+  if (!sat) { onTab(); return; }
   const xy = (measuredPos(B.epoch) || measuredPos(A.epoch) || {}).png_xy_measured || markerXY(B.epoch) || markerXY(A.epoch) || centreXY();
   const fr = S.bin.frames, own = A === fr[0] && B === fr[fr.length - 1];
   const rr = await satRadius(A, B, xy, own && S.bin.diff ? S.base + S.bin.diff : null);
@@ -728,13 +1114,17 @@ async function diffSaturation(sat, A, B, ms) {
     ? (moved ? L("u3.diff.satMove", "The star in the middle is saturated here: its core (grey) is not measured. The red and blue pair around it is its motion, measured from the wings.")
       : L("u3.diff.satVar", "The star in the middle is saturated here: its core (grey) is not measured. The colour around it is its brightness change, measured in a ring around the core."))
     : L("u3.diff.satRing", "The star in the middle is saturated here: its core is not measured, and the ring around it is only its outer glow differing between the seasons, not a real change. Both are greyed.");
-  if (!rr) return;
+  S.satMark = { text: note.textContent, html: "" };
+  if (!rr) { onTab(); return; }
   const [W, H] = pngSize(), [x, y] = xy, { r0, r1 } = rr;
   ov.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  ov.innerHTML = `<defs><pattern id="satHatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">` +
+  const mark = (id) => `<defs><pattern id="${id}" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">` +
     `<rect width="7" height="7" fill="#4a5163"/><path d="M0 0V7" stroke="#7d8698" stroke-width="2.6"/></pattern></defs>` +
     (real ? "" : `<circle cx="${x}" cy="${y}" r="${r1}" fill="#5f6678" fill-opacity=".96" stroke="#05070d" stroke-opacity=".5" stroke-width="1"/>`) +
-    `<circle cx="${x}" cy="${y}" r="${r0 + 1}" fill="url(#satHatch)" stroke="#dfe5f2" stroke-width="1.6" stroke-dasharray="5 4"/>`;
+    `<circle cx="${x}" cy="${y}" r="${r0 + 1}" fill="url(#${id})" stroke="#dfe5f2" stroke-width="1.6" stroke-dasharray="5 4"/>`;
+  ov.innerHTML = mark("satHatch");
+  S.satMark.html = mark("satHatchTab");
+  onTab();
 }
 
 // --- URL -----------------------------------------------------------------------------------------
@@ -748,7 +1138,11 @@ function writeUrl() {
   const n = S.bin.frames.length, ds = defaultSel();
   const dflt = n > 1 ? S.sel.length === ds.length && S.sel.every((v, k) => v === ds[k]) : true;
   if (dflt) p.delete("s"); else p.set("s", selFrames().map((f) => f.epoch).join(","));
-  if (S.zoom !== S.defaultZoom) p.set("z", String(S.zoom)); else p.delete("z");
+  // the visitor's own zoom and picture point (the default close-up needs neither), the view tab, raw pixels
+  if (S.user && S.zoom > 0) p.set("z", String(+S.zoom.toFixed(2))); else p.delete("z");
+  if (S.user && S.cx != null) p.set("c", `${Math.round(S.cx)},${Math.round(S.cy)}`); else p.delete("c");
+  if (S.view !== "film" && !S.poster) p.set("view", S.view); else p.delete("view");
+  if (S.fv && S.fv.raw) p.set("raw", "1"); else p.delete("raw");
   const q = p.toString().replace(/%2F/gi, "/").replace(/%2C/gi, ",");
   try { history.replaceState(null, "", location.pathname + "?" + q + location.hash); } catch (_) {}
 }
@@ -1303,13 +1697,20 @@ export async function startViewer() {
   });
   paintFixed();
 
-  // zoom: ?z=, else 4x around the target (a preview's smaller region: 3x shows about the same sky)
-  const pv = m.preview;
-  S.defaultZoom = (m.measured || {}).photometry ? 2 : pv && pv.fov_deg && pv.fov_deg < 0.15 ? 3 : 4;   // brightness: show the comparison stars
-  const zq = +Q.get("z");
-  S.zoom = [1, 2, 3, 4, 6].includes(zq) ? zq : S.defaultZoom;
-  $("zoom").value = String(S.zoom);
+  // zoom: the default is a close-up around the target (closeUpZoom). ?z= (a shared link; the old 1..6 links too) and
+  // ?c=x,y (the picture point in the middle) bring back a view the visitor chose
+  const zq = parseFloat(Q.get("z"));
+  if (Number.isFinite(zq) && zq >= 1) {
+    S.user = true; S.zoom = Math.min(zq, 400);
+    const cq = (Q.get("c") || "").split(",").map(Number);
+    if (cq.length === 2 && cq.every(Number.isFinite)) { S.cx = cq[0]; S.cy = cq[1]; }
+  }
   S.mode = ["blink", "step", "swipe", "trail"].includes(Q.get("mode")) ? Q.get("mode") : "blink";
+  S.view = FV.VIEWS.includes(Q.get("view")) ? Q.get("view") : "film";
+  // reduced motion: the film does not start by itself; the still "time as colour" picture is the poster, with a Play button
+  let calm = false;
+  try { calm = matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (_) {}
+  if (calm) { S.playing = false; if (!Q.get("view") && !Q.get("mode")) { S.poster = true; S.view = "tcol"; } }
 
   // start bin: ?um= (a shared link) wins; then a detected bin for faint targets (WISE 0855: 4.6 µm);
   // then ?bin= (the explorer's preview wavelength); then, for brightness targets, the bin of the
@@ -1347,13 +1748,16 @@ export async function startViewer() {
 
   // controls
   $("wl").onchange = (e) => { selectBin(+e.target.value); watchHint(); };
-  $("play").onclick = () => { if (S.mode !== "blink") setMode("blink"); else { S.playing = !S.playing; restart(); } };
+  $("play").onclick = () => {
+    if (S.view !== "film") { S.playing = true; setView("film"); if (S.mode !== "blink") setMode("blink"); }
+    else if (S.mode !== "blink") setMode("blink"); else { S.playing = !S.playing; restart(); }
+  };
   $("prev").onclick = () => step(-1);
   $("next").onclick = () => step(1);
   $("speed").oninput = (e) => { $("speedv").textContent = e.target.value + " ms"; restart(); };
   $("mark").onchange = () => drawOverlay();
   $("arrowOn").onchange = () => drawOverlay();
-  $("zoom").onchange = (e) => { S.zoom = +e.target.value; layout(); writeUrl(); };
+  $("zoom").onchange = (e) => { S.user = true; S.zoom = +e.target.value; layout(); writeUrl(); };   // the hidden control (explore/candidates.js steps it)
   document.querySelectorAll("#modes button").forEach((b) => { b.onclick = () => setMode(b.dataset.mode); });
   $("allSeasons").onclick = () => {
     const n = S.bin.frames.length;
@@ -1366,6 +1770,46 @@ export async function startViewer() {
   $("gameBtn").hidden = !canPlay();
   $("gameBtn").onclick = () => { if (S.game && !S.game.revealed) reveal(false); else { endGame(); startGame(); } };
   const st = $("stage");
+  // picture area (goruntu_tur): processed frames on a canvas over the frame image, view tabs above the picture, one
+  // sentence below it, zoom buttons / wheel / pinch / drag on the picture, one quiet progress line at its bottom edge
+  FV.ensureCss();
+  const zl = $("zoom").closest("label");
+  if (zl) zl.hidden = true;                                     // one zoom mechanism: on the picture
+  S.fv = FV.createView({ zoomer: $("zoomer"), frame: $("frame") });
+  S.fv.raw = Q.get("raw") === "1";
+  S.tabs = FV.buildTabs(st, (v) => setView(v));                // under the picture: legend (phones), tabs, one sentence
+  st.insertAdjacentHTML("afterend", `<div id="fzLegend" class="fz-legend" hidden></div>`);
+  S.tabs.el.insertAdjacentHTML("afterend", `<p id="fzViewSay" class="fz-say" hidden></p>`);
+  const setRaw = (on) => {
+    S.fv.raw = !!on; zoomUi(); viewSay(); writeUrl();
+    try { document.dispatchEvent(new CustomEvent("fazari:view", { detail: { view: S.view, raw: S.fv.raw } })); } catch (_) {}
+  };
+  const mid = () => [st.clientWidth / 2, st.clientHeight / 2];
+  S.ui = FV.buildZoomUi(st, { zoom: (f) => zoomAt(f, ...mid(), true), closeUp, whole: wholeField, raw: setRaw });
+  const hint = FV.hintLine(st);
+  FV.attachGestures(st, {
+    zoomAt: (f, x, y) => zoomAt(f, x, y),
+    panBy,
+    canZoom: (f) => (f > 1 ? S.zoom < zoomMax() * 0.999 : S.zoom > 1.001),
+    // dragging moves the picture when it is zoomed in (a finger: only once the visitor zoomed in, else it scrolls the page)
+    canDrag: (ev) => S.zoom > 1.001 && S.mode !== "swipe" && (ev.pointerType === "mouse" || st.style.touchAction === "none"),
+    settle: () => {},
+    hint: () => hint(L("fz.hint.wheel", "Click the picture, then the wheel zooms")),
+    key: (name) => {
+      const d = 70;
+      if (name === "in") zoomAt(1.5, ...mid(), true);
+      else if (name === "out") zoomAt(1 / 1.5, ...mid(), true);
+      else if (name === "close") closeUp();
+      else panBy(name === "left" ? d : name === "right" ? -d : 0, name === "up" ? d : name === "down" ? -d : 0);
+    },
+  });
+  FV.progressLine(st);
+  st.insertAdjacentHTML("beforeend", `<button type="button" id="fzPlay" class="fz-play" hidden></button>`);
+  $("fzPlay").onclick = () => { S.playing = true; setView("film"); if (S.mode !== "blink") setMode("blink"); };
+  const paintPlay = () => { $("fzPlay").innerHTML = `<span aria-hidden="true">▶</span> ${esc(L("fz.play", "Play the film"))}`; };
+  paintPlay();
+  // the verdict strip (js/verdict_strip.js) marks its kind on <html>: its headline is repeated on the picture
+  try { new MutationObserver(() => caption()).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] }); } catch (_) {}
   st.addEventListener("click", onStageClick);
   // swipe: drag on the image as well as the slider
   let drag = false;
@@ -1395,14 +1839,61 @@ export async function startViewer() {
       renderHeader(); paintTargets(); paintFixed(); renderStagebar(); renderMeasure(); renderResult(); renderSeasons(); pairDiff(); watchHint();
       $("modeHint").textContent = t("vw.hint." + S.mode);
       show(); scaleBar();
-      $("play").textContent = S.playing ? L("vw.pause", "Pause") : L("vw.play", "Play");
+      if (S.tabs) S.tabs.paint();
+      paintPlay(); viewUi(); zoomUi(); restart();
       if (S.game && S.game.revealed) reveal(S.game.hit);
       else if (S.game) { gameMsg(esc((S.meta.measured || {}).photometry ? t("vw.g.askBright") : t("vw.g.askMove")), "ask"); $("gameBtn").textContent = L("vw.g.showMe", "Show me"); }
       else $("gameBtn").textContent = L("vw.g.find", "Find the mover");
     } catch (e) { console.warn("viewer language switch", e); }
   });
-  return {
-    meta: m, base: S.base,
+  const pickBin = (k) => { if (k >= 0 && k !== S.bi) { $("wl").value = k; $("wl").dispatchEvent(new Event("change")); } };
+  const api = {
+    meta: m, base: S.base, stage: st,
+    // --- picture area (goruntu_tur): what the guided tour (js/tour.js) and the charts (js/ts_flow.js) drive ---
+    play() { S.playing = true; if (S.view !== "film") setView("film", true); if (S.mode !== "blink") setMode("blink", true); restart(); },
+    pause() { S.playing = false; restart(); },
+    playing: () => !!S.timer,
+    setView(v) { setView(v); return S.view; },
+    view: () => S.view,
+    ready: () => fvOn(),                                 // the processed frames are on screen (not the fallback image)
+    bins: () => S.bins.map((b) => b.wavelength_um),
+    setBin(um) { pickBin(S.bins.findIndex((b) => Math.abs(b.wavelength_um - um) < 0.05)); return S.bin ? S.bin.wavelength_um : null; },
+    seasons: () => (S.bin ? S.bin.frames.map((f) => f.epoch) : []),
+    /** Show one visit (season "2026-04"; the nearest one this wavelength has) at the wavelength nearest to bin_um; the film pauses, the zoom stays. */
+    goTo({ season: ep, bin_um } = {}) {
+      if (ok(bin_um) && S.bins.length) pickBin(S.bins.map((b, i) => [Math.abs(b.wavelength_um - bin_um), i]).sort((a, b) => a[0] - b[0])[0][1]);
+      if (!S.bin) return null;
+      const mo = (e) => { const x = /^(\d{4})-(\d{2})/.exec(String(e || "")); return x ? +x[1] * 12 + +x[2] : NaN; };
+      let j = ep ? S.bin.frames.findIndex((f) => f.epoch === ep) : S.idx;
+      if (j < 0 && Number.isFinite(mo(ep))) j = S.bin.frames.map((f, i) => [Math.abs(mo(f.epoch) - mo(ep)), i]).sort((a, b) => a[0] - b[0])[0][1];
+      if (!(j >= 0)) return null;
+      if (S.view !== "film") setView("film", true);
+      if (S.mode === "swipe" || S.mode === "trail") setMode("step", true);
+      S.playing = false;
+      if (!S.sel.includes(j)) { S.sel = [...S.sel, j].sort((a, b) => a - b); S.idx = j; afterSelection(); }
+      else { S.idx = j; show(); restart(); }
+      return { season: S.bin.frames[j].epoch, bin_um: S.bin.wavelength_um };
+    },
+    /** fov_arcmin: sky across the smaller side of the picture; or k: screen pixels per picture pixel; x, y: picture pixel in the middle. */
+    zoomTo({ fov_arcmin, k, x, y } = {}) {
+      const k1 = fitScale(st), a = pngArcsec();
+      if (!(k1 > 0)) return null;
+      S.user = true;
+      if (ok(k)) S.zoom = +k / k1; else if (ok(fov_arcmin) && a) S.zoom = Math.min(st.clientWidth, st.clientHeight) * a / (+fov_arcmin * 60) / k1;
+      if (ok(x) && ok(y)) { S.cx = +x; S.cy = +y; }
+      layout(); writeUrl();
+      return api.zoomState();
+    },
+    closeUp, wholeField,
+    zoomState() {
+      const a = pngArcsec(), k1 = fitScale(st);
+      return { k: S.k, zoom: S.zoom, user: S.user, tx: S.tx, ty: S.ty, zoom_min: 1, zoom_max: zoomMax(), zoom_closeup: closeUpZoom(), fit_k: k1,
+        fov_arcmin: a && S.k ? [st.clientWidth * a / S.k / 60, st.clientHeight * a / S.k / 60] : null,
+        fov_arcmin_min: a && k1 ? Math.min(st.clientWidth, st.clientHeight) * a / (k1 * zoomMax()) / 60 : null,
+        fov_arcmin_max: a && k1 ? Math.min(st.clientWidth, st.clientHeight) * a / k1 / 60 : null };
+    },
+    setRaw, raw: () => !!S.fv.raw,
+    frames: () => (fvOn() ? S.fv.set : null),             // the processed frame set (shifts, sky levels: for checks)
     current: () => ({ frame: S.bin && S.bin.frames[S.idx], bin_um: S.bin && S.bin.wavelength_um }),
     setMarking(api) { S.marking = api || null; },
     fallbackSentence() {
@@ -1419,15 +1910,35 @@ export async function startViewer() {
       const nm = meta || await fetch(base + "meta.json", { cache: "no-store" }).then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
       if (!(nm.wavelength_bins || []).length) return null;
       const keep = um ?? (S.bin && S.bin.wavelength_um);
-      m = nm; S.base = base; S.meta = nm; S.bins = nm.wavelength_bins; S.ref = refInfo(nm); this.meta = nm; this.base = base;
+      // what the visitor is looking at stays (goruntu_tur): the sky scale and the point in the middle, the chosen visits,
+      // the visit on screen, playing or paused, the view tab. The stage folders of one run may have different grids.
+      const was = S.bin ? { a: pngArcsec(), k: S.k, size: pngSize(), strip: labelStrip(), cx: S.cx, cy: S.cy, user: S.user, um: S.bin.wavelength_um,
+        sel: selFrames().map((f) => f.epoch), ep: (S.bin.frames[S.idx] || {}).epoch,
+        dflt: (() => { const d = defaultSel(); return d.length === S.sel.length && d.every((v, i) => v === S.sel[i]); })() } : null;
+      m = nm; S.base = base; S.meta = nm; S.bins = nm.wavelength_bins; S.ref = refInfo(nm); api.meta = nm; api.base = base;
       $("wl").replaceChildren(...nm.wavelength_bins.map((b, i) => { const o = document.createElement("option"); o.value = i; return o; }));
       paintFixed(); renderHeader(); renderStagebar(); renderMeasure();
       const k = Math.max(0, S.bins.findIndex((b) => Math.abs(b.wavelength_um - keep) < 0.05));
       $("wl").value = k;
-      selectBin(k);
+      let sel = null;
+      if (was && was.a && was.k) {
+        const a = pngArcsec(), k1 = fitScale(st), [W, H] = pngSize(), strip = labelStrip();
+        if (was.user && a && k1 > 0) {
+          S.zoom = (was.k / was.a) * a / k1;
+          if (was.cx != null) { S.cx = W / 2 + (was.cx - was.size[0] / 2) * was.a / a; S.cy = (H + strip) / 2 + (was.cy - (was.size[1] + was.strip) / 2) * was.a / a; }
+        } else if (!was.user) S.holdScale = was.a / was.k;           // the default close-up keeps its sky scale while the run goes on
+        if (!was.dflt && Math.abs(was.um - S.bins[k].wavelength_um) < 0.05) {
+          sel = S.bins[k].frames.map((f, i) => (was.sel.includes(f.epoch) ? i : -1)).filter((i) => i >= 0);
+          if (sel.length < Math.min(2, S.bins[k].frames.length)) sel = null;
+        }
+      }
+      selectBin(k, sel, was && was.ep);
+      softUpdate();
       $("gameBtn").hidden = !canPlay();
       findNeighbours(base, nm).then((nb) => { if (S.meta === nm) { S.nb = nb; if (nb.length && S.bin) drawOverlay(); } }).catch(() => {});
       return nm;
     },
   };
+  window.__fzViewer = api;        // the result on screen, for the tour and the charts (ornek.html sets the same object)
+  return api;
 }

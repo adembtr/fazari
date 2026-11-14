@@ -63,6 +63,9 @@ const cls = (c) => CLASSES[c && c.class] || CLASSES.candidate;
 // UI text (en.json / tr.json "ex.cz.*"; the English here is the fallback)
 const CZ = (k, p, f) => t("ex.cz." + k, p, f);
 export const clsLabel = (k) => CZ("cls." + k, null, (CLASSES[k] || CLASSES.candidate).label);
+// hover hint on an unconfirmed candidate's label: a mark to check, not a find (" title=…" or "")
+const clsHint = (c) => (c && c.confirmed !== true && (!CLASSES[c.class] || c.class === "candidate" || c.class === "variable")
+  ? ` title="${esc(t("ts.cz.hint", null, "This is not a discovery; it is a mark that needs checking."))}"` : "");
 const kindText = (k) => (k ? CZ("kind." + k, null, KINDS[k] || k) : "");
 const NICE = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
 const MIN_ARROW_PX = 40;
@@ -303,7 +306,7 @@ export async function mountCandidates(v) {
       `${ok(x.need) ? ` (≥ ${esc(num(+x.need))})` : x.need != null && typeof x.need !== "object" ? ` (${esc(x.need)})` : ""}</span>`).join("") +
       (cf.sentence ? `<span>${esc(cf.sentence)}</span>` : "") + `</span>` : "";
     return `<li><button type="button" data-cid="${esc(c.id)}" style="--cz:${k.color}" aria-pressed="false">` +
-      `<span class="cz-l1"><b>${esc(clsLabel(c.class))}</b><span class="cz-id">${esc(c.id)} · ${esc(kindText(c.kind))}</span>` +
+      `<span class="cz-l1"><b${clsHint(c)}>${esc(clsLabel(c.class))}</b><span class="cz-id">${esc(c.id)} · ${esc(kindText(c.kind))}</span>` +
       (mag ? `<span class="cz-mag">${mag}</span>` : "") + `</span>` +
       `<span class="cz-l2">${l2.filter(Boolean).join(" · ")}</span>` +
       (l3.length ? `<span class="cz-l3">${l3.join(" · ")}</span>` : "") + natLine + confLine + chk +
@@ -558,7 +561,7 @@ export async function mountCandidates(v) {
     mini.style.setProperty("--cz", k.color);
     mini.setAttribute("aria-label", CZ("mini.aria", { x: MINI_X, id: c.id }, "{x}× close-up of {id}"));
     mini.hidden = false;
-    mini.innerHTML = `<div class="cz-mini-h" style="max-width:${css}px"><b>${esc(c.id)}</b><span>${esc(clsLabel(c.class))}` +
+    mini.innerHTML = `<div class="cz-mini-h" style="max-width:${css}px"><b>${esc(c.id)}</b><span${clsHint(c)}>${esc(clsLabel(c.class))}` +
       `${isMover(c) ? " · " + esc(speedText(c.motion)) : changeText(c) ? " · " + esc(changeText(c)) : ""}</span>` +
       `<button type="button" id="czMiniPlay" aria-pressed="false">${esc(CZ("pause", null, "Pause"))}</button><button type="button" id="czMiniClose" aria-label="${esc(CZ("miniClose", null, "Close the close-up"))}">×</button></div>` +
       `<canvas id="czMiniCv" width="${px}" height="${px}" style="width:${css}px; height:${css}px" role="img" ` +

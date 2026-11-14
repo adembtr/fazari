@@ -1,7 +1,7 @@
 // Field-of-view selector on the explorer's place card (#fovSel, #fovEst in explore.html).
 // The choice lives in the address bar (?fov=0.3, so "Copy link" keeps it) and goes with the result:
 // the local engine gets it as cutout_deg (engine.js), the in-browser engine as sky.html?fov= (main.js
-// blinkUrl). No choice = the engine's default (local 0.4°, browser 0.15°). Choices, defaults and the
+// blinkUrl). No choice = the engine's default (local 0.2°, browser 0.15°; js/fov.js FOV_DEFAULT). Choices, defaults and the
 // rough time/size estimate: js/fov.js.
 import { fovFromUrl, fovFor, fillFovSelect, fovEstimateText, fovTimeText, setFovInUrl, FOV_PHONE_MAX } from "../js/fov.js";
 import { t, onLang } from "../js/i18n.js";

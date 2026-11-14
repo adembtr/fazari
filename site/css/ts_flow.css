@@ -1,0 +1,221 @@
+/* Single-column result layout ("tek sütun", site_sade): ornek.html (also the explorer's result panel) and sky.html.
+   Active only with <html class="ts-on"> (set by js/ts_flow.js); ?ui=classic never gets that class.
+   One column, read top to bottom; every section always open: a plain heading and one sentence.
+   Colour carries meaning (as in css/ui_shell.css): amber = measured by us, cyan = the catalogue, green = calm verdict.
+   The image area (#fzStage and everything inside it) is styled by its own module; here only its size. */
+html.ts-on {
+  --ts-line: rgba(160, 180, 230, .16); --ts-fg: #eef1f8; --ts-soft: #c9d2e6; --ts-mut: #a3adc2;
+  --ts-ours: #ffc94d; --ts-cat: #7fd4ff; --ts-ok: #5cf0a0; --ts-card: rgba(255, 255, 255, .035);
+}
+html.ts-on .app, html.ts-on main.ts-app { max-width: 920px; margin: 0 auto; padding: 10px 20px 44px; }
+html.ts-on #tsFlow { display: block; }
+/* sky.html has no global [hidden] rule: the blocks of this layout that have a display of their own still hide */
+html.ts-on :is(.ts-sec, .ts-lim, .ts-facts, .ts-tiles, .ts-kick, .ts-head, .ts-time, .ts-opt)[hidden] { display: none !important; }
+html.ts-on .viewer, html.ts-on .lower, html.ts-on #stagebar, html.ts-on .fi-howto, html.ts-on .fi-howto-row { display: none !important; }
+
+/* ---------- top: brand, the pages of the site, language, guided tour ---------- */
+html.ts-on header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 6px; padding: 0 0 8px; border-bottom: 1px solid var(--ts-line); }
+html.ts-on header.top .tl { flex: none; gap: 4px 8px; }
+html.ts-on header.top .brand { color: var(--ts-fg); font-size: 1rem; }
+html.ts-on header.top .brand::after { display: none; }
+html.ts-on .ts-nav { display: flex; flex: 1 1 auto; min-width: 0; gap: 0 2px; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
+html.ts-on .ts-nav::-webkit-scrollbar { display: none; }
+html.ts-on .ts-nav a { flex: none; color: var(--ts-soft); text-decoration: none; font-size: .9rem; padding: 7px 9px; border-radius: 8px; white-space: nowrap; }
+html.ts-on .ts-nav a:hover { color: #fff; background: rgba(255, 255, 255, .07); }
+html.ts-on .ts-nav a[aria-current="page"] { color: var(--ts-ours); font-weight: 650; }
+html.ts-on .ts-tourbtn { display: inline-flex; align-items: center; min-height: 36px; padding: 5px 13px; border-radius: 999px; font: inherit; font-size: .88rem; font-weight: 650;
+  color: #1a1300; background: var(--ts-ours); border: 0; cursor: pointer; }
+html.ts-on .ts-tourbtn[hidden] { display: none; }
+html.ts-on #targets { margin: 8px 0 4px; }
+html.ts-on.ui-embedded header.top, html.ts-on.ui-embedded #targets, html.ts-on.ui-embedded .skip { display: none !important; }
+html.ts-on.ui-embedded .app, html.ts-on.ui-embedded main.ts-app { padding-top: 2px; }
+
+/* ---------- sections ---------- */
+html.ts-on .ts-sec { margin: 0; padding: 24px 0 8px; border-top: 1px solid var(--ts-line); min-width: 0; }
+html.ts-on #tsFlow > .ts-sec:first-child { border-top: 0; padding-top: 12px; }
+html.ts-on .ts-h { margin: 0 0 4px; font-size: 1.22rem; line-height: 1.25; font-weight: 720; letter-spacing: -.005em; color: #fff; }
+html.ts-on .ts-h3 { margin: 22px 0 4px; font-size: 1.05rem; line-height: 1.3; font-weight: 700; color: #fff; }
+html.ts-on .ts-say { margin: 0 0 12px; font-size: .95rem; line-height: 1.45; color: var(--ts-soft); max-width: 70ch; }
+
+/* A: what is here (first line: section label · kind of result · the small actions; then the name and the facts) */
+html.ts-on .ts-arow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 6px; min-width: 0; }
+html.ts-on #tsA .ts-arow > .ts-h, html.ts-on #tsA > .ts-h { font-size: .76rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 750; color: var(--ts-mut); margin: 0; }
+html.ts-on .ts-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+html.ts-on .ts-kick { flex-basis: 100%; margin: 0; font-size: .8rem; font-weight: 700; color: var(--ts-ours); }
+html.ts-on .ts-arow > .ts-kick { flex-basis: auto; }
+html.ts-on .ts-head #title { font-size: clamp(1.65rem, 4.4vw, 2.4rem); line-height: 1.1; letter-spacing: -.012em; font-weight: 760; color: #fff; overflow-wrap: anywhere; }
+html.ts-on .ts-head .why { flex-basis: 100%; margin: 2px 0 0; font-size: 1rem; line-height: 1.45; color: var(--ts-soft); max-width: 70ch; }
+html.ts-on .ts-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 7px 18px; margin: 14px 0 0; font-size: .95rem; line-height: 1.45; }
+html.ts-on .ts-facts dt { color: var(--ts-mut); }
+html.ts-on .ts-facts dd { margin: 0; color: var(--ts-soft); min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+html.ts-on .ts-facts dd b { color: var(--ts-fg); font-weight: 650; }
+html.ts-on .ts-wait { color: var(--ts-mut); }
+html.ts-on .ts-links { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+html.ts-on .ts-links a { display: inline-flex; align-items: center; min-height: 32px; padding: 3px 11px; border-radius: 999px; border: 1px solid var(--ts-line);
+  background: var(--ts-card); color: var(--ts-cat); text-decoration: none; font-size: .88rem; font-weight: 600; }
+html.ts-on .ts-links a::after { content: "↗"; margin-left: 5px; font-size: .78em; opacity: .7; }
+html.ts-on .ts-links a:hover { border-color: rgba(127, 212, 255, .55); color: #fff; }
+html.ts-on .ts-ax { margin: 0 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
+html.ts-on .ts-ax:empty { display: none; }
+html.ts-on .ts-ax .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+html.ts-on .ts-ax .ts-tourbtn { min-height: 34px; padding: 4px 14px; }
+html.ts-on.ui-embedded .ts-ax .ts-tourbtn { display: none; }        /* the explorer has its own tour button */
+html.ts-on #tsC > #planetNote { margin: 14px 0 0; }
+html.ts-on .ts-nb { white-space: nowrap; }
+html.ts-on .ts-ax .actions .btn, html.ts-on .ts-ax .actions button { min-height: 34px; font-size: .88rem; }
+html.ts-on.ui-page-viewer #saveGif:not([hidden]) { display: inline-flex !important; }
+
+/* B: over time */
+html.ts-on #tsB > .ts-h { display: inline-block; margin-right: 10px; vertical-align: middle; }
+html.ts-on #tsB > .ts-say:not(.ts-binsay) { max-width: 96ch; }
+html.ts-on #tsB > .real { float: none; display: inline-block; vertical-align: middle; margin: 0 0 4px; font-size: .76rem; font-weight: 600; }
+html.ts-on #tsB > .watch { margin: 0 0 10px; font-size: .95rem; color: var(--ts-fg); clear: both; }
+html.ts-on #tsB > .watch:empty { display: none; }
+html.ts-on #tsB > .watch .x { display: inline; }
+html.ts-on #fzStage { display: block; min-width: 0; clear: both; }
+html.ts-on #fzStage > #stage { height: auto; aspect-ratio: 1 / .68; min-height: 300px; max-height: 78vh; width: 100%; border-radius: 14px; box-shadow: 0 0 0 1px var(--ts-line); }
+html.ts-on .ts-bins { margin: 14px 0 0; min-width: 0; }
+html.ts-on .ts-bins:empty { display: none; }
+html.ts-on .ts-bins:empty + .ts-binsay { display: none; }
+html.ts-on .ts-binsay { margin: 8px 0 0; font-size: .88rem; color: var(--ts-mut); }
+/* while a run loads, the image's own line (#fzProg) shows the progress: the bar's time line waits (its place is kept),
+   unless a wavelength was asked for (then the line answers that click: "4.6 µm is next") */
+html.ts-on.ui-page-viewer.pg-live #tsBins:not(:has(.pg-want)) .pg-line { visibility: hidden; }
+html.ts-on .ts-view { margin: 12px 0 0; }
+html.ts-on .ts-view > .controls { background: none; padding: 0; border-radius: 0; display: flex; flex-flow: row wrap; align-items: center; gap: 8px 22px; }
+html.ts-on .ts-view > .controls .fld { justify-content: flex-start; gap: 8px; }
+html.ts-on .ts-diff > .card { margin-top: 0; }
+html.ts-on .ts-diff > .card > h2 { display: none; }
+html.ts-on .ts-diff:not(:has(> .card:not([hidden]))) { display: none; }
+
+/* C: verdict */
+html.ts-on .ts-vd > .vd { margin: 0; }
+html.ts-on .ts-vd > .lead { margin: 12px 0 0; }
+html.ts-on .ts-vd #explainSentence p { font-size: 1.12rem; line-height: 1.4; font-weight: 600; color: var(--ts-fg); max-width: 70ch; }
+html.ts-on .ts-vd #explainSentence small { font-size: .9rem; color: var(--ts-mut); margin-top: 4px; }
+html.ts-on .ts-vd > #verdict, html.ts-on .ts-vd > #vdSure { margin: 8px 0 0; font-size: .95rem; line-height: 1.45; color: var(--ts-soft); max-width: 70ch; }
+html.ts-on .ts-vd > #verdict:empty { display: none; }
+html.ts-on .ts-lim { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 20px; align-items: center; margin: 14px 0 0; padding: 14px 18px;
+  border-radius: 14px; border: 1px solid rgba(92, 240, 160, .3); background: rgba(92, 240, 160, .055); }
+html.ts-on .ts-lim p { margin: 0; }
+html.ts-on .ts-lim-k { grid-column: 1 / -1; font-size: .76rem; letter-spacing: .09em; text-transform: uppercase; font-weight: 750; color: var(--ts-ok); }
+html.ts-on .ts-lim-v { white-space: nowrap; color: var(--ts-soft); font-size: 1rem; }
+html.ts-on .ts-lim-v b { font-size: clamp(2.3rem, 8vw, 3.4rem); line-height: 1.05; font-weight: 780; color: #fff; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+html.ts-on .ts-lim-t { font-size: 1rem; line-height: 1.4; color: var(--ts-fg); }
+html.ts-on .ts-lim-how { grid-column: 1 / -1; margin-top: 6px !important; font-size: .84rem; line-height: 1.4; color: var(--ts-mut); }
+html.ts-on.ts-has-lim #vdStrip .vd-lim { display: none; }            /* the number is said once, big */
+html.ts-on .ts-cx { margin: 14px 0 0; }
+html.ts-on .ts-cx:not(:has(#candidateList > *)) { display: none; }
+html.ts-on .ts-cx #candidateList { margin: 0; }
+
+/* D: measurement (our number next to the catalogue's; the number line under them) */
+html.ts-on #tsD #result { background: none; border: 0; border-radius: 0; padding: 0; }
+html.ts-on #tsD #result > h2 { display: none; }
+html.ts-on #tsD :is(#tiles, #tsTiles) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+html.ts-on #tsD :is(#tiles, #tsTiles) > .tile:nth-child(n+3) { display: none; }      /* images and visits are said in "What is here" */
+html.ts-on #tsD :is(#tiles, #tsTiles) > .tile { background: rgba(5, 8, 16, .55); border: 1px solid var(--ts-line); border-radius: 14px; padding: 13px 16px 13px 19px; position: relative; box-shadow: none; }
+html.ts-on #tsD :is(#tiles, #tsTiles) > .tile::before { content: ""; position: absolute; left: 0; top: 13px; bottom: 13px; width: 4px; border-radius: 0 3px 3px 0; background: #8a93a6; }
+html.ts-on #tsD :is(#tiles, #tsTiles) > .tile.hero::before { background: var(--ts-ours); }
+html.ts-on #tsD :is(#tiles, #tsTiles) > .tile.ref::before { background: var(--ts-cat); }
+html.ts-on #tsD :is(#tiles, #tsTiles) > .tile .k { font-size: .76rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; color: var(--ts-mut); line-height: 1.25; }
+html.ts-on #tsD :is(#tiles, #tsTiles) > .tile b { font-size: clamp(1.55rem, 6.4vw, 2.9rem); line-height: 1.08; margin: 5px 0 3px; letter-spacing: -.012em; color: var(--ts-fg); }
+html.ts-on #tsD :is(#tiles, #tsTiles) > .tile.hero b { color: var(--ts-ours); }
+html.ts-on #tsD :is(#tiles, #tsTiles) > .tile.ref b { color: var(--ts-cat); }
+html.ts-on #tsD :is(#tiles, #tsTiles) > .tile small, html.ts-on #tsD :is(#tiles, #tsTiles) > .tile:not(.hero) small { display: block; font-size: .86rem; line-height: 1.35; color: var(--ts-soft); }
+html.ts-on #tsD :is(#tiles, #tsTiles) > .tile small .x { display: inline; }
+html.ts-on #tsD :is(#tiles, #tsTiles) > .tile.empty b { font-size: 1.5rem; color: var(--ts-mut); }
+html.ts-on #tsD .gr-box { max-width: none; margin-top: 12px; }
+html.ts-on #tsD .gr-cap.gr-det { display: flex; }
+html.ts-on #tsD #pairNote { display: block; margin-top: 10px; font-size: .88rem; }
+html.ts-on #tsD .badges { margin-top: 10px; }
+
+/* E: spectrum   F: brightness over time */
+html.ts-on #tsE #spectrumPanel { margin: 0; }
+html.ts-on #tsE #spectrum > h2 { display: none; }
+html.ts-on #tsF .gr-ratio { margin: 16px 0 0; max-width: none; }
+html.ts-on .ts-time { min-width: 0; }
+html.ts-on .ts-time:empty { display: none; }
+
+/* G: small print (the only place where a row may fold) */
+html.ts-on #tsG { font-size: .88rem; color: var(--ts-mut); }
+html.ts-on #tsG > .ts-h { font-size: 1rem; color: var(--ts-soft); }
+html.ts-on #tsG > .ts-say { font-size: .88rem; color: var(--ts-mut); }
+html.ts-on #tsG > * + * { margin-top: 12px; }
+html.ts-on #tsG > .info { display: flex !important; margin-bottom: 0; }
+html.ts-on #tsG > .info #detail, html.ts-on #tsG > .info .real-note { display: inline !important; }
+html.ts-on #tsG .ch-only-d { display: block; }
+html.ts-on #tsG .ch-only-s { display: none; }
+html.ts-on #tsG .card { padding: 12px 14px; }
+html.ts-on #tsG .card > h2:first-child { font-size: .98rem; min-height: 0; margin: 0 0 8px; }
+html.ts-on #tsG #explainStrip { margin: 12px 0 0; }
+html.ts-on #tsG > footer { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 14px; }
+html.ts-on .ts-gsp:empty { display: none; }
+html.ts-on .ts-gsp > details > summary { cursor: pointer; }
+
+/* ---------- sky.html (in-browser engine): search on top, then the same sections around the page's own cards ---------- */
+html.ts-on.ui-page-sky .titlerow { display: flex; align-items: center; gap: 6px 12px; margin: 0; }
+html.ts-on.ui-page-sky .titlerow h1 { font-size: 1.05rem; color: var(--ts-fg); }
+html.ts-on.ui-page-sky .titlerow > [data-i18n-toggle] { margin-left: auto; }
+html.ts-on.ui-page-sky main > .ts-nav { flex-wrap: wrap; overflow: visible; align-items: center; margin: 2px -9px 12px; padding-bottom: 8px; border-bottom: 1px solid var(--ts-line); }
+html.ts-on.ui-page-sky main > .ts-nav .ts-tourbtn { margin-left: auto; }
+html.ts-on.ui-page-sky main > .sub { margin: 0 0 12px; font-size: 1rem; line-height: 1.45; color: var(--ts-soft); max-width: 72ch; }
+html.ts-on.ui-page-sky #form { margin: 0 0 8px; }
+html.ts-on.ui-page-sky #form input[type=text] { padding: 12px 14px; font-size: 1rem; border-radius: 12px; }
+html.ts-on.ui-page-sky #form button[type=submit] { background: var(--ts-ours); color: #1a1300; border: 0; font-weight: 750; font-size: 1rem; padding: 0 26px; border-radius: 12px; }
+html.ts-on.ui-page-sky .ts-opt { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 8px 0 0; font-size: .88rem; color: var(--ts-mut); }
+html.ts-on.ui-page-sky .ts-opt:empty { display: none; }
+html.ts-on.ui-page-sky .ts-opt label { color: var(--ts-soft); }
+html.ts-on.ui-page-sky .ts-opt select { padding: 3px 8px; }
+html.ts-on.ui-page-sky .ts-opt #fovEst { display: inline !important; }
+html.ts-on.ui-page-sky main > .card { margin-top: 14px; }
+/* once the result is on screen the progress block steps back: no second title, a thin bar, gone when the run is done */
+html.ts-on.ui-page-sky.ts-sky-open #what { display: none; }
+html.ts-on.ui-page-sky.ts-sky-open .barwrap { height: 4px; margin: 2px 0; }
+html.ts-on.ui-page-sky.ts-sky-open .progressrow:not(:has(.barwrap.busy)) { display: none; }
+html.ts-on.ui-page-sky #viewer > #tsFlow { margin-top: 6px; }
+html.ts-on.ui-page-sky #tsFlow .card { background: none; padding: 0; margin: 0; border-radius: 0; }      /* the sections carry the structure */
+html.ts-on.ui-page-sky .ts-name { margin: 0; font-size: clamp(1.5rem, 4.2vw, 2.2rem); line-height: 1.12; letter-spacing: -.012em; font-weight: 760; color: #fff; overflow-wrap: anywhere; }
+html.ts-on.ui-page-sky #fzStage > .card, html.ts-on.ui-page-sky #tsDiff > .card { max-width: min(100%, 76vh); margin-inline: auto; }
+html.ts-on.ui-page-sky #fzStage > .card > .controls { margin: 0 0 8px; }
+html.ts-on.ui-page-sky #tsBins > .card > h2, html.ts-on.ui-page-sky #tsD > .card > h2 { display: none; }
+html.ts-on.ui-page-sky #tsD > .card { margin-top: 12px; }
+html.ts-on.ui-page-sky #tsTiles > .tile .k, html.ts-on.ui-page-sky #tsTiles > .tile b { display: block; }   /* label above the number, as on the prepared result */
+html.ts-on.ui-page-sky #tsVd > .vd:empty { display: none; }
+html.ts-on.ui-page-sky.ts-sky-speed #measure > p.big:first-child { display: none; }
+html.ts-on.ui-page-sky #tsE > .card + .card { margin-top: 18px; }
+html.ts-on.ui-page-sky #tsG #progress, html.ts-on.ui-page-sky #tsG #found, html.ts-on.ui-page-sky #tsG > .controls { display: block !important; }
+html.ts-on.ui-page-sky #tsG > .controls { display: flex !important; }
+html.ts-on.ui-page-sky #tsG > :empty { display: none !important; }
+html.ts-on.ui-page-sky .ts-gm table { font-size: .84rem; }
+html.ts-on.ui-page-sky main > footer { margin-top: 26px; padding-top: 12px; border-top: 1px solid var(--ts-line); color: var(--ts-mut); }
+html.ts-on.ui-embedded.ui-page-sky .titlerow, html.ts-on.ui-embedded.ui-page-sky main > .ts-nav, html.ts-on.ui-embedded.ui-page-sky .ts-opt { display: none !important; }
+
+@media (max-width: 640px) {
+  html.ts-on .app, html.ts-on main.ts-app { padding: 8px 16px 36px; }
+  html.ts-on .ts-sec { padding-top: 20px; }
+  html.ts-on .ts-facts { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  html.ts-on .ts-facts dt { margin-top: 9px; font-size: .8rem; }
+  html.ts-on .ts-lim { grid-template-columns: minmax(0, 1fr); padding: 12px 14px; }
+  html.ts-on #tsD :is(#tiles, #tsTiles) { gap: 8px; }
+  html.ts-on #tsD :is(#tiles, #tsTiles) > .tile { padding: 10px 10px 10px 14px; }
+  html.ts-on #tsD :is(#tiles, #tsTiles) > .tile .k { font-size: .68rem; }
+  html.ts-on #tsD :is(#tiles, #tsTiles) > .tile small, html.ts-on #tsD :is(#tiles, #tsTiles) > .tile:not(.hero) small { font-size: .78rem; }
+  html.ts-on #tsB > .real { margin: 0 0 8px; }
+  html.ts-on .ts-ax { flex-basis: 100%; justify-content: flex-start; margin: 2px 0 0; gap: 6px; }
+  html.ts-on .ts-ax .actions { gap: 6px; }
+  html.ts-on .ts-ax :is(.btn, button) { padding: 4px 10px; font-size: .84rem; }
+  /* phones: the pages and the five targets each in one row that scrolls sideways (the image comes sooner) */
+  html.ts-on.ui-page-sky .ts-nav { flex-wrap: wrap; overflow: visible; }
+  html.ts-on header.top .ts-nav { flex: 1 1 100%; flex-wrap: nowrap; }
+  html.ts-on header.top .ts-nav, html.ts-on #targets {
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent); }
+  html.ts-on .ts-nav a { padding: 8px 8px; }
+  html.ts-on #targets { flex-wrap: nowrap; overflow-x: auto; gap: 6px; scrollbar-width: none; overscroll-behavior-x: contain; }
+  html.ts-on #targets::-webkit-scrollbar { display: none; }
+  html.ts-on #targets .tgt small { display: none; }
+  html.ts-on #targets .tgt { padding: 7px 11px; }
+}
+@media (pointer: coarse) {
+  html.ts-on .ts-links a { min-height: 40px; padding: 5px 13px; }
+  html.ts-on .ts-tourbtn { min-height: 42px; }
+}

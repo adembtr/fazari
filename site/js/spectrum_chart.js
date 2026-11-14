@@ -16,6 +16,7 @@ const L1 = (s) => I18N.loc(s);
 // season colours (validated for the dark card #151925: first three pass every CVD / normal-vision
 // check all-pairs; a 4th season relies on its marker shape as well) and shapes
 const COLORS = ["#3987e5", "#d95926", "#199e70", "#c98500", "#9085e9", "#e66767"];
+export const SEASON_COLORS = COLORS;       // shared: the brightness-over-time chart (js/gr.js) and the image marks use the same ones
 const SHAPES = ["circle", "square", "triangle", "diamond", "circle", "square"];
 const DET_EDGES = [1.095, 1.625, 2.415, 3.825, 4.415];
 const DETS = [[0.75, 1.095, "D1"], [1.095, 1.625, "D2"], [1.625, 2.415, "D3"], [2.415, 3.825, "D4"], [3.825, 4.415, "D5"], [4.415, 5.0, "D6"]];
@@ -195,8 +196,13 @@ function draw(root, spec, state) {
     const xa = sx(Math.max(X0, b.lo - 0.01)), xb = sx(Math.min(X1, b.hi + 0.01));
     el("rect", { x: xa, y: m.t - 2, width: Math.max(2, xb - xa), height: H - m.b - m.t + 2, fill: "#9aa3b2", "fill-opacity": 0.13 }, svg);
     if (xb - xa > 110) {
-      const tl = el("text", { x: (xa + xb) / 2, y: (m.t + H - m.b) / 2, "text-anchor": "middle", fill: "#c9d2e3", "font-size": small ? 11.5 : 13, "font-family": "system-ui, sans-serif" }, svg);
-      tl.textContent = T("gr.sp.band", "Too bright for the camera here (saturated): no measurement");
+      // the long sentence only where it fits inside the band (it ran over the chart on a phone); else the short one
+      const full = T("gr.sp.band", "Too bright for the camera here (saturated): no measurement"), short = T("ts.sp.bandShort", "Too bright for the camera");
+      const cw = small ? 6.3 : 7.1, label = xb - xa > full.length * cw ? full : short;
+      if (xb - xa > label.length * cw) {
+        const tl = el("text", { x: (xa + xb) / 2, y: (m.t + H - m.b) / 2, "text-anchor": "middle", fill: "#c9d2e3", "font-size": small ? 11.5 : 13, "font-family": "system-ui, sans-serif" }, svg);
+        tl.textContent = label;
+      }
     }
   }
   // marks: faint exposures behind the binned view, then the view's points
@@ -253,7 +259,8 @@ function draw(root, spec, state) {
     const mx = (ev.clientX - b.left) * W / b.width, my = (ev.clientY - b.top) * H / b.height;
     let best = null, bd = 14 * 14;
     for (const q of hits) { const d = (q.x - mx) ** 2 + (q.y - my) ** 2; if (d < bd) { bd = d; best = q; } }
-    if (!best) { tip.hidden = true; ring.setAttribute("visibility", "hidden"); return; }
+    if (!best) { tip.hidden = true; ring.setAttribute("visibility", "hidden"); svg.style.cursor = ""; return; }
+    svg.style.cursor = canJump() && best.p.season ? "pointer" : "";
     ring.setAttribute("cx", best.x); ring.setAttribute("cy", best.y); ring.setAttribute("visibility", "visible");
     fillTip(tip, best.p, spec);
     tip.hidden = false;
@@ -263,11 +270,23 @@ function draw(root, spec, state) {
   };
   svg.addEventListener("pointermove", move);
   svg.addEventListener("pointerleave", () => { tip.hidden = true; ring.setAttribute("visibility", "hidden"); });
+  // click a point: the page shows that visit at that colour in its image (js/ts_flow.js listens; ornek.html only)
+  svg.addEventListener("click", (ev) => {
+    if (!canJump()) return;
+    const b = svg.getBoundingClientRect();
+    const mx = (ev.clientX - b.left) * W / b.width, my = (ev.clientY - b.top) * H / b.height;
+    let best = null, bd = 14 * 14;
+    for (const q of hits) { const d = (q.x - mx) ** 2 + (q.y - my) ** 2; if (d < bd) { bd = d; best = q; } }
+    if (best && best.p.season) document.dispatchEvent(new CustomEvent("fazari:chartpick", { detail: { season: best.p.season, um: best.p.x, from: "spectrum" } }));
+  });
   if (!pts.length && !satBands.length) {
     const t = el("text", { x: (m.l + W - m.r) / 2, y: (m.t + H - m.b) / 2, "text-anchor": "middle" }, gTxt);
     t.textContent = T("sp.noPoints", "No measured points in this view.");
   }
 }
+
+/** Is there an image on this page that can show one visit (agent B's js/viewer.js goTo, ornek.html)? */
+function canJump() { try { return !!(document.documentElement.classList.contains("ts-on") && window.__fzViewer && typeof window.__fzViewer.goTo === "function"); } catch (_) { return false; } }
 
 function fillTip(tip, p, spec) {
   tip.textContent = "";
@@ -290,6 +309,7 @@ function fillTip(tip, p, spec) {
     h("div", {}, T("sp.status." + r.status, lab[r.status] || r.status) + (fin(num(r.snr)) && r.status !== "saturated" ? ` · S/N ${L1(num(r.snr).toFixed(1))}` : ""), tip);
     h("div", {}, `${r.date}` + (r.file ? ` · ${String(r.file).slice(0, 34)}` : ""), tip);
   }
+  if (p.season && canJump()) h("div", { style: "opacity:.8;margin-top:2px" }, T("ts.e.jump", "Click: show this visit in the image"), tip);
 }
 
 /** Render a spectrum (format fazari-spectrum/1) into container `box`. */
@@ -309,8 +329,8 @@ export function renderSpectrum(box, spec, { csvUrl = null, csvName = null, jsonU
   const dr = sm.detected_range_um;
   const nSat = sm.n_saturated || 0;
   h("p", { class: "spx-note" },
-    (seasons.length === 1 ? T("sp.sum.one", "{n} exposures in {s} season, each at its own wavelength. ", { n: sm.n_exposures || 0, s: 1 })
-      : T("sp.sum.other", "{n} exposures in {s} seasons, each at its own wavelength. ", { n: sm.n_exposures || 0, s: seasons.length })) +
+    (seasons.length === 1 ? T("ts.sp.sum.one", "Built from {n} exposures of one visit: each exposure sees this spot in a different infrared colour. ", { n: sm.n_exposures || 0, s: 1 })
+      : T("ts.sp.sum.other", "Built from {n} exposures over {s} visits: each exposure sees this spot in a different infrared colour. ", { n: sm.n_exposures || 0, s: seasons.length })) +
     (dr ? T("sp.detAt", "Detected at {lo}–{hi} µm (S/N ≥ 3 in season bins). ", { lo: L1(dr[0].toFixed(2)), hi: L1(dr[1].toFixed(2)) })
       : nSat ? "" : T("sp.noDet", "No wavelength bin with S/N ≥ 3. ")) +
     (nSat ? T("gr.sp.sat", "The star is too bright for the camera in {n} of them (grey band: no measurement there)", { n: nSat }) +
@@ -411,6 +431,8 @@ export async function mountFromUrl(box, base) {
     if (!r.ok) return null;
     const spec = await r.json();
     if (!spec || !Array.isArray(spec.points)) return null;
+    // the same file feeds the brightness-over-time chart (js/ts_flow.js + js/gr.js timeChart): one download for both
+    try { window.__fzSpectrum = { spec, base }; document.dispatchEvent(new CustomEvent("fazari:spectrum", { detail: { spec, base } })); } catch (_) { /* no DOM */ }
     const slug = String(spec.target || "source").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "");
     return renderSpectrum(box, spec, { csvUrl: base + "spectrum.csv", csvName: `${slug}_spectrum.csv`, jsonUrl: base + "spectrum.json" });
   } catch (_) {

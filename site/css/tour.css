@@ -1,0 +1,44 @@
+/* Guided tour (js/tour.js): a spotlight on one thing at a time and a small text box with an arrow.
+   position:fixed, z-index 90..92 (the explorer's result panel is 40, the hero card 60+). */
+.fzt-block { position:fixed; inset:0; z-index:90; background:transparent; touch-action:none; }
+.fzt-hole { position:fixed; z-index:91; border-radius:12px; pointer-events:none; box-shadow:0 0 0 200vmax rgba(3,5,10,.66), 0 0 0 2px #ffb347, 0 0 18px 2px rgba(255,179,71,.45);
+  transition:left .28s ease, top .28s ease, width .28s ease, height .28s ease; }
+.fzt-hole.fzt-none { box-shadow:0 0 0 200vmax rgba(3,5,10,.66); width:0 !important; height:0 !important; }
+.fzt-box { position:fixed; z-index:92; box-sizing:border-box; width:min(360px, calc(100vw - 16px)); padding:14px 16px 12px; border-radius:14px;
+  background:#141a2a; color:#e8eaf0; border:1px solid #46527a; box-shadow:0 10px 34px rgba(0,0,0,.55);
+  font:400 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; transition:left .28s ease, top .28s ease; }
+.fzt-box:focus { outline:none; }
+.fzt-count { margin:0 0 3px; font-size:.78rem; letter-spacing:.02em; color:#9aa3b2; font-variant-numeric:tabular-nums; }
+.fzt-title { margin:0 0 5px; font-size:1.08rem; line-height:1.25; font-weight:700; color:#fff; padding-right:30px; }
+.fzt-body { margin:0; font-size:.96rem; color:#dfe5f2; }
+.fzt-body b { color:#ffd08a; font-weight:650; white-space:nowrap; }
+.fzt-row { display:flex; align-items:center; gap:8px; margin-top:12px; }
+.fzt-row .fzt-sp { flex:1; }
+.fzt-btn { font:inherit; font-size:.93rem; font-weight:650; min-height:38px; padding:6px 14px; border-radius:999px; cursor:pointer;
+  border:1px solid #46527a; background:#1c2438; color:#e8eaf0; }
+.fzt-btn:hover { background:#27324e; }
+.fzt-btn.fzt-go { background:#ffb347; border-color:#ffb347; color:#1a1300; }
+.fzt-btn.fzt-go:hover { background:#ffc46b; }
+.fzt-btn.fzt-link { border-color:transparent; background:none; color:#9fb4d8; padding:6px 6px; font-weight:500; text-decoration:underline; }
+.fzt-btn:disabled { opacity:.4; cursor:default; }
+.fzt-btn:focus-visible, .fzt-x:focus-visible { outline:2.5px solid #7fd4ff; outline-offset:2px; }
+.fzt-x { position:absolute; right:8px; top:8px; width:32px; height:32px; border-radius:50%; border:0; background:none; color:#9aa3b2; font-size:20px; line-height:1; cursor:pointer; }
+.fzt-x:hover { color:#fff; background:#27324e; }
+/* the arrow from the box to the thing it talks about */
+.fzt-arrow { position:absolute; width:14px; height:14px; background:#141a2a; border:1px solid #46527a; transform:rotate(45deg); }
+.fzt-box[data-side="below"] .fzt-arrow { top:-8px; border-right:0; border-bottom:0; }
+.fzt-box[data-side="above"] .fzt-arrow { bottom:-8px; border-left:0; border-top:0; }
+.fzt-box[data-side="none"] .fzt-arrow { display:none; }
+.fzt-live { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+@media (max-width: 560px) {
+  .fzt-box { width:calc(100vw - 16px); padding:12px 13px 10px; font-size:15px; }
+  .fzt-btn { min-height:42px; padding:6px 13px; }
+  .fzt-title { font-size:1.02rem; }
+}
+@media (max-width: 340px) {
+  .fzt-box { padding:10px 10px 9px; font-size:14px; }
+  .fzt-btn { padding:6px 10px; font-size:.88rem; }
+  .fzt-row { gap:5px; }
+}
+@media (prefers-reduced-motion: reduce) { .fzt-hole, .fzt-box { transition:none; } }

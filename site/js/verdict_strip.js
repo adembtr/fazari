@@ -398,6 +398,8 @@ function mountSky() {
   const S = { engine: null, answer: null, astro: null, bins: [], complete: false, runRef: null };
   const place = () => {
     const card = $("pgCard");
+    const slot = H.classList.contains("ts-on") ? $("tsVd") : null;      // single-column layout (js/ts_flow.js): the verdict section
+    if (slot) { if (card && el.parentElement !== slot) slot.prepend(el); return !!card; }
     if (card && el.nextElementSibling !== card) card.before(el);
     return !!card;
   };

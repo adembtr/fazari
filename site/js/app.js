@@ -14,7 +14,9 @@ import { propagate, offsetArcsec, jyearToMjd } from "./astro.js";
 import { t, tn, num, loc, lang, tname, onLang } from "./i18n.js";
 import { fovFromUrl, fovFor, fillFovSelect, fovEstimateText, setFovInUrl } from "./fov.js";
 import * as GR from "./gr.js";   // speed per year, number line, catalogue at a free point, limit line (grafikler)
-import { drawScale, speedOf, speedText, scaleText, significant } from "./motion_arrow.js";   // measured-motion arrow (ilk_izlenim)
+import { speedOf, speedText, scaleText, significant } from "./motion_arrow.js";   // measured-motion arrow, drawn at true length (ilk_izlenim, goruntu_tur)
+import * as FR from "./fz_frames.js";            // display processing shared with the result viewer: sky match, alignment, one scale, smooth drawing (goruntu_tur)
+import { progressInfo as pictureProgress } from "./fz_view.js";    // the one progress line on the picture, read from the wavelength buttons
 
 // Sky index: the real module (skyindex.js) when it is there, else the dev stand-in.
 // To switch for good, change this one line.
@@ -119,14 +121,85 @@ function divergingImageData(d, n, lim) {
   return id;
 }
 
-function drawToCanvas(canvas, imageData, n, zoom) {
-  const off = document.createElement("canvas");
-  off.width = off.height = n;
+// ---- the picture (goruntu_tur): the seasons of the bin on screen through js/fz_frames.js -----------------------
+// Display only: every season gets the same brightness scale, its own sky level is taken out, the seasons are lined
+// up on the field stars and drawn smooth. The measured numbers come from the engine and are not touched.
+// "Raw pixels" (a switch added next to the other picture switches) shows the engine's own frame as squares.
+const VISIT_COLOURS = ["#3987e5", "#d95926", "#199e70", "#c98500", "#9085e9", "#e66767"];   // one per visit, as in the result viewer and the charts
+const visitColour = (i) => VISIT_COLOURS[((i % VISIT_COLOURS.length) + VISIT_COLOURS.length) % VISIT_COLOURS.length];
+const fz = { of: null, refs: null, set: null, tiles: new Map(), up: 1, img: null, off: null, raw: false, zoomFor: null };
+const fzUp = (n) => Math.max(1, Math.min(6, Math.round(900 / n)));
+/** The processed frames of `current` (made once per bin; again when its frames change), or null (then the engine's frame is shown). */
+function fzSet() {
+  const refs = current.frames.map((f) => f.norm);
+  if (fz.of === current && fz.refs && fz.refs.length === refs.length && fz.refs.every((r, i) => r === refs[i])) return fz.set;
+  fz.of = current; fz.refs = refs; fz.set = null; fz.tiles.clear();
+  try {
+    const n = current.n, g = current.frames[0] && current.frames[0].gaiaXY, st = current.stretch;
+    if (current.frames.length && current.frames.every((f) => f.norm && f.norm.length === n * n)) {
+      fz.set = FR.prepare(current.frames.map((f) => ({ g: f.norm })), { nx: n, ny: n, cellArcsec: run.info.pixArcsec, centre: g || [n / 2, n / 2],
+        targets: current.frames.map((f) => f.gaiaXY).filter((p) => p && Number.isFinite(p[0]) && Number.isFinite(p[1])),   // a faint target sets the scale
+        stretch: st && st.soft > 0 && st.hi > st.lo ? { type: "asinh", lo: st.lo, hi: st.hi, soft: st.soft } : null });
+      fz.up = fzUp(n);
+    }
+  } catch (e) { console.warn("picture processing", e); fz.set = null; }
+  return fz.set;
+}
+/** Frame i (or "d": last minus first) as picture pixels on the finer grid: { id: ImageData, up } or null. */
+function fzPicture(i) {
+  const set = fzSet();
+  if (!set) return null;
+  const n = current.n, up = fz.raw ? 1 : fz.up, W = n * up, key = (fz.raw ? "r" : "s") + up;
+  const tile = (k) => { const q = key + k; if (!fz.tiles.has(q)) fz.tiles.set(q, FR.frameFloat(set, k, up, fz.raw)); return fz.tiles.get(q); };
+  if (!fz.img || fz.img.width !== W) fz.img = new ImageData(W, W);
+  if (i === "d") {
+    FR.diffRgba(tile(0), tile(set.n - 1), fz.img.data);
+    // saturated cores are not data (the engine marks them in its own difference): grey, as before
+    const d = current.diff, px = fz.img.data;
+    if (d) for (let k = 0; k < n * n; k++) {
+      if (Number.isFinite(d[k])) continue;
+      const x0 = (k % n) * up, y0 = ((k / n) | 0) * up;
+      for (let b = 0; b < up; b++) for (let a = 0; a < up; a++) { const o = 4 * ((y0 + b) * W + x0 + a); px[o] = px[o + 1] = px[o + 2] = 128; }
+    }
+  } else FR.greyRgba(tile(i), fz.img.data, fz.raw ? 1 : set.disp.gamma);
+  return { id: fz.img, up };
+}
+/** The "Raw pixels" switch and its one-line note: added once, next to the page's own picture switches. */
+function fzSwitch() {
+  if ($("fzRawSky") || !$("cent")) return;
+  const lab = document.createElement("label");
+  lab.innerHTML = `<input id="fzRawSky" type="checkbox"> <span></span>`;
+  ($("cent").closest("label") || $("cent")).after(lab);
+  const note = document.createElement("span");
+  note.id = "fzRawNote"; note.className = "small";
+  const cap = $("fieldnote");
+  if (cap) cap.after(" ", note);
+  const paint = () => {
+    lab.querySelector("span").textContent = t("fz.zoom.raw", null, "Raw pixels (no smoothing)");
+    const set = fz.set, a = run && run.info ? run.info.pixArcsec : 3;
+    note.textContent = fz.raw ? t("fz.note.raw", { c: loc(String(a)) }, "Raw pixels: the stacked frame as it is, on its {c}″ grid, no smoothing. One SPHEREx detector pixel is 6.15″.")
+      : set ? t("fz.note.smooth", null, "Picture: one brightness scale for every visit, sky level matched, drawn smooth") +
+        (set.aligned ? t("fz.note.aligned", { n: Math.max(0, ...set.reg.slice(1).map((r) => r.n || 0)), s: loc((Math.max(0, ...set.shift.map((s) => Math.hypot(s[0], s[1]))) * a).toFixed(2)) }, ", visits lined up on {n} field stars (moved by up to {s}″)") : "") +
+        (set.disp && set.disp.targetPeak != null ? t("fz.note.target", null, ", brightness set by the faint target so that it shows") : "") +
+        (set.disp && (set.disp.noisy || []).some(Boolean) ? t("fz.note.noisy", null, ", the faint speckle of the noisier visit cut a little more") : "") +
+        t("fz.note.tail", null, ". One SPHEREx pixel is 6.15″. The measured numbers are not changed by this.") : "";
+  };
+  $("fzRawSky").onchange = (e) => { fz.raw = e.target.checked; paint(); showFrame(); showDiff(); };
+  fz.paintNote = paint;
+  onLang(paint);
+  paint();
+}
+
+function drawToCanvas(canvas, imageData, n, zoom, up = 1, smooth = false) {
+  if (!fz.off) fz.off = document.createElement("canvas");            // one working canvas, reused (not one per frame)
+  const off = fz.off;
+  if (off.width !== imageData.width || off.height !== imageData.height) { off.width = imageData.width; off.height = imageData.height; }
   off.getContext("2d").putImageData(imageData, 0, 0);
   const ctx = canvas.getContext("2d");
-  ctx.imageSmoothingEnabled = false;
+  ctx.imageSmoothingEnabled = smooth;
+  if (smooth) ctx.imageSmoothingQuality = "high";
   const src = n / zoom, s0 = (n - src) / 2;
-  ctx.drawImage(off, s0, s0, src, src, 0, 0, canvas.width, canvas.height);
+  ctx.drawImage(off, s0 * up, s0 * up, src * up, src * up, 0, 0, canvas.width, canvas.height);
   return (gx, gy) => [((gx + 0.5) - s0) * canvas.width / src, ((gy + 0.5) - s0) * canvas.height / src];
 }
 
@@ -135,9 +208,12 @@ function drawOverlay(canvas, toCanvas, frame, zoom) {
   const pxPerArcsec = canvas.width / (current.n / zoom) / run.info.pixArcsec;
   ctx.lineWidth = 2;
   if ($("mark").checked && frame.gaiaXY) {
-    const [x, y] = toCanvas(...frame.gaiaXY);
-    ctx.strokeStyle = "#ffb347";
-    ctx.beginPath(); ctx.arc(x, y, Math.max(10, 12 * pxPerArcsec), 0, 2 * Math.PI); ctx.stroke();
+    // a thin ring where the catalogue puts the object in this season, and a fainter one around it
+    const [x, y] = toCanvas(...frame.gaiaXY), r = Math.min(Math.max(13, 11 * pxPerArcsec), 60);
+    ctx.lineWidth = 3.4; ctx.strokeStyle = "rgba(5,7,13,.6)"; ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.stroke();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = "#ffb347"; ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.stroke();
+    ctx.lineWidth = 1.1; ctx.strokeStyle = "rgba(255,179,71,.38)"; ctx.beginPath(); ctx.arc(x, y, 2 * r, 0, 2 * Math.PI); ctx.stroke();
+    ctx.lineWidth = 2;
   }
   if ($("mark").checked && fieldStars.length && run) {
     ctx.strokeStyle = "#5ad1ff";
@@ -158,56 +234,129 @@ function drawOverlay(canvas, toCanvas, frame, zoom) {
       ctx.beginPath(); ctx.moveTo(x - 7, y); ctx.lineTo(x + 7, y); ctx.moveTo(x, y - 7); ctx.lineTo(x, y + 7); ctx.stroke();
     }
   }
-  drawMotionArrow(ctx, canvas, toCanvas);
-  // scale bar (1 arcmin) and compass
-  const bar = 60 * pxPerArcsec;
+  drawMotionArrow(ctx, canvas, toCanvas, frame);
+  skyStatusLine(ctx, canvas);
+  // scale bar (a round length that fits) and compass
   ctx.fillStyle = "#fff"; ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+  // the one progress line, inside the bottom edge of the picture (what the wavelength buttons say is loading)
+  const pg = pictureProgress(), pfs = Math.round(canvas.width / 44), lift = pg ? pfs + 14 : 0;
+  if (pg) {
+    const y0 = canvas.height - lift;
+    ctx.fillStyle = "rgba(5,7,13,.78)"; ctx.fillRect(0, y0, canvas.width, lift);
+    ctx.fillStyle = "#ffb347"; ctx.fillRect(0, canvas.height - 2, canvas.width * Math.min(1, pg.frac), 2);
+    ctx.fillStyle = "#dfe5f2"; ctx.font = `${pfs}px system-ui, sans-serif`; ctx.textBaseline = "top"; ctx.fillText(pg.text, 10, y0 + 5); ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "#fff";
+  }
   ctx.font = `${Math.round(canvas.width / 40)}px system-ui, sans-serif`;
-  const yb = canvas.height - 18;
+  const yb = canvas.height - 18 - lift;
+  const pick = [5, 10, 20, 30, 60, 120, 300].find((v) => v * pxPerArcsec >= canvas.width / 9) || 300, bar = pick * pxPerArcsec;
   if (bar < canvas.width * 0.6) {
     ctx.beginPath(); ctx.moveTo(16, yb); ctx.lineTo(16 + bar, yb); ctx.stroke();
-    ctx.fillText("1′", 16 + bar / 2 - 5, yb - 8);
+    ctx.fillText(pick >= 60 ? pick / 60 + "′" : pick + "″", 16 + bar / 2 - 5, yb - 8);
   }
-  const cx = canvas.width - 30, cy = canvas.height - 18;
+  const cx = canvas.width - 30, cy = canvas.height - 18 - lift;
   ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - 40); ctx.moveTo(cx, cy); ctx.lineTo(cx - 40, cy); ctx.stroke();
   ctx.fillText(t("sk.cN"), cx - 5, cy - 46); ctx.fillText(t("sk.cE"), cx - 58, cy + 6);
 }
 
-/** The measured motion, first season -> last season: drawn N times longer (stated on the image), from the measured
- *  first position, true end marked; label = speed ± error and direction (js/motion_arrow.js, ilk_izlenim). */
-function drawMotionArrow(ctx, canvas, toCanvas) {
+/** The verdict strip's own headline (js/verdict_strip.js) when nothing moved or the answer is not sure yet: written on
+ *  the picture too, as on the result page, so the picture is never left with an empty ring and no word. The strip
+ *  marks its kind on <html>; a change of it redraws the frame. */
+function skyStatus() {
+  const H = document.documentElement.classList, kind = H.contains("vd-k-none") ? "none" : H.contains("vd-k-unsure") ? "unsure" : "";
+  const el = kind && $("vdStrip") && !$("vdStrip").hidden ? $("vdStrip").querySelector(".vd-t") : null;
+  const txt = el ? [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").trim() : "";
+  return txt ? { kind, txt } : null;
+}
+function skyStatusLine(ctx, canvas) {
+  if (!fz.vdObs) {
+    fz.vdObs = true;
+    try {
+      new MutationObserver(() => { const s = skyStatus(), k = s ? s.kind + s.txt : ""; if (k !== fz.vdLast && current) { fz.vdLast = k; showFrame(); } })
+        .observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    } catch (_) { /* no observer: the line follows on the next frame */ }
+  }
+  const s = skyStatus();
+  fz.vdLast = s ? s.kind + s.txt : "";
+  if (!s) return;
+  const fs = Math.round(canvas.width / 32), pad = Math.round(fs * 0.55), maxW = canvas.width - 24 - 2 * pad;
+  ctx.save();
+  ctx.font = `700 ${fs}px system-ui, sans-serif`;
+  let lines = [s.txt];                                   // too long for the picture: two lines, split at the space nearest the middle
+  if (ctx.measureText(s.txt).width > maxW) {
+    const sp = [...s.txt.matchAll(/ /g)].map((m) => m.index), mid = s.txt.length / 2;
+    if (sp.length) { const k = sp.reduce((q, i) => (Math.abs(i - mid) < Math.abs(q - mid) ? i : q)); lines = [s.txt.slice(0, k), s.txt.slice(k + 1)]; }
+  }
+  const lh = Math.round(fs * 1.25), tw = Math.max(...lines.map((l) => ctx.measureText(l).width));
+  const w = Math.min(canvas.width - 24, tw + 2 * pad), h = fs + 2 * pad + lh * (lines.length - 1);
+  ctx.fillStyle = "rgba(5,7,13,.82)"; ctx.fillRect(12, 12, w, h);
+  ctx.fillStyle = s.kind === "none" ? "#9be7b5" : "#ffd98a"; ctx.fillRect(12, 12, 4, h);
+  ctx.textBaseline = "middle";
+  lines.forEach((l, i) => ctx.fillText(l, 12 + pad, 12 + pad + fs / 2 + i * lh + 1, w - 2 * pad));
+  ctx.restore();
+}
+
+/** The measured motion (goruntu_tur): where the object was in every season (one small mark per visit, in the visit's
+ *  colour, a thin line through them), and an arrow from the first to the last season at its TRUE length, drawn beside
+ *  the track so that it never covers the object. Label = speed ± error and direction (js/motion_arrow.js). Nothing is
+ *  drawn for a shift inside its own noise, or while the answer is too uncertain (run.pgNoArrow, bins_bar.js). */
+function drawMotionArrow(ctx, canvas, toCanvas, frame) {
   const a = run && run.astro, P = a && a.positions;
   if (!current || current.preview || !P || P.length < 2 || run.pgNoArrow) return;   // pgNoArrow: bins_bar.js, the answer is too uncertain
   const A = P[0], Z = P[P.length - 1];
   const p = (a.pairs || []).find((q) => q.from === A.season && q.to === Z.season);
   if (!p || !significant(p.shift, p.err)) return;               // a shift inside its own noise is not drawn as motion
   const grid = current.n === run.info.n ? run.grid : new TanGrid(run.info.ra0, run.info.dec0, run.info.pixArcsec, current.n);
-  const [ax, ay] = toCanvas(...grid.skyToPix(A.ra, A.dec)), [zx, zy] = toCanvas(...grid.skyToPix(Z.ra, Z.dec));
+  const pts = P.map((q) => ({ season: q.season, xy: toCanvas(...grid.skyToPix(q.ra, q.dec)) }));
+  const [ax, ay] = pts[0].xy, [zx, zy] = pts[pts.length - 1].xy;
   const dx = zx - ax, dy = zy - ay, len = Math.hypot(dx, dy), W = canvas.width, H = canvas.height;
   if (!(len > 0.5) || ax < 0 || ay < 0 || ax > W || ay > H) return;
-  const N = drawScale(len, 0.28 * Math.min(W, H)), ux = dx / len, uy = dy / len;
-  const qx = ax + dx * N, qy = ay + dy * N, lw = W / 170, hl = Math.min(W / 32, len * N * 0.75), hw = W / 60;
-  const bx = qx - ux * hl, by = qy - uy * hl;
+  const ux = dx / len, uy = dy / len;
   ctx.save();
   ctx.lineCap = "round"; ctx.lineJoin = "round";
-  for (const [col, w] of [["rgba(5,7,13,.85)", lw + 5], ["#ffffff", lw]]) {
-    ctx.strokeStyle = col; ctx.lineWidth = w;
-    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+  const visit = (s) => Math.max(0, P.findIndex((q) => q.season === s));
+  // the track and one mark per visit (two short bars across the track; the visit on screen is the strong one)
+  if (len >= 12) {
+    for (const [col, w] of [["rgba(5,7,13,.8)", 3], ["rgba(232,234,240,.6)", 1.2]]) {
+      ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath();
+      pts.forEach((q, i) => (i ? ctx.lineTo(...q.xy) : ctx.moveTo(...q.xy)));
+      ctx.stroke();
+    }
+    for (const q of pts) {
+      const on = frame && q.season === frame.season, g = 4.5, l = on ? 10 : 6, [x, y] = q.xy;
+      for (const [col, w] of [["rgba(5,7,13,.85)", (on ? 2.6 : 1.8) + 2.4], [visitColour(visit(q.season)), on ? 2.6 : 1.8]]) {
+        ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath();
+        for (const sgn of [-1, 1]) { ctx.moveTo(x - sgn * uy * g, y + sgn * ux * g); ctx.lineTo(x - sgn * uy * (g + l), y + sgn * ux * (g + l)); }
+        ctx.stroke();
+      }
+    }
   }
-  ctx.beginPath(); ctx.moveTo(qx, qy); ctx.lineTo(bx - uy * hw, by + ux * hw); ctx.lineTo(bx + uy * hw, by - ux * hw); ctx.closePath();
-  ctx.lineWidth = 4; ctx.strokeStyle = "rgba(5,7,13,.85)"; ctx.stroke(); ctx.fillStyle = "#ffffff"; ctx.fill();
-  const ring = (x, y, col) => { ctx.lineWidth = 6; ctx.strokeStyle = "rgba(5,7,13,.85)"; ctx.beginPath(); ctx.arc(x, y, W / 90, 0, 2 * Math.PI); ctx.stroke();
-    ctx.lineWidth = 3; ctx.strokeStyle = col; ctx.stroke(); };
-  ring(ax, ay, "#5aa9ff");                     // first season (measured)
-  if (N > 1) ring(zx, zy, "#ff6b6b");          // true end (last season)
+  // the arrow at true length, 26 px beside the track (the side with more room)
+  let px = -uy, py = ux;
+  if (px < 0 || (Math.abs(px) < 0.3 && py > 0)) { px = -px; py = -py; }
+  if ((ax + zx) / 2 > W * 0.62) { px = -px; py = -py; }
+  const drawn = len >= 16, o = drawn ? 26 : 0, sx = ax + px * o, sy = ay + py * o, qx = zx + px * o, qy = zy + py * o;
+  if (drawn) {
+    const lw = 2.6, hl = Math.min(12, len * 0.6), hw = Math.min(6.5, len * 0.33), bx = qx - ux * hl, by = qy - uy * hl;
+    ctx.strokeStyle = "rgba(232,234,240,.5)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(sx, sy); ctx.moveTo(zx, zy); ctx.lineTo(qx, qy); ctx.stroke();
+    for (const [col, w] of [["rgba(5,7,13,.85)", lw + 3.4], ["#ffffff", lw]]) {
+      ctx.strokeStyle = col; ctx.lineWidth = w;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(bx, by); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(qx, qy); ctx.lineTo(bx - uy * hw, by + ux * hw); ctx.lineTo(bx + uy * hw, by - ux * hw); ctx.closePath();
+    ctx.lineWidth = 3.2; ctx.strokeStyle = "rgba(5,7,13,.85)"; ctx.stroke(); ctx.fillStyle = "#ffffff"; ctx.fill();
+  }
   const sp = speedOf(null, { s: p.shift, e: p.err, dt: p.dtYears, pa: p.pa });
-  const l1 = speedText(sp), l2 = scaleText(N), f1 = Math.round(W / 26), f2 = Math.round(W / 34);
+  const l1 = speedText(sp), l2 = drawn ? scaleText(1) : t("fz.arw.small", null, "too small to draw at this zoom"), f1 = Math.round(W / 34), f2 = Math.round(W / 44);
   ctx.font = `700 ${f1}px system-ui, sans-serif`;
   const bw = Math.max(ctx.measureText(l1).width, (ctx.font = `700 ${f2}px system-ui, sans-serif`, ctx.measureText(l2).width)), bh = f1 + f2 + 8;
   const clampX = (x0) => Math.min(Math.max(x0, 8), W - 8 - bw);
-  const mx = (ax + qx) / 2, top = Math.min(ay, qy) - 14 - bh, bot = Math.max(ay, qy) + 14;
-  const y0 = top >= 8 ? top : bot + bh <= H - 40 ? bot : Math.max(8, top);
-  const cx = clampX(mx - bw / 2) + bw / 2;
+  // the label sits on the arrow's outer side, clear of the object's own positions
+  const mx = (sx + qx) / 2, my = (sy + qy) / 2, side = Math.abs(px) >= Math.abs(py);
+  const top = Math.min(sy, qy, ay, zy) - 14 - bh, bot = Math.max(sy, qy, ay, zy) + 14;
+  let y0 = side ? my - bh / 2 : py < 0 ? top : bot;
+  if (y0 < 8 || y0 + bh > H - 40) y0 = top >= 8 ? top : bot + bh <= H - 40 ? bot : Math.max(8, top);
+  const cx = side ? (px > 0 ? Math.min(W - 8 - bw, Math.max(sx, qx) + 14) : Math.max(8, Math.min(sx, qx) - 14 - bw)) + bw / 2 : clampX(mx - bw / 2) + bw / 2;
   ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.lineWidth = Math.max(3, W / 160); ctx.strokeStyle = "#05070d";
   ctx.font = `700 ${f1}px system-ui, sans-serif`; ctx.fillStyle = "#ffffff";
   if (l1) { ctx.strokeText(l1, cx, y0); ctx.fillText(l1, cx, y0); }
@@ -241,10 +390,24 @@ const fullCount = () => Object.values(run.results).reduce((a, r) => a + imagesIn
 function showFrame() {
   if (!current) return;
   if (!window.__firstFrameMs) window.__firstFrameMs = performance.now() - t0.start;   // for the headless checks
-  const fr = current.frames[frameIdx % current.frames.length];
-  const zoom = Number($("zoom").value);
+  const fi = frameIdx % current.frames.length, fr = current.frames[fi];
+  fzSwitch();
+  // the picture opens as a close-up of about 3 arcmin around the target (the nearest zoom step the page offers),
+  // for the preview's small region and for the full field alike, until the visitor picks a zoom
+  const zs = $("zoom");
+  if (run && (fz.zoomFor !== run || fz.zoomN !== current.n)) {
+    fz.zoomFor = run; fz.zoomN = current.n;
+    if (!zs.dataset.fzBound) { zs.dataset.fzBound = "1"; zs.addEventListener("input", () => { zs.dataset.fzUser = "1"; }); }
+    if (!zs.dataset.fzUser) {
+      const want = current.n * run.info.pixArcsec / 180, opts = [...zs.options].map((o) => +o.value).filter((v) => v > 0);
+      if (opts.length) zs.value = String(opts.reduce((a, b) => (Math.abs(b - want) < Math.abs(a - want) ? b : a)));
+    }
+  }
+  const zoom = Number(zs.value);
   const cv = $("blink");
-  const toCanvas = drawToCanvas(cv, grayImageData(fr.norm, current.n), current.n, zoom);
+  const pic = fzPicture(fi);
+  if (fz.paintNote) fz.paintNote();
+  const toCanvas = pic ? drawToCanvas(cv, pic.id, current.n, zoom, pic.up, !fz.raw) : drawToCanvas(cv, grayImageData(fr.norm, current.n), current.n, zoom);
   drawOverlay(cv, toCanvas, fr, zoom);
   $("date").textContent = `${fr.season}  (${fr.dateFirst === fr.dateLast ? fr.dateFirst : t("sk.dateRange", { a: fr.dateFirst, b: fr.dateLast })})`;
   $("detail").textContent = `${num(fr.lam, 2)} µm · SPHEREx ${fr.detectors.join("+")} · ${tn("sk.exposures", fr.n)}`
@@ -256,7 +419,8 @@ function showFrame() {
 function showDiff() {
   const cv = $("diff");
   const zoom = Number($("zoom").value);
-  const toCanvas = drawToCanvas(cv, divergingImageData(current.diff, current.n, 0.6), current.n, zoom);
+  const pic = current.frames.length > 1 && !fz.raw ? fzPicture("d") : null;      // the same matched, lined-up frames as the film
+  const toCanvas = pic ? drawToCanvas(cv, pic.id, current.n, zoom, pic.up, true) : drawToCanvas(cv, divergingImageData(current.diff, current.n, 0.6), current.n, zoom);
   const first = current.frames[0], last = current.frames[current.frames.length - 1];
   $("diffcap").textContent = t("sk.diffcap", { last: last.season, first: first.season, um: num(current.um, 1) })
     + (current.frames.some((f) => f.softCorePx) ? " " + t("u3.sk.diffGrey") : "");

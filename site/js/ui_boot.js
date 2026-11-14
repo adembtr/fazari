@@ -15,8 +15,8 @@
   } catch (e) { /* other origin */ }
   if (!UI_ON) { h.classList.add("ui-classic"); return; }
   h.classList.add("ui");
-  var mode = "simple";
-  try { if (localStorage.getItem("fz-ui-mode") === "detailed") mode = "detailed"; } catch (e) { /* storage blocked */ }
-  h.setAttribute("data-ui-mode", mode);
+  // one state (site_sade): plain sentences on top, the technical numbers in the small print; no Simple / Detailed
+  // switch any more (a "detailed" choice saved by an older visit is ignored). The attribute stays for the stylesheets.
+  h.setAttribute("data-ui-mode", "simple");
   try { if (window.parent !== window) h.classList.add("ui-embedded"); } catch (e) { /* ignore */ }
 })();

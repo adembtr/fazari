@@ -8,8 +8,9 @@ import { t, loc } from "./i18n.js";
 const ok = (v) => v != null && v !== "" && Number.isFinite(+v);
 const FACTORS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30, 40, 50];
 
-/** A shift worth drawing longer: at least 3 times its error (or no error given). */
-export function significant(shift, err) { return !(ok(err) && +err > 0) || +shift >= 3 * +err; }
+/** A shift that may be drawn and stated as motion: it has an error bar of its own (> 0) and is at least 3 times it.
+ *  No error bar, or a zero one: no motion can be stated (the rule of explain.js and job_worker's answer guard). */
+export function significant(shift, err) { return ok(shift) && ok(err) && +err > 0 && +shift >= 3 * +err; }
 
 /** Largest round factor that keeps the drawn arrow within `want` (same units as len); 1 when it is already long. */
 export function drawScale(len, want) {

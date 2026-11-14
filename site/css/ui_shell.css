@@ -224,6 +224,13 @@ html.ui.ui-page-ast .ui-run > .ui-fold-btn { top: 12px; right: 0; }
 @media (max-width: 640px) {
   html.ui.ui-page-reading section.blk.ui-fold > .ui-fold-head { padding-right: 84px; }
 }
+/* the common page navigation (site_sade) in the plain ".top" header of asteroids.html and comets.html:
+   brand + pages (+ language) on the first row, the page title on its own row below */
+.top > .ui-pgnav { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; flex: 1 1 auto; min-width: 0; font-size: .9rem; }
+.top > .ui-pgnav a { color: #c9d2e6; text-decoration: none; padding: 3px 0; }
+.top > .ui-pgnav a:hover, .top > .ui-pgnav a[aria-current="page"] { color: #fff; text-decoration: underline; text-underline-offset: 4px; }
+.top > .ui-pgnav ~ h1 { order: 1; flex-basis: 100%; margin-top: 6px; }
+.top > .ui-pgnav ~ small { order: 2; }
 @media (prefers-reduced-motion: reduce) {
   html.ui .ui-pill svg, html.ui .ui-fold-btn svg, html.ui .ui-stars-btn svg { transition: none; }
 }
@@ -260,34 +267,108 @@ html.ui[data-ui-mode="simple"].ui-page-viewer #explainStrip details:not([open]) 
 /* explorer */
 html.ui[data-ui-mode="simple"].ui-page-explore #bgSwitch,
 html.ui[data-ui-mode="simple"].ui-page-explore .status,
-html.ui[data-ui-mode="simple"].ui-page-explore #card:not(.ui-opts-open) .engine-tag,
-html.ui[data-ui-mode="simple"].ui-page-explore #card:not(.ui-opts-open) .fov-row,
-html.ui[data-ui-mode="simple"].ui-page-explore #card:not(.ui-opts-open) #btnZoom,
-html.ui[data-ui-mode="simple"].ui-page-explore #card:not(.ui-opts-open) #btnShare,
-html.ui[data-ui-mode="simple"].ui-page-explore #card .kicker,
-html.ui[data-ui-mode="simple"].ui-page-explore #card .note,
-html.ui[data-ui-mode="simple"].ui-page-explore #card .coords .deg,
-html.ui[data-ui-mode="simple"].ui-page-explore #card #cardMoved,
-html.ui[data-ui-mode="simple"].ui-page-explore #card #cardFast { display: none !important; }
-/* place card: one coordinate line in Simple mode; "Options" only in Simple mode */
-html.ui .ui-card-opts { display: none; }
-html.ui[data-ui-mode="simple"].ui-page-explore .ui-card-opts { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; min-height: 36px;
-  padding: 4px 10px 4px 12px; border-radius: 999px; background: none; border: 1px solid var(--ui-line); color: var(--ui-soft); font: inherit; font-size: 13px; cursor: pointer; }
-html.ui .ui-card-opts svg { width: 16px; height: 16px; transition: transform .2s ease; }
-html.ui .ui-card-opts[aria-expanded="true"] svg { transform: rotate(180deg); }
-html.ui[data-ui-mode="simple"].ui-page-explore #card .coords { display: flex; flex-wrap: wrap; gap: 2px 14px; }
-html.ui[data-ui-mode="simple"].ui-page-explore #card .coords > div { display: flex; align-items: baseline; gap: 6px; background: none; padding: 0; border: 0; }
-html.ui[data-ui-mode="simple"].ui-page-explore #card .coords dt { margin: 0; }
-html.ui[data-ui-mode="simple"].ui-page-explore #card .coords dd { margin: 0; }
-@media (pointer: coarse) { html.ui[data-ui-mode="simple"].ui-page-explore .ui-card-opts { min-height: 44px; } }
+html.ui.ui-page-explore #card .kicker,
+html.ui.ui-page-explore #card .engine-tag,
+html.ui.ui-page-explore #card .fov-est,
+html.ui.ui-page-explore #card .coords .deg,
+html.ui.ui-page-explore #card #cardMoved,
+html.ui.ui-page-explore #card #cardFast { display: none !important; }
+
+/* ---------- Explorer, one state (site_sade): one clear flow, nothing to open or close ----------
+   Steps: three chips (pick a point, press the button, read the result); the old first chip is not shown. */
+html.ui.ui-page-explore .st-old { display: none; }
+html.ui.ui-page-explore .st-new { display: inline; }
+html.ui.ui-page-explore #steps { counter-reset: tsstep; }
+html.ui.ui-page-explore #steps li[data-step="1"] { display: none; }
+html.ui.ui-page-explore #steps li:not([data-step="1"]) { counter-increment: tsstep; }
+html.ui.ui-page-explore #steps li:not(.done) i { font-size: 0; }
+html.ui.ui-page-explore #steps li:not(.done) i::before { content: counter(tsstep); font-size: 11.5px; }
+html.ui.ui-page-explore #steps li[data-step="1"].on + li { background: var(--acc); color: var(--acc-ink); }
+html.ui.ui-page-explore #steps li[data-step="1"].on + li i { background: var(--acc-ink); color: var(--acc); border-color: var(--acc-ink); }
+@media (max-width: 720px) { html.ui.ui-page-explore #steps { grid-template-columns: repeat(3, 1fr); } }
+
+/* Place card: small and tidy. Title, one line, ONE main button; under a thin rule one quiet line with the
+   coordinates, the field size and the two small actions (always visible: nothing to open). */
+html.ui.ui-page-explore .card { container-type: inline-size; max-width: 430px; padding: 12px 14px 10px; }
+html.ui.ui-page-explore .card h2 { font-size: 18px; margin: 0 0 3px; }
+html.ui.ui-page-explore .card .note { margin: 0 0 9px; font-size: 13.5px; line-height: 1.4; color: var(--ui-soft);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+html.ui.ui-page-explore .card .cov { margin: 0 0 9px; padding: 0; background: none; font-size: 13.5px; line-height: 1.4; }
+html.ui.ui-page-explore .card.ts-manual .note { display: none; }            /* a point you picked: the one line is what SPHEREx has there */
+html.ui.ui-page-explore .card.ts-place .note:not(:empty) ~ .cov.good { display: none; }   /* a named place: what it is; coverage only as a warning */
+html.ui.ui-page-explore .card .actions { margin-top: 0; align-items: center; }
+html.ui.ui-page-explore .card .actions:empty { display: none; }
+html.ui.ui-page-explore .ts-card-more { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px; margin-top: 10px; padding-top: 7px;
+  border-top: 1px solid var(--ui-line); font-size: 12.5px; color: var(--ui-mut); }
+html.ui.ui-page-explore .ts-card-more .coords { margin: 0; font-size: 12.5px; gap: 0 10px; color: var(--ui-soft); }
+html.ui.ui-page-explore .ts-card-more .fov-row { margin: 0; font-size: 12.5px; gap: 4px 6px; flex-wrap: nowrap; }
+html.ui.ui-page-explore .ts-card-more .fov-row label { font-weight: 500; }
+html.ui.ui-page-explore .ts-card-more .fov-row select { padding: 1px 4px; font-size: 12.5px; max-width: 9.5em; }
+html.ui.ui-page-explore .ts-card-more .ghost, html.ui.ui-page-explore .card.ts-ready .ts-card-more #btnLook {
+  border: 0; background: none; box-shadow: none; padding: 3px 0; border-radius: 4px; font-size: 12.5px; font-weight: 500; color: var(--blue, #7fd4ff);
+  text-decoration: underline; text-underline-offset: 2px; animation: none; gap: 4px; }
+html.ui.ui-page-explore .card.ts-ready .ts-card-more #btnLook svg { display: none; }
+html.ui.ui-page-explore .card.ts-ready .ts-card-more #btnLook .look-eta { font-size: 12px; opacity: 1; color: var(--ui-mut); }
+/* the five targets have a finished result: that is the main button; fetching the images live becomes the small link */
+html.ui.ui-page-explore .card.ts-ready #btnGallery { border: 0; background: var(--acc); color: var(--acc-ink); font-weight: 750; padding: 10px 18px; font-size: 15.5px;
+  box-shadow: 0 4px 18px rgba(255, 201, 77, .35); }
+html.ui.ui-page-explore .card.ts-ready #btnGallery[hidden] { display: inline-block !important; visibility: hidden; }   /* its place is kept while the files are checked */
+@media (pointer: coarse) { html.ui.ui-page-explore .ts-card-more .ghost, html.ui.ui-page-explore .card.ts-ready .ts-card-more #btnLook { padding: 10px 2px; } }
+/* never under the result panel: with the panel open the card moves into the free strip of sky and gets smaller;
+   where there is no such strip (a laptop or a phone: the panel fills it) the card steps aside until the panel closes */
+@media (min-width: 1400px) {
+  html.ui body.blink-open:not(.ui-blink-minimized) .card { left: calc(var(--panel-w) + 24px); right: calc(min(860px, 64vw) + 16px); margin: 0; }
+}
+@media (max-width: 1399px) { html.ui body.blink-open:not(.ui-blink-minimized) .card { display: none; } }
+@container (max-width: 330px) {             /* the narrow strip beside the open result: the name and the one button */
+  html.ui body.blink-open:not(.ui-blink-minimized) .card .note, html.ui body.blink-open:not(.ui-blink-minimized) .card .cov,
+  html.ui body.blink-open:not(.ui-blink-minimized) .card .exo-info, html.ui body.blink-open:not(.ui-blink-minimized) .card .foot-legend,
+  html.ui body.blink-open:not(.ui-blink-minimized) .card .ts-card-more { display: none; }
+  html.ui body.blink-open:not(.ui-blink-minimized) .card h2 { font-size: 15.5px; margin-bottom: 8px; }
+  html.ui body.blink-open:not(.ui-blink-minimized) .card .actions { display: block; }
+  html.ui body.blink-open:not(.ui-blink-minimized) .card .actions > button { width: 100%; justify-content: center; font-size: 13.5px; line-height: 1.25; padding: 8px 10px; white-space: normal; }
+  html.ui body.blink-open:not(.ui-blink-minimized) .card .actions .look-eta, html.ui body.blink-open:not(.ui-blink-minimized) .card .actions #btnLook svg { display: none; }
+}
+/* a star with known planets: the note stays, small (the result repeats it in full) */
+html.ui.ui-page-explore .card .exo-info { margin: 0 0 9px; padding: 6px 9px; font-size: 12.5px; line-height: 1.4; }
+html.ui.ui-page-explore .card .exo-info .exo-head { font-size: 12.5px; }
+html.ui.ui-page-explore .card .exo-info .exo-link { margin-top: 1px; }
+html.ui.ui-page-explore .card .exo-info .exo-honest { margin-top: 2px; font-size: 12px; }
+@media (max-width: 640px) {                  /* a phone: zoom is two fingers, the coordinates are in the search box, the planets note keeps its first line */
+  html.ui.ui-page-explore .ts-card-more #btnZoom, html.ui.ui-page-explore .ts-card-more .coords, html.ui.ui-page-explore .card .exo-info .exo-honest { display: none; }
+  html.ui.ui-page-explore .ts-card-more { gap: 0 14px; }
+}
+@media (max-width: 480px) { html.ui.ui-page-explore .star-tools .chip small { display: none; } }
+
+/* category tiles: the name is enough (the small count sat on top of long names) */
+html.ui.ui-page-explore .cat .ct { display: none; }
+html.ui.ui-page-explore[lang="tr"] .cat .nm { padding-right: 0; }
+
+/* star layers: always visible; one short line says what the rings are (shown while a layer is on) */
+html.ui.ui-page-explore .star-say { margin: 0; max-width: 250px; padding: 8px 11px; border-radius: 12px; font-size: 12.5px; line-height: 1.4; color: #dfe6f7;
+  background: var(--glass, rgba(12, 16, 28, .82)); border: 1px solid var(--ui-line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+html.ui.ui-page-explore .star-tools:has(.chip[aria-pressed="true"]) .star-say { display: block; }
+@media (max-width: 720px) { html.ui.ui-page-explore .star-say { max-width: 200px; font-size: 11.5px; padding: 6px 9px; } }
+
+/* the other pages of the site, at the foot of the panel */
+html.ui.ui-page-explore .ex-nav { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin: 12px 0 2px; padding-top: 10px; border-top: 1px solid var(--ui-line); }
+@media (min-width: 721px) {                  /* always in view: it stays at the foot of the panel while the list scrolls */
+  html.ui.ui-page-explore .ex-nav { position: sticky; bottom: -10px; z-index: 2; margin: 12px -14px -10px; padding: 9px 14px 11px; background: #0c101c; }
+  html.ui.ui-page-explore .panel-body > .howto { display: none; }             /* the same button is in the top bar */
+}
+html.ui.ui-page-explore .ex-nav .ts-nav-l { flex-basis: 100%; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--ui-mut); }
+html.ui.ui-page-explore .ex-nav a { font-size: 13px; color: var(--ui-soft); text-decoration: none; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--ui-line); background: var(--ui-card); }
+html.ui.ui-page-explore .ex-nav a:hover { color: #fff; border-color: rgba(160, 180, 230, .45); }
+html.ui .ts-tourbtn.icon-btn { background: var(--ui-ours); color: #1a1300; border-color: transparent; font-weight: 700; }
+@media (pointer: coarse) { html.ui.ui-page-explore .ex-nav a { padding: 9px 12px; } }
 
 /* sky.html (in-browser engine): Simple shows the progress bar, the blink and the answer; technical lines in Detailed */
 html.ui.ui-page-sky .titlerow { gap: 6px 12px; }
 html.ui.ui-page-sky .titlerow .ui-mode { margin-left: auto; }
-html.ui[data-ui-mode="simple"].ui-page-sky #progress,
-html.ui[data-ui-mode="simple"].ui-page-sky #found,
-html.ui[data-ui-mode="simple"].ui-page-sky #fovEst,
-html.ui[data-ui-mode="simple"].ui-page-sky .card > .controls,
+html.ui[data-ui-mode="simple"].ui-page-sky:not(.ts-on) #progress,
+html.ui[data-ui-mode="simple"].ui-page-sky:not(.ts-on) #found,
+html.ui[data-ui-mode="simple"].ui-page-sky:not(.ts-on) #fovEst,
+html.ui[data-ui-mode="simple"].ui-page-sky:not(.ts-on) .card > .controls,
 html.ui[data-ui-mode="simple"].ui-page-sky #bins + .controls .small { display: none !important; }
 html.ui[data-ui-mode="simple"].ui-embedded.ui-page-sky main > .sub,
 html.ui[data-ui-mode="simple"].ui-embedded.ui-page-sky #form,

@@ -336,7 +336,12 @@ export async function mountViewer(v) {
   const job = Q.get("job"), mock = Q.get("mock") === "1";
   const host = document.createElement("div");
   host.id = "pgBins";
-  const keepFirst = () => { if (lead.firstElementChild !== host) lead.prepend(host); };   // ui_shell puts its quick line first: the bar goes above
+  const keepFirst = () => {
+    // placement only (site_sade): in the single-column layout the bar sits under the image, in its own slot #tsBins
+    const slot = document.documentElement.classList.contains("ts-on") ? $("tsBins") : null;
+    if (slot) { if (host.parentElement !== slot) slot.prepend(host); return; }
+    if (lead.firstElementChild !== host) lead.prepend(host);                              // ui_shell puts its quick line first: the bar goes above
+  };
   keepFirst();
   try { new MutationObserver(keepFirst).observe(lead, { childList: true }); } catch (_) { /* ignore */ }
   const wlLabel = wl.closest("label");
@@ -462,7 +467,9 @@ export async function runSky(ctx) {
   const viewer = $("viewer"), bins = $("bins");
   const card = document.createElement("div");
   card.className = "card pg-card"; card.id = "pgCard";
-  if (viewer) viewer.before(card);
+  const slot = document.documentElement.classList.contains("ts-on") ? $("tsBins") : null;   // single-column layout (js/ts_flow.js): its place is given
+  if (slot) slot.prepend(card);
+  else if (viewer) viewer.before(card);
   const binsCard = bins ? bins.closest(".card") : null;
   if (binsCard) binsCard.hidden = true;                // one place to choose the wavelength: the bar
   const row = document.querySelector(".progressrow");

@@ -252,8 +252,13 @@
     .tgt { padding:4px 9px 5px; }
   }
   @media (prefers-reduced-motion: reduce) { .zoom { transition:none; } }
+  /* single-column layout (js/ts_flow.js + css/ts_flow.css, site_sade): its skeleton and navigation are not part of
+     the classic layout (?ui=classic). #fzStage = the image area (stage + its controls); no box of its own here. */
+  #tsFlow, .ts-nav, .ts-tourbtn { display:none; }
+  #fzStage { display:contents; }
+  @media (max-width: 999px) { :where(#fzStage) > * { order:3; } #coreNote { order:10; } }
 </style>
-<link rel="stylesheet" href="css/ui_shell.css"><link rel="stylesheet" href="css/phone.css"><script src="js/ui_boot.js"></script><!-- ui layer (arayuz) -->
+<link rel="stylesheet" href="css/ui_shell.css"><link rel="stylesheet" href="css/ts_flow.css"><link rel="stylesheet" href="css/phone.css"><script src="js/ui_boot.js"></script><!-- ui layer (arayuz) -->
 </head>
 <body>
 <a class="skip" href="#stage" data-i18n="vw.skip">Skip to the image</a>
@@ -266,10 +271,69 @@
       <span id="kindBadge" class="badge kind" hidden></span>
       <span id="tagList"></span>
     </div>
+    <nav class="ts-nav" id="tsNav" aria-label="Pages" data-i18n-attr="aria-label:ts.nav.aria">
+      <a href="explore.html?hero=0" data-i18n="ts.nav.sky">Sky map</a>
+      <a href="ornek.html?data=data/barnard/" aria-current="page" data-i18n="ts.nav.targets">Five targets</a>
+      <a href="verify.html" data-i18n="ts.nav.evidence">Evidence</a>
+      <a href="planetx.html" data-i18n="px.nav">Planet X</a>
+      <a href="asteroids.html" data-i18n="ts.nav.ast">Asteroids</a>
+      <a href="comets.html" data-i18n="ts.nav.comets">Comets</a>
+      <a href="story.html" data-i18n="ts.nav.story">Story</a>
+      <a href="vr.html" data-i18n="ts.nav.vr">Inside the sky (VR)</a>
+    </nav>
     <span class="real" title="Every frame on this page is a SPHEREx spectral image from NASA/IPAC IRSA, stacked per season. Nothing is simulated." data-i18n="vw.real" data-i18n-attr="title:vw.realTip">Real SPHEREx data, not a simulation</span>
   </header>
   <nav class="targets" id="targets" aria-label="Challenge targets" data-i18n-attr="aria-label:vw.a.targets"></nav>
   <p class="stagebar" id="stagebar" hidden></p>
+
+  <!-- Single-column result (site_sade, brief tek_sutun_brif.md): sections A..G, always open, read top to bottom.
+       js/ts_flow.js moves the blocks of the classic layout below into these sections before the first paint;
+       no id that another module looks up changes. Not shown with ?ui=classic. data-tour = anchors of the guided tour. -->
+  <div class="ts-flow" id="tsFlow">
+    <section class="ts-sec" id="tsA" data-tour="what" aria-labelledby="tsAh">
+      <div class="ts-arow"><!-- one line: section label, what kind of result, the small actions (tour, GIF, link) -->
+        <h2 class="ts-h" id="tsAh" data-i18n="ts.a.h">What is here</h2><p class="ts-kick" id="tsKick" hidden></p>
+        <div class="ts-ax" id="tsAx"><button type="button" class="ts-tourbtn" data-tour-start hidden data-i18n="tour.start">Guided tour</button></div>
+      </div>
+      <div class="ts-head" id="tsHead"></div>
+      <dl class="ts-facts" id="tsFacts" hidden></dl>
+    </section>
+    <section class="ts-sec" id="tsB" aria-labelledby="tsBh">
+      <h2 class="ts-h" id="tsBh" data-i18n="ts.b.h">Over time</h2>
+      <p class="ts-say" data-i18n="ts.b.say">One SPHEREx image per visit, shown in turn: stars stay still, something that moves jumps.</p>
+      <div class="ts-bins" id="tsBins" data-tour="wavelengths"></div>
+      <p class="ts-say ts-binsay" data-i18n="ts.bins.say">SPHEREx sees infrared light the eye cannot. Each button shows the same spot in another infrared colour; some objects only show in one of them.</p>
+      <div class="ts-view" id="tsView"></div>
+      <div class="ts-diff" id="tsDiff" data-tour="difference">
+        <h3 class="ts-h3" data-i18n="ts.diff.h">What changed between two visits</h3>
+        <p class="ts-say" data-i18n="ts.diff.say">The last visit minus the first. Still stars cancel out; something that moved leaves a blue spot (where it was) and a red spot (where it is now).</p>
+      </div>
+    </section>
+    <section class="ts-sec" id="tsC" data-tour="verdict" aria-labelledby="tsCh">
+      <h2 class="ts-h" id="tsCh" data-i18n="ts.c.h">Verdict</h2>
+      <p class="ts-say" data-i18n="ts.c.say">What the images say about this spot, and how fast something would have to move for us to notice it.</p>
+      <div class="ts-vd" id="tsVd"></div>
+      <div class="ts-lim" id="tsLim" hidden></div>
+      <div class="ts-cx" id="tsCx"></div>
+    </section>
+    <section class="ts-sec" id="tsD" data-tour="measure" aria-labelledby="tsDh" hidden>
+      <h2 class="ts-h" id="tsDh" data-i18n="ts.d.h">Measurement</h2>
+      <p class="ts-say" id="tsDsay" data-i18n="ts.d.say">Our number, measured from these images alone, next to what the star catalogue says about the same object.</p>
+    </section>
+    <section class="ts-sec" id="tsE" data-tour="spectrum" aria-labelledby="tsEh" hidden>
+      <h2 class="ts-h" id="tsEh" data-i18n="ts.e.h">Spectrum</h2>
+      <p class="ts-say" data-i18n="ts.e.say">How bright this spot is in each infrared colour. Every exposure sees it in a different colour, so the exposures together draw the curve.</p>
+    </section>
+    <section class="ts-sec" id="tsF" data-tour="brightness" aria-labelledby="tsFh" hidden>
+      <h2 class="ts-h" id="tsFh" data-i18n="ts.f.h">Brightness over time</h2>
+      <p class="ts-say" data-i18n="ts.f.say">Did this spot get brighter or fainter between the visits? Each measurement is divided by this spot's own average brightness at that colour, so a steady source stays near 1.</p>
+      <div class="ts-time" id="tsTime"></div>
+    </section>
+    <section class="ts-sec ts-small" id="tsG" data-tour="small-print" aria-labelledby="tsGh">
+      <h2 class="ts-h" id="tsGh" data-i18n="ts.g.h">Small print</h2>
+      <p class="ts-say" data-i18n="ts.g.say">For those who want to check: the image on screen, quality flags, the technical numbers, the data release and the sources.</p>
+    </section>
+  </div>
 
   <div class="viewer">
     <div class="main">
@@ -277,6 +341,7 @@
         <div id="explainSentence"></div>
         <p class="watch" id="watch"></p>
       </section>
+      <div id="fzStage" data-tour="stage"><!-- image area (agent B): the stage and its controls; same ids inside as before -->
       <div class="stage" id="stage" aria-label="SPHEREx image of the field" data-i18n-attr="aria-label:vw.a.stage">
         <div class="zoom" id="zoomer">
           <img id="frame" alt="SPHEREx frame of the season on screen" draggable="false" data-i18n-attr="alt:vw.a.frame">
@@ -314,6 +379,7 @@
         <p class="compare"><span id="compareLine"></span><span id="fairBadge" class="badge fair" hidden></span></p>
         <p class="mode-hint" id="modeHint"></p>
       </div>
+      </div><!-- /#fzStage -->
       <div class="info">
         <span class="date" id="date"></span>
         <span id="detail"></span>
@@ -366,11 +432,13 @@
   <section id="candidateList"></section>
   <footer><small id="subtitle"></small><small id="src"></small><small class="ai-note" data-i18n-html="pg.ai"><b>Use of AI</b>: the code and text of this site were written with help from Anthropic's Claude (Claude Code). Team Fazari designed the project and checked and tested the results. The sky images and measurements come from the data sources credited here, not from an AI model.</small> <small data-i18n-html="pg.refs"><a href="https://github.com/adembtr/fazari#references">All references and acknowledgements</a>.</small></footer>
 </div>
+<script src="js/ts_flow.js"></script><!-- single-column layout (site_sade): moves the blocks into #tsFlow before the first paint -->
 
 <script type="module">
 import { startViewer } from "./js/viewer.js";
 const v = await startViewer();
 if (v) {
+  if (!window.__fzViewer) window.__fzViewer = v;   // the result on screen (meta, base), for js/ts_flow.js
   // Plug-ins: each one is optional; a failure only warns. Mount points: #explainSentence, #explainStrip,
   // #markingPanel (+ its toggle in .controls), #faintControls, #spectrum (in #spectrumPanel),
   // #candidateList, <svg id="candLayer"> (PNG pixels, inside #zoomer). Frame changes: event "fazari:frame".
@@ -396,5 +464,6 @@ if (v) {
 <script type="module" src="js/ui_shell.js"></script><!-- ui layer (arayuz) -->
 <script type="module" src="js/howto_read.js"></script><!-- how to read cards (ilk_izlenim) -->
 <script type="module" src="js/verdict_strip.js"></script><!-- verdict strip at the top of the answer (hukum) -->
+<script type="module" src="js/tour.js"></script><!-- guided tour (goruntu_tur): starts from any [data-tour-start] button -->
 </body>
 </html>

@@ -119,6 +119,8 @@ function setOpen(on) {
 async function init() {
   const viewer = document.querySelector(".viewer");
   if (!viewer || q === "0") return;
+  // single-column layout (js/ts_flow.js): no separate card; each section says in one sentence what it shows
+  if (document.documentElement.classList.contains("ts-on")) return;
   loadCss();
   try { meta = await fetch(DATA + "meta.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)); } catch (e) { meta = null; }
   if (!meta || !numbers(meta)) return;                        // no example data: nothing to explain with
