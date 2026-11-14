@@ -63,6 +63,7 @@ export class Engine {
     else if (m.type === "status") this.onStatus(m.message);
     else if (m.type === "ready") { const p = this.pending.get("init"); this.pending.delete("init"); p && p.resolve(m.session); }
     else if (m.type === "progress") { const p = this.pending.get(m.id); p && p.onProgress(m.progress); }
+    else if (["plan", "bin", "composite", "eta"].includes(m.type)) { const p = this.pending.get(m.id); p && p.onEvent && p.onEvent(m); }
     else if (m.type === "result") { const p = this.pending.get(m.id); this.pending.delete(m.id); p && p.resolve({ result: m.result, astrometry: m.astrometry }); }
     else if (m.type === "error") {
       const p = this.pending.get(m.id) || this.pending.get("init");
@@ -82,6 +83,28 @@ export class Engine {
     }
     this.net.setMaxParallel(this.net.MAX_PARALLEL);
     return this.session.loadBin(um, onProgress).then((result) => ({ result, astrometry: slimAstrometry(this.session.astrometry()) }));
+  }
+
+  /** Progressive full result: every available bin, one at a time (progressive.js). onEvent gets
+   * {type: "plan" | "bin" | "composite" | "eta", ...} (ajan_durumu/motor_hizi.md "PROGRESSIVE CONTRACT").
+   * Resolves {result: {results: {um: result}, answer, order}, astrometry}. */
+  loadAll(opts = {}, onEvent = () => {}) {
+    if (this.useWorker) {
+      const id = ++this.seq;
+      return new Promise((resolve, reject) => {
+        this.pending.set(id, { resolve, reject, onProgress: () => {}, onEvent });
+        this.worker.postMessage({ type: "loadAll", id, opts });
+      });
+    }
+    this.net.setMaxParallel(this.net.MAX_PARALLEL);
+    return import("./progressive.js").then(({ runAll }) => runAll(this.session, 0, opts, onEvent, (r) => r))
+      .then((result) => ({ result, astrometry: slimAstrometry(this.session.astrometry()) }));
+  }
+
+  /** Move a waiting bin to the front of loadAll's queue (no-op if it is loading or done). */
+  prioritize(um) {
+    if (this.useWorker) { if (this.worker) this.worker.postMessage({ type: "prioritize", um }); return; }
+    import("./progressive.js").then(({ prioritize }) => prioritize(um));
   }
 
   /** Quick preview of one bin (SkySession.loadPreview). Resolves {result, astrometry: null}. */
@@ -107,6 +130,18 @@ export class Engine {
       });
     }
     return import("./spectrum.js").then((m) => m.spectrumForSession(this.session, { onProgress })).then((result) => ({ result }));
+  }
+
+  /** Challenge tools on the exposures already in memory (ch_worker.js: spectrum, deep, frameinfo). Resolves {result}. */
+  ch(op, args = {}) {
+    if (this.useWorker) {
+      const id = ++this.seq;
+      return new Promise((resolve, reject) => {
+        this.pending.set(id, { resolve, reject, onProgress: () => {} });
+        this.worker.postMessage({ type: "ch", id, op, args });
+      });
+    }
+    return import("./ch_worker.js").then((m) => m.chHandle(this.session, op, args)).then((result) => ({ result }));
   }
 
   /** Abort in-flight fetches and stop. The engine cannot be used afterwards. */

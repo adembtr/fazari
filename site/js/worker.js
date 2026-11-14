@@ -3,6 +3,7 @@
 // Protocol (postMessage):
 //   in : {type: "init", ra, dec, target, images, config, cacheBytes}
 //        {type: "loadBin", id, um}     {type: "loadPreview", id, um, opts}     {type: "cancel"}
+//        {type: "loadAll", id, opts}   {type: "prioritize", um}   (progressive.js; events plan / bin / composite / eta)
 //   out: {type: "ready", session}      {type: "progress", id, progress}
 //        {type: "net", stats}           {type: "status", message}
 //        {type: "result", id, result, astrometry}   {type: "error", id, message, aborted}
@@ -41,10 +42,22 @@ self.onmessage = async (ev) => {
       const result = await session.loadBin(m.um, (p) => postMessage({ type: "progress", id: m.id, progress: p }));
       postMessage({ type: "net", stats: { ...stats } });
       postMessage({ type: "result", id: m.id, result: slimResult(result), astrometry: slimAstrometry(session.astrometry()) });
+    } else if (m.type === "loadAll") {              // progressive: every bin, one at a time (progressive.js; events plan/bin/composite/eta)
+      setMaxParallel(MAX_PARALLEL);
+      const { runAll } = await import("./progressive.js");
+      const out = await runAll(session, m.id, m.opts || {}, postMessage, slimResult);
+      postMessage({ type: "net", stats: { ...stats } });
+      postMessage({ type: "result", id: m.id, result: out, astrometry: slimAstrometry(session.astrometry()) });
+    } else if (m.type === "prioritize") {           // that bin loads next (no-op if loading or done)
+      const { prioritize } = await import("./progressive.js");
+      prioritize(m.um);
     } else if (m.type === "spectrum") {             // spectrum.js: the loaded exposures, format fazari-spectrum/1
       const { spectrumForSession } = await import("./spectrum.js");
       const spec = await spectrumForSession(session, { onProgress: (p) => postMessage({ type: "progress", id: m.id, progress: p }) });
       postMessage({ type: "result", id: m.id, result: spec, astrometry: null });
+    } else if (m.type === "ch") {                   // challenge tools on the loaded exposures (ch_worker.js), no download
+      const { chHandle } = await import("./ch_worker.js");
+      postMessage({ type: "result", id: m.id, result: await chHandle(session, m.op, m.args), astrometry: null });
     } else if (m.type === "cancel") {
       if (ctl) ctl.abort();
       postMessage({ type: "cancelled" });

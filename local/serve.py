@@ -11,6 +11,7 @@ Then open http://127.0.0.1:8765/explore.html. Standard library only; bound to 12
   POST   /api/jobs          {ra, dec, name?, bins?, cap?, mode?, preview?}  -> {id, cached, preview?}
   GET    /api/jobs/<id>     {state, progress: {done, total, bytes}, message, result_url, queue, ...}
   DELETE /api/jobs/<id>     cancel (stops the downloads and blink.py)
+  POST   /api/jobs/<id>/priority  {"bin_um": 4.0}: that wavelength bin downloads next (progressive full job)
   GET    /api/jobs          list of known jobs
   GET    /api/finds         verified results, {schema, finds: [...]} from <cache>/finds.jsonl (pipeline/finds.py)
 
@@ -625,7 +626,8 @@ class Jobs:
             out["target"] = j["req"]["target"].get("name")
             out["center"] = j["req"].get("center")
             out["source"] = "local IRSA cutouts" if j["req"].get("local_target") else "SPHEREx S3"
-        for k in ("timings", "images", "result", "cached", "skipped", "wall_seconds", "post", "partial"):
+        for k in ("timings", "images", "result", "cached", "skipped", "wall_seconds", "post", "partial",
+                  "progressive", "smaller"):                 # progressive: per-bin stages (job_worker.Staged)
             if st.get(k) is not None:
                 out[k] = st[k]
         if queue_info:
@@ -896,6 +898,33 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         if not self._host_ok() or not self._origin_ok():
             return self._json(403, {"error": "forbidden origin"})
+        m = re.match(r"^/api/jobs/([^/]+)/priority$", self._route())
+        if m:                                                # {"bin_um": 4.0}: that bin downloads next
+            jid = urllib.parse.unquote(m.group(1))
+            if not ID_RE.match(jid) or not (JOB_META / jid / "request.json").exists():
+                return self._json(404, {"error": "no such job"})
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+                um = float(json.loads(self.rfile.read(n) if 0 < n <= MAX_BODY else b"{}").get("bin_um"))
+            except (ValueError, TypeError, json.JSONDecodeError):
+                return self._json(400, {"error": 'body {"bin_um": <number>} required'})
+            tmp = JOB_META / jid / "priority.json.tmp"
+            tmp.write_text(json.dumps({"bin_um": um, "time": time.time()}))
+            os.replace(tmp, JOB_META / jid / "priority.json")
+            # the worker applies it within ~1 s; answer with the NEW order (the worker's, or the same rule here)
+            prog = {}
+            for _ in range(15):
+                prog = (load_json(JOB_META / jid / "status.json", {}) or {}).get("progressive") or {}
+                if prog.get("priority") == um:
+                    return self._json(200, {"ok": True, "bin_um": um, "order": prog.get("order"), "applied": True})
+                time.sleep(0.1)
+            order = list(prog.get("order") or [])
+            state = {b.get("bin_um"): b.get("state") for b in prog.get("bins") or []}
+            if um in order and state.get(um) in ("queued", "failed"):   # to the front of the bins still to load
+                order.remove(um)
+                k = next((i for i, b in enumerate(order) if state.get(b) == "queued"), len(order))
+                order.insert(k, um)
+            return self._json(200, {"ok": True, "bin_um": um, "order": order, "applied": False})
         if self._route() != "/api/jobs":
             return self._json(404, {"error": "unknown endpoint"})
         try:

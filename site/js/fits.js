@@ -384,17 +384,60 @@ export class SpherexFile {
     return out;
   }
 
-  /** IMAGE, FLAGS and ZODI rows y0..y1 (three requests in parallel). zodi: false skips the ZODI
-   * header and rows (the quick preview subtracts a median instead); zodi is then null. */
+  /** ZODI on rows y0..y1 from SPARSE_ROWS full rows: per column a quadratic in y (least squares).
+   * ZODI is a smooth model: tested on 45 0.4 deg cutouts, 99 % of the pixels within 0.03 sigma of the
+   * real layer (pipeline/fetch_region.py model_zodi, same method); ~40 kB instead of 8 kB per row. */
+  async readZodiSparse(y0, y1) {
+    const H = y1 - y0 + 1;
+    const ys = [...new Set(Array.from({ length: Math.min(SPARSE_ROWS, H) }, (_, i) =>
+      Math.round(y0 + (i * (H - 1)) / Math.max(1, Math.min(SPARSE_ROWS, H) - 1))))];
+    if (ys.length < 4) return this.readFloatRows(this.zodi, y0, y1);
+    const rows = await Promise.all(ys.map((y) => this.readFloatRows(this.zodi, y, y)));
+    const nx = this.zodi.header.num("NAXIS1");
+    // normal equations of [1, t, t^2] at the sampled t = y - y0, solved once (same for every column)
+    const t = ys.map((y) => y - y0);
+    const M = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    for (const v of t) for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) M[a][b] += v ** (a + b);
+    const inv = inv3(M);
+    const W = t.map((v) => [0, 1, 2].map((a) => inv[a][0] + inv[a][1] * v + inv[a][2] * v * v));   // coef_a = sum_k W[k][a] z_k
+    const out = new Float32Array(H * nx);
+    for (let x = 0; x < nx; x++) {
+      let c0 = 0, c1 = 0, c2 = 0, bad = false, sum = 0;
+      for (let k = 0; k < ys.length; k++) {
+        const z = rows[k][x];
+        if (!Number.isFinite(z)) { bad = true; continue; }
+        sum += z; c0 += W[k][0] * z; c1 += W[k][1] * z; c2 += W[k][2] * z;
+      }
+      if (bad) { const m = sum / ys.length; for (let j = 0; j < H; j++) out[j * nx + x] = m; continue; }
+      for (let j = 0; j < H; j++) out[j * nx + x] = c0 + c1 * j + c2 * j * j;
+    }
+    return out;
+  }
+
+  /** IMAGE, FLAGS and ZODI rows y0..y1 (in parallel; ZODI from SPARSE_ROWS rows, see readZodiSparse).
+   * zodi: false skips the ZODI header and rows (the quick preview subtracts a median instead); zodi is
+   * then null. zodi: "full" reads every ZODI row. */
   async readRegion(y0, y1, { zodi: withZodi = true } = {}) {
     if (withZodi) await this.openLayers(); else await this.openFlags();
     const [image, flags, zodi] = await Promise.all([
       this.readFloatRows(this.image, y0, y1),
       this.readFlagRows(y0, y1),
-      withZodi ? this.readFloatRows(this.zodi, y0, y1) : Promise.resolve(null),
+      !withZodi ? Promise.resolve(null)
+        : withZodi === "full" ? this.readFloatRows(this.zodi, y0, y1) : this.readZodiSparse(y0, y1),
     ]);
     return { y0, y1, nx: this.image.header.num("NAXIS1"), image, flags, zodi };
   }
+}
+
+const SPARSE_ROWS = 5;
+
+function inv3(m) {
+  const [[a, b, c], [d, e, f], [g, h, i]] = m;
+  const A = e * i - f * h, B = -(d * i - f * g), C = d * h - e * g;
+  const det = a * A + b * B + c * C;
+  return [[A / det, -(b * i - c * h) / det, (b * f - c * e) / det],
+          [B / det, (a * i - c * g) / det, -(a * f - c * d) / det],
+          [C / det, -(a * h - b * g) / det, (a * e - b * d) / det]];
 }
 
 /** Flag bit masks by name, from the MSKNnnnn keywords of a header (FLAGS or IMAGE). */

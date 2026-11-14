@@ -39,6 +39,7 @@ import math
 import os
 import sys
 import warnings
+import time
 import zlib
 from datetime import datetime, timezone
 from pathlib import Path
@@ -160,14 +161,34 @@ PHOT_MIN_COMPS = 2
 
 
 # ---- astrometry helpers ---------------------------------------------------------------
+_EPOCH_CACHE = {}
+
+
+def _epoch_info(mjd):
+    """(Julian year, lazy Earth barycentric xyz in AU) of an MJD, cached: target_position runs for
+    every reference star in every exposure (~14 000 calls for 89 exposures) with the same few
+    dozen dates, and astropy's Time + ephemeris cost ~0.5 ms each. Same values as uncached."""
+    hit = _EPOCH_CACHE.get(mjd)
+    if hit is None:
+        tt = Time(mjd, format="mjd")
+        box = []
+
+        def earth():
+            if not box:
+                box.append(get_body_barycentric("earth", tt).xyz.to_value("AU"))
+            return box[0]
+        hit = _EPOCH_CACHE[mjd] = (tt.jyear, earth)
+    return hit
+
+
 def target_position(t, mjd, with_parallax=True):
     """Catalogue position moved to time mjd: proper motion (+ perspective acceleration if a
     radial velocity 'rv' in km/s is given) + annual parallax.
     Parallax factors use the Earth's barycentric position (SPHEREx is in low Earth orbit,
     7000 km is negligible). Aberration is not added: the SPHEREx WCS is fitted to Gaia
     stars in the same image, so it is already removed."""
-    tt = Time(mjd, format="mjd")
-    dt = tt.jyear - t["epoch"]
+    jyear, earth = _epoch_info(float(mjd))
+    dt = jyear - t["epoch"]
     cosd = math.cos(math.radians(t["dec"]))
     # perspective acceleration (exact for the tangent-plane offsets of linear space motion):
     # the radial motion mu_r = v_r * parallax changes the distance, so the angular offsets
@@ -177,7 +198,7 @@ def target_position(t, mjd, with_parallax=True):
     ddec = t["pmdec"] * dt / (1 + mu_r * dt)
     plx = t.get("plx", 0.0)
     if with_parallax and plx:
-        e = get_body_barycentric("earth", tt).xyz.to_value("AU")
+        e = earth()
         a, d = math.radians(t["ra"]), math.radians(t["dec"])
         dra += plx * (e[0] * math.sin(a) - e[1] * math.cos(a))
         ddec += plx * (e[0] * math.cos(a) * math.sin(d) + e[1] * math.sin(a) * math.sin(d)
@@ -277,6 +298,10 @@ def centroid(img, var, ok, x0, y0, half=5, nb=(), full=False):
     except Exception:
         return None
     if not r.success or np.any(np.isclose(r.x[1:3], lo[1:3])) or np.any(np.isclose(r.x[1:3], hi[1:3])):
+        return None
+    # a fit that never left its start (e.g. a 0.6 px Gaussian started on a big saturated core sees no wing
+    # light: zero gradient) is no measurement; dropped, so that season gets no position (tarayici_olcum)
+    if abs(r.x[1] - x0) < 1e-4 and abs(r.x[2] - y0) < 1e-4 and abs(r.x[3] - p0[3]) < 1e-4:
         return None
     out = (float(r.x[1]), float(r.x[2]), float(r.x[3]), int(m.sum()))
     return (out + (fit_errors(r, len(d)),)) if full else out
@@ -879,28 +904,137 @@ def gaia_field(name, ra, dec):
     cache = OUT / name / "gaia_field.json"            # ad-hoc targets: next to their products
     if cache.exists() and gaia_cache_radius(cache) >= GAIA_RADIUS_DEG - 1e-9:
         return json.loads(cache.read_text())
-    import urllib.parse
-    import urllib.request
-    q = ("SELECT source_id, ra, dec, pmra, pmdec, parallax, phot_g_mean_mag, ruwe "
-         "FROM gaia_dr3_source WHERE CONTAINS(POINT('ICRS', ra, dec), "
-         f"CIRCLE('ICRS', {ra:.6f}, {dec:.6f}, {GAIA_RADIUS_DEG}))=1 AND phot_g_mean_mag < {GAIA_GMAX}")
-    data = urllib.parse.urlencode({"QUERY": q, "FORMAT": "csv"}).encode()
-    req = urllib.request.Request(GAIA_TAP, data=data, headers={"User-Agent": "fazari-spaceapps/1.0"})
-    with urllib.request.urlopen(req, timeout=180) as r:
-        rows = list(csv.DictReader(r.read().decode().splitlines()))
-
-    def num(v):
-        return round(float(v), 7) if v not in ("", None) else None
-    stars = [[int(r["source_id"]), num(r["ra"]), num(r["dec"]), num(r["pmra"]), num(r["pmdec"]),
-              num(r["parallax"]), num(r["phot_g_mean_mag"]), num(r["ruwe"])] for r in rows]
-    out = {"source": "Gaia DR3 (gaia_dr3_source at NASA/IPAC IRSA TAP)", "query": q, "ref_epoch": 2016.0,
+    if os.environ.get("FAZARI_NO_GAIA_FETCH"):        # local engine stage / final while the catalogue is pending
+        if cache.exists():                            # a slightly smaller field beats none
+            print(f"  Gaia field radius {gaia_cache_radius(cache)} < {GAIA_RADIUS_DEG} deg: used as it is")
+            return json.loads(cache.read_text())
+        raise IOError("star catalogue not loaded yet (" + os.environ["FAZARI_NO_GAIA_FETCH"] + ")")
+    q, source, stars, tried = gaia_rows(ra, dec, GAIA_RADIUS_DEG, GAIA_GMAX)
+    out = {"source": source, "query": q, "ref_epoch": 2016.0,
            "columns": ["source_id", "ra", "dec", "pmra", "pmdec", "parallax", "phot_g_mean_mag", "ruwe"],
            "retrieved": datetime.now(timezone.utc).strftime("%Y-%m-%d"), "radius_deg": GAIA_RADIUS_DEG,
            "stars": stars}
+    if tried:
+        out["fallback"] = {"failed": tried}                # e.g. IRSA TAP HTTP 502: the rows come from ESA / VizieR
     cache.parent.mkdir(parents=True, exist_ok=True)
-    cache.write_text(json.dumps(out, separators=(",", ":")))
-    print(f"  cached {len(stars)} Gaia DR3 stars in {cache}")
+    tmp = cache.with_name(cache.name + ".part")
+    tmp.write_text(json.dumps(out, separators=(",", ":")))
+    os.replace(tmp, cache)
+    print(f"  cached {len(stars)} Gaia DR3 stars in {cache} ({source})")
     return out
+
+
+# The same Gaia DR3 rows from three services, tried in this order. ESA's gaiadr3.gaia_source and
+# VizieR's I/355/gaiadr3 hold the same DR3 solution as IRSA's gaia_dr3_source (positions at epoch
+# 2016.0); values are rounded to the decimals IRSA's CSV delivers (ra/dec 7, pm 3, parallax 4,
+# G 6, ruwe 3), so a field from any source gives the same numbers (checked on a cached field:
+# pipeline/blink.py gaia_compare, see ASTROMETRY.md). IRSA TAP returned HTTP 502 for hours on
+# 14 Nov 2026; a hung service costs at most GAIA_TIMEOUT per try.
+GAIA_ESA_TAP = "https://gea.esac.esa.int/tap-server/tap/sync"
+GAIA_VIZIER_TAP = "https://tapvizier.cds.unistra.fr/TAPVizieR/tap/sync"
+GAIA_TIMEOUT = 60
+GAIA_TRIES = 2                      # per service, with a short back-off
+GAIA_DECIMALS = (None, 7, 7, 3, 3, 4, 6, 3)
+
+
+def _gaia_query(service, ra, dec, radius, gmax):
+    if service == "vizier":
+        return ('SELECT "Source", "RA_ICRS", "DE_ICRS", "pmRA", "pmDE", "Plx", "Gmag", "RUWE" '
+                'FROM "I/355/gaiadr3" WHERE CONTAINS(POINT(\'ICRS\', "RA_ICRS", "DE_ICRS"), '
+                f"CIRCLE('ICRS', {ra:.6f}, {dec:.6f}, {radius}))=1 AND \"Gmag\" < {gmax}")
+    table = "gaia_dr3_source" if service == "irsa" else "gaiadr3.gaia_source"
+    return ("SELECT source_id, ra, dec, pmra, pmdec, parallax, phot_g_mean_mag, ruwe "
+            f"FROM {table} WHERE CONTAINS(POINT('ICRS', ra, dec), "
+            f"CIRCLE('ICRS', {ra:.6f}, {dec:.6f}, {radius}))=1 AND phot_g_mean_mag < {gmax}")
+
+
+def _gaia_fetch(service, ra, dec, radius, gmax, timeout=GAIA_TIMEOUT):
+    """(query, rows) from one TAP service; rows = [source_id, ra, dec, pmra, pmdec, plx, G, ruwe]."""
+    import urllib.parse
+    import urllib.request
+    q = _gaia_query(service, ra, dec, radius, gmax)
+    url = {"irsa": GAIA_TAP, "esa": GAIA_ESA_TAP, "vizier": GAIA_VIZIER_TAP}[service]
+    params = {"QUERY": q, "FORMAT": "csv"} if service == "irsa" else \
+        {"REQUEST": "doQuery", "LANG": "ADQL", "FORMAT": "csv", "QUERY": q}
+    req = urllib.request.Request(url, data=urllib.parse.urlencode(params).encode(),
+                                 headers={"User-Agent": "fazari-spaceapps/1.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        text = r.read(100_000_000).decode()
+    rows = list(csv.reader(text.splitlines()))
+    if not rows:
+        raise IOError(f"{service}: empty answer")
+    head = [h.strip().strip('"').lower() for h in rows[0]]
+    want = (["source", "ra_icrs", "de_icrs", "pmra", "pmde", "plx", "gmag", "ruwe"] if service == "vizier" else
+            ["source_id", "ra", "dec", "pmra", "pmdec", "parallax", "phot_g_mean_mag", "ruwe"])
+    if set(want) - set(head):
+        raise IOError(f"{service}: columns {head} lack {sorted(set(want) - set(head))}")
+    idx = [head.index(c) for c in want]
+    out = []
+    for r in rows[1:]:
+        if not r:
+            continue
+        v = []
+        for i, nd in zip(idx, GAIA_DECIMALS):
+            x = r[i].strip()
+            v.append(int(x) if nd is None else (round(float(x), nd) if x not in ("", "null", "NaN") else None))
+        out.append(v)
+    return q, out
+
+
+GAIA_RACE_TIMEOUT = 20              # s, connect/read per service in the race (a hung TAP costs at most this)
+
+
+def gaia_rows(ra, dec, radius, gmax, services=("irsa", "esa", "vizier")):
+    """(query, source label, rows, failures): the services are asked AT THE SAME TIME and the first good
+    answer wins (the others are abandoned; daemon threads). Same rows from any of them (gaia_compare).
+    Round 1 with GAIA_RACE_TIMEOUT, round 2 (only if every service failed) with GAIA_TIMEOUT."""
+    import queue
+    import threading
+    labels = {"irsa": "Gaia DR3 (gaia_dr3_source at NASA/IPAC IRSA TAP)",
+              "esa": "Gaia DR3 (gaiadr3.gaia_source at the ESA Gaia Archive TAP)",
+              "vizier": "Gaia DR3 (I/355/gaiadr3 at CDS VizieR TAP)"}
+    tried = []
+    for rnd, timeout in enumerate((GAIA_RACE_TIMEOUT, GAIA_TIMEOUT)):
+        box = queue.Queue()
+
+        def ask(svc):
+            try:
+                q, rows = _gaia_fetch(svc, ra, dec, radius, gmax, timeout=timeout)
+                box.put((svc, q, rows, None))
+            except Exception as e:
+                box.put((svc, None, None, f"{svc}: {type(e).__name__}: {str(e)[:120]}"))
+        for svc in services:
+            threading.Thread(target=ask, args=(svc,), daemon=True).start()
+        for _ in services:
+            svc, q, rows, err = box.get()
+            if err is None:
+                lost = [x for x in tried]
+                return q, labels[svc] + (f"; first answer of {', '.join(services)}" if len(services) > 1 else ""), rows, lost
+            tried.append(err)
+            print(f"  Gaia DR3 from {err}", flush=True)
+        if rnd == 0:
+            time.sleep(3)
+    raise IOError("Gaia DR3 field stars unavailable from " + ", ".join(services) + ": " + " | ".join(tried))
+
+
+def gaia_compare(path, services=("esa", "vizier")):
+    """One-time check that the fallback services give the rows of a cached (IRSA) gaia_field.json."""
+    import re
+    c = json.loads(Path(path).read_text())
+    m = re.search(r"CIRCLE\('ICRS', ([-\d.]+), ([-\d.]+), ([\d.]+)\)\)=1 AND phot_g_mean_mag < ([\d.]+)", c["query"])
+    ra, dec, rad, gmax = (float(v) for v in m.groups())
+    A = {r[0]: r for r in c["stars"]}
+    res = {"field": str(path), "irsa_rows": len(A)}
+    for s in services:
+        _, rows = _gaia_fetch(s, ra, dec, rad, gmax)
+        B = {r[0]: [r[0]] + [round(v, 7) if v is not None else None for v in r[1:]] for r in rows}
+        common = set(A) & set(B)
+        ndiff = sum(1 for k in common if A[k] != B[k])
+        maxd = max((abs(a - b) for k in common for a, b in zip(A[k][1:], B[k][1:]) if a is not None and b is not None),
+                   default=0.0)
+        res[s] = {"rows": len(B), "common": len(common), "only_irsa": len(set(A) - set(B)),
+                  "only_" + s: len(set(B) - set(A)), "rows_differing": ndiff, "max_abs_diff": maxd}
+    return res
 
 
 def gaia_cache_radius(path):
@@ -1048,6 +1182,40 @@ def star_residuals(i, refs, path, log=None):
     return rows
 
 
+CAL_WORKERS = int(os.environ.get("FAZARI_CAL_WORKERS") or min(6, os.cpu_count() or 1))
+_SR_JOB = None                       # (used, refs, path, export) for the forked workers
+
+
+def _star_residuals_one(k):
+    used, refs, path, export = _SR_JOB
+    log = [] if export else None
+    return star_residuals(used[k], refs, path, log), log
+
+
+def star_residuals_all(used, refs, path, export):
+    """[(rows, log)] of star_residuals() for every exposure. The exposures are independent, so
+    with >= 8 of them they run in CAL_WORKERS forked processes (the field-star fits are ~70 % of
+    blink.py's time: 89 exposures 23 s -> ~8 s); same numbers as the serial loop, which is the
+    fallback (FAZARI_CAL_WORKERS=1, no fork, or any pool error)."""
+    global _SR_JOB
+    _SR_JOB = (used, refs, path, export)
+    try:
+        import threading
+        if CAL_WORKERS > 1 and len(used) >= 8 and threading.active_count() == 1:   # fork only without threads
+            import multiprocessing
+            from concurrent.futures import ProcessPoolExecutor
+            try:
+                ctx = multiprocessing.get_context("fork")
+                with ProcessPoolExecutor(CAL_WORKERS, mp_context=ctx) as ex:
+                    return list(ex.map(_star_residuals_one, range(len(used)),
+                                       chunksize=max(1, len(used) // (4 * CAL_WORKERS))))
+            except Exception as e:                   # no fork / a worker died: do it here
+                print(f"  field calibration: parallel run failed ({type(e).__name__}: {e}); serial")
+        return [_star_residuals_one(k) for k in range(len(used))]
+    finally:
+        _SR_JOB = None
+
+
 def fit_offsets(rows):
     """Clipped fit of measured - Gaia star offsets: shift, or shift + rotation + scale about the
     target when >= CAL_ROT_STARS stars. Returns dict(east, north, err_east, err_north, n,
@@ -1151,9 +1319,7 @@ def field_calibration(t, name, used, path, ra_c, dec_c):
     refs = reference_stars(gaia, t, ra_c, dec_c)
     export = field_stars_on()                      # per-star table field_stars.csv (no effect on the fit)
     pooled, per_exp, pooled_recs = {}, [], {}
-    for i in used:
-        log = [] if export else None
-        rows = star_residuals(i, refs, path, log)
+    for i, (rows, log) in zip(used, star_residuals_all(used, refs, path, export)):
         i["calib_nstars"] = len(rows)
         pooled.setdefault((i["epoch"], i["detector"]), []).extend(rows)
         if export:
