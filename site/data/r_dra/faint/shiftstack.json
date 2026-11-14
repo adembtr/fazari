@@ -1,0 +1,1109 @@
+{
+ "schema": "fazari-shiftstack/1",
+ "generated": "2026-11-14T12:40:44Z",
+ "field": {
+  "name": "r_dra",
+  "ra": 248.1672331,
+  "dec": 66.7550238
+ },
+ "runs": [
+  {
+   "peaks": [
+    {
+     "x": 164.0,
+     "y": 164.0,
+     "ra": 248.0095286,
+     "dec": 66.8170286,
+     "snr": 18.8,
+     "chi2": 6.38,
+     "flux_ujy": 706.18,
+     "flux_err_ujy": 37.56,
+     "mag_ab": 16.78,
+     "v_east": 0.0,
+     "v_north": 5.75,
+     "v_err": [
+      0.33,
+      0.225
+     ],
+     "speed": 5.75,
+     "pa_deg": 0.0,
+     "epochs": [
+      {
+       "epoch": "2025-06",
+       "mjd": 60852.2020999,
+       "flux_ujy": 337.12,
+       "err_ujy": 84.07,
+       "snr": 4.01,
+       "n": 1
+      },
+      {
+       "epoch": "2025-11",
+       "mjd": 60996.3520423,
+       "flux_ujy": 1031.55,
+       "err_ujy": 80.33,
+       "snr": 12.84,
+       "n": 1
+      },
+      {
+       "epoch": "2026-06",
+       "mjd": 61212.1110807,
+       "flux_ujy": 710.54,
+       "err_ujy": 49.23,
+       "snr": 14.43,
+       "n": 1
+      }
+     ],
+     "n_epochs_snr2": 3,
+     "snr_without_strongest_season": 12.05,
+     "flags": [
+      "static star on the path (13986 uJy): probably its residual"
+     ],
+     "static_flux_on_path_ujy": 13985.9,
+     "self_subtraction_m2": 1.0,
+     "model": "plain (bright: clipped out of the templates)",
+     "motion_text": "5.8\"/yr toward PA 0\u00b0",
+     "match": {},
+     "class": "artifact"
+    },
+    {
+     "x": 163.0,
+     "y": 126.5,
+     "ra": 248.0118432,
+     "dec": 66.7857808,
+     "snr": 7.59,
+     "chi2": 0.97,
+     "flux_ujy": 155.49,
+     "flux_err_ujy": 20.48,
+     "mag_ab": 18.42,
+     "v_east": 5.0,
+     "v_north": 5.0,
+     "v_err": [
+      3.0,
+      1.0
+     ],
+     "speed": 7.071,
+     "pa_deg": 45.0,
+     "epochs": [
+      {
+       "epoch": "2025-06",
+       "mjd": 60852.2020999,
+       "flux_ujy": 121.43,
+       "err_ujy": 54.19,
+       "snr": 2.24,
+       "n": 1
+      },
+      {
+       "epoch": "2025-11",
+       "mjd": 60996.3520423,
+       "flux_ujy": 202.73,
+       "err_ujy": 42.91,
+       "snr": 4.72,
+       "n": 1
+      },
+      {
+       "epoch": "2026-06",
+       "mjd": 61212.1110807,
+       "flux_ujy": 146.14,
+       "err_ujy": 25.81,
+       "snr": 5.66,
+       "n": 1
+      }
+     ],
+     "n_epochs_snr2": 3,
+     "snr_without_strongest_season": 5.09,
+     "flags": [
+      "static star on the path (6729 uJy): probably its residual"
+     ],
+     "static_flux_on_path_ujy": 6729.4,
+     "self_subtraction_m2": 1.0,
+     "model": "plain (bright: clipped out of the templates)",
+     "motion_text": "7.1\"/yr toward PA 45\u00b0",
+     "match": {},
+     "class": "artifact"
+    },
+    {
+     "x": 19.0,
+     "y": 47.5,
+     "ra": 248.3158824,
+     "dec": 66.7199538,
+     "snr": 7.31,
+     "chi2": 13.75,
+     "flux_ujy": 30.52,
+     "flux_err_ujy": 4.18,
+     "mag_ab": 20.19,
+     "v_east": 11.5,
+     "v_north": 12.0,
+     "v_err": [
+      1.183,
+      1.0
+     ],
+     "speed": 16.621,
+     "pa_deg": 43.8,
+     "epochs": [
+      {
+       "epoch": "2025-06",
+       "mjd": 60852.2020999,
+       "flux_ujy": 65.5,
+       "err_ujy": 8.14,
+       "snr": 8.05,
+       "n": 1
+      },
+      {
+       "epoch": "2025-11",
+       "mjd": 60996.3520423,
+       "flux_ujy": 10.81,
+       "err_ujy": 7.56,
+       "snr": 1.43,
+       "n": 1
+      },
+      {
+       "epoch": "2026-06",
+       "mjd": 61212.1110807,
+       "flux_ujy": 23.12,
+       "err_ujy": 6.35,
+       "snr": 3.64,
+       "n": 1
+      }
+     ],
+     "n_epochs_snr2": 2,
+     "snr_without_strongest_season": 3.71,
+     "flags": [
+      "best motion at the edge of the trial grid"
+     ],
+     "static_flux_on_path_ujy": 11.4,
+     "self_subtraction_m2": 1.062,
+     "model": "self-subtraction aware",
+     "motion_text": "16.6\"/yr toward PA 44\u00b0",
+     "match": {},
+     "class": "candidate"
+    },
+    {
+     "x": 66.0,
+     "y": 37.0,
+     "ra": 248.2167654,
+     "dec": 66.7112661,
+     "snr": 7.19,
+     "chi2": 13.78,
+     "flux_ujy": 108.65,
+     "flux_err_ujy": 15.11,
+     "mag_ab": 18.81,
+     "v_east": -2.0,
+     "v_north": -5.0,
+     "v_err": [
+      1.0,
+      0.657
+     ],
+     "speed": 5.385,
+     "pa_deg": 201.8,
+     "epochs": [
+      {
+       "epoch": "2025-06",
+       "mjd": 60852.2020999,
+       "flux_ujy": 212.82,
+       "err_ujy": 24.2,
+       "snr": 8.8,
+       "n": 1
+      },
+      {
+       "epoch": "2025-11",
+       "mjd": 60996.3520423,
+       "flux_ujy": 47.5,
+       "err_ujy": 36.1,
+       "snr": 1.32,
+       "n": 1
+      },
+      {
+       "epoch": "2026-06",
+       "mjd": 61212.1110807,
+       "flux_ujy": 39.87,
+       "err_ujy": 22.91,
+       "snr": 1.74,
+       "n": 1
+      }
+     ],
+     "n_epochs_snr2": 1,
+     "snr_without_strongest_season": 2.17,
+     "flags": [
+      "seen in one season only (S/N without the strongest season 2.2)"
+     ],
+     "static_flux_on_path_ujy": 100.2,
+     "self_subtraction_m2": 0.291,
+     "model": "self-subtraction aware",
+     "motion_text": "5.4\"/yr toward PA 202\u00b0",
+     "match": {},
+     "class": "artifact"
+    },
+    {
+     "x": 166.0,
+     "y": 122.0,
+     "ra": 248.0055255,
+     "dec": 66.7820245,
+     "snr": 6.65,
+     "chi2": 13.65,
+     "flux_ujy": 30.43,
+     "flux_err_ujy": 4.58,
+     "mag_ab": 20.19,
+     "v_east": -12.0,
+     "v_north": -9.0,
+     "v_err": [
+      1.371,
+      1.0
+     ],
+     "speed": 15.0,
+     "pa_deg": 233.1,
+     "epochs": [
+      {
+       "epoch": "2025-06",
+       "mjd": 60852.2020999,
+       "flux_ujy": 86.53,
+       "err_ujy": 17.59,
+       "snr": 4.92,
+       "n": 1
+      },
+      {
+       "epoch": "2025-11",
+       "mjd": 60996.3520423,
+       "flux_ujy": 50.79,
+       "err_ujy": 8.95,
+       "snr": 5.67,
+       "n": 1
+      },
+      {
+       "epoch": "2026-06",
+       "mjd": 61212.1110807,
+       "flux_ujy": 16.83,
+       "err_ujy": 5.59,
+       "snr": 3.01,
+       "n": 1
+      }
+     ],
+     "n_epochs_snr2": 3,
+     "snr_without_strongest_season": 4.36,
+     "flags": [
+      "best motion at the edge of the trial grid",
+      "static star on the path (775 uJy): probably its residual"
+     ],
+     "static_flux_on_path_ujy": 775.0,
+     "self_subtraction_m2": 0.98,
+     "model": "self-subtraction aware",
+     "motion_text": "15.0\"/yr toward PA 233\u00b0",
+     "match": {},
+     "class": "artifact"
+    },
+    {
+     "x": 174.0,
+     "y": 105.0,
+     "ra": 247.9887178,
+     "dec": 66.7678397,
+     "snr": 6.25,
+     "chi2": 13.75,
+     "flux_ujy": 36.86,
+     "flux_err_ujy": 5.9,
+     "mag_ab": 19.98,
+     "v_east": -5.0,
+     "v_north": -5.25,
+     "v_err": [
+      1.117,
+      1.109
+     ],
+     "speed": 7.25,
+     "pa_deg": 223.6,
+     "epochs": [
+      {
+       "epoch": "2025-06",
+       "mjd": 60852.2020999,
+       "flux_ujy": 79.01,
+       "err_ujy": 10.95,
+       "snr": 7.22,
+       "n": 1
+      },
+      {
+       "epoch": "2025-11",
+       "mjd": 60996.3520423,
+       "flux_ujy": 1.55,
+       "err_ujy": 14.82,
+       "snr": 0.1,
+       "n": 1
+      },
+      {
+       "epoch": "2026-06",
+       "mjd": 61212.1110807,
+       "flux_ujy": 24.82,
+       "err_ujy": 7.94,
+       "snr": 3.13,
+       "n": 1
+      }
+     ],
+     "n_epochs_snr2": 2,
+     "snr_without_strongest_season": 2.8,
+     "flags": [
+      "seen in one season only (S/N without the strongest season 2.8)"
+     ],
+     "static_flux_on_path_ujy": 20.1,
+     "self_subtraction_m2": 0.43,
+     "model": "self-subtraction aware",
+     "motion_text": "7.2\"/yr toward PA 224\u00b0",
+     "match": {},
+     "class": "artifact"
+    },
+    {
+     "x": 70.0,
+     "y": 26.5,
+     "ra": 248.2083198,
+     "dec": 66.7025185,
+     "snr": 6.22,
+     "chi2": 13.56,
+     "flux_ujy": 44.78,
+     "flux_err_ujy": 7.2,
+     "mag_ab": 19.77,
+     "v_east": -12.0,
+     "v_north": 12.0,
+     "v_err": [
+      1.828,
+      1.0
+     ],
+     "speed": 16.971,
+     "pa_deg": 315.0,
+     "epochs": [
+      {
+       "epoch": "2025-06",
+       "mjd": 60852.2020999,
+       "flux_ujy": 0.86,
+       "err_ujy": 11.34,
+       "snr": 0.08,
+       "n": 1
+      },
+      {
+       "epoch": "2025-11",
+       "mjd": 60996.3520423,
+       "flux_ujy": 77.86,
+       "err_ujy": 13.41,
+       "snr": 5.81,
+       "n": 1
+      },
+      {
+       "epoch": "2026-06",
+       "mjd": 61212.1110807,
+       "flux_ujy": 71.18,
+       "err_ujy": 12.95,
+       "snr": 5.49,
+       "n": 1
+      }
+     ],
+     "n_epochs_snr2": 2,
+     "snr_without_strongest_season": 3.68,
+     "flags": [
+      "best motion at the edge of the trial grid",
+      "static star on the path (528 uJy): probably its residual"
+     ],
+     "static_flux_on_path_ujy": 527.9,
+     "self_subtraction_m2": 1.065,
+     "model": "self-subtraction aware",
+     "motion_text": "17.0\"/yr toward PA 315\u00b0",
+     "match": {},
+     "class": "artifact"
+    }
+   ],
+   "threshold": 6.0,
+   "statistic": "self-subtraction-aware matched filter on leave-one-season-out residuals (the mover's negative copies in the templates are part of the model; flux = true flux); only paths whose season fluxes agree (chi2, p = 0.001) and that >= 2 seasons cover count",
+   "mode": "pm",
+   "unit": "arcsec/yr",
+   "n_velocities": 625,
+   "vmax": 12.0,
+   "step": 1.0,
+   "eps_model": 0.2,
+   "t_ref_mjd": 61024.2927904,
+   "t_ref_jyear": 2025.9542582,
+   "n_groups": 103,
+   "seasons": [
+    "2025-06",
+    "2025-11",
+    "2026-06"
+   ],
+   "noise_scale": 3.826,
+   "seconds": 24.4,
+   "lam_range": null,
+   "tag": "pm",
+   "peak_map_png": "shiftstack_pm.png",
+   "vmap_png": "shiftstack_pm_v.png",
+   "summary": "Proper motion (all wavelengths): 625 trial motions up to 12.0 arcsec/yr; 7 peak(s) at S/N >= 6.0, 0 matched to known movers, 1 candidate(s) for follow-up."
+  }
+ ],
+ "note": "Shift-and-stack: exposures shifted along trial motions and added after template subtraction. S/N in units of the measured noise. Peaks are candidates for follow-up, not discoveries.",
+ "candidates": [
+  {
+   "id": null,
+   "class": "artifact",
+   "kind": "motion",
+   "detectors": [
+    "S"
+   ],
+   "ra": 248.0095286,
+   "dec": 66.8170286,
+   "epoch": 2025.9542582,
+   "positions": [
+    {
+     "season": "2025-06",
+     "jyear": 2025.4830995,
+     "ra": 248.0095286,
+     "dec": 66.816276,
+     "err_arcsec": 0.51,
+     "n": 1
+    },
+    {
+     "season": "2025-11",
+     "jyear": 2025.8777606,
+     "ra": 248.0095286,
+     "dec": 66.8169064,
+     "err_arcsec": 0.35,
+     "n": 1
+    },
+    {
+     "season": "2026-06",
+     "jyear": 2026.4684766,
+     "ra": 248.0095286,
+     "dec": 66.8178499,
+     "err_arcsec": 0.52,
+     "n": 1
+    }
+   ],
+   "motion": {
+    "pmra_mas_yr": 0.0,
+    "pmdec_mas_yr": 5750.0,
+    "err_pmra_mas_yr": 330.0,
+    "err_pmdec_mas_yr": 225.0,
+    "speed_arcsec_yr": 5.75,
+    "err_speed_arcsec_yr": 0.225,
+    "pa_deg": 0.0,
+    "err_pa_deg": 3.3,
+    "significance_sigma": 18.8,
+    "method": "shift-and-stack (S)"
+   },
+   "snr": 18.8,
+   "flux_ujy": 706.18,
+   "mag_ab": 16.78,
+   "bins": [
+    "all wavelengths"
+   ],
+   "season_pairs": [],
+   "match": {},
+   "flags": [
+    "static star on the path (13986 uJy): probably its residual"
+   ],
+   "notes": "shift-and-stack peak: S/N 18.8 at 5.8\"/yr toward PA 0\u00b0; per-season S/N 2025-06 4.01, 2025-11 12.84, 2026-06 14.43",
+   "shiftstack": {
+    "mode": "pm",
+    "unit": "arcsec/yr",
+    "v_east": 0.0,
+    "v_north": 5.75,
+    "epochs": [
+     {
+      "epoch": "2025-06",
+      "mjd": 60852.2020999,
+      "flux_ujy": 337.12,
+      "err_ujy": 84.07,
+      "snr": 4.01,
+      "n": 1
+     },
+     {
+      "epoch": "2025-11",
+      "mjd": 60996.3520423,
+      "flux_ujy": 1031.55,
+      "err_ujy": 80.33,
+      "snr": 12.84,
+      "n": 1
+     },
+     {
+      "epoch": "2026-06",
+      "mjd": 61212.1110807,
+      "flux_ujy": 710.54,
+      "err_ujy": 49.23,
+      "snr": 14.43,
+      "n": 1
+     }
+    ],
+    "n_velocities": 625,
+    "threshold": 6.0,
+    "tag": "pm"
+   }
+  },
+  {
+   "id": null,
+   "class": "artifact",
+   "kind": "motion",
+   "detectors": [
+    "S"
+   ],
+   "ra": 248.0118432,
+   "dec": 66.7857808,
+   "epoch": 2025.9542582,
+   "positions": [
+    {
+     "season": "2025-06",
+     "jyear": 2025.4830995,
+     "ra": 248.010183,
+     "dec": 66.7851264,
+     "err_arcsec": 2.28,
+     "n": 1
+    },
+    {
+     "season": "2025-11",
+     "jyear": 2025.8777606,
+     "ra": 248.0115736,
+     "dec": 66.7856746,
+     "err_arcsec": 1.03,
+     "n": 1
+    },
+    {
+     "season": "2026-06",
+     "jyear": 2026.4684766,
+     "ra": 248.0136551,
+     "dec": 66.786495,
+     "err_arcsec": 2.42,
+     "n": 1
+    }
+   ],
+   "motion": {
+    "pmra_mas_yr": 5000.0,
+    "pmdec_mas_yr": 5000.0,
+    "err_pmra_mas_yr": 3000.0,
+    "err_pmdec_mas_yr": 1000.0,
+    "speed_arcsec_yr": 7.0711,
+    "err_speed_arcsec_yr": 2.2361,
+    "pa_deg": 45.0,
+    "err_pa_deg": 18.1,
+    "significance_sigma": 7.6,
+    "method": "shift-and-stack (S)"
+   },
+   "snr": 7.59,
+   "flux_ujy": 155.49,
+   "mag_ab": 18.42,
+   "bins": [
+    "all wavelengths"
+   ],
+   "season_pairs": [],
+   "match": {},
+   "flags": [
+    "static star on the path (6729 uJy): probably its residual"
+   ],
+   "notes": "shift-and-stack peak: S/N 7.59 at 7.1\"/yr toward PA 45\u00b0; per-season S/N 2025-06 2.24, 2025-11 4.72, 2026-06 5.66",
+   "shiftstack": {
+    "mode": "pm",
+    "unit": "arcsec/yr",
+    "v_east": 5.0,
+    "v_north": 5.0,
+    "epochs": [
+     {
+      "epoch": "2025-06",
+      "mjd": 60852.2020999,
+      "flux_ujy": 121.43,
+      "err_ujy": 54.19,
+      "snr": 2.24,
+      "n": 1
+     },
+     {
+      "epoch": "2025-11",
+      "mjd": 60996.3520423,
+      "flux_ujy": 202.73,
+      "err_ujy": 42.91,
+      "snr": 4.72,
+      "n": 1
+     },
+     {
+      "epoch": "2026-06",
+      "mjd": 61212.1110807,
+      "flux_ujy": 146.14,
+      "err_ujy": 25.81,
+      "snr": 5.66,
+      "n": 1
+     }
+    ],
+    "n_velocities": 625,
+    "threshold": 6.0,
+    "tag": "pm"
+   }
+  },
+  {
+   "id": null,
+   "class": "candidate",
+   "kind": "motion",
+   "detectors": [
+    "S"
+   ],
+   "ra": 248.3158824,
+   "dec": 66.7199538,
+   "epoch": 2025.9542582,
+   "positions": [
+    {
+     "season": "2025-06",
+     "jyear": 2025.4830995,
+     "ra": 248.3120742,
+     "dec": 66.7183833,
+     "err_arcsec": 1.55,
+     "n": 1
+    },
+    {
+     "season": "2025-11",
+     "jyear": 2025.8777606,
+     "ra": 248.3152641,
+     "dec": 66.7196988,
+     "err_arcsec": 0.94,
+     "n": 1
+    },
+    {
+     "season": "2026-06",
+     "jyear": 2026.4684766,
+     "ra": 248.3200386,
+     "dec": 66.7216679,
+     "err_arcsec": 1.62,
+     "n": 1
+    }
+   ],
+   "motion": {
+    "pmra_mas_yr": 11500.0,
+    "pmdec_mas_yr": 12000.0,
+    "err_pmra_mas_yr": 1183.0,
+    "err_pmdec_mas_yr": 1000.0,
+    "speed_arcsec_yr": 16.6208,
+    "err_speed_arcsec_yr": 1.0914,
+    "pa_deg": 43.8,
+    "err_pa_deg": 3.8,
+    "significance_sigma": 7.3,
+    "method": "shift-and-stack (S)"
+   },
+   "snr": 7.31,
+   "flux_ujy": 30.52,
+   "mag_ab": 20.19,
+   "bins": [
+    "all wavelengths"
+   ],
+   "season_pairs": [],
+   "match": {},
+   "flags": [
+    "best motion at the edge of the trial grid"
+   ],
+   "notes": "shift-and-stack peak: S/N 7.31 at 16.6\"/yr toward PA 44\u00b0; per-season S/N 2025-06 8.05, 2025-11 1.43, 2026-06 3.64",
+   "shiftstack": {
+    "mode": "pm",
+    "unit": "arcsec/yr",
+    "v_east": 11.5,
+    "v_north": 12.0,
+    "epochs": [
+     {
+      "epoch": "2025-06",
+      "mjd": 60852.2020999,
+      "flux_ujy": 65.5,
+      "err_ujy": 8.14,
+      "snr": 8.05,
+      "n": 1
+     },
+     {
+      "epoch": "2025-11",
+      "mjd": 60996.3520423,
+      "flux_ujy": 10.81,
+      "err_ujy": 7.56,
+      "snr": 1.43,
+      "n": 1
+     },
+     {
+      "epoch": "2026-06",
+      "mjd": 61212.1110807,
+      "flux_ujy": 23.12,
+      "err_ujy": 6.35,
+      "snr": 3.64,
+      "n": 1
+     }
+    ],
+    "n_velocities": 625,
+    "threshold": 6.0,
+    "tag": "pm"
+   }
+  },
+  {
+   "id": null,
+   "class": "artifact",
+   "kind": "motion",
+   "detectors": [
+    "S"
+   ],
+   "ra": 248.2167654,
+   "dec": 66.7112661,
+   "epoch": 2025.9542582,
+   "positions": [
+    {
+     "season": "2025-06",
+     "jyear": 2025.4830995,
+     "ra": 248.2174274,
+     "dec": 66.7119204,
+     "err_arcsec": 1.4,
+     "n": 1
+    },
+    {
+     "season": "2025-11",
+     "jyear": 2025.8777606,
+     "ra": 248.2168729,
+     "dec": 66.7113723,
+     "err_arcsec": 0.93,
+     "n": 1
+    },
+    {
+     "season": "2026-06",
+     "jyear": 2026.4684766,
+     "ra": 248.2160428,
+     "dec": 66.7105519,
+     "err_arcsec": 1.45,
+     "n": 1
+    }
+   ],
+   "motion": {
+    "pmra_mas_yr": -2000.0,
+    "pmdec_mas_yr": -5000.0,
+    "err_pmra_mas_yr": 1000.0,
+    "err_pmdec_mas_yr": 657.0,
+    "speed_arcsec_yr": 5.3852,
+    "err_speed_arcsec_yr": 0.7142,
+    "pa_deg": 201.8,
+    "err_pa_deg": 10.2,
+    "significance_sigma": 7.2,
+    "method": "shift-and-stack (S)"
+   },
+   "snr": 7.19,
+   "flux_ujy": 108.65,
+   "mag_ab": 18.81,
+   "bins": [
+    "all wavelengths"
+   ],
+   "season_pairs": [],
+   "match": {},
+   "flags": [
+    "seen in one season only (S/N without the strongest season 2.2)"
+   ],
+   "notes": "shift-and-stack peak: S/N 7.19 at 5.4\"/yr toward PA 202\u00b0; per-season S/N 2025-06 8.8, 2025-11 1.32, 2026-06 1.74",
+   "shiftstack": {
+    "mode": "pm",
+    "unit": "arcsec/yr",
+    "v_east": -2.0,
+    "v_north": -5.0,
+    "epochs": [
+     {
+      "epoch": "2025-06",
+      "mjd": 60852.2020999,
+      "flux_ujy": 212.82,
+      "err_ujy": 24.2,
+      "snr": 8.8,
+      "n": 1
+     },
+     {
+      "epoch": "2025-11",
+      "mjd": 60996.3520423,
+      "flux_ujy": 47.5,
+      "err_ujy": 36.1,
+      "snr": 1.32,
+      "n": 1
+     },
+     {
+      "epoch": "2026-06",
+      "mjd": 61212.1110807,
+      "flux_ujy": 39.87,
+      "err_ujy": 22.91,
+      "snr": 1.74,
+      "n": 1
+     }
+    ],
+    "n_velocities": 625,
+    "threshold": 6.0,
+    "tag": "pm"
+   }
+  },
+  {
+   "id": null,
+   "class": "artifact",
+   "kind": "motion",
+   "detectors": [
+    "S"
+   ],
+   "ra": 248.0055255,
+   "dec": 66.7820245,
+   "epoch": 2025.9542582,
+   "positions": [
+    {
+     "season": "2025-06",
+     "jyear": 2025.4830995,
+     "ra": 248.0095092,
+     "dec": 66.7832024,
+     "err_arcsec": 1.7,
+     "n": 1
+    },
+    {
+     "season": "2025-11",
+     "jyear": 2025.8777606,
+     "ra": 248.0061723,
+     "dec": 66.7822157,
+     "err_arcsec": 1.03,
+     "n": 1
+    },
+    {
+     "season": "2026-06",
+     "jyear": 2026.4684766,
+     "ra": 248.0011776,
+     "dec": 66.7807389,
+     "err_arcsec": 1.77,
+     "n": 1
+    }
+   ],
+   "motion": {
+    "pmra_mas_yr": -12000.0,
+    "pmdec_mas_yr": -9000.0,
+    "err_pmra_mas_yr": 1371.0,
+    "err_pmdec_mas_yr": 1000.0,
+    "speed_arcsec_yr": 15.0,
+    "err_speed_arcsec_yr": 1.2502,
+    "pa_deg": 233.1,
+    "err_pa_deg": 4.4,
+    "significance_sigma": 6.7,
+    "method": "shift-and-stack (S)"
+   },
+   "snr": 6.65,
+   "flux_ujy": 30.43,
+   "mag_ab": 20.19,
+   "bins": [
+    "all wavelengths"
+   ],
+   "season_pairs": [],
+   "match": {},
+   "flags": [
+    "best motion at the edge of the trial grid",
+    "static star on the path (775 uJy): probably its residual"
+   ],
+   "notes": "shift-and-stack peak: S/N 6.65 at 15.0\"/yr toward PA 233\u00b0; per-season S/N 2025-06 4.92, 2025-11 5.67, 2026-06 3.01",
+   "shiftstack": {
+    "mode": "pm",
+    "unit": "arcsec/yr",
+    "v_east": -12.0,
+    "v_north": -9.0,
+    "epochs": [
+     {
+      "epoch": "2025-06",
+      "mjd": 60852.2020999,
+      "flux_ujy": 86.53,
+      "err_ujy": 17.59,
+      "snr": 4.92,
+      "n": 1
+     },
+     {
+      "epoch": "2025-11",
+      "mjd": 60996.3520423,
+      "flux_ujy": 50.79,
+      "err_ujy": 8.95,
+      "snr": 5.67,
+      "n": 1
+     },
+     {
+      "epoch": "2026-06",
+      "mjd": 61212.1110807,
+      "flux_ujy": 16.83,
+      "err_ujy": 5.59,
+      "snr": 3.01,
+      "n": 1
+     }
+    ],
+    "n_velocities": 625,
+    "threshold": 6.0,
+    "tag": "pm"
+   }
+  },
+  {
+   "id": null,
+   "class": "artifact",
+   "kind": "motion",
+   "detectors": [
+    "S"
+   ],
+   "ra": 247.9887178,
+   "dec": 66.7678397,
+   "epoch": 2025.9542582,
+   "positions": [
+    {
+     "season": "2025-06",
+     "jyear": 2025.4830995,
+     "ra": 247.9903768,
+     "dec": 66.7685268,
+     "err_arcsec": 1.7,
+     "n": 1
+    },
+    {
+     "season": "2025-11",
+     "jyear": 2025.8777606,
+     "ra": 247.9889872,
+     "dec": 66.7679512,
+     "err_arcsec": 1.08,
+     "n": 1
+    },
+    {
+     "season": "2026-06",
+     "jyear": 2026.4684766,
+     "ra": 247.9869073,
+     "dec": 66.7670898,
+     "err_arcsec": 1.77,
+     "n": 1
+    }
+   ],
+   "motion": {
+    "pmra_mas_yr": -5000.0,
+    "pmdec_mas_yr": -5250.0,
+    "err_pmra_mas_yr": 1117.0,
+    "err_pmdec_mas_yr": 1109.0,
+    "speed_arcsec_yr": 7.25,
+    "err_speed_arcsec_yr": 1.1128,
+    "pa_deg": 223.6,
+    "err_pa_deg": 8.8,
+    "significance_sigma": 6.2,
+    "method": "shift-and-stack (S)"
+   },
+   "snr": 6.25,
+   "flux_ujy": 36.86,
+   "mag_ab": 19.98,
+   "bins": [
+    "all wavelengths"
+   ],
+   "season_pairs": [],
+   "match": {},
+   "flags": [
+    "seen in one season only (S/N without the strongest season 2.8)"
+   ],
+   "notes": "shift-and-stack peak: S/N 6.25 at 7.2\"/yr toward PA 224\u00b0; per-season S/N 2025-06 7.22, 2025-11 0.1, 2026-06 3.13",
+   "shiftstack": {
+    "mode": "pm",
+    "unit": "arcsec/yr",
+    "v_east": -5.0,
+    "v_north": -5.25,
+    "epochs": [
+     {
+      "epoch": "2025-06",
+      "mjd": 60852.2020999,
+      "flux_ujy": 79.01,
+      "err_ujy": 10.95,
+      "snr": 7.22,
+      "n": 1
+     },
+     {
+      "epoch": "2025-11",
+      "mjd": 60996.3520423,
+      "flux_ujy": 1.55,
+      "err_ujy": 14.82,
+      "snr": 0.1,
+      "n": 1
+     },
+     {
+      "epoch": "2026-06",
+      "mjd": 61212.1110807,
+      "flux_ujy": 24.82,
+      "err_ujy": 7.94,
+      "snr": 3.13,
+      "n": 1
+     }
+    ],
+    "n_velocities": 625,
+    "threshold": 6.0,
+    "tag": "pm"
+   }
+  },
+  {
+   "id": null,
+   "class": "artifact",
+   "kind": "motion",
+   "detectors": [
+    "S"
+   ],
+   "ra": 248.2083198,
+   "dec": 66.7025185,
+   "epoch": 2025.9542582,
+   "positions": [
+    {
+     "season": "2025-06",
+     "jyear": 2025.4830995,
+     "ra": 248.2122907,
+     "dec": 66.700948,
+     "err_arcsec": 1.95,
+     "n": 1
+    },
+    {
+     "season": "2025-11",
+     "jyear": 2025.8777606,
+     "ra": 248.2089645,
+     "dec": 66.7022635,
+     "err_arcsec": 1.12,
+     "n": 1
+    },
+    {
+     "season": "2026-06",
+     "jyear": 2026.4684766,
+     "ra": 248.2039859,
+     "dec": 66.7042326,
+     "err_arcsec": 2.04,
+     "n": 1
+    }
+   ],
+   "motion": {
+    "pmra_mas_yr": -12000.0,
+    "pmdec_mas_yr": 12000.0,
+    "err_pmra_mas_yr": 1828.0,
+    "err_pmdec_mas_yr": 1000.0,
+    "speed_arcsec_yr": 16.9706,
+    "err_speed_arcsec_yr": 1.4734,
+    "pa_deg": 315.0,
+    "err_pa_deg": 5.0,
+    "significance_sigma": 6.2,
+    "method": "shift-and-stack (S)"
+   },
+   "snr": 6.22,
+   "flux_ujy": 44.78,
+   "mag_ab": 19.77,
+   "bins": [
+    "all wavelengths"
+   ],
+   "season_pairs": [],
+   "match": {},
+   "flags": [
+    "best motion at the edge of the trial grid",
+    "static star on the path (528 uJy): probably its residual"
+   ],
+   "notes": "shift-and-stack peak: S/N 6.22 at 17.0\"/yr toward PA 315\u00b0; per-season S/N 2025-06 0.08, 2025-11 5.81, 2026-06 5.49",
+   "shiftstack": {
+    "mode": "pm",
+    "unit": "arcsec/yr",
+    "v_east": -12.0,
+    "v_north": 12.0,
+    "epochs": [
+     {
+      "epoch": "2025-06",
+      "mjd": 60852.2020999,
+      "flux_ujy": 0.86,
+      "err_ujy": 11.34,
+      "snr": 0.08,
+      "n": 1
+     },
+     {
+      "epoch": "2025-11",
+      "mjd": 60996.3520423,
+      "flux_ujy": 77.86,
+      "err_ujy": 13.41,
+      "snr": 5.81,
+      "n": 1
+     },
+     {
+      "epoch": "2026-06",
+      "mjd": 61212.1110807,
+      "flux_ujy": 71.18,
+      "err_ujy": 12.95,
+      "snr": 5.49,
+      "n": 1
+     }
+    ],
+    "n_velocities": 625,
+    "threshold": 6.0,
+    "tag": "pm"
+   }
+  }
+ ]
+}

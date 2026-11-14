@@ -121,23 +121,33 @@ wavelengths, so `long` is the better stack for it.
    integer-pixel shifts in the search (≤ 2.1" error for a ~10" PSF), bilinear reads in the
    refinement. Trial motions: −12…+12"/yr in both axes, step 1"/yr (625 motions); motions with
    mean |m|² < 0.08 (the source cancels itself) are skipped.
+   A bright mover is different: the per-detector 5σ clip of the templates removes it from the
+   other seasons, so it leaves no negative copies. The plain model (w = 0) is therefore evaluated
+   beside the aware one and the larger Z that passes step 7 is kept; the peak record says which
+   (`model`).
 5. **`sso` statistic**: the template excludes the whole window, so there is no
    self-subtraction; plain sum Z(p, v) = Σ psi_g(p + v Δt_g) / sqrt(Σ phi_g(p + v Δt_g)) over the
    pointings of the window.
 6. **Noise units**: Z is divided by its robust scatter over the field at random trial motions.
 7. **Epoch consistency**: per position and motion, the fluxes of the epochs (seasons for `pm`,
    visits for `sso`) must agree, χ² ≤ the p = 0.001 value for N−1 degrees of freedom, and ≥ 2
-   epochs must cover the position. A residual present in one epoch only (a star residual, a
+   epochs must cover the position. Each epoch's variance includes a fractional term (τ F)², τ =
+   0.25 (`pm`) and 0.5 (`sso`): epochs mix wavelengths differently, and a brown dwarf or an
+   asteroid changes a lot with wavelength (without it Eps Indi B itself failed the test). A residual present in one epoch only (a star residual, a
    ghost) cannot make a peak. (Tested and rejected: dropping the brightest epoch costs too much
    S/N with only 3–4 seasons.)
 8. **Peaks**: local maxima of max_v Z ≥ threshold (6 for `pm`, 6.5 for `sso`), refined on a 4×
    finer motion grid and half-pixel positions; the motion error comes from the curvature of Z²
-   (Δχ² = 1); peaks of one object are merged.
+   (Δχ² = 1, statistical only); peaks within 4 px are merged (one object: its Z is flat along
+   the speed, see the tests).
 9. **Vetting** (flags; class in the candidate record): one epoch only → `artifact`; a static star
    on the path with > 10× the peak flux → `artifact` (probably its residual: the PSF turns 180°
-   between seasons and leaves dipoles that mimic ~10"/yr motions); the field's target or a Gaia
-   DR3 star with |μ| > 0.5"/yr within 8" and 3"/yr → `gaia-known` (a target without Gaia id is
-   flagged as known).
+   between seasons and leaves dipoles that mimic ~10"/yr motions); the field's target (within
+   10" of its position at the reference epoch) or a Gaia DR3 star with |μ| > 0.5"/yr within 8"
+   and 6"/yr → `gaia-known` (a target without Gaia id is flagged as known). The motion
+   tolerance is wide because measured motions are biased by several "/yr (tests below). A field
+   target without a Gaia id also gets class `gaia-known` (the schema's class for known movers), with
+   the flag "known object (field target …, not in Gaia DR3)".
 10. **`sso` trial motions**: 4–60"/h, directions within 35° of the ecliptic (both senses);
     windows of visits within 12 h; motion step = 3" / (half the window span), coarsened until
     ≤ 15 000 motions.
@@ -149,3 +159,130 @@ the extra key `shiftstack` holds the per-epoch fluxes and the search settings. D
 `["pm"]`); `run(field_or_FieldRun, mode=...)` and `run_field(...)` (also writes the files) work
 outside the finder. It is not registered in `detect/run.py` DETECTORS yet (that file belongs to
 the finder); add `shift_stack` there to merge its records into candidates.json.
+
+## Results (2026-11-14)
+
+All numbers are measured on the site cutouts; tests ran into a temporary folder, the site products
+were written once into `site/data/<target>/faint/` (84 new files, 22 MB; md5 check: no existing
+file in `site/data` changed, every `meta.json` byte-identical).
+
+### Depth: single exposure vs deep stack
+
+5σ point-source limit (EPSF flux), instrumental noise. Single = median over exposures; deep =
+one season, all wavelengths. "Blind 5σ" = scatter in the image itself (includes faint stars).
+
+| target | single 5σ | deep 5σ (best / worst season) | gain | blind 5σ deep | exposures per deep stack |
+|---|---|---|---|---|---|
+| Barnard's Star | 268 µJy, AB 17.83 | 26.9 µJy AB 20.33 / 34.9 µJy AB 20.04 | 2.2–2.5 mag | ~1000 µJy (confusion, Galactic plane) | 118–121 |
+| Eps Indi B | 204 µJy, AB 18.13 | 22.8 µJy AB 20.50 / 33.6 µJy AB 20.08 | 2.0–2.4 mag | ~160 µJy | 74–146 |
+| WISE 0855 | 198 µJy, AB 18.16 | 18.2 µJy AB 20.75 / 46.7 µJy AB 19.73 | 1.6–2.6 mag | ~160 µJy | 30–128 |
+| RW Aur | 255 µJy, AB 17.89 | 26.3 µJy AB 20.35 / 29.0 µJy AB 20.24 | 2.4–2.5 mag | ~660 µJy | 109–114 |
+| R Dra | 442 µJy, AB 17.29 | 38.3 µJy AB 19.94 / 70.2 µJy AB 19.28 | 2.0–2.7 mag | ~410–560 µJy | 153–212 |
+
+Per detector the single-exposure limit runs from ~140 µJy (D4, ~2.5 µm) to ~650 µJy (D6,
+~4.7 µm). The measured deep noise is 1.0–1.5× the ideal value (single noise / sqrt(N)); the
+formal VARIANCE-based error underestimates the point-source noise by 2–3× (correlated noise
+after resampling). In Barnard's and RW Aur's fields the image is confusion-limited: faint stars
+everywhere, so the depth is only reached in difference images (shift-and-stack), not by eye.
+`short` (0.7–2.4 µm) and `long` (2.4–5.1 µm) stacks: AB 19.3–20.5 (table in `faint.json`).
+
+### Shift-and-stack, proper motion: injected movers
+
+Six synthetic point sources (flat spectrum, 3–10"/yr, positions where the static flux along the
+path is < 400 µJy) added to every exposure with its own EPSF and WCS, then the blind search
+(`Search.pm`, threshold 6). Recovered = a peak within 9" of the true position.
+
+| field (seasons) | 15 µJy | 20 | 30 | 45 | 70 | 100 | 150 |
+|---|---|---|---|---|---|---|---|
+| Eps Indi B (4) | 0/6 | 1/6 | 1/6 | 5/6 | 5/6 | | |
+| Barnard (3) | | | 0/6 | 1/6 | 4/6 | 5/6 | 6/6 |
+
+- Smallest recovered: 20 µJy (AB 21.1) in Eps Indi B's field, 45 µJy (AB 20.3) in Barnard's,
+  both for the 8"/yr source; 50 % completeness at ~40 µJy (Eps Indi B) and ~65 µJy (Barnard).
+  The single-exposure 5σ limits there are 204 and 268 µJy: shift-and-stack finds movers that
+  are 5–10× fainter than anything visible in one exposure (1.7–2.5 mag).
+- Noise for a fast mover (8–10"/yr): 1σ ≈ 3.4–4 µJy (Eps Indi B, 4 seasons) and 6.4–9 µJy
+  (Barnard, 3 seasons, crowded); slow movers lose signal to self-subtraction (the source sits
+  in its own templates): S/N per µJy at 3–5"/yr is 30–60 % of that at 8"/yr.
+- Motion: |measured − true| median 1.6"/yr (Eps Indi B), 2.8"/yr (Barnard), max 8.4"/yr; the
+  quoted statistical error (median 0.8–0.9"/yr) underestimates it ~2–3×. With three or four
+  seasons over one year and a ~6" PSF, S/N is flat along the speed: the method finds the
+  mover's position reliably, the motion only roughly.
+- Flux: recovered / injected median 0.90 (Eps Indi B), 0.65 (Barnard; range 0.33–1.28).
+- No injected source that was recovered was rejected by the vetting.
+- Field peaks without an injected source (the same at every level): 10 (Eps Indi B), 12–13
+  (Barnard). After vetting: Eps Indi B itself (known), 2 candidates, the rest artifacts;
+  Barnard 3 candidates, all with the best motion at the edge of the trial grid (low
+  confidence).
+
+### Real movers
+
+- **Eps Indi B** (control, bright, 4.0"/yr): found at S/N 210, 1.6" from the predicted
+  position, class `gaia-known`; motion (10.3, −4.5)"/yr vs (3.98, −2.47): a bright slow mover
+  overlaps its own copies in the templates (partly clipped), so its motion is badly biased. Use
+  the blink astrometry for bright movers; shift-and-stack is for the faint ones.
+- **WISE 0855−0714, 3.8–5.1 µm** (blind, 94 exposures; median single-exposure S/N of the
+  object is 3.5 at 4.6 µm): the top peak of the field, S/N 15.2, 1.4" from the true position,
+  per season S/N 7.2 / 6.6 / 11.8, flux 249 µJy, motion (−10.0, 0.0)"/yr vs (−8.12, +0.67)
+  (Δ 2.0"/yr); class `gaia-known` (field target). Of the other 7 peaks, 5 are vetted artifacts
+  (including a feature at 133.789, −7.195 seen only in the two May seasons:
+  "not seen in the other telescope orientation") and 2 remain low-S/N candidates (7.4, 6.9σ).
+- **WISE 0855−0714, 1–3 µm**: not detected. Blind search: not among the 25 peaks (21 artifacts).
+  Forced photometry along the known track (Kirkpatrick et al. 2021 motion, blink neighbour
+  model, all seasons, 119 exposures): −8.7 ± 4.4 µJy, **5σ upper limit 22 µJy (AB 20.5)**, vs
+  AB ~17.9 for a single exposure. Sub-ranges: 1.6–2.4 µm −4.7 ± 6.7, 2.4–3.0 µm 13 ± 12,
+  3.0–3.8 µm 9 ± 12 µJy (5σ < 67 µJy); control 3.8–5.0 µm 321 ± 12 µJy (S/N 27). 1.0–1.6 µm
+  gives −21 ± 7 µJy (−3.1σ, a systematic from the neighbour fit; treat as < 20 µJy).
+
+### Fast movers ("/h)
+
+- **Known asteroids, RW Aur field** (ecliptic latitude +7.5°): IMCCE SkyBoT, one cone per
+  observing day (35 queries, cached in `cache/asteroids/skybot`), positions made topocentric for
+  SPHEREx (spacecraft X/Y/Z_SC). 90 known objects cross the grid in some exposure (V 19.3–32.5,
+  23 in ≥ 2 visits). **None is detected**: highest single-exposure S/N 4.3; known-track stack S/N
+  3.7 for the brightest (1999 RL139, V = 19.3: 123 ± 33 µJy, about the flux expected for V =
+  19.3 at 1–2 µm), but the known-track S/N of all 90 objects scatters by 1.5 (not 1), so no
+  object stands out. The blind search on the windows of the 4 brightest multi-visit objects
+  did not recover any of them (expected at these fluxes); those windows show 10 peaks ≥ 5σ each
+  (best 6.3–10.4): in a crowded field the fast-mover threshold 6.5 is not clean.
+- **Injected fast mover**, Eps Indi B field, 25"/h along the ecliptic, flat spectrum, two
+  windows of 19 exposures: 40, 60, 90 µJy not recovered; 130 µJy recovered in window 0 (3
+  visits, 5 h: S/N 8.2, rate (23.0, 7.0) vs (23.8, 7.6)"/h), not in window 1 (7 visits over
+  9.7 h; not investigated). No false peak ≥ 6.5 in either window. 130 µJy is below the
+  single-exposure 5σ limit (204 µJy) but only ~1.6× below it.
+
+### Site targets: shift-and-stack summary (`shiftstack.json`)
+
+| target | run | peaks ≥ 6σ | known | candidates | artifacts |
+|---|---|---|---|---|---|
+| Barnard's Star | pm, all λ | 12 | 0 (Barnard's Star saturated, masked) | 3 (all at the grid edge) | 9 |
+| Eps Indi B | pm, all λ | 10 | 1 (Eps Indi B) | 2 (at the grid edge) | 7 |
+| WISE 0855 | pm, all λ | 25 (list cap) | 0 | 5 (4 at the grid edge) | 20 |
+| WISE 0855 | pm, 3.8–5.1 µm | 8 | 1 (WISE 0855, top peak) | 2 (1 at the grid edge) | 5 |
+| RW Aur | pm, all λ | 25 (list cap) | 0 | 0 | 25 |
+| R Dra | pm, all λ | 7 | 0 | 1 (at the grid edge) | 6 |
+
+The remaining candidates are weak (6–10σ) and most sit at the edge of the trial motions; the
+injection tests give ~0.5–1 such field peak per 0.15° field that is not a static residual. They
+are listed for follow-up only.
+
+## Limits and open issues
+
+- **Motion accuracy**: positions are found reliably, motions only to ~2–3"/yr (faint) and up to
+  ~6"/yr (bright slow movers, e.g. Eps Indi B). The quoted motion errors are statistical only.
+- **Slow movers** (< 5"/yr) lose 40–70 % of their S/N to self-subtraction (leave-one-season-out
+  templates); a static-sky template from other data (or a fit of the static sky together with the
+  mover) would fix it.
+- **Crowded fields** (Barnard, RW Aur): the blind scatter is ~5× the instrumental noise; the
+  shift-and-stack noise is ~2× worse than in Eps Indi B's field.
+- **Detector artifacts**: the PSF turns 180° between seasons and leaves dipoles that mimic
+  ~10"/yr motions; ghosts appear only in one telescope orientation. Both are vetted (static star
+  on the path, other orientation, one season only), but the vetting is heuristic.
+- **WISE 0855 field**: a feature near 133.789, −7.195 (seen in May 2025 and May 2026 only) is
+  vetted as an artifact in the 3.8–5.1 µm run but remains a weak candidate in the all-λ run.
+- **Fast movers**: the threshold 6.5 is not clean in crowded fields; one of two injection windows
+  failed at 130 µJy (not investigated).
+- **Viewer**: in deep-stack mode the frame label printed in the published PNG (dates, detector)
+  still shows the single frame; the card states the deep stack.
+- `shift_stack` is not registered in `detect/run.py` DETECTORS (the finder's file); the engine
+  runs it through the `faint` post-step instead (proper motion only).

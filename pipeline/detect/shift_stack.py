@@ -61,6 +61,7 @@ MIN_TMPL = 4                    # exposures per template at least
 STATIC_RATIO = 10.0             # static PSF flux at the path > this x the peak flux: 'static residual'
 THRESH = {"pm": 6.0, "sso": 6.5}
 MIN_EPOCH_SNR = 2.0
+DROP_MIN = 3.0                  # S/N without the strongest epoch at least this (else: one epoch only)
 CHI2_CRIT = {1: 10.83, 2: 13.82, 3: 16.27, 4: 18.47, 5: 20.52, 6: 22.46, 7: 24.32}   # p = 0.001
 TAU_EPOCH = {"pm": 0.25, "sso": 0.5}   # fractional flux tolerance between epochs in the chi2 test:
 # the epochs mix different wavelengths (a brown dwarf or an asteroid changes a lot with wavelength)
@@ -706,8 +707,24 @@ class Search:
             flags = []
             if speed < vmin:
                 flags.append("slow: within the PSF over the baseline (static-like)")
-            if n_pos < 2:
-                flags.append("seen in one season only")
+            good = D > 0                            # the peak must not rest on one season
+            imax = int(np.argmax(np.where(good, A / np.sqrt(np.where(good, D, 1.0)), -np.inf)))
+            rest = good.copy()
+            rest[imax] = False
+            z_drop = float(A[rest].sum() / math.sqrt(D[rest].sum()) / scale) if D[rest].sum() > 0 else 0.0
+            if n_pos < 2 or z_drop < DROP_MIN:
+                flags.append(f"seen in one season only (S/N without the strongest season {z_drop:.1f})")
+            ori = getattr(self, "_orient", None) or {}
+            o0 = ori.get(str(SM["labels"][imax]))
+            if o0 is not None:                      # the other telescope orientation must see it when it can
+                other = np.array([bool(good[i]) and ori.get(str(lab)) is not None
+                                  and abs((ori[str(lab)] - o0 + 180) % 360 - 180) > 90 for i, lab in enumerate(SM["labels"])])
+                if other.any():
+                    Do = float(D[other].sum())
+                    exp_o, obs_o = flux * math.sqrt(Do) / scale, float(A[other].sum()) / math.sqrt(Do) / scale
+                    if exp_o >= 3 and exp_o - obs_o > 3 + TAU_EPOCH["pm"] * exp_o:
+                        flags.append(f"not seen in the other telescope orientation (expected S/N {exp_o:.1f}, "
+                                     f"measured {obs_o:.1f}): probably a detector artifact")
             if max(abs(v[0]), abs(v[1])) >= vlim - 1e-6:
                 flags.append("best motion at the edge of the trial grid")
             fs = 0.0                                # brightest static source along the path
@@ -722,7 +739,8 @@ class Search:
                               flux_ujy=round(flux, 2), flux_err_ujy=round(float(scale / math.sqrt(D.sum())), 2),
                               mag_ab=FA.ab_mag(flux), v_east=round(float(v[0]), 3), v_north=round(float(v[1]), 3),
                               v_err=[round(float(e_), 3) for e_ in errs], speed=round(speed, 3), pa_deg=round(pa, 1),
-                              epochs=epochs, n_epochs_snr2=n_pos, flags=flags, static_flux_on_path_ujy=round(fs, 1),
+                              epochs=epochs, n_epochs_snr2=n_pos, snr_without_strongest_season=round(z_drop, 2),
+                              flags=flags, static_flux_on_path_ujy=round(fs, 1),
                               self_subtraction_m2=round(float(np.mean(self.m2(S_, np.array([v]), per)[0])), 3),
                               model=("self-subtraction aware" if model == "aware" else
                                      "plain (bright: clipped out of the templates)"),
@@ -760,6 +778,11 @@ class Search:
             others = [o for (d, s), es in by.items() if d == e["det"] and s != e["epoch"] for o in es]
             return self.matched_template(e, others, ("pm", e["epoch"]))
         groups = self.groups(exps, tmpl_of, eps, lambda e: e["visit"])
+        self._orient = {}                           # season -> mean telescope orientation (deg)
+        for sn in seasons:
+            a_ = np.radians([e["orient_deg"] for e in exps if e["epoch"] == sn and e.get("orient_deg") is not None])
+            if len(a_):
+                self._orient[str(sn)] = float(np.degrees(np.angle(np.mean(np.exp(1j * a_))))) % 360
         self._static = FA.deep_stack(exps, self.lay)
         w = np.array([float(np.median(g[1][g[1] > 0])) if (g[1] > 0).any() else 0 for g in groups])
         t_ref = float(np.sum(w * np.array([g[2] for g in groups])) / np.sum(w))
@@ -1081,7 +1104,8 @@ def to_candidates(res, run):
         if p["n_epochs_snr2"] < 2:
             cls = "artifact"
         m = p.get("match") or {}
-        if any(f.startswith("static star on the path") for f in flags):
+        if any(f.startswith(("static star on the path", "seen in one season only", "not seen in the other telescope"))
+               for f in flags):
             cls = "artifact"
         if res["mode"] == "pm":
             raw = p.get("raw")
@@ -1094,8 +1118,9 @@ def to_candidates(res, run):
                 flags.append("motion from the self-subtraction-aware fit")
             if "gaia_dr3" in m or ("target" in m and m["target"].get("gaia_dr3")):
                 cls = "gaia-known"
-            elif "target" in m:
-                flags.append(f"known object (field target {m['target']['name']}, not in Gaia)")
+            elif "target" in m:                  # a known mover, only not in Gaia DR3 (class name of the schema)
+                cls = "gaia-known"
+                flags.append(f"known object (field target {m['target']['name']}, not in Gaia DR3)")
             sig = p["snr"]
             c = SC.new_candidate(
                 NAME, "motion", p["ra"], p["dec"], epoch=res["t_ref_jyear"], cls=cls,

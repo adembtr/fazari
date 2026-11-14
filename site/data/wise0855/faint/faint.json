@@ -1,0 +1,714 @@
+{
+ "schema": "fazari-faint/1",
+ "generated": "2026-11-14T12:32:57Z",
+ "target": "WISE 0855-0714",
+ "ra": 133.75976174865042,
+ "dec": -7.24218737789,
+ "grid": {
+  "size_px": [
+   180,
+   180
+  ],
+  "pixel_arcsec": 3.0,
+  "projection": "TAN",
+  "order": "row 0 = north, column 0 = east (PNG order)",
+  "png_upscale": 4,
+  "png_label_strip_px": 50
+ },
+ "dtype": "float16-le",
+ "planes": [
+  "value_mjysr",
+  "sigma_mjysr",
+  "psf_snr"
+ ],
+ "plane_bytes": 64800,
+ "notes": "value: MJy/sr, ZODI subtracted (NaN = no data, +inf = saturated core). sigma: per-pixel 1 sigma scaled to the measured scatter. psf_snr: PSF-matched point-source S/N (matched filter with the effective EPSF, normalised to unit scatter at blank positions).",
+ "frames": {
+  "1.0": {
+   "file": "frames_1.0um.bin",
+   "frames": [
+    {
+     "epoch": "2025-05",
+     "offset": 0,
+     "n_images": 3,
+     "sigma_scale": 0.762,
+     "psf_snr_scale": 1.929,
+     "noise_from": "split halves",
+     "median_mjysr": -0.0016636982327327132,
+     "pixel_sigma_mjysr": 0.01011072937399149,
+     "psf_flux_sigma_ujy": 27.08326530456543
+    },
+    {
+     "epoch": "2025-11",
+     "offset": 194400,
+     "n_images": 5,
+     "sigma_scale": 0.726,
+     "psf_snr_scale": 1.71,
+     "noise_from": "split halves",
+     "median_mjysr": -0.002059787977486849,
+     "pixel_sigma_mjysr": 0.008180140517652035,
+     "psf_flux_sigma_ujy": 19.308866500854492
+    },
+    {
+     "epoch": "2026-05",
+     "offset": 388800,
+     "n_images": 2,
+     "sigma_scale": 0.955,
+     "psf_snr_scale": 2.005,
+     "noise_from": "split halves",
+     "median_mjysr": -0.0012640461791306734,
+     "pixel_sigma_mjysr": 0.012125428766012192,
+     "psf_flux_sigma_ujy": 27.166290283203125
+    }
+   ],
+   "stretch": {
+    "type": "asinh",
+    "lo": -0.01956799253821373,
+    "hi": 12.819416999816895,
+    "soft": 0.03576085716485977,
+    "unit": "MJy/sr (zodi subtracted)"
+   }
+  },
+  "1.5": {
+   "file": "frames_1.5um.bin",
+   "frames": [
+    {
+     "epoch": "2025-05",
+     "offset": 0,
+     "n_images": 3,
+     "sigma_scale": 0.805,
+     "psf_snr_scale": 1.94,
+     "noise_from": "split halves",
+     "median_mjysr": -0.0012030905345454812,
+     "pixel_sigma_mjysr": 0.010061876848340034,
+     "psf_flux_sigma_ujy": 25.435930252075195
+    },
+    {
+     "epoch": "2025-11",
+     "offset": 194400,
+     "n_images": 7,
+     "sigma_scale": 0.744,
+     "psf_snr_scale": 1.762,
+     "noise_from": "split halves",
+     "median_mjysr": -0.0016007451340556145,
+     "pixel_sigma_mjysr": 0.006721613463014364,
+     "psf_flux_sigma_ujy": 16.307607650756836
+    },
+    {
+     "epoch": "2026-05",
+     "offset": 388800,
+     "n_images": 8,
+     "sigma_scale": 0.712,
+     "psf_snr_scale": 1.774,
+     "noise_from": "split halves",
+     "median_mjysr": -0.0020801126956939697,
+     "pixel_sigma_mjysr": 0.005808303132653236,
+     "psf_flux_sigma_ujy": 15.25346565246582
+    }
+   ],
+   "stretch": {
+    "type": "asinh",
+    "lo": -0.017398901283740997,
+    "hi": 17.808528900146484,
+    "soft": 0.03147008642554283,
+    "unit": "MJy/sr (zodi subtracted)"
+   }
+  },
+  "2.0": {
+   "file": "frames_2.0um.bin",
+   "frames": [
+    {
+     "epoch": "2025-11",
+     "offset": 0,
+     "n_images": 8,
+     "sigma_scale": 0.66,
+     "psf_snr_scale": 1.745,
+     "noise_from": "split halves",
+     "median_mjysr": -0.0015682124067097902,
+     "pixel_sigma_mjysr": 0.004728749394416809,
+     "psf_flux_sigma_ujy": 13.1016206741333
+    },
+    {
+     "epoch": "2026-05",
+     "offset": 194400,
+     "n_images": 5,
+     "sigma_scale": 0.775,
+     "psf_snr_scale": 1.903,
+     "noise_from": "split halves",
+     "median_mjysr": -0.001382601447403431,
+     "pixel_sigma_mjysr": 0.006361149251461029,
+     "psf_flux_sigma_ujy": 17.36461067199707
+    }
+   ],
+   "stretch": {
+    "type": "asinh",
+    "lo": -0.015151366591453552,
+    "hi": 11.80095100402832,
+    "soft": 0.027349527925252914,
+    "unit": "MJy/sr (zodi subtracted)"
+   }
+  },
+  "3.0": {
+   "file": "frames_3.0um.bin",
+   "frames": [
+    {
+     "epoch": "2025-11",
+     "offset": 0,
+     "n_images": 5,
+     "sigma_scale": 0.829,
+     "psf_snr_scale": 1.918,
+     "noise_from": "split halves",
+     "median_mjysr": -0.0011202024761587381,
+     "pixel_sigma_mjysr": 0.006031322758644819,
+     "psf_flux_sigma_ujy": 16.182790756225586
+    },
+    {
+     "epoch": "2026-05",
+     "offset": 194400,
+     "n_images": 5,
+     "sigma_scale": 0.76,
+     "psf_snr_scale": 1.904,
+     "noise_from": "split halves",
+     "median_mjysr": -0.0008243348565883934,
+     "pixel_sigma_mjysr": 0.005276315845549107,
+     "psf_flux_sigma_ujy": 14.753100395202637
+    }
+   ],
+   "stretch": {
+    "type": "asinh",
+    "lo": -0.013805248774588108,
+    "hi": 6.092963218688965,
+    "soft": 0.025638103485107422,
+    "unit": "MJy/sr (zodi subtracted)"
+   }
+  },
+  "4.0": {
+   "file": "frames_4.0um.bin",
+   "frames": [
+    {
+     "epoch": "2025-05",
+     "offset": 0,
+     "n_images": 4,
+     "sigma_scale": 0.682,
+     "psf_snr_scale": 1.844,
+     "noise_from": "split halves",
+     "median_mjysr": -0.0006495116977021098,
+     "pixel_sigma_mjysr": 0.014393673278391361,
+     "psf_flux_sigma_ujy": 43.37517547607422
+    },
+    {
+     "epoch": "2025-11",
+     "offset": 194400,
+     "n_images": 20,
+     "sigma_scale": 0.664,
+     "psf_snr_scale": 1.775,
+     "noise_from": "split halves",
+     "median_mjysr": -0.0020214642863720655,
+     "pixel_sigma_mjysr": 0.006412767805159092,
+     "psf_flux_sigma_ujy": 19.835481643676758
+    },
+    {
+     "epoch": "2026-05",
+     "offset": 388800,
+     "n_images": 10,
+     "sigma_scale": 0.707,
+     "psf_snr_scale": 1.764,
+     "noise_from": "split halves",
+     "median_mjysr": -0.0013003151398152113,
+     "pixel_sigma_mjysr": 0.009088380262255669,
+     "psf_flux_sigma_ujy": 25.79566764831543
+    }
+   ],
+   "stretch": {
+    "type": "asinh",
+    "lo": -0.01901608519256115,
+    "hi": 3.3655920028686523,
+    "soft": 0.03518657386302948,
+    "unit": "MJy/sr (zodi subtracted)"
+   }
+  },
+  "4.6": {
+   "file": "frames_4.6um.bin",
+   "frames": [
+    {
+     "epoch": "2025-05",
+     "offset": 0,
+     "n_images": 1,
+     "sigma_scale": 0.687,
+     "psf_snr_scale": 2.031,
+     "noise_from": "blind scatter",
+     "median_mjysr": -0.00035982090048491955,
+     "pixel_sigma_mjysr": 0.04375115782022476,
+     "psf_flux_sigma_ujy": 140.90866088867188
+    },
+    {
+     "epoch": "2025-11",
+     "offset": 194400,
+     "n_images": 18,
+     "sigma_scale": 0.692,
+     "psf_snr_scale": 1.938,
+     "noise_from": "split halves",
+     "median_mjysr": -0.0019528345437720418,
+     "pixel_sigma_mjysr": 0.01144460029900074,
+     "psf_flux_sigma_ujy": 37.73323440551758
+    },
+    {
+     "epoch": "2026-05",
+     "offset": 388800,
+     "n_images": 16,
+     "sigma_scale": 0.695,
+     "psf_snr_scale": 1.831,
+     "noise_from": "split halves",
+     "median_mjysr": -0.0015979614108800888,
+     "pixel_sigma_mjysr": 0.011119939386844635,
+     "psf_flux_sigma_ujy": 34.465450286865234
+    }
+   ],
+   "stretch": {
+    "type": "asinh",
+    "lo": -0.028977900743484497,
+    "hi": 7.0147199630737305,
+    "soft": 0.054712437093257904,
+    "unit": "MJy/sr (zodi subtracted)"
+   }
+  }
+ },
+ "deep": [
+  {
+   "epoch": "2025-05",
+   "file": "deep_2025-05.bin",
+   "png": "deep_2025-05.png",
+   "range": "all",
+   "n_exposures": 30,
+   "stretch": {
+    "type": "asinh",
+    "lo": -0.013508245348930359,
+    "hi": 6.162890911102295,
+    "soft": 0.02111905461112037,
+    "unit": "MJy/sr (zodi subtracted)",
+    "rule": "blink.py frame rule"
+   },
+   "detectors": [
+    "D1",
+    "D2",
+    "D3",
+    "D4",
+    "D5",
+    "D6"
+   ],
+   "lam_um": [
+    0.993,
+    5.003
+   ],
+   "date": "2025-05-06",
+   "sigma_scale": 2.504,
+   "psf_snr_scale": 2.337,
+   "noise_from": "split halves",
+   "median_mjysr": -0.00294871861115098,
+   "pixel_sigma_mjysr": 0.009103301912546158,
+   "psf_flux_sigma_ujy": 9.337603569030762
+  },
+  {
+   "epoch": "2025-11",
+   "file": "deep_2025-11.bin",
+   "png": "deep_2025-11.png",
+   "range": "all",
+   "n_exposures": 128,
+   "stretch": {
+    "type": "asinh",
+    "lo": -0.012785984203219414,
+    "hi": 6.609310150146484,
+    "soft": 0.01828328764401376,
+    "unit": "MJy/sr (zodi subtracted)",
+    "rule": "blink.py frame rule"
+   },
+   "detectors": [
+    "D1",
+    "D2",
+    "D3",
+    "D4",
+    "D5",
+    "D6"
+   ],
+   "lam_um": [
+    0.749,
+    4.982
+   ],
+   "date": "2025-11-12",
+   "sigma_scale": 0.773,
+   "psf_snr_scale": 1.876,
+   "noise_from": "split halves",
+   "median_mjysr": -0.0036443406715989113,
+   "pixel_sigma_mjysr": 0.001411937060765922,
+   "psf_flux_sigma_ujy": 3.697803497314453
+  },
+  {
+   "epoch": "2026-05",
+   "file": "deep_2026-05.bin",
+   "png": "deep_2026-05.png",
+   "range": "all",
+   "n_exposures": 100,
+   "stretch": {
+    "type": "asinh",
+    "lo": -0.012382611632347107,
+    "hi": 6.508481502532959,
+    "soft": 0.018538824243284763,
+    "unit": "MJy/sr (zodi subtracted)",
+    "rule": "blink.py frame rule"
+   },
+   "detectors": [
+    "D1",
+    "D2",
+    "D3",
+    "D4",
+    "D5",
+    "D6"
+   ],
+   "lam_um": [
+    0.744,
+    4.967
+   ],
+   "date": "2026-05-01",
+   "sigma_scale": 0.701,
+   "psf_snr_scale": 1.779,
+   "noise_from": "split halves",
+   "median_mjysr": -0.0031132004223763943,
+   "pixel_sigma_mjysr": 0.0013328086351975799,
+   "psf_flux_sigma_ujy": 3.6461896896362305
+  }
+ ],
+ "depth": {
+  "single": {
+   "D1": {
+    "n_measured": 32,
+    "flux_sigma_ujy": 36.75,
+    "flux_sigma_formal_ujy": 19.11,
+    "blind_flux_sigma_ujy": 55.52,
+    "pixel_sigma_mjysr": 0.0139,
+    "blind_pixel_sigma_mjysr": 0.0163,
+    "limit5_ujy": 183.7,
+    "limit5_ab": 18.24,
+    "blind_limit5_ujy": 277.6,
+    "blind_limit5_ab": 17.79
+   },
+   "D2": {
+    "n_measured": 41,
+    "flux_sigma_ujy": 34.1,
+    "flux_sigma_formal_ujy": 18.08,
+    "blind_flux_sigma_ujy": 72.31,
+    "pixel_sigma_mjysr": 0.0139,
+    "blind_pixel_sigma_mjysr": 0.0185,
+    "limit5_ujy": 170.5,
+    "limit5_ab": 18.32,
+    "blind_limit5_ujy": 361.6,
+    "blind_limit5_ab": 17.5
+   },
+   "D3": {
+    "n_measured": 38,
+    "flux_sigma_ujy": 28.99,
+    "flux_sigma_formal_ujy": 16.09,
+    "blind_flux_sigma_ujy": 65.95,
+    "pixel_sigma_mjysr": 0.0118,
+    "blind_pixel_sigma_mjysr": 0.016,
+    "limit5_ujy": 145.0,
+    "limit5_ab": 18.5,
+    "blind_limit5_ujy": 329.7,
+    "blind_limit5_ab": 17.6
+   },
+   "D4": {
+    "n_measured": 32,
+    "flux_sigma_ujy": 27.81,
+    "flux_sigma_formal_ujy": 14.35,
+    "blind_flux_sigma_ujy": 70.06,
+    "pixel_sigma_mjysr": 0.0096,
+    "blind_pixel_sigma_mjysr": 0.0152,
+    "limit5_ujy": 139.0,
+    "limit5_ab": 18.54,
+    "blind_limit5_ujy": 350.3,
+    "blind_limit5_ab": 17.54
+   },
+   "D5": {
+    "n_measured": 46,
+    "flux_sigma_ujy": 67.17,
+    "flux_sigma_formal_ujy": 38.2,
+    "blind_flux_sigma_ujy": 94.61,
+    "pixel_sigma_mjysr": 0.0227,
+    "blind_pixel_sigma_mjysr": 0.0269,
+    "limit5_ujy": 335.9,
+    "limit5_ab": 17.58,
+    "blind_limit5_ujy": 473.0,
+    "blind_limit5_ab": 17.21
+   },
+   "D6": {
+    "n_measured": 40,
+    "flux_sigma_ujy": 128.41,
+    "flux_sigma_formal_ujy": 66.93,
+    "blind_flux_sigma_ujy": 148.15,
+    "pixel_sigma_mjysr": 0.041,
+    "blind_pixel_sigma_mjysr": 0.041,
+    "limit5_ujy": 642.1,
+    "limit5_ab": 16.88,
+    "blind_limit5_ujy": 740.8,
+    "blind_limit5_ab": 16.73
+   },
+   "all": {
+    "n_measured": 229,
+    "flux_sigma_ujy": 39.57,
+    "flux_sigma_formal_ujy": 18.97,
+    "blind_flux_sigma_ujy": 78.46,
+    "pixel_sigma_mjysr": 0.0156,
+    "blind_pixel_sigma_mjysr": 0.0189,
+    "limit5_ujy": 197.8,
+    "limit5_ab": 18.16,
+    "blind_limit5_ujy": 392.3,
+    "blind_limit5_ab": 17.42
+   }
+  },
+  "deep": [
+   {
+    "epoch": "2025-05",
+    "range": "all",
+    "n_exposures": 30,
+    "detectors": [
+     "D1",
+     "D2",
+     "D3",
+     "D4",
+     "D5",
+     "D6"
+    ],
+    "lam_um": [
+     0.993,
+     5.003
+    ],
+    "flux_sigma_ujy": 9.3376,
+    "flux_sigma_formal_ujy": 3.9953,
+    "psf_scale": 2.3372,
+    "blind_flux_sigma_ujy": 34.8006,
+    "pixel_sigma_mjysr": 0.0091,
+    "blind_pixel_sigma_mjysr": 0.0064,
+    "ideal_flux_sigma_ujy": 7.228,
+    "limit5_ujy": 46.69,
+    "limit5_ab": 19.73,
+    "blind_limit5_ujy": 174.0,
+    "blind_limit5_ab": 18.3,
+    "gain_mag_vs_single": 1.57
+   },
+   {
+    "epoch": "2025-05",
+    "range": "short",
+    "n_exposures": 15,
+    "detectors": [
+     "D1",
+     "D2",
+     "D3"
+    ],
+    "lam_um": [
+     0.993,
+     2.413
+    ],
+    "flux_sigma_ujy": 13.7354,
+    "flux_sigma_formal_ujy": 4.992,
+    "psf_scale": 2.7515,
+    "blind_flux_sigma_ujy": 33.5202,
+    "pixel_sigma_mjysr": 0.0167,
+    "blind_pixel_sigma_mjysr": 0.0071,
+    "ideal_flux_sigma_ujy": 9.029,
+    "limit5_ujy": 68.68,
+    "limit5_ab": 19.31,
+    "blind_limit5_ujy": 167.6,
+    "blind_limit5_ab": 18.34,
+    "gain_mag_vs_single": 1.15
+   },
+   {
+    "epoch": "2025-05",
+    "range": "long",
+    "n_exposures": 15,
+    "detectors": [
+     "D4",
+     "D5",
+     "D6"
+    ],
+    "lam_um": [
+     3.358,
+     5.003
+    ],
+    "flux_sigma_ujy": 12.2907,
+    "flux_sigma_formal_ujy": 6.546,
+    "psf_scale": 1.8776,
+    "blind_flux_sigma_ujy": 39.3109,
+    "pixel_sigma_mjysr": 0.0039,
+    "blind_pixel_sigma_mjysr": 0.0072,
+    "ideal_flux_sigma_ujy": 12.058,
+    "limit5_ujy": 61.45,
+    "limit5_ab": 19.43,
+    "blind_limit5_ujy": 196.6,
+    "blind_limit5_ab": 18.17,
+    "gain_mag_vs_single": 1.27
+   },
+   {
+    "epoch": "2025-11",
+    "range": "all",
+    "n_exposures": 128,
+    "detectors": [
+     "D1",
+     "D2",
+     "D3",
+     "D4",
+     "D5",
+     "D6"
+    ],
+    "lam_um": [
+     0.749,
+     4.982
+    ],
+    "flux_sigma_ujy": 3.6978,
+    "flux_sigma_formal_ujy": 1.9708,
+    "psf_scale": 1.8763,
+    "blind_flux_sigma_ujy": 31.4776,
+    "pixel_sigma_mjysr": 0.0014,
+    "blind_pixel_sigma_mjysr": 0.0054,
+    "ideal_flux_sigma_ujy": 3.396,
+    "limit5_ujy": 18.49,
+    "limit5_ab": 20.73,
+    "blind_limit5_ujy": 157.4,
+    "blind_limit5_ab": 18.41,
+    "gain_mag_vs_single": 2.57
+   },
+   {
+    "epoch": "2025-11",
+    "range": "short",
+    "n_exposures": 64,
+    "detectors": [
+     "D1",
+     "D2",
+     "D3"
+    ],
+    "lam_um": [
+     0.749,
+     2.385
+    ],
+    "flux_sigma_ujy": 4.825,
+    "flux_sigma_formal_ujy": 2.424,
+    "psf_scale": 1.9905,
+    "blind_flux_sigma_ujy": 27.1517,
+    "pixel_sigma_mjysr": 0.0019,
+    "blind_pixel_sigma_mjysr": 0.0054,
+    "ideal_flux_sigma_ujy": 4.157,
+    "limit5_ujy": 24.12,
+    "limit5_ab": 20.44,
+    "blind_limit5_ujy": 135.8,
+    "blind_limit5_ab": 18.57,
+    "gain_mag_vs_single": 2.28
+   },
+   {
+    "epoch": "2025-11",
+    "range": "long",
+    "n_exposures": 64,
+    "detectors": [
+     "D4",
+     "D5",
+     "D6"
+    ],
+    "lam_um": [
+     2.439,
+     4.982
+    ],
+    "flux_sigma_ujy": 6.3278,
+    "flux_sigma_formal_ujy": 3.3549,
+    "psf_scale": 1.8862,
+    "blind_flux_sigma_ujy": 37.3427,
+    "pixel_sigma_mjysr": 0.0021,
+    "blind_pixel_sigma_mjysr": 0.0062,
+    "ideal_flux_sigma_ujy": 5.887,
+    "limit5_ujy": 31.64,
+    "limit5_ab": 20.15,
+    "blind_limit5_ujy": 186.7,
+    "blind_limit5_ab": 18.22,
+    "gain_mag_vs_single": 1.99
+   },
+   {
+    "epoch": "2026-05",
+    "range": "all",
+    "n_exposures": 100,
+    "detectors": [
+     "D1",
+     "D2",
+     "D3",
+     "D4",
+     "D5",
+     "D6"
+    ],
+    "lam_um": [
+     0.744,
+     4.967
+    ],
+    "flux_sigma_ujy": 3.6462,
+    "flux_sigma_formal_ujy": 2.0497,
+    "psf_scale": 1.7789,
+    "blind_flux_sigma_ujy": 31.3956,
+    "pixel_sigma_mjysr": 0.0013,
+    "blind_pixel_sigma_mjysr": 0.0055,
+    "ideal_flux_sigma_ujy": 3.534,
+    "limit5_ujy": 18.23,
+    "limit5_ab": 20.75,
+    "blind_limit5_ujy": 157.0,
+    "blind_limit5_ab": 18.41,
+    "gain_mag_vs_single": 2.59
+   },
+   {
+    "epoch": "2026-05",
+    "range": "short",
+    "n_exposures": 50,
+    "detectors": [
+     "D1",
+     "D2",
+     "D3"
+    ],
+    "lam_um": [
+     0.744,
+     2.363
+    ],
+    "flux_sigma_ujy": 4.6681,
+    "flux_sigma_formal_ujy": 2.5434,
+    "psf_scale": 1.8354,
+    "blind_flux_sigma_ujy": 30.1475,
+    "pixel_sigma_mjysr": 0.0018,
+    "blind_pixel_sigma_mjysr": 0.0055,
+    "ideal_flux_sigma_ujy": 4.362,
+    "limit5_ujy": 23.34,
+    "limit5_ab": 20.48,
+    "blind_limit5_ujy": 150.7,
+    "blind_limit5_ab": 18.45,
+    "gain_mag_vs_single": 2.32
+   },
+   {
+    "epoch": "2026-05",
+    "range": "long",
+    "n_exposures": 50,
+    "detectors": [
+     "D4",
+     "D5",
+     "D6"
+    ],
+    "lam_um": [
+     2.427,
+     4.967
+    ],
+    "flux_sigma_ujy": 6.2039,
+    "flux_sigma_formal_ujy": 3.455,
+    "psf_scale": 1.7956,
+    "blind_flux_sigma_ujy": 34.4276,
+    "pixel_sigma_mjysr": 0.0023,
+    "blind_pixel_sigma_mjysr": 0.0062,
+    "ideal_flux_sigma_ujy": 6.027,
+    "limit5_ujy": 31.02,
+    "limit5_ab": 20.17,
+    "blind_limit5_ujy": 172.1,
+    "blind_limit5_ab": 18.31,
+    "gain_mag_vs_single": 2.01
+   }
+  ],
+  "method": "Point-source flux = PSF-matched flux with the effective EPSF on the 3\" grid (EPSF flux in uJy, the same scale as blink.py's forced photometry, EPSF footprint +-3.3 native px), after a 45\" mesh background. Noise is measured, not taken from VARIANCE: robust scatter (1.4826 MAD) at blank positions (3-px lattice, >= 10 px inside the data, >= 6 px from saturated cores). 'Instrumental' = from a difference image in which static sources cancel (single exposure: minus a partner exposure of the same detector and season at the nearest wavelength, divided by sqrt(2) via the formal errors; deep stack: two interleaved halves). 'Blind' = scatter of the image itself, which in crowded fields is dominated by source confusion. 5 sigma limit = 5 x instrumental noise; AB = 23.9 - 2.5 log10(uJy)."
+ }
+}

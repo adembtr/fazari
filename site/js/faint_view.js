@@ -68,6 +68,7 @@
       .faintbar .val { color:var(--mut,#9aa3b2); font-variant-numeric:tabular-nums; min-width:4.2em; display:inline-block; }
       #faintcv { position:absolute; left:0; width:100%; image-rendering:pixelated; display:none; }
       #faintcard table td, #faintcard table th { font-variant-numeric: tabular-nums; }
+      #faintcard .tw { overflow-x:auto; }
       #faintcard img { width:100%; image-rendering:pixelated; border-radius:6px; background:#000; }
       #faintcard .two { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
       #faintcard .two figure { margin:0; } #faintcard figcaption { color:var(--mut,#9aa3b2); font-size:.85rem; }
@@ -255,10 +256,10 @@
         (rows.length ? T("fv.stackTo", "Stacking all exposures of a season (all wavelengths) goes to <b>{u} µJy</b> (AB {ab}).",
           { u: rows.map(r => fx(r.limit5_ujy, 0)).join(sep), ab: rows.map(r => fx(r.limit5_ab, 1)).join(sep) })
           : T("fv.stackDeeper", "Stacking all exposures of a season (all wavelengths) goes deeper.")) + `</p>`;
-      h += `<table><tr><th>${T("fv.th.image", "Image")}</th><th>${T("fv.th.exp", "Exposures")}</th><th>${T("fv.th.noise", "Noise (µJy, 1σ)")}</th><th>${T("fv.th.limit", "5σ limit")}</th><th>${T("fv.th.blind", "Blind scatter")}</th></tr>` +
+      h += `<div class="tw"><table><tr><th>${T("fv.th.image", "Image")}</th><th>${T("fv.th.exp", "Exposures")}</th><th>${T("fv.th.noise", "Noise (µJy, 1σ)")}</th><th>${T("fv.th.limit", "5σ limit")}</th><th>${T("fv.th.blind", "Blind scatter")}</th></tr>` +
         `<tr><td>${T("fv.single", "Single exposure (median)")}</td><td>1</td><td>${fx(s1.flux_sigma_ujy)}</td><td>${fx(s1.limit5_ujy, 0)} µJy · AB ${fx(s1.limit5_ab, 2)}</td><td>${fx(s1.blind_flux_sigma_ujy, 0)}</td></tr>` +
         (dp.deep || []).map(r => `<tr><td>${T("fv.deepRow", "Deep {ep} ({range})", { ep: r.epoch, range: r.range })}</td><td>${r.n_exposures}</td><td>${fx(r.flux_sigma_ujy, 2)}</td>` +
-          `<td>${fx(r.limit5_ujy, 0)} µJy · AB ${fx(r.limit5_ab, 2)}</td><td>${fx(r.blind_flux_sigma_ujy, 0)}</td></tr>`).join("") + `</table>` +
+          `<td>${fx(r.limit5_ujy, 0)} µJy · AB ${fx(r.limit5_ab, 2)}</td><td>${fx(r.blind_flux_sigma_ujy, 0)}</td></tr>`).join("") + `</table></div>` +
         `<p class="faintnote">` + T("fv.noiseNote", "Noise measured from difference images (static stars cancel). \"Blind scatter\" is the scatter of the " +
         "image itself; when it is much larger than the noise, faint stars fill the field (source confusion) and only " +
         "difference images reach the deep limit.") + `</p>`;
@@ -288,11 +289,11 @@
       if (pk.length) {
         const known = p => p.match && (p.match.target || p.match.gaia_dr3) ?
           T("fv.known", "known: {name}", { name: (p.match.target && p.match.target.name) || "Gaia DR3 " + p.match.gaia_dr3.source_id }) : "";
-        h += `<table><tr><th>#</th><th>S/N</th><th>${T("fv.th.motion", "Motion")}</th><th>${T("fv.th.pos", "Position (RA, Dec)")}</th><th>${T("fv.th.flux", "Flux")}</th><th>${T("fv.th.class", "Class")}</th><th>${T("fv.th.note", "Note")}</th></tr>` +
+        h += `<div class="tw"><table><tr><th>#</th><th>S/N</th><th>${T("fv.th.motion", "Motion")}</th><th>${T("fv.th.pos", "Position (RA, Dec)")}</th><th>${T("fv.th.flux", "Flux")}</th><th>${T("fv.th.class", "Class")}</th><th>${T("fv.th.note", "Note")}</th></tr>` +
           pk.map((p, i) => `<tr><td>${i + 1}</td><td>${fx(p.snr)}</td><td>${p.motion_text || ""}</td>` +
             `<td>${fx(p.ra, 5)}, ${fx(p.dec, 5)}</td><td>${fx(p.flux_ujy, 0)} µJy</td><td>${p.class || ""}</td>` +
             `<td><small>${[known(p)].concat(p.flags || []).filter(Boolean).join("; ")}</small></td></tr>`).join("") +
-          `</table>`;
+          `</table></div>`;
       }
     }
     if (ss.note) h += `<p class="faintnote">${ss.note}</p>`;
@@ -317,6 +318,8 @@
   const onFrame = () => { start(); if (fj) { parseFrame(); render(); } };
   new MutationObserver(onFrame).observe(frameImg, { attributes: true, attributeFilter: ["src"] });
   document.addEventListener("fazari:frame", onFrame);
+  // local engine: faint/ is written by a post-step after the result is on screen (js/post_watch.js)
+  document.addEventListener("fazari:post", (ev) => { if (!fj && (ev.detail || {}).step === "faint") { started = false; start(); } });
   document.addEventListener("fazari:lang", () => { if (!fj) return; render(); if ($("faintcard")) card(cardSS); });
   start();
 })();
