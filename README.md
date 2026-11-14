@@ -1,5 +1,7 @@
 # Fazari — SPHEREx Blink Explorer
 
+[![Tests](https://github.com/adembtr/fazari/actions/workflows/tests.yml/badge.svg?branch=dev)](https://github.com/adembtr/fazari/actions/workflows/tests.yml)
+
 **Build began on 14 Nov 2026, after kick-off (first commit 07:00:59 UTC).** See the commit history.
 
 | AI tool | Used for | Not used for |
