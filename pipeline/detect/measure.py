@@ -207,13 +207,17 @@ def flux_ujy(f):
     return f * BL.PIXEL_UJY
 
 
-def measure_linear(e, ra, dec, R=R_STAMP, model_err=MODEL_ERR, image=None, jacobi=3):
+def measure_linear(e, ra, dec, R=R_STAMP, model_err=MODEL_ERR, image=None, jacobi=3, fixed_f=None):
     """Linear EPSF fit at FIXED positions (no position iteration): for every source
         data = f K + gx dK/dx + gy dK/dy + b
     with K the EPSF at the input position; gx = f * dx, gy = f * dy, where (dx, dy) is the
     source's offset (native px) from the input position. Being linear in the data, these
     estimates can be summed over many exposures without the selection and non-linearity biases
     of per-exposure position fits of faint sources (astrometry.season_table).
+    fixed_f: optional array, one value per source (NaN = free): a source with a finite value is
+    a static star whose brightness is known from all exposures (astrometry.static_fluxes): its
+    light is subtracted from the stamps of the other sources with exactly this flux (also when
+    it is closer than NB_MIN_SEP), instead of the flux estimated in this exposure.
     Returns arrays: ok, flag, f, ef, gE, gN (= J (gx, gy), arcsec x flux), vgE, vgN, cgEN,
     cfgE, cfgN (covariances with f), chi2r."""
     px = e["_px"]
@@ -250,9 +254,12 @@ def measure_linear(e, ra, dec, R=R_STAMP, model_err=MODEL_ERR, image=None, jacob
     xs, ys = x0[idx], y0[idx]
     dx, dy = xs - ix[idx], ys - iy[idx]
     lim = R + NB_PAD
+    fx = np.full(n, np.nan) if fixed_f is None else np.asarray(fixed_f, float)[idx]
+    isfx = np.isfinite(fx)
     ps, pt = [], []
     for a in range(n):
-        m = (np.abs(xs - xs[a]) <= lim) & (np.abs(ys - ys[a]) <= lim) & (np.hypot(xs - xs[a], ys - ys[a]) >= NB_MIN_SEP)
+        m = (np.abs(xs - xs[a]) <= lim) & (np.abs(ys - ys[a]) <= lim) & \
+            ((np.hypot(xs - xs[a], ys - ys[a]) >= NB_MIN_SEP) | isfx)
         m[a] = False
         for b in np.nonzero(m)[0]:
             ps.append(a)
@@ -261,11 +268,17 @@ def measure_linear(e, ra, dec, R=R_STAMP, model_err=MODEL_ERR, image=None, jacob
     k0 = _kern(px, dx, dy, R)
     kn = _kern(px, xs[pt] - ix[idx][ps], ys[pt] - iy[idx][ps], R) if len(ps) else None
     ok = ~satc & (good.sum(1) >= 0.6 * P)
+    # light of the static stars with a known flux: the same in every pass; what its subtraction
+    # leaves behind (the EPSF is not the real PSF: MODEL_ERR of the subtracted light) is noise
+    Cf = np.zeros((n, P))
+    if kn is not None and isfx.any():
+        np.add.at(Cf, ps, kn * np.where(isfx[pt], np.clip(np.nan_to_num(fx[pt]), 0, None), 0.0)[:, None])
+        var = var + (model_err * Cf) ** 2
     f = np.zeros(n)
     for it in range(jacobi + 1):
-        C = np.zeros((n, P))
+        C = Cf.copy()
         if kn is not None and it > 0:
-            np.add.at(C, ps, kn * np.where(ok[pt], np.clip(f[pt], 0, None), 0.0)[:, None])
+            np.add.at(C, ps, kn * np.where(ok[pt] & ~isfx[pt], np.clip(f[pt], 0, None), 0.0)[:, None])
         dd = d - C
         if it < jacobi:
             A = np.stack([k0, np.ones_like(k0)], 2)
@@ -304,3 +317,87 @@ def measure_linear(e, ra, dec, R=R_STAMP, model_err=MODEL_ERR, image=None, jacob
     fl[satc] = "sat"
     out["flag"][idx] = fl
     return out
+
+
+def measure_beside(e, ra, dec, ra_t, dec_t, sub=None, R=R_STAMP, model_err=MODEL_ERR, image=None):
+    """Flux of static sources at (ra, dec) that stand beside a moving source at (ra_t, dec_t)
+    (one target position per source). On the stamp of each static source
+        data = f K + b + ft Kt + gx dKt/dx + gy dKt/dy
+    with Kt the target's EPSF on this stamp: the flux f is fitted TOGETHER with the target's flux
+    and position, so its variance says how well the two can be told apart in this exposure
+    (large where they overlap, the plain value where the target is far). astrometry.static_fluxes
+    combines these over all exposures. sub: (ra, dec, flux) of further sources, subtracted first.
+    Returns f, vf (NaN where the stamp is not usable)."""
+    px = e["_px"]
+    ra = np.atleast_1d(np.asarray(ra, float))
+    dec = np.atleast_1d(np.asarray(dec, float))
+    ns = len(ra)
+    f_out, v_out = np.full(ns, np.nan), np.full(ns, np.nan)
+    if ns == 0:
+        return f_out, v_out
+    wcs = px["wcs"]
+    img = px["clean"] if image is None else image
+    ny, nx = img.shape
+    x0, y0 = wcs.all_world2pix(ra, dec, 0)
+    xt, yt = wcs.all_world2pix(np.broadcast_to(np.asarray(ra_t, float), ra.shape),
+                               np.broadcast_to(np.asarray(dec_t, float), ra.shape), 0)
+    ix, iy = np.round(np.nan_to_num(x0, nan=-99)).astype(int), np.round(np.nan_to_num(y0, nan=-99)).astype(int)
+    inside = (ix >= R) & (ix < nx - R) & (iy >= R) & (iy < ny - R)
+    idx = np.nonzero(inside)[0]
+    if not len(idx):
+        return f_out, v_out
+    yy, xx = np.mgrid[-R:R + 1, -R:R + 1]
+    P = (2 * R + 1) ** 2
+    gy = iy[idx, None] + yy.ravel()[None, :]
+    gx = ix[idx, None] + xx.ravel()[None, :]
+    d = np.asarray(img, float)[gy, gx]
+    var = np.asarray(px["var"], float)[gy, gx]
+    good = np.asarray(px["good"])[gy, gx] & np.isfinite(d) & np.isfinite(var) & (var > 0)
+    cen = (np.abs(xx.ravel()) <= 1) & (np.abs(yy.ravel()) <= 1)
+    satc = np.asarray(px["satnan"])[gy, gx][:, cen].any(1)
+    d = np.where(good, d, 0.0)
+    var = np.where(good, var, 1.0)
+    n = len(idx)
+    xs, ys = x0[idx], y0[idx]
+    lim = R + NB_PAD
+    k0 = _kern(px, xs - ix[idx], ys - iy[idx], R)
+    ox, oy = xt[idx] - ix[idx], yt[idx] - iy[idx]
+    near = np.isfinite(ox) & np.isfinite(oy) & (np.abs(ox) <= lim) & (np.abs(oy) <= lim)
+    kt, ktx, kty = np.zeros((n, P)), np.zeros((n, P)), np.zeros((n, P))
+    if near.any():
+        a, b = ox[near], oy[near]
+        kt[near] = _kern(px, a, b, R)
+        ktx[near] = (_kern(px, a + FD_H, b, R) - _kern(px, a - FD_H, b, R)) / (2 * FD_H)
+        kty[near] = (_kern(px, a, b + FD_H, R) - _kern(px, a, b - FD_H, R)) / (2 * FD_H)
+    C = np.zeros((n, P))
+    if sub is not None and len(sub[0]):
+        xo, yo = wcs.all_world2pix(np.asarray(sub[0], float), np.asarray(sub[1], float), 0)
+        fo = np.asarray(sub[2], float)
+        for a in range(n):
+            sep = np.hypot(xo - xs[a], yo - ys[a])
+            m = (np.abs(xo - xs[a]) <= lim) & (np.abs(yo - ys[a]) <= lim) & np.isfinite(fo) & (fo > 0) & (sep > 0.05)
+            if m.any():
+                C[a] = (_kern(px, xo[m] - ix[idx][a], yo[m] - iy[idx][a], R) * fo[m][:, None]).sum(0)
+    dd = d - C
+    A = np.stack([k0, np.ones_like(k0), kt, ktx, kty], 2)
+    w = good / var
+    p = cov = None
+    for _ in range(2):
+        N = np.einsum("np,npi,npj->nij", w, A, A)
+        # columns of a far target are zero, those of a target on top of the source repeat K: the
+        # small ridge keeps the matrix invertible and leaves the variance of f huge where it is
+        N = N + np.eye(5)[None] * (1e-9 * np.max(np.einsum("nii->ni", N), 1) + 1e-300)[:, None, None]
+        rhs = np.einsum("np,npi,np->ni", w, A, dd)
+        try:
+            cov = np.linalg.inv(N)
+        except np.linalg.LinAlgError:
+            cov = np.array([np.linalg.pinv(q) for q in N])
+        p = np.einsum("nij,nj->ni", cov, rhs)
+        w = good / (var + (model_err * (np.clip(p[:, 0], 0, None)[:, None] * k0 + np.clip(p[:, 2], 0, None)[:, None] * kt)) ** 2)
+    res = dd - np.einsum("npi,ni->np", A, p)
+    npix = good.sum(1)
+    chi2r = np.sum(w * res ** 2, 1) / np.maximum(npix - 5, 1)
+    okk = ~satc & (npix >= 0.6 * P) & np.isfinite(p[:, 0]) & (cov[:, 0, 0] > 0)
+    f_out[idx] = np.where(okk, p[:, 0], np.nan)
+    v_out[idx] = np.where(okk, cov[:, 0, 0] * np.maximum(chi2r, 1.0), np.nan)
+    return f_out, v_out

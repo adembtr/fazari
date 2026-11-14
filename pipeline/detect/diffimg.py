@@ -35,6 +35,7 @@ unrelated flux changes, e.g. two variable stars, are not a motion: a moving obje
 old place), and motions that the native-pixel astrometry along the track does not confirm at
 >= SIG_REFINE sigma (a real mover is a point source on its track in every exposure).
 """
+import copy
 import math
 
 import numpy as np
@@ -70,6 +71,12 @@ GROUP_POS = 4.0             # arcsec: records of one object agree to this (+ err
 ABSENT_FRAC = 0.3           # separated lobes: flux left at the old / already at the new position must be
 #                             below this fraction of the object's flux (and below 3 sigma)
 SIG_REFINE = 5.0            # significance of the motion in the native-pixel astrometry along the track
+BLANK_RINGS = (45.0, 60.0)  # arcsec: radii of the blank tracks around a mover's track (outside its 7 x 7 px stamp)
+BLANK_N = 8                 # blank tracks per ring
+BLANK_CLEAR = 9.0           # arcsec: a blank track this close to a listed source is not blank
+BLANK_MIN = 5               # blank tracks needed for a confusion estimate
+REFINE_ITERS = 6            # passes of the track measurement at most ...
+REFINE_TOL = 0.02           # ... until no season position moves by more than this (arcsec)
 
 
 def _units(ctx):
@@ -470,6 +477,13 @@ def _group_motion(ctx, recs):
             elif sig < SIG_REFINE:
                 c["class"] = "artifact"
                 c["flags"].append(f"motion only {sig:.1f} sigma in the native-pixel astrometry along the track")
+            else:
+                mo = c.get("motion") or {}
+                bad_plx = AS.unphysical_parallax(mo.get("parallax_mas"), mo.get("err_parallax_mas"))
+                if bad_plx:
+                    c["class"] = "artifact"
+                    c["flags"].insert(0, bad_plx)
+                    c.setdefault("vetting", {})["reason"] = "unphysical"
     return cands
 
 
@@ -586,10 +600,30 @@ def _linear_plx(sp):
 
 
 def _refine(ctx, c):
+    """Native-pixel astrometry of an A motion along its track, in two steps. Step 1 (the decision,
+    the solution the null tests ran on): three measurement passes with the listed sources within
+    40" fitted together; the motion has to be confirmed there with >= SIG_REFINE sigma. Step 2
+    (the numbers of the record, accepted objects only): the same measurement iterated until the
+    season positions stop moving, with blank tracks around it that give the confusion part of the
+    position error; the object has to pass again. Returns True when the track astrometry
+    confirms the stack motion (the caller applies SIG_REFINE to the significance in the record)."""
+    g = copy.deepcopy(c)
+    ok = _refine_track(ctx, g, converge=False)
+    sig = (g.get("motion") or {}).get("significance_sigma") or 0
+    if not ok or sig < SIG_REFINE:
+        c.clear()
+        c.update(g)
+        return ok
+    return _refine_track(ctx, c, converge=True)
+
+
+def _refine_track(ctx, c, converge=True):
     """Re-measure an A motion in every exposure along its track (EPSF fit, or wing fit where the
     core is saturated), with one position offset per detector and errors calibrated on the
-    residuals (astrometry.py). Returns True when the track astrometry confirms the stack motion
-    (a fit exists and differs from the stack motion by less than half of it)."""
+    residuals (astrometry.py). converge: iterate to REFINE_TOL and add the confusion error of
+    blank tracks (False: three passes, no blank tracks). Returns True when the track astrometry
+    confirms the stack motion (a fit exists and differs from the stack motion by less than half
+    of it)."""
     mo = c["motion"]
     if not mo:
         return False
@@ -600,10 +634,32 @@ def _refine(ctx, c):
     track = [(c["ra"] + mo["pmra_mas_yr"] * dt / 3.6e6 / cosd, c["dec"] + mo["pmdec_mas_yr"] * dt / 3.6e6)
              for dt in (-1.0, -0.5, 0.0, 0.5, 1.0)]
     dmin = np.min([np.hypot((fs.ra0 - r) * cosd, fs.dec0 - d) * 3600 for r, d in track], 0) if fs.n else np.array([])
-    nb = np.nonzero((dmin > 3.0) & (dmin < 40.0))[0] if fs.n else np.array([], int)
-    src = AS.Sources(np.r_[c["ra"], fs.ra0[nb]], np.r_[c["dec"], fs.dec0[nb]], 2026.0,
-                     np.r_[mo["pmra_mas_yr"], fs.pmra[nb]], np.r_[mo["pmdec_mas_yr"], fs.pmdec[nb]],
-                     np.r_[0.0, fs.plx[nb]])
+    own = dmin <= 3.0
+    if converge and fs.n:
+        # a catalogued star that the track merely passes is a separate source and is modelled
+        # (the gate above keeps the v1 rule: every entry within 3" of the track is left out)
+        dmin, own = AS.beside_track(fs, ng, c["ra"], c["dec"], mo["pmra_mas_yr"], mo["pmdec_mas_yr"])
+    nb = np.nonzero(~own & (dmin < 40.0 + (BLANK_RINGS[-1] if converge else 0.0)))[0] if fs.n else np.array([], int)
+    # static catalogued stars inside two pixels of the track: constant-flux model (astrometry.static_fluxes)
+    static = 1 + np.nonzero((nb < ng) & (dmin[nb] < AS.STATIC_ARCSEC))[0] if converge and len(nb) else np.array([], int)
+    # blank tracks: the same track moved to empty places around it. The same estimator on the same
+    # exposures there shows what the background alone (noise and unlisted faint sources) does to
+    # the position of a source of this flux: the confusion part of its position error.
+    bra, bde = [], []
+    for ring in (BLANK_RINGS if converge else ()):
+        for k in range(BLANK_N):
+            a = 2 * math.pi * (k + (0.5 if ring != BLANK_RINGS[0] else 0.0)) / BLANK_N
+            r_, d_ = c["ra"] + ring * math.sin(a) / 3600 / cosd, c["dec"] + ring * math.cos(a) / 3600
+            if fs.n and np.min(np.hypot((fs.ra0 - r_) * cosd, fs.dec0 - d_) * 3600) < BLANK_CLEAR:
+                continue
+            bra.append(r_)
+            bde.append(d_)
+    nbl = len(bra)
+    src = AS.Sources(np.r_[c["ra"], fs.ra0[nb], bra], np.r_[c["dec"], fs.dec0[nb], bde], 2026.0,
+                     np.r_[mo["pmra_mas_yr"], fs.pmra[nb], [mo["pmra_mas_yr"]] * nbl],
+                     np.r_[mo["pmdec_mas_yr"], fs.pmdec[nb], [mo["pmdec_mas_yr"]] * nbl],
+                     np.r_[0.0, fs.plx[nb], [0.0] * nbl])
+    blanks = np.arange(src.n - nbl, src.n)
     allow = np.zeros(src.n, bool)
     allow[0] = True
     # only the detectors where A saw the motion: in the others the object may be absent (a very
@@ -611,9 +667,15 @@ def _refine(ctx, c):
     # would then be measured instead, as a drift opposite to the motion
     dets = sorted({d for u in c["bins"] for d in unit_dets(u)})
     A, T = AS.measure_seasons(ctx.exps, src, ctx.cal, ctx.seasons, images=ctx.images, sat_path=allow,
-                              nb=AS.bright_neighbours(ctx.gaia), iters=3, det_subset=dets or None)
+                              nb=AS.bright_neighbours(ctx.gaia), iters=REFINE_ITERS if converge else 3,
+                              tol=REFINE_TOL if converge else None, det_subset=dets or None, n_conv=1,
+                              static=static if len(static) else None, target=0)
     cells = {d: t for d, t in AS.cell_tables(ctx.exps, A, ctx.seasons).items() if not dets or d in dets}
     floor = ctx.season_floor if ctx.season_floor else AS.SEASON_FLOOR
+    conf = _confusion(ctx, A, cells, blanks) if converge else None
+    if conf is not None:
+        # common to the detectors of a season (the same background sources): it enters like the floor
+        floor = math.hypot(floor, conf)
     f = AS.fit_motion(T, cells, 0, floor, c["ra"], c["dec"], min_snr=5.0)
     if f is None or math.hypot(f["bE"], f["bN"]) > 0.5 * max(mo["speed_arcsec_yr"], 1.0):
         c["flags"].append("native-pixel refinement failed (stack motion kept)")
@@ -626,6 +688,11 @@ def _refine(ctx, c):
     pmE = mo["pmra_mas_yr"] + f["bE"] * 1000
     pmN = mo["pmdec_mas_yr"] + f["bN"] * 1000
     eE, eN = max(f["ebE"] * 1000, 1.0), max(f["ebN"] * 1000, 1.0)
+    if f.get("unchecked"):
+        # two cells, no degree of freedom: the track fit is a second estimate of what the stacks
+        # saw, not a tested measurement. Its error is never smaller than that of the stack motion.
+        eE, eN = max(eE, mo["err_pmra_mas_yr"]), max(eN, mo["err_pmdec_mas_yr"])
+        c["flags"].append("track fit: " + AS.UNCHECKED_FLAG)
     # the stack and the native-pixel motions use the same exposures; when they differ by more
     # than 3 sigma a systematic error dominates: inflate the error to half the difference
     dpm = math.hypot(pmE - mo["pmra_mas_yr"], pmN - mo["pmdec_mas_yr"])
@@ -643,6 +710,17 @@ def _refine(ctx, c):
     if f.get("parallax_mas"):
         c["motion"]["parallax_mas"] = round(f["parallax_mas"][0], 1)
         c["motion"]["err_parallax_mas"] = round(f["parallax_mas"][1], 1)
+    if f.get("plx_test"):
+        c["motion"]["parallax_fit_mas"] = [round(f["plx_test"][0], 1), round(f["plx_test"][1], 1)]
+    try:
+        om = bool(f.get("orient_model")) or f.get("motion_model") != "linear"
+        groups, _ = AS.group_agreement(ctx.exps, A, ctx.seasons, 0, f, floor, cells=cells, T=T, min_snr=5.0, orient_term=om)
+        tot = dict(f, bE=pmE / 1000, bN=pmN / 1000)
+        _, tnote = AS.orientation_check(T, 0, tot, floor, base=base, cells=cells, min_snr=5.0)
+        c["checks"] = AS.evidence(T, cells, 0, floor, f, groups, tnote, base=base, min_snr=5.0)
+        c["sed_ujy"] = AS.sed_ujy(cells, 0)          # only the detectors where the motion is seen
+    except Exception as ex:                                 # evidence only: never lose the motion over it
+        c["checks"] = {"error": f"{type(ex).__name__}: {ex}"}
     cosd = math.cos(math.radians(c["dec"]))
     c["ra"] += f["aE"] / 3600 / cosd
     c["dec"] += f["aN"] / 3600
@@ -664,10 +742,43 @@ def _refine(ctx, c):
     if f["saturated"]:
         c["flags"].append("saturated: wing-fit astrometry")
     c["fit"] = {"chi2": round(f["chi2"], 2), "dof": f["dof"], "n_seasons": f["n_seasons"], "orient_term": f["orient_term"],
+                "confusion_arcsec": None if conf is None else round(conf, 3), "n_blank_tracks": int(nbl),
+                "converged": bool(converge), "n_static_neighbours": int(len(static)),
                 "saturated": bool(f["saturated"]), "model": f.get("model", "pooled detectors"),
                 "motion_model": f.get("motion_model"), "p_linear": f.get("p_linear"), "n_cells": f.get("n_cells"),
+                "cell_set": f.get("cell_set"), "unchecked": bool(f.get("unchecked")),
                 "detectors": f.get("detectors"), "error_inflation": f.get("error_inflation"), "bootstrap": f.get("bootstrap")}
     return True
+
+
+def _confusion(ctx, A, cells, blanks):
+    """Position error (arcsec, per season and axis) that the background gives a source of the
+    mover's flux: in every season x detector cell of the mover, the weighted mean of the linear
+    position numerators (gE, gN) on the blank tracks, divided by the mover's flux in that cell;
+    robust scatter over the blank tracks, median over the cells. None with < BLANK_MIN tracks."""
+    if len(blanks) < BLANK_MIN:
+        return None
+    dets = np.asarray(A["det"])
+    sea = np.array([e["epoch"] for e in ctx.exps])
+    out = []
+    for d, Td in cells.items():
+        for k, s in enumerate(ctx.seasons):
+            fb = Td["flux"][k, 0]
+            if not np.isfinite(fb) or fb <= 0 or Td["n"][k, 0] < AS.CELL_MIN_N or Td["sat"][k, 0]:
+                continue
+            rows = np.nonzero((dets == d) & (sea == s))[0]
+            vals = []
+            for b in blanks:
+                ok = A["ok"][rows, b] & np.isfinite(A["gE"][rows, b]) & np.isfinite(A["vgE"][rows, b]) & (A["vgE"][rows, b] > 0)
+                if ok.sum() < 2:
+                    continue
+                r = rows[ok]
+                wE, wN = 1 / A["vgE"][r, b], 1 / A["vgN"][r, b]
+                vals.append((float(np.sum(wE * A["gE"][r, b]) / np.sum(wE)) / fb, float(np.sum(wN * A["gN"][r, b]) / np.sum(wN)) / fb))
+            if len(vals) >= BLANK_MIN:
+                v = np.array(vals)
+                out.append(math.sqrt(0.5 * (Dt.BL.robust_sigma(v[:, 0]) ** 2 + Dt.BL.robust_sigma(v[:, 1]) ** 2)))
+    return float(np.median(out)) if out else None
 
 
 def _group_lone(ctx, recs):

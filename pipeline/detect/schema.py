@@ -23,6 +23,43 @@ Record (fields not known stay null):
   match         {"gaia_dr3": {...}} or {"sso": {...}}: known-object match
   flags         list of short strings (why a class was given, rejections, cautions)
   notes         free text
+Added by the vetting and nature steps (run.py, vet.py, nature.py); all optional, never renamed:
+  nature        {label, text, evidence, reason}: what kind of object, in one plain sentence, and
+                the measurements behind it (bound-orbit parallax test, distance, tangential
+                velocity, flux per detector, catalogue matches). Labels: nature.LABEL_TEXT.
+  confidence    {percent, basis, sentence, how, false_alarm_probability, gaia_difference_sigma,
+                 gaia_difference_percent}: derived "how sure" number. basis = "gaia-agreement"
+                (catalogued movers), "null-calibrated" (uncatalogued movers: 100 x (1 - false-alarm
+                probability of the field)), "catalogue-match" (asteroids), "not-calibrated".
+  confirmed     True / False (rule nature.RULE); confirmation = {rule, checks, n_independent,
+                sentence}. Only confirmed records belong in a registry of finds.
+  checks        structured form of the tests behind a motion: same_orientation_sigma, halves,
+                detector_votes, flux_change
+  sed_ujy       median flux per detector (microJy)
+  motion.displacement      {from, to, dt_yr, arcsec, err_arcsec, pa_deg, same_orientation}: measured
+                shift between two same-orientation seasons (motion.speed_arcsec_yr is per year)
+  motion.parallax_fit_mas  [parallax, error] of the linear + parallax model even when not adopted
+  track_records other records that are this mover seen along its track (vet.absorb_tracks)
+  vetting       what the transient tests found (vet.vet_transients)
+  brightness.rule          "all detectors together" | "colour change"; brightness.colour_change =
+                {from, to, same_orientation, brighter_in, fainter_in} for the second (variab.py)
+  fit.converged True when the numbers come from the track solution iterated to convergence;
+                fit.confusion_arcsec = confusion part of the season position error (detector A)
+  distance_au, err_distance_au   records of detector P (distant Solar System bodies) only
+  checks.static_scene      detector D: did the light at the first and the last position change as a
+                moved source requires (deep_astrom.static_scene): left_behind, already_there, their
+                errors, overlap_if_moved, testable, static, moved, other_light, alone
+  vetting.reason           why a record was rejected, where a rule names it: "crowding", "unphysical"
+                (fitted parallax above the nearest star's), "catalogue" (the Gaia list could not be
+                reached: not checked), "cosmic", "wavelength", ...
+Top level: "verdict" = {text, stage, n_confirmed, best, best_offset_arcsec, limit}: the one-line
+answer of the field (stage "full" or "quick"; best = id of the record the sentence is about;
+best_offset_arcsec = its distance from the chosen point when it is not at the point itself);
+verdict.gaia_unavailable / n_unchecked_motions when the star catalogue could not be reached.
+field.searched_deg = side of the square that was searched; field.registration.gaia_list = {status:
+"ok" | "unavailable" | "none" | "not asked", stars, source}. summary.n_moving_confirmed /
+n_moving_unconfirmed: movers that passed / candidates that did not pass the confirmation rule
+(summary.n_moving_candidates counts every record of class "candidate", confirmed or not).
 Language: these are candidates for follow-up, never discoveries.
 """
 import json
@@ -143,12 +180,20 @@ def summary(cands):
     for c in cands:
         by[c["class"]] += 1
     moving = [c for c in cands if c["kind"] == "motion" and c["class"] in ("candidate", "gaia-known")]
+    n_cand = sum(c["class"] == "candidate" for c in moving)
+    n_open = sum(c["class"] == "candidate" and not c.get("confirmed") for c in moving)
     return {"n": len(cands), "by_class": by, "n_moving": len(moving),
+            "n_confirmed": sum(bool(c.get("confirmed")) for c in cands),
             "n_moving_candidates": sum(c["class"] == "candidate" for c in moving),
+            "n_moving_confirmed": sum(bool(c.get("confirmed")) for c in moving),       # known Gaia movers included
+            "n_moving_unconfirmed": n_open,                                          # candidates that are not confirmed
             "n_transients": sum(c["kind"] == "transient" for c in cands),
             "n_variable": by["variable"],
-            "text": (f"{len(moving)} moving object(s) found here: {sum(c['class'] == 'gaia-known' for c in moving)} known "
-                     f"Gaia mover(s), {sum(c['class'] == 'candidate' for c in moving)} candidate(s); "
+            # "found" is said of confirmed movers only: an unconfirmed candidate is a candidate (the v1 text
+            # "N moving object(s) found here" was read as a find on a field that held two blends of known stars)
+            "text": (f"{sum(bool(c.get('confirmed')) for c in moving)} confirmed moving object(s) here: "
+                     f"{sum(c['class'] == 'gaia-known' for c in moving)} known "
+                     f"Gaia mover(s), {n_cand} candidate(s)" + (f" ({n_open} not confirmed)" if n_cand else "") + "; "
                      f"{by['variable']} variable candidate(s), {by['asteroid-known']} known asteroid(s), "
                      f"{by['artifact']} rejected as artifacts.")}
 

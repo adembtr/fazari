@@ -58,6 +58,11 @@ def judge(ctx, exps, A, T, cells, src, j, floor, smax=None, n_perm=AS.N_PERM):
     dev = f["sig_motion"]
     out.update(f=f, dev=dev, pmE=pmE, pmN=pmN, eE=eE, eN=eN, sig_abs=sig_abs)
     flags = out["flags"]
+    # a fit without a degree of freedom (two cells) is a number that nothing checks: it never makes
+    # a star anomalous, and without calibrated errors it is not reported at all
+    unchecked = bool(f.get("unchecked"))
+    if unchecked and f.get("uncalibrated"):
+        return out
     if dev >= SIG_ANOMALY:
         groups, agree = AS.group_agreement(exps, A, ctx.seasons, j, f, floor, cells=cells, T=T, min_n=MIN_SEASON_N)
         out["groups"] = groups
@@ -99,14 +104,34 @@ def judge(ctx, exps, A, T, cells, src, j, floor, smax=None, n_perm=AS.N_PERM):
         # Luhman 16 field: 0.44"/yr together with a 17 % fading = variability-induced motion of
         # an unresolved blend). Accepting "another source moving through the star's position"
         # needs the brightness test (astrometry.vim_suspect) and is not switched on yet.
-        if agree and not near and not zone and not bad_line and ori_ok and off_ok:
+        vim, fc = AS.vim_suspect(cells, j, math.hypot(f["bE"], f["bN"]) * f["span_yr"]) if cells is not None else (False, None)
+        if vim:
+            flags.append(f"the shift comes with a brightness change of {100 * fc['frac']:+.0f} %: photocentre of an "
+                         "unresolved blend with a variable star (variability-induced motion)")
+        if unchecked:
+            flags.append(AS.UNCHECKED_FLAG)
+        if agree and not near and not zone and not bad_line and ori_ok and off_ok and not vim and not unchecked:
             out["cls"] = "candidate"
             flags.insert(0, "Gaia 2-parameter solution: motion not in Gaia" if two_par else "anomalous vs Gaia")
         else:
             out["cls"] = "artifact"
+        gbase = (0.0 if not np.isfinite(gt.pmra[j]) else gt.pmra[j] / 1000, 0.0 if not np.isfinite(gt.pmdec[j]) else gt.pmdec[j] / 1000)
+        # the significance of the TOTAL motion in same-orientation seasons, halves and detectors
+        _, tnote = AS.orientation_check(T, j, dict(f, bE=f["bE"] + gbase[0], bN=f["bN"] + gbase[1]), floor, base=gbase,
+                                        min_n=MIN_SEASON_N, cells=cells)
+        out["checks"] = AS.evidence(T, cells, j, floor, f, groups, tnote, base=gbase, min_n=MIN_SEASON_N)
     elif sig_abs >= SIG_MOTION and not two_par:
         out["cls"] = "gaia-known"
         flags.append("known mover confirmed")
+        gbase = (gt.pmra[j] / 1000, gt.pmdec[j] / 1000)
+        groups, agree = AS.group_agreement(exps, A, ctx.seasons, j, f, floor, cells=cells, T=T, min_n=MIN_SEASON_N)
+        out["groups"] = groups
+        _, tnote = AS.orientation_check(T, j, dict(f, bE=f["bE"] + gbase[0], bN=f["bN"] + gbase[1]), floor, base=gbase,
+                                        min_n=MIN_SEASON_N, cells=cells)
+        flags.append(tnote)
+        if unchecked:
+            flags.append(AS.UNCHECKED_FLAG)
+        out["checks"] = AS.evidence(T, cells, j, floor, f, groups, tnote, base=gbase, min_n=MIN_SEASON_N)
     return out
 
 
@@ -123,6 +148,7 @@ def run(ctx):
     smax = deep_astrom.snr_max(T)
     ref = np.nonzero(gt.reference())[0]
     floor, nfl = AS.estimate_season_floor(T, ref)
+    floor = max(floor, float((ctx.opts or {}).get("min_season_floor") or 0.0))     # quick boxes: run.quick_verdict
     ctx.season_floor = floor
     ctx.shared["gaia_meas"] = (A, T)
     ctx.log(f"  B: {gt.n} Gaia stars measured; per-season systematic floor {floor:.3f}\" from {nfl} stars")
@@ -157,10 +183,13 @@ def run(ctx):
                                   "ruwe": _r(gt.ruwe[j], 2), "sep_arcsec": round(math.hypot(f["aE"], f["aN"]), 2)}
         if r.get("own_motion") is not None:
             c["match"]["gaia_dr3"]["own_motion"] = r["own_motion"]
+        c["checks"] = r.get("checks")
+        c["sed_ujy"] = AS.sed_ujy(cells, j)
         c["fit"] = {"chi2": round(f["chi2"], 2), "dof": f["dof"], "n_seasons": f["n_seasons"],
                     "orient_term": f["orient_term"], "season_floor_arcsec": round(floor, 3),
                     "saturated": bool(f.get("saturated")), "model": f.get("model", "pooled detectors"),
-                    "n_cells": f.get("n_cells"), "error_inflation": f.get("error_inflation"), "bootstrap": f.get("bootstrap")}
+                    "n_cells": f.get("n_cells"), "cell_set": f.get("cell_set"), "unchecked": bool(f.get("unchecked")),
+                    "error_inflation": f.get("error_inflation"), "bootstrap": f.get("bootstrap")}
         cands.append(c)
     info.update(counts=counts, season_floor_arcsec=round(floor, 4), n_floor_stars=nfl,
                 thresholds={"motion_sigma": SIG_MOTION, "anomaly_sigma": SIG_ANOMALY},

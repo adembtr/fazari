@@ -174,7 +174,9 @@ _epsf_todo = []
 
 def attach_epsf(local_data):
     """Append the EPSF rows near each box (IRSA layout for the finder's Field); one table per calibration
-    id, from cache/local/epsf, a saved cutout or S3 (~3.9 MB once). Only when quick_verdict reads them."""
+    id, from cache/local/epsf, a saved cutout or S3 (~3.9 MB once). Only when quick_verdict reads them.
+    Boxes of an earlier run of the job (a rerun) are not in this list: the finder reads their EPSF
+    table from cache/local/epsf itself (detect.data.cached_epsf)."""
     import fetch_region as fr
     from astropy.io import fits
     mem = {}
@@ -448,6 +450,8 @@ def main():
                     traceback.print_exc()
                     core = {"error": f"{type(e).__name__}: {e}"}
             v = (core or {}).get("verdict") if isinstance(core, dict) else None
+            if v and v.get("no_data"):                          # the finder could read no exposure: the rough answer
+                v = None
             conf = None                                         # the finder's "how sure", of its best candidate
             if v and v.get("best") is not None:
                 conf = next((c.get("confidence") for c in core.get("candidates") or [] if c.get("id") == v["best"]), None)

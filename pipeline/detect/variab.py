@@ -34,6 +34,18 @@ as before, wasted most of the information: six detectors of ~18 exposures each s
 change of an AB 16 source at only ~2-4 sigma each, but at 5-10 sigma together.
 A change seen only between opposite telescope orientations (when a same-orientation pair
 exists and does not show it) is rejected (ghosts and stray light follow the orientation).
+
+Unresolved pairs: catalogue entries closer than PAIR_ARCSEC (half a pixel) are one source for
+SPHEREx; the brighter entry carries the record ("unresolved pair" flag), the other is skipped.
+A neighbour between PAIR_ARCSEC and BLEND_ARCSEC with >= 30 % of the flux makes the record an
+artifact (blended: its light leaks into the fit by an amount that depends on the pointing).
+
+Colour changes: the combined change assumes that all detectors move in the same direction. A
+source whose colour changes (dust clearing or forming, a temperature change: RW Aur brightened
+by 30-50 % at 0.75-1.6 um while it faded by 50 % at 4-5 um) cancels in it. Such a source is a
+variable candidate as well when >= MIN_DET_COLOUR detectors changed by >= SIG_VAR each on their
+own between the same two seasons, with both signs present ("rule": "colour change" in the
+record). Two detectors at 5 sigma each are the "does not rest on one detector" condition.
 """
 import math
 
@@ -50,6 +62,7 @@ SIG_VAR = 5.0               # combined significance (all detectors) of a season-
 SIG_LOO = 3.0               # ... and with the most significant detector left out
 SIG_DET = 2.0               # a detector "agrees" when it shows the same sign at this significance
 MIN_FRAC = 0.03             # smallest fractional change reported
+MIN_DET_COLOUR = 2          # detectors that must each show a >= SIG_VAR change for a colour change (both signs present)
 FLOOR_MIN_SNR = 30.0        # sources used for the per-detector systematic floor
 FLOOR_DEFAULT = 0.02
 EXP_FLOOR = 0.02            # per-exposure fractional photometric floor
@@ -58,6 +71,7 @@ ZP_MIN_N = 5
 MIN_EXP_SEASON = 3
 MIN_LAM_COVER = 0.5         # a season must sample this fraction of the detector's wavelength range (see _fit_levels)
 BLEND_ARCSEC = 8.0
+PAIR_ARCSEC = 3.1           # half a native pixel: list entries this close are one unresolved source
 
 
 def run(ctx):
@@ -163,8 +177,13 @@ def run(ctx):
         if not comb:
             continue
         single = max(c["n_detectors"] for c in comb) < 2
-        hits = [c for c in comb if abs(c["sigma"]) >= SIG_VAR and abs(c["change"]) >= MIN_FRAC and
+        grey = [c for c in comb if abs(c["sigma"]) >= SIG_VAR and abs(c["change"]) >= MIN_FRAC and
                 (c["n_detectors"] < 2 or (c["sigma_without_best_detector"] >= SIG_LOO and c["n_detectors_agree"] >= 2))]
+        # a colour change: >= MIN_DET_COLOUR detectors changed by >= SIG_VAR each in the same season pair,
+        # in both directions (dust, temperature); the combined change of such a source is small
+        colour = [c for c in comb if c["n_detectors_5sigma"] >= MIN_DET_COLOUR and c["brighter_in"] and c["fainter_in"]
+                  and not any(c is g for g in grey)]
+        hits = grey + colour
         if not hits:
             continue
         if single:
@@ -189,7 +208,18 @@ def run(ctx):
             fl_j = np.nanmax(T["flux"][:, j]) if np.isfinite(T["flux"][:, j]).any() else 0
             with np.errstate(all="ignore"):
                 nbf = np.nanmax(T["flux"], 0)
-            blend = (dd > 0.05) & (dd < BLEND_ARCSEC) & (np.nan_to_num(nbf) > 0.3 * max(fl_j, 0))
+            # entries closer than half a pixel are ONE unresolved source for a 6.15" pixel (they are not
+            # subtracted from each other, measure.NB_MIN_SEP: each sees the common light). The
+            # brighter entry carries the record; the change is that of the combined light.
+            nbf0 = np.nan_to_num(nbf)
+            pair = (dd > 0.05) & (dd <= PAIR_ARCSEC)
+            if (pair & ((nbf0 > fl_j) | ((nbf0 == fl_j) & (np.arange(src.n) < j)))).any():
+                counts["second_entry_of_unresolved_pair"] = counts.get("second_entry_of_unresolved_pair", 0) + 1
+                continue
+            if pair.any():
+                flags0.append(f"unresolved pair: {int(pair.sum()) + 1} catalogue entries within half a pixel, the change "
+                              "is that of their combined light")
+            blend = (dd > PAIR_ARCSEC) & (dd < BLEND_ARCSEC) & (nbf0 > 0.3 * max(fl_j, 0))
             if blend.any():
                 cls0 = "artifact"
                 flags0.append(f"blended (source {dd[blend].min():.1f}\" away)")
@@ -207,9 +237,13 @@ def run(ctx):
             ra, dec = src.ra0[j], src.dec0[j]
             flags = []
             sn = round(float(np.nanmax(T["snr"][:, j])), 1)
-        best = max(hits, key=lambda h: abs(h["sigma"]))
+        hs = [h for h in hits if h["same_orientation"]] or hits       # the pair a ghost cannot fake comes first
+        gs = [h for h in hs if any(h is g for g in grey)]
+        is_colour = not gs
+        best = max(gs, key=lambda h: abs(h["sigma"])) if gs else \
+            max(hs, key=lambda h: abs(h["strongest_detector"]["sigma"]))
         kind, cls = "variable", "variable"
-        if best["absent_in"]:
+        if best["absent_in"] and not is_colour:
             kind = "appearing" if best["sigma"] > 0 else "disappearing"
             cls = "candidate"
         flags = flags0 + flags
@@ -227,6 +261,20 @@ def run(ctx):
                            "combined": comb,
                            "method": "detectors combined by inverse-variance weighting of their fractional changes; "
                                      "confirmed with the most significant detector left out"}
+        if is_colour:
+            sd = best["strongest_detector"]
+            c["brightness"].update(
+                max_change_frac=sd["change_frac"] if sd["change_frac"] is not None else sd["change"],
+                max_sigma=sd["sigma"], rule="colour change",
+                colour_change={"from": best["from"], "to": best["to"], "same_orientation": best["same_orientation"],
+                               "brighter_in": best["brighter_in"], "fainter_in": best["fainter_in"]},
+                method=f"colour change: {best['n_detectors_5sigma']} detectors changed by >= {SIG_VAR:g} sigma each "
+                       "between the same two seasons, in opposite directions (the combined change of all "
+                       "detectors is small for such a source)")
+            c["flags"].append("colour change: brighter in " + ", ".join(best["brighter_in"]) + "; fainter in "
+                              + ", ".join(best["fainter_in"]))
+        else:
+            c["brightness"]["rule"] = "all detectors together"
         if skey[0] != "sat" and skey[0] < ng and ctx.gaia is not None:
             c["match"]["gaia_dr3"] = {"source_id": str(ctx.gaia.sid[skey[0]]), "G": round(float(ctx.gaia.G[skey[0]]), 2)}
         cands.append(c)
@@ -302,14 +350,29 @@ def combined_changes(per_det, seasons, floor, sinfo):
             e1 = float(math.sqrt(np.sum(w ** 2 * np.array([use[d][1][s1][1] ** 2 for d in ds]))) / np.sum(w))
             e2 = float(math.sqrt(np.sum(w ** 2 * np.array([use[d][1][s2][1] ** 2 for d in ds]))) / np.sum(w))
             absent = s1 if l1 < 3 * e1 else s2 if l2 < 3 * e2 else None
+            # detectors that changed on their own (>= SIG_VAR each): a colour change moves the blue and
+            # the red detectors in opposite directions and cancels in the combined change
+            own = (np.abs(zd) >= SIG_VAR) & (np.abs(r) >= MIN_FRAC)
+            kb = int(np.argmax(np.abs(zd)))
             out.append({"from": s1, "to": s2,
                         "same_orientation": Dt.same_orientation(sinfo[s1]["orient_deg"], sinfo[s2]["orient_deg"]),
                         "change": round(rr, 4), "err": round(sr, 4), "sigma": round(z, 1),
                         "change_frac": round(l2 / l1 - 1, 4) if l1 > 3 * e1 else None,
                         "n_detectors": len(ds), "n_detectors_agree": agree,
                         "sigma_without_best_detector": round(loo, 1), "detectors": sorted(str(d) for d in ds),
-                        "absent_in": absent})
+                        "absent_in": absent,
+                        "n_detectors_5sigma": int(own.sum()),
+                        "brighter_in": sorted(str(d) for d, o, q in zip(ds, own, zd) if o and q > 0),
+                        "fainter_in": sorted(str(d) for d, o, q in zip(ds, own, zd) if o and q < 0),
+                        "strongest_detector": {"detector": str(ds[kb]), "change": round(float(r[kb]), 4),
+                                               "change_frac": _frac(use[ds[kb]][1][s1], use[ds[kb]][1][s2]),
+                                               "sigma": round(float(zd[kb]), 1)}})
     return out
+
+
+def _frac(a, b):
+    """level_to / level_from - 1 of two (level, error) pairs; None when 'from' is not detected."""
+    return round(b[0] / a[0] - 1, 4) if a[0] > 3 * a[1] else None
 
 
 def _fit_levels(f, e, lam, sea, seasons):

@@ -35,6 +35,9 @@ VISIT_GAP_MIN = 20.0        # exposures closer than this (minutes) form one visi
 CLIP_SIGMA = 5.0            # per-pixel outlier clipping in the stacks
 CLIP_MODEL = 0.05           # fractional term of the clipping tolerance (PSF/colour mismatch)
 EPSF_KEEP_PX = 260          # keep the EPSF table rows within this distance of the cutout (det px)
+# the local engine's EPSF tables, <calibration id>.fits (its cache folder is $FAZARI_CACHE when set, as in local/)
+EPSF_CACHE = Path(os.environ.get("FAZARI_CACHE") or BL.ROOT / "cache").expanduser() / "local" / "epsf"
+_EPSF_MEM = {}              # path -> {"x", "y", "psf", "ovs", "det"} (tables read once per process)
 
 
 # ------------------------------------------------------------------------------------ fields
@@ -110,8 +113,56 @@ def job_field(job_id, cache=None, out_dir=None):
 
 
 # ------------------------------------------------------------------------------------ exposures
+def calib_id(header, what="epsf"):
+    """Calibration id of an L2 image header: the last word of its HISTORY line '[CALIB] <what> <id>'."""
+    for card in header.get("HISTORY", []):
+        s = str(card)
+        if f"[CALIB] {what} " in s:
+            return s.split()[-1]
+    return None
+
+
+def _epsf_file(path):
+    """One EPSF table file of the engine's cache, read once: dict(x, y, psf, ovs, det) or None."""
+    path = Path(path)
+    if path not in _EPSF_MEM:
+        try:
+            with fits.open(path, memmap=False) as h:
+                t, hd = h["EPSF"].data, h["EPSF"].header
+                # same dtypes as the columns of an EPSF extension, so both ways give the same numbers
+                _EPSF_MEM[path] = dict(x=np.array(t["XCENTER"]), y=np.array(t["YCENTER"]), psf=np.array(t["EPSF"]),
+                                       ovs=int(hd.get("OVSMPX", 5)), det=int(hd["DETECTOR"]) if "DETECTOR" in hd else None)
+        except Exception:
+            _EPSF_MEM[path] = None
+    return _EPSF_MEM[path]
+
+
+def cached_epsf(header, cache=None):
+    """EPSF table for a cutout that has NO EPSF extension (the small boxes of the local engine's
+    quick lane are written without it): (table dict, source) or (None, reason).
+      "calibration cache"   the table of the exposure's own EPSF calibration id, from the engine's
+                            cache (cache/local/epsf/<id>.fits): the same table the extension holds
+      "stand-in"            no table of that id on disk: the cached table of the same detector with
+                            another calibration id (the PSF of a detector is a property of the
+                            optics; the record of the exposure says which one was used)."""
+    cache = Path(cache) if cache else EPSF_CACHE
+    cid = calib_id(header)
+    if cid and (cache / f"{cid}.fits").exists():
+        t = _epsf_file(cache / f"{cid}.fits")
+        if t is not None:
+            return t, "calibration cache"
+    det = int(header["DETECTOR"])
+    for q in sorted(cache.glob("*.fits")) if cache.is_dir() else []:
+        t = _epsf_file(q)
+        if t is not None and t["det"] == det:
+            return t, "stand-in"
+    return None, f"no EPSF extension and no cached EPSF table for detector {det}"
+
+
 def read_exposure(path, ra_c, dec_c):
-    """One cutout -> exposure dict (blink.py 'info' keys + '_px'), or None if unusable."""
+    """One cutout -> exposure dict (blink.py 'info' keys + '_px'), or None if unusable.
+    A cutout without an EPSF extension takes its EPSF table from the engine's cache (cached_epsf);
+    e["psf_source"] says where the PSF came from ("file" | "calibration cache" | "stand-in")."""
     with fits.open(path, memmap=False) as h:
         hd = h["IMAGE"].header
         img = h["IMAGE"].data.astype(np.float64)
@@ -121,8 +172,15 @@ def read_exposure(path, ra_c, dec_c):
         wcs = WCS(hd)
         swcs = WCS(hd, fobj=h, key="W")
         swcs.sip = None
-        tab = h["EPSF"].data
-        ovs = int(h["EPSF"].header.get("OVSMPX", 5))
+        if "EPSF" in h:
+            tab = h["EPSF"].data
+            ovs = int(h["EPSF"].header.get("OVSMPX", 5))
+            psf_source = "file"
+        else:
+            t, psf_source = cached_epsf(hd)
+            if t is None:
+                raise KeyError(psf_source)
+            tab, ovs = {"XCENTER": t["x"], "YCENTER": t["y"], "EPSF": t["psf"]}, t["ovs"]
         mjd = float(hd.get("MJD-AVG", hd["MJD-OBS"]))
         mjd_beg = float(hd.get("MJD-BEG", hd.get("MJD-OBS", mjd)))
         mjd_end = float(hd.get("MJD-END", mjd))
@@ -162,7 +220,7 @@ def read_exposure(path, ra_c, dec_c):
              detector=detector, det=det, orient_deg=orient, wavelength_um=lam,
              bin_um=BL.which_bin(lam, detector), x=x, y=y, ra_pred=ra_c, dec_pred=dec_c,
              inside=bool(0 <= x < nx and 0 <= y < ny),
-             jac_pred=[[jx[0], jy[0]], [jx[1], jy[1]]], shape=(ny, nx))
+             jac_pred=[[jx[0], jy[0]], [jx[1], jy[1]]], shape=(ny, nx), psf_source=psf_source)
     e["_px"] = dict(clean=clean.astype(np.float32), var=np.where(good_ph, var, np.inf).astype(np.float32),
                     good=good_ph, satnan=sat | ~np.isfinite(img), sat=sat, flags=flg.astype(np.int32),
                     wcs=wcs, swcs=swcs, path=path, det_off=det_off, psf=BL.prep_psf(psf0), psf_raw=psf0,

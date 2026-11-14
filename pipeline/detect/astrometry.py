@@ -33,6 +33,7 @@
    in both halves where both see the source and must survive in same-orientation seasons.
 """
 import math
+import re
 
 import numpy as np
 from scipy.stats import chi2 as chi2dist, norm
@@ -86,11 +87,13 @@ def bright_neighbours(gaia):
     return lambda mjd, jy: gaia.at(mjd, sel)
 
 
-def measure_all(exps, src, cal, images=None, sat_path=True, offsets=None, nb=None):
+def measure_all(exps, src, cal, images=None, sat_path=True, offsets=None, nb=None, frozen=None):
     """Linear EPSF quantities (measure.measure_linear) of every source in every exposure.
     offsets: optional (n_season_labels -> (dE, dN) arrays, arcsec) added to the predictions of
     each season (iteration). sat_path: True / False / boolean array: sources whose saturated
-    core gets a wing fit (blink.centroid). Returns dict of (n_exp, n_src) arrays."""
+    core gets a wing fit (blink.centroid). frozen: optional (n_exp, n_src) fluxes of static stars
+    (static_fluxes; NaN = free): subtracted with this flux instead of the per-exposure estimate.
+    Returns dict of (n_exp, n_src) arrays."""
     ne, ns = len(exps), src.n
     keys = ("f", "ef", "gE", "gN", "vgE", "vgN", "chi2r", "satE", "satN", "lam", "x", "y")
     A = {k: np.full((ne, ns), np.nan) for k in keys}
@@ -113,7 +116,7 @@ def measure_all(exps, src, cal, images=None, sat_path=True, offsets=None, nb=Non
         cosd = np.cos(np.radians(d[on]))
         rw, dw = r[on] + cE / 3600 / cosd, d[on] + cN / 3600
         img = None if images is None else images.get(e["file"])
-        m = M.measure_linear(e, rw, dw, image=img)
+        m = M.measure_linear(e, rw, dw, image=img, fixed_f=None if frozen is None else frozen[a][on])
         idx = np.nonzero(on)[0]
         nbw = None
         if nb is not None and (m["flag"] == "sat").any():
@@ -164,6 +167,124 @@ def _sat_fit(e, ra, dec, image=None, nbw=None):
 
 
 CELL_SNR = 5.0              # a season x detector cell is used if the source is detected there
+STATIC_ARCSEC = 12.3        # two native pixels: inside this distance the PSFs of a mover and of a static star
+                            # overlap, and the flux split of ONE exposure is not determined (the three-pass
+                            # neighbour iteration of measure_linear leaves rho^3 of the light, rho = overlap)
+STATIC_OWN = 3.0            # arcsec: a listed entry this close to a track may be the mover itself
+STATIC_MIN_N = 4            # exposures of a detector needed for a star's flux model ...
+STATIC_LIN_N = 8            # ... and for its slope with wavelength inside the detector
+STATIC_ROUNDS = 2            # passes of measure_seasons in which the constant-flux models are fitted (then kept);
+#                             more passes change nothing beyond the error: Luhman 16 2.816 / 2.826 / 2.834 +- 0.057 "/yr
+#                             with 2 / 3 / 6 passes, WISE 0855 unchanged (tested 14 Nov)
+TRACK_DT = (-1.0, -0.5, 0.0, 0.5, 1.0)     # years around 2026.0 at which a track is compared with the list
+
+
+def beside_track(fs, ng, ra, dec, pmra, pmdec):
+    """Listed sources (fs: catalogue stars first, ng of them, with their own motion; then
+    uncatalogued deep-stack entries) seen from a track (position at 2026.0, motion in mas/yr).
+    Returns dmin (smallest separation at the SAME time, arcsec, over TRACK_DT) and own (True
+    where the entry may be the mover itself and must stay out of its neighbour model): an
+    uncatalogued entry within STATIC_OWN of the track (the deep stack is built from all seasons
+    and holds the mover's own image along its track); a catalogued star only if it stays within
+    STATIC_OWN of the track at all times, or passes that close AND moves like the track (within
+    half its speed): the mover's own catalogue entry. A catalogued star that the track merely
+    passes is a real, separate source: it has to be modelled, not ignored."""
+    if not fs.n:
+        return np.array([]), np.zeros(0, bool)
+    cosd = math.cos(math.radians(dec))
+    sep = np.array([np.hypot((fs.ra0 - ra) * cosd * 3600 + (fs.pmra - pmra) * dt / 1000,
+                             (fs.dec0 - dec) * 3600 + (fs.pmdec - pmdec) * dt / 1000) for dt in TRACK_DT])
+    dmin = sep.min(0)
+    cat = np.arange(fs.n) < ng
+    alike = np.hypot(fs.pmra - pmra, fs.pmdec - pmdec) < 0.5 * math.hypot(pmra, pmdec)
+    own = np.where(cat, (sep.max(0) < STATIC_OWN) | ((dmin < STATIC_OWN) & alike), dmin < STATIC_OWN)
+    return dmin, own
+
+
+def static_fluxes(exps, src, cal, A, static, target, images=None, offsets=None):
+    """Brightness of static catalogued stars that stand beside a moving source.
+
+    A static star keeps its brightness while the mover changes its distance from it, so all
+    exposures together fix what a single exposure cannot. In every exposure the star's flux is
+    fitted together with the mover's flux and position (measure.measure_beside: large variance
+    where the two overlap, the plain variance where they are apart); per detector the
+    inverse-variance weighted straight line in wavelength through all exposures is the star's
+    flux (the linear variable filter changes the wavelength from exposure to exposure).
+    static: indices of the stars in src; target: for each of them the index of its mover.
+    A: the last measure_all result (fluxes of the other listed sources, wavelengths).
+    Returns (n_exp, n_src) fluxes, NaN where no model exists and the source stays free:
+    fewer than STATIC_MIN_N usable exposures in a detector, or a star whose season means differ
+    from the line by more than 5 sigma (a variable star has no constant flux)."""
+    ne = len(exps)
+    static = np.asarray(static, int)
+    target = np.broadcast_to(np.asarray(target, int), static.shape)
+    out = np.full((ne, src.n), np.nan)
+    if not len(static):
+        return out
+    F = np.full((ne, len(static)), np.nan)
+    V = np.full((ne, len(static)), np.nan)
+    other = np.ones(src.n, bool)
+    other[np.unique(target)] = False
+    for a, e in enumerate(exps):
+        r, d = src.at(e["mjd"], e["jyear"])
+        if offsets is not None and e["epoch"] in offsets:
+            oE, oN = offsets[e["epoch"]]
+            r = r + np.nan_to_num(oE) / 3600 / np.cos(np.radians(d))
+            d = d + np.nan_to_num(oN) / 3600
+        on = CAL.on_cutout(e, r[static], d[static], margin=M.R_STAMP + 1)
+        if not on.any():
+            continue
+        cE, cN = cal.get(e["file"], (0.0, 0.0))
+        rw, dw = r + cE / 3600 / np.cos(np.radians(d)), d + cN / 3600
+        fa, efa = A["f"][a], A["ef"][a]
+        sub = other & A["ok"][a] & np.isfinite(fa) & np.isfinite(efa) & (fa > 3 * efa)
+        img = None if images is None else images.get(e["file"])
+        F[a, on], V[a, on] = M.measure_beside(e, rw[static[on]], dw[static[on]], rw[target[on]], dw[target[on]],
+                                              sub=(rw[sub], dw[sub], fa[sub]), image=img)
+    det = np.asarray(A["det"])
+    sea = np.array([e["epoch"] for e in exps])
+    for k, s in enumerate(static):
+        lam = A["lam"][:, s]
+        for dn in np.unique(det):
+            rows = np.nonzero((det == dn) & np.isfinite(F[:, k]) & np.isfinite(V[:, k]) & (V[:, k] > 0) & np.isfinite(lam))[0]
+            if len(rows) < STATIC_MIN_N:
+                continue
+            y, v = F[rows, k], V[rows, k]
+            l0 = float(np.mean(lam[rows]))
+            x = lam[rows] - l0
+            keep = np.ones(len(rows), bool)
+            c0 = c1 = 0.0
+            scale = 1.0
+            for _ in range(4):
+                w = keep / v
+                if keep.sum() >= STATIC_LIN_N and np.ptp(x[keep]) > 0.05:
+                    Sw, Sx, Sxx = w.sum(), (w * x).sum(), (w * x * x).sum()
+                    Sy, Sxy = (w * y).sum(), (w * x * y).sum()
+                    den = Sw * Sxx - Sx * Sx
+                    c1 = (Sw * Sxy - Sx * Sy) / den if den > 0 else 0.0
+                    c0 = (Sy - c1 * Sx) / Sw
+                else:
+                    c1 = 0.0
+                    c0 = (w * y).sum() / w.sum()
+                z = (y - c0 - c1 * x) / np.sqrt(v)
+                scale = max(1.0, 1.4826 * float(np.median(np.abs(z[keep]))))
+                new = np.abs(z) < 4.0 * scale
+                if new.sum() < STATIC_MIN_N or (new == keep).all():
+                    break
+                keep = new
+            variable = False
+            for se in np.unique(sea[rows]):
+                mm = keep & (sea[rows] == se)
+                if mm.sum() >= 3:
+                    wm = 1.0 / v[mm]
+                    mres = float((wm * (y[mm] - c0 - c1 * x[mm])).sum() / wm.sum())
+                    if abs(mres) > 5.0 * scale / math.sqrt(wm.sum()):
+                        variable = True
+            if variable:
+                continue
+            allr = (det == dn) & np.isfinite(lam)
+            out[allr, s] = c0 + c1 * (lam[allr] - l0)
+    return out
 
 
 def season_table(exps, A, seasons, det_subset=None, floor=EXP_FLOOR):
@@ -245,24 +366,41 @@ def season_table(exps, A, seasons, det_subset=None, floor=EXP_FLOOR):
     return T
 
 
-def measure_seasons(exps, src, cal, seasons, images=None, sat_path=True, iters=2, nb=None, det_subset=None, tol=None):
+def measure_seasons(exps, src, cal, seasons, images=None, sat_path=True, iters=2, nb=None, det_subset=None, tol=None,
+                    n_conv=None, static=None, target=None):
     """measure_all + season_table, iterated: every further pass is centred on the season positions
     of the pass before (the linear estimator is exact only close to the true position: a source
     that starts 1" off needs the second pass, a partly saturated one more). det_subset: only
     these detectors enter the season offsets (e.g. the bands where a red object is seen).
-    tol (arcsec): stop when no season of any source moved by more than tol in the last pass (and
-    after at most iters passes); None = exactly iters passes."""
+    tol (arcsec): stop when no season of the first n_conv sources (default: all) moved by more
+    than tol in the last pass (and after at most iters passes); None = exactly iters passes.
+    static, target: indices of static catalogued stars beside moving sources and, for each, the
+    index of its mover: from the second pass on they stay at their catalogue positions and are
+    subtracted with their constant-flux model (static_fluxes) instead of a per-exposure flux."""
     A = measure_all(exps, src, cal, images=images, sat_path=sat_path, nb=nb)
     T = season_table(exps, A, seasons, det_subset=det_subset)
-    for _ in range(iters - 1):
+    frozen = None
+    use_static = static is not None and len(static) > 0
+    for it in range(iters - 1):
         off = {s: (np.clip(np.nan_to_num(T["E"][k]), -3, 3), np.clip(np.nan_to_num(T["N"][k]), -3, 3))
                for k, s in enumerate(seasons)}
-        A = measure_all(exps, src, cal, images=images, sat_path=sat_path, offsets=off, nb=nb)
+        if use_static:
+            for s in off:
+                off[s][0][static] = 0.0
+                off[s][1][static] = 0.0
+            # the star's flux is fitted together with the mover's position, so it does not depend
+            # on the mover's centring to first order: two rounds (the second on the first frozen
+            # solution) are enough
+            if frozen is None or it < STATIC_ROUNDS:
+                frozen = static_fluxes(exps, src, cal, A, static, target, images=images, offsets=off)
+        A = measure_all(exps, src, cal, images=images, sat_path=sat_path, offsets=off, nb=nb, frozen=frozen)
         T2 = season_table(exps, A, seasons, det_subset=det_subset)
         step = 0.0
         for k, s in enumerate(seasons):
             oE, oN = off[s]
             good = np.isfinite(T2["E"][k]) & ~T2["sat"][k] & (T2["snr"][k] >= CELL_SNR)
+            if n_conv is not None:
+                good[n_conv:] = False
             if good.any():
                 step = max(step, float(np.max(np.hypot(T2["E"][k][good], T2["N"][k][good]))))
             # the offsets of this pass are relative to the shifted centring for EPSF fits AND for the
@@ -272,6 +410,8 @@ def measure_seasons(exps, src, cal, seasons, images=None, sat_path=True, iters=2
             T2["E"][k] = T2["E"][k] + oE
             T2["N"][k] = T2["N"][k] + oN
         A["_offsets"] = off
+        if frozen is not None:
+            A["_frozen"] = frozen
         T = T2
         if tol is not None and step <= tol:
             break
@@ -279,7 +419,7 @@ def measure_seasons(exps, src, cal, seasons, images=None, sat_path=True, iters=2
 
 
 def fit_drift(T, j, t_ref=2026.0, floor=SEASON_FLOOR, min_n=3, orient_term=None, min_snr=10.0,
-              fit_plx=False, ra=None, dec=None, plx_min_seasons=4, cells=None):
+              fit_plx=False, ra=None, dec=None, plx_min_seasons=4, cells=None, cell_set=None):
     """Straight-line fit of the season offsets of source j. Returns dict or None.
       drift (E, N) arcsec/yr relative to the prediction, cov, offset at t_ref, chi2, dof,
       sig_motion (Gaussian-equivalent sigma of the drift vs no drift), seasons used.
@@ -287,12 +427,13 @@ def fit_drift(T, j, t_ref=2026.0, floor=SEASON_FLOOR, min_n=3, orient_term=None,
     offset per detector (module docstring, point 3); cells measured on the wings of a saturated
     core get their own offset per detector AND telescope orientation (the wing-fit bias is fixed
     in detector axes and flips with the 180 deg turn). Without cells the detectors of a season
-    are pooled (the older fit, kept for comparisons)."""
+    are pooled (the older fit, kept for comparisons). cell_set: see _fit_cells."""
     use = (T["n"][:, j] >= min_n) & np.isfinite(T["E"][:, j]) & (T["snr"][:, j] >= min_snr)
     if use.sum() < 2:
         return None
     if cells is not None:
-        return _fit_cells(T, cells, j, use, t_ref, floor, bool(orient_term), fit_plx, ra, dec, plx_min_seasons)
+        return _fit_cells(T, cells, j, use, t_ref, floor, bool(orient_term), fit_plx, ra, dec, plx_min_seasons,
+                          cell_set=cell_set)
     t = T["t"][use, j] - t_ref
     if t.max() - t.min() < 0.2:
         return None
@@ -369,7 +510,7 @@ def fit_drift(T, j, t_ref=2026.0, floor=SEASON_FLOOR, min_n=3, orient_term=None,
     return {"bE": bE, "bN": bN, "ebE": ebE, "ebN": ebN, "aE": float(p[0]), "aN": float(p[nc]), "chi2": chi2, "dof": dof,
             "p_linear": float(chi2dist.sf(chi2, dof)) if dof > 0 else None,
             "sig_motion": sig, "n_seasons": int(len(t)), "orient_term": bool(ng == 2), "saturated": sat,
-            "span_yr": float(t.max() - t.min()), "parallax_mas": plx}
+            "span_yr": float(t.max() - t.min()), "parallax_mas": plx, "unchecked": bool(dof < 1)}
 
 
 def _sigma_from_chi2(x, dof):
@@ -397,11 +538,30 @@ def cell_tables(exps, A, seasons):
     return out
 
 
-def _fit_cells(T, cells, j, use, t_ref, floor, orient_term, fit_plx, ra, dec, plx_min_seasons):
+WING_GAIN = 2.0             # the wing-fit cells of a partly saturated source are added to its EPSF cells when the
+#                             EPSF cells alone give a drift error more than this factor larger (the wing-fit
+#                             cells then hold >= 3/4 of the information), or no checkable fit (dof 0) at all
+
+
+def _fit_cells(T, cells, j, use, t_ref, floor, orient_term, fit_plx, ra, dec, plx_min_seasons, cell_set=None):
     """fit_drift with one position offset per detector (and per telescope orientation when
     orient_term, and always for wing-fit cells of saturated cores): generalised least squares on
     the season x detector cells; the per-season systematic floor is common to the cells of a
-    season (correlated error)."""
+    season (correlated error).
+
+    A partly saturated source has EPSF cells (its unsaturated exposures) and wing-fit cells (the
+    saturated ones); they never share an offset. Which cells enter ('cell_set' in the result):
+      "epsf"  the EPSF cells alone: when their fit is over-determined (dof >= 1) and the wing-fit
+              cells would improve the drift error by less than WING_GAIN. The EPSF fit is the
+              better estimator (real PSF shape, no orientation-dependent wing bias).
+      "all"   EPSF and wing-fit cells together, otherwise: when the EPSF cells give no fit, a fit
+              without any degree of freedom (two cells: nothing checks it), or one that throws
+              away most of what the exposures hold (HD 112943: 2 EPSF cells gave 0.76"/yr where
+              the wing-fit cells of the same exposures give 0.1"/yr).
+    cell_set: force one of the two (the refits of calibrate / drift_bootstrap must use the cells
+    of the fit they calibrate); "epsf" falls back to all cells when the EPSF cells give no fit.
+    A fit with dof 0 is marked 'unchecked': it is a number, not a tested measurement (the
+    deciding code never accepts it as a candidate; see deep_astrom.judge, gaia_astrom.judge)."""
     o0 = T["orient"][use, j][0]
     rows = []                                       # (detector, group, season, t, E, N, eE, eN)
     any_sat = False
@@ -426,12 +586,39 @@ def _fit_cells(T, cells, j, use, t_ref, floor, orient_term, fit_plx, ra, dec, pl
         if len(rs) < 2 or len({r[2] for r in rs}) < 2 or max(ts) - min(ts) < 0.2:
             return None
         return rs
-    # a partly saturated source has EPSF cells (its unsaturated exposures) and wing-fit cells; the
-    # wing fit of a partly saturated core depends on its starting position (seen on Luhman 16), so
-    # the EPSF cells are used alone when they give a fit, the wing-fit cells only otherwise
-    rows = usable([r for r in rows if r[1] < 2]) or usable(rows)
-    if rows is None:
+    rows_e = usable([r for r in rows if r[1] < 2])
+    rows_a = usable(rows)
+    if rows_a is None:
         return None
+    has_wing = any(r[1] >= 2 for r in rows_a)
+    args = (T, j, t_ref, floor, fit_plx, ra, dec, plx_min_seasons)
+    fe = _solve_cells(rows_e, *args) if rows_e is not None else None
+    if not has_wing:                                # no usable wing-fit cells: nothing to choose
+        f, which = fe, "epsf"
+    elif cell_set == "epsf" and fe is not None:
+        f, which = fe, "epsf"
+    else:
+        fa = _solve_cells(rows_a, *args)
+        if cell_set == "all" or fe is None:
+            f, which = (fa, "all") if fa is not None else (fe, "epsf")
+        elif fa is None:
+            f, which = fe, "epsf"
+        else:
+            se, sa = math.hypot(fe["ebE"], fe["ebN"]), math.hypot(fa["ebE"], fa["ebN"])
+            take_all = fe["dof"] < 1 or se > WING_GAIN * sa
+            f, which = (fa, "all") if take_all else (fe, "epsf")
+            f["cell_sets"] = {"epsf": [fe["bE"], fe["bN"], fe["ebE"], fe["ebN"], fe["dof"]],
+                              "all": [fa["bE"], fa["bN"], fa["ebE"], fa["ebN"], fa["dof"]]}
+    if f is None:
+        return None
+    f["cell_set"] = which
+    f["unchecked"] = bool(f["dof"] < 1)
+    return f
+
+
+def _solve_cells(rows, T, j, t_ref, floor, fit_plx, ra, dec, plx_min_seasons):
+    """The generalised least-squares solution of _fit_cells for one set of cells (rows:
+    (detector, group, season index, t, E, N, eE, eN)); None when it cannot be solved."""
     n = len(rows)
     sidx = np.array([r[2] for r in rows])
     t = np.array([r[3] for r in rows])
@@ -506,6 +693,28 @@ def _fit_cells(T, cells, j, use, t_ref, floor, orient_term, fit_plx, ra, dec, pl
             "n_cells": int(n), "detectors": sorted({g[0] for g in groups}), "model": "per-detector offsets"}
 
 
+UNCHECKED_FLAG = ("two position measurements only (one detector, two seasons): the fit has no degree of freedom, "
+                  "nothing checks this motion")
+PLX_NEAREST = 768.1         # mas: parallax of the nearest star (Proxima Centauri, Gaia DR3: 768.07). No star or brown
+#                             dwarf has more. A body bound to the Sun that drifts by arcseconds per year swings by
+#                             tens of arcseconds between two seasons (nature.bound_orbit_limit): it leaves the stamp
+#                             and is not what these fits follow. A larger fitted parallax therefore describes nothing
+#                             physical: with seasons half a year apart the parallax term can absorb a jump of ONE
+#                             season, which is what two sources that share the light differently do
+PLX_NEAREST_SIGMA = 3.0     # "larger" = by more than this many sigma of the fitted value
+
+
+def unphysical_parallax(plx, err=None):
+    """Flag text when a fitted parallax (mas, with its error) is above the nearest star's, else None.
+    plx may also be the (value, error) pair of a fit dict."""
+    if isinstance(plx, (tuple, list)):
+        plx, err = plx[0], plx[1]
+    if plx is None or not math.isfinite(plx):
+        return None
+    if plx - PLX_NEAREST_SIGMA * (err or 0.0) <= PLX_NEAREST:
+        return None
+    return (f"fitted parallax {plx / 1000:.2f} arcsec is larger than that of the nearest star ({PLX_NEAREST / 1000:.2f}): "
+            "not a physical track (the jump of one season: two sources or a blend, not a motion)")
 P_LINE = 0.01               # straight-line fits below this probability are replaced (fit_motion)
 
 
@@ -684,11 +893,18 @@ def calibrate(exps, A, T, seasons, j, f, floor, cells=None, n_perm=N_PERM, base=
     floor. The significance is recomputed (for the total drift when base = the (E, N) drift of
     the track the offsets are measured along). Adds 'error_inflation' and 'bootstrap' to f."""
     kw = {k: v for k, v in kw.items() if k in ("min_n", "min_snr", "orient_term")}
+    if cells is not None and f.get("cell_set"):
+        kw["cell_set"] = f["cell_set"]              # the refits use the cells of the fit they calibrate
     f0 = fit_drift(T, j, floor=0.0, cells=cells, **kw)
     bs = drift_bootstrap(exps, A, seasons, j, n_perm=n_perm, use_cells=cells is not None, **kw)
     out = dict(f)
     if f0 is None or bs is None:
         out["bootstrap"] = None
+        if out.get("unchecked"):
+            # no degree of freedom AND no residual permutation: nothing stands behind the formal
+            # error of this fit, so it carries no significance (never a mover on such numbers)
+            out["sig_motion"] = 0.0
+            out["uncalibrated"] = True
         return out
     res = []
     for b, key in ((bs["sE"], "ebE"), (bs["sN"], "ebN")):
@@ -703,6 +919,25 @@ def calibrate(exps, A, T, seasons, j, f, floor, cells=None, n_perm=N_PERM, base=
     tN = out["bN"] + (base[1] if base else 0.0)
     out["sig_motion"] = _sigma_from_chi2((tE / out["ebE"]) ** 2 + (tN / out["ebN"]) ** 2, 2)
     return out
+
+
+def evidence(T, cells, j, floor, f, groups, ori_note, base=None, min_snr=10.0, min_n=3):
+    """Structured form of the checks behind a motion (stored in the record as 'checks'; nature.py
+    reads it for the 'confirmed' decision): significance of the motion in same-orientation
+    seasons, in the two wavelength halves and in every single detector, and the brightness
+    change that came with it."""
+    m = re.search(r"confirmed by same-orientation seasons \(([\d.]+) sigma\)", ori_note or "")
+    om = bool(f.get("orient_model")) or (f.get("motion_model") not in (None, "linear"))
+    halves = {}
+    for g, h in (groups or {}).items():
+        tE, tN = h["bE"] + (base[0] if base else 0.0), h["bN"] + (base[1] if base else 0.0)
+        dev = math.hypot((h["bE"] - f["bE"]) / math.hypot(h["ebE"], 1e-3), (h["bN"] - f["bN"]) / math.hypot(h["ebN"], 1e-3))
+        halves[g] = {"sigma": round(_sigma_from_chi2((tE / h["ebE"]) ** 2 + (tN / h["ebN"]) ** 2, 2), 1), "agrees": bool(dev <= 3.5)}
+    fc = flux_change(cells, j) if cells else None
+    return {"same_orientation_sigma": float(m.group(1)) if m else None, "halves": halves,
+            "detector_votes": detector_votes(T, cells, j, floor, f, base=base, min_snr=min_snr, min_n=min_n, orient_term=om)
+            if cells else {},
+            "flux_change": None if fc is None else {"frac": round(fc["frac"], 4), "err": round(fc["err"], 4), "n_detectors": fc["n"]}}
 
 
 def blend_neighbour(src, snr_max, j, radius=BLEND_ARCSEC, ratio=BLEND_RATIO):
