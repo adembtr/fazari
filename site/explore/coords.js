@@ -11,7 +11,8 @@ const NUM = String.raw`[+-]?(?:\d+\.?\d*|\.\d+)`;
 /** True when the text looks like it is meant to be a coordinate (digits and separators only). */
 export function looksLikeCoords(text) {
   const t = clean(text);
-  return t.length > 0 && /^[\d\s.,:+\-hmsd°'"′″]+$/i.test(t) && /\d/.test(t);
+  // starts with a number ("M 31", "M31" are names, not coordinates)
+  return t.length > 0 && /^[+\-]?[\d.]/.test(t) && /^[\d\s.,:+\-hmsd°'"′″]+$/i.test(t) && /\d/.test(t);
 }
 
 function clean(text) {

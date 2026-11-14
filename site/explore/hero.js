@@ -121,6 +121,7 @@ function render(meta) {
             <a href="ornek.html?data=${encodeURIComponent(DATA)}"><span data-i18n="hero.result">${esc(t("hero.result"))}</span> →</a>
             <a href="verify.html"><span data-i18n="hero.evidence">${esc(t("hero.evidence"))}</span> →</a>
             <a href="story.html"><span data-i18n="hero.story">${esc(t("hero.story"))}</span> →</a>
+            <a href="comets.html"><span data-i18n="hero.comets">${esc(t("hero.comets"))}</span> →</a>
           </span>
         </div>
       </div>

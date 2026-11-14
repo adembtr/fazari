@@ -108,7 +108,9 @@ async function fetchTile(order, pix, gmax) {
     try {
       const res = await fetch(`${base}?${q}`, { signal: ctl.signal });
       if (!res.ok) { lastErr = new Error(`HTTP ${res.status}`); continue; }
-      const lines = (await res.text()).split("\n").filter((l) => l && !l.startsWith("#"));
+      const text = await res.text();
+      const lines = text.split("\n").filter((l) => l && !l.startsWith("#"));
+      if (!lines.length && /^#Column\tRA_ICRS\t/m.test(text)) return [];   // no star matches: VizieR sends no header row
       const head = lines[0] ? lines[0].split("\t").map((s) => s.trim()) : [];
       const ix = Object.fromEntries(head.map((h, i) => [h, i]));
       if (ix.RA_ICRS == null || ix.Gmag == null) { lastErr = new Error("unexpected VizieR answer"); continue; }

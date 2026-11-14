@@ -693,7 +693,7 @@ function openCategory(id, { fly = false } = {}) {
   det.style.setProperty("--c", CAT_COLORS[id] || "#9fb4ff");
   $("catTitle").innerHTML = `<span aria-hidden="true">${c.icon}</span> ${esc(iField(c, "name"))}`;
   $("catDesc").textContent = iField(c, "description");
-  if (id === "ecliptic") $("catDesc").insertAdjacentHTML("beforeend", ` <a href="asteroids.html">${esc(T("ex.cat.astLink"))}</a>`);   // detector C results page
+  if (id === "ecliptic") $("catDesc").insertAdjacentHTML("beforeend", ` <a href="asteroids.html">${esc(T("ex.cat.astLink"))}</a> <a href="comets.html">${esc(T("ex.cat.cometLink"))}</a>`);   // detector C results page
   const disc = $("catDisclaimer");
   disc.hidden = !c.disclaimer;
   disc.innerHTML = c.disclaimer ? `${esc(iField(c, "disclaimer"))}${c.citation ? `<br><small>${T("ex.cat.source")} ${esc(c.citation)}</small>` : ""}` : "";

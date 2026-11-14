@@ -48,6 +48,8 @@ async function queryMirrors(q, signal) {
       if (!res.ok) { lastErr = new Error(`HTTP ${res.status}`); continue; }
       const text = await res.text();
       const rows = text.split("\n").filter((l) => l && !l.startsWith("#"));
+      // no star matches: VizieR sends only its "#Column" comment lines (no header row) -> empty list
+      if (!rows.length && /^#Column\tRA_ICRS\t/m.test(text)) return [];
       const head = rows[0] ? rows[0].split("\t").map((s) => s.trim()) : [];
       const ix = (n) => head.indexOf(n);
       if (ix("RA_ICRS") < 0) { lastErr = new Error("unexpected VizieR answer"); continue; }
@@ -97,7 +99,9 @@ export function tychoStars(ra, dec, radiusDeg, vmax = 10.5, { signal } = {}) {
         try {
           const res = await fetch(`${base}?${q}`, { signal: ctl.signal });
           if (!res.ok) { lastErr = new Error(`HTTP ${res.status}`); continue; }
-          const rows = (await res.text()).split("\n").filter((l) => l && !l.startsWith("#"));
+          const text = await res.text();
+          const rows = text.split("\n").filter((l) => l && !l.startsWith("#"));
+          if (!rows.length && /^#Column\tRAmdeg\t/m.test(text)) return [];   // no star matches
           const head = rows[0] ? rows[0].split("\t").map((x) => x.trim()) : [];
           const ix = (n) => head.indexOf(n);
           if (ix("RAmdeg") < 0) { lastErr = new Error("unexpected VizieR answer"); continue; }

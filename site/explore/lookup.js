@@ -6,7 +6,7 @@ import { t as T } from "../js/i18n.js";
 
 const SESAME = [
   "https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/SNV?",
-  "https://vizier.cds.unistra.fr/viz-bin/nph-sesame/-oxp/SNV?",
+  "https://vizier.idia.ac.za/viz-bin/nph-sesame/-oxp/SNV?",    // CDS mirror (IDIA), CORS *; vizier.cds.unistra.fr answered 404 on 14 Nov 2026
 ];
 
 const norm = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g, "");
