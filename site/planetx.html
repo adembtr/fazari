@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Could SPHEREx see Planet X?</title>
+<meta name="description" content="A measured answer: how faint a distant Solar System body Fazari can find in SPHEREx images, compared with the predicted brightness of Planet X, and what a search of five strips on its predicted orbit found.">
+<meta name="theme-color" content="#05070d">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22 fill=%22%2305070d%22 stroke=%22%237fd4ff%22 stroke-width=%221.6%22/%3E%3Ccircle cx=%2216.5%22 cy=%228%22 r=%222%22 fill=%22%23ffc94d%22/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/fz_pages.css">
+<style>
+  /* planetx.html only */
+  .px-answer { font-size: clamp(19px, 2.6vw, 24px); line-height: 1.4; color: var(--fg); max-width: 40em; margin: 0; }
+  .px-answer b { color: var(--acc); }
+  .px-fig { margin: 0; }
+  .px-fig svg { display: block; width: 100%; height: auto; border-radius: 14px; background: #070a13; border: 1px solid var(--line); }
+  .px-fig svg text { font: 12px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; fill: #a9b3c9; }
+  .px-fig svg .ax { stroke: rgba(160, 180, 230, .35); stroke-width: 1; }
+  .px-fig svg .gr { stroke: rgba(160, 180, 230, .12); stroke-width: 1; }
+  .px-fig svg .lbl { fill: #eef1f8; font-weight: 650; }
+  .px-key { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 0; padding: 0; list-style: none; font-size: 13.5px; color: var(--soft); }
+  .px-key i { display: inline-block; width: 22px; height: 0; border-top: 3px solid; vertical-align: middle; margin-right: 6px; }
+  .px-key i.dash { border-top-style: dashed; }
+  .px-key i.band { height: 12px; border: 0; border-radius: 3px; }
+  .px-tw { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .px-t { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .px-t th, .px-t td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  .px-t th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--mut); font-weight: 650; }
+  .px-t th:first-child, .px-t td:first-child, .px-t .l { text-align: left; }
+  .px-t td.wr { white-space: normal; min-width: 16em; }
+  .px-t tr.sum td { font-weight: 700; color: var(--fg); }
+  .px-list { margin: 0; padding-left: 1.2em; color: var(--soft); max-width: 56em; }
+  .px-list li { margin: 0 0 8px; }
+  .px-cand { margin: 12px 0 0; }
+  .px-cand h3 { margin: 0 0 4px; font-size: 16.5px; }
+  .px-cand p { margin: 0 0 6px; color: var(--soft); font-size: 14.5px; }
+  .px-tag { display: inline-block; font-size: 12px; padding: 1px 9px; border-radius: 999px; border: 1px solid rgba(255, 179, 107, .55); color: #ffcf9d; margin-left: 6px; vertical-align: 2px; }
+  .px-src { margin: 0; padding-left: 1.2em; font-size: 14px; color: var(--soft); }
+  .px-src li { margin: 0 0 6px; }
+  @media (max-width: 600px) { .px-t { font-size: 13px; } .px-t th, .px-t td { padding: 6px 7px; } }
+</style>
+<link rel="stylesheet" href="css/ui_shell.css"><link rel="stylesheet" href="css/phone.css"><script src="js/ui_boot.js"></script><!-- ui layer (arayuz) -->
+</head>
+<body>
+<header class="pg-top">
+  <div class="wrap">
+    <a class="pg-brand" href="explore.html?hero=0">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="10" ry="4" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".6"/><circle cx="16.5" cy="8" r="2" fill="#ffc94d"/></svg>
+      <span><b>Fazari</b> <span data-i18n="pg.brand">Sky Explorer</span></span></a>
+    <span id="langSlot"></span>
+    <nav class="pg-nav" aria-label="Pages">
+      <a href="explore.html?hero=0" data-i18n="pg.nav.sky">Sky</a>
+      <a href="verify.html" data-i18n="pg.nav.evidence">Evidence</a>
+      <a href="story.html" data-i18n="pg.nav.story">Targets &amp; SPHEREx</a>
+      <a href="planetx.html" aria-current="page" data-i18n="px.nav">Planet X</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="pg-head">
+    <p class="kicker" data-i18n="px.kicker">Planet X and SPHEREx</p>
+    <h1 data-i18n="px.h1">Could SPHEREx see Planet X?</h1>
+    <p class="px-answer" id="pxAnswer">Loading the measurements…</p>
+  </div>
+
+  <section class="blk" aria-label="Headline figures" data-i18n-attr="aria-label:px.tiles.aria">
+    <ul class="tiles" id="pxTiles"></ul>
+  </section>
+
+  <section class="blk" id="jump" aria-labelledby="jumpTitle">
+    <h2 id="jumpTitle" data-i18n="px.jump.h">Why one spot of sky cannot show it</h2>
+    <p class="sub" data-i18n="px.jump.sub">SPHEREx comes back to the same sky every half year, and by then it looks from the other side of the Earth's orbit. A body a few hundred AU away therefore appears to jump against the stars (parallax), far more than it moves along its own orbit. We measured the size of the jump from the real exposure times of our five strips.</p>
+    <div class="px-tw"><table class="px-t" id="pxJump"></table></div>
+    <p class="fine" id="pxJumpNote"></p>
+    <p class="crit" id="pxJumpMeans"></p>
+  </section>
+
+  <section class="blk" id="limit" aria-labelledby="limitTitle">
+    <h2 id="limitTitle" data-i18n="px.chart.h">How faint we can find it, against how bright it should be</h2>
+    <p class="sub" data-i18n="px.chart.sub">Curves: the visual brightness a planet of 2.07 Earth radii would have at each distance, for three assumed reflectivities. Lines with dots: the faintest brightness at which our search still finds half, and nine in ten, of the test bodies we added to the real images. Above our lines we would have found it; below them we would not.</p>
+    <figure class="px-fig">
+      <div id="pxChart"></div>
+      <ul class="px-key" id="pxChartKey"></ul>
+      <figcaption id="pxChartCap"></figcaption>
+    </figure>
+  </section>
+
+  <section class="blk" id="map" aria-labelledby="mapTitle">
+    <h2 id="mapTitle" data-i18n="px.map.h">Where we looked</h2>
+    <p class="sub" data-i18n="px.map.sub">The predicted orbit on the sky, the band that holds 95 % of the predicted positions, and our five strips. The places were fixed and written down before any image was read.</p>
+    <figure class="px-fig">
+      <div id="pxMap"></div>
+      <ul class="px-key" id="pxMapKey"></ul>
+      <figcaption id="pxMapCap"></figcaption>
+    </figure>
+    <div class="px-tw" style="margin-top:14px"><table class="px-t" id="pxFields"></table></div>
+    <p class="fine" id="pxFieldsNote"></p>
+  </section>
+
+  <section class="blk" id="result" aria-labelledby="resultTitle">
+    <h2 id="resultTitle" data-i18n="px.res.h">What the search found</h2>
+    <div class="panel">
+      <p id="pxResult" style="margin:0"></p>
+      <div id="pxCands"></div>
+      <p class="fine" id="pxResNote" style="margin:12px 0 0"></p>
+    </div>
+    <p class="crit" id="pxUpper"></p>
+  </section>
+
+  <section class="blk" id="inj" aria-labelledby="injTitle">
+    <h2 id="injTitle" data-i18n="px.inj.h">The test behind the limit</h2>
+    <p class="sub" data-i18n="px.inj.sub">We added artificial bodies to the real images of the same five strips, on exact orbits and with the real image sharpness, and searched again with the same code. A body counts as found only if the search links it in three seasons and reports it as a candidate.</p>
+    <div class="px-tw"><table class="px-t" id="pxInj"></table></div>
+    <p class="fine" id="pxInjNote"></p>
+  </section>
+
+  <section class="blk" id="honest" aria-labelledby="honestTitle">
+    <h2 id="honestTitle" data-i18n="px.hon.h">What is measured and what is assumed</h2>
+    <ul class="px-list" id="pxHonest"></ul>
+  </section>
+
+  <section class="blk" id="sources" aria-labelledby="srcTitle">
+    <h2 id="srcTitle" data-i18n="px.src.h">Sources</h2>
+    <ul class="px-src" id="pxSources"></ul>
+  </section>
+</main>
+
+<footer class="pg-foot">
+  <div class="wrap">
+    <p data-i18n-html="pg.credits2">SPHEREx data: NASA/JPL-Caltech, served by the NASA/IPAC Infrared Science Archive (IRSA), DR1 (doi:10.26131/IRSA678) and QR3 (doi:10.26131/IRSA662). Gaia DR3: ESA (European Space Agency, a Space Apps partner agency), Gaia/DPAC. SPHEREx facts: Crill et al. 2020, SPIE (arXiv:2404.11017); NASA/JPL mission pages. Fazari, NASA Space Apps Challenge 2026. Not endorsed by NASA or ESA. <a href="https://github.com/adembtr/fazari">Source code</a>.</p>
+    <p class="ai-note" data-i18n-html="pg.ai"><b>Use of AI</b>: the code and text of this site were written with help from Anthropic's Claude (Claude Code). Team Fazari designed the project and checked and tested the results. The sky images and measurements come from the data sources credited here, not from an AI model.</p>
+    <p data-i18n-html="pg.refs"><a href="https://github.com/adembtr/fazari#references">All references and acknowledgements</a>.</p>
+  </div>
+</footer>
+<script type="module" src="planetx.js"></script>
+<script type="module" src="js/ui_shell.js"></script><!-- ui layer (arayuz) -->
+</body>
+</html>
