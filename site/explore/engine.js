@@ -89,7 +89,7 @@ const TERMINAL = new Set(["done", "error", "cancelled"]);
  */
 export function runLocalPreviewJob({ ra, dec, name, pmra, pmdec, epoch, parallax, force, cutout_deg }, onUpdate,
                                    { interval = 1500, fastInterval = 400, after = null } = {}) {
-  const ids = { full: null, preview: null };
+  const ids = { full: null, preview: null, quick: null };
   const fov = cutout_deg || (typeof window !== "undefined" && window.__fzFov ? window.__fzFov() : null);   // explore/fov_ui.js
   let stopped = false, timer = null;
   const get = async (id) => {
@@ -119,15 +119,18 @@ export function runLocalPreviewJob({ ra, dec, name, pmra, pmdec, epoch, parallax
     const sub = await r.json();
     ids.full = sub.id;
     ids.preview = sub.preview ? sub.preview.id : null;
+    ids.quick = sub.quick ? sub.quick.id : null;              // quick decision: does the object move? (local/quick.py)
     if (!ids.full) throw new Error("The local engine did not return a job id.");
-    let pv = null;
+    let pv = null, qd = null;
     for (;;) {
       if (stopped) return { state: "cancelled" };
       const pvLive = ids.preview && !(pv && TERMINAL.has(pv.state));
-      const [full, p2] = await Promise.all([get(ids.full), pvLive ? get(ids.preview) : Promise.resolve(pv)]);
-      pv = p2;
+      const qdLive = ids.quick && !(qd && TERMINAL.has(qd.state));
+      const [full, p2, q2] = await Promise.all([get(ids.full), pvLive ? get(ids.preview) : Promise.resolve(pv),
+        qdLive ? get(ids.quick) : Promise.resolve(qd)]);
+      pv = p2; qd = q2;
       if (stopped) return { state: "cancelled" };
-      onUpdate({ full, preview: pv, cached: !!sub.cached });
+      onUpdate({ full, preview: pv, quick: qd, cached: !!sub.cached });
       if (TERMINAL.has(full.state)) return full;
       await new Promise((res) => { timer = setTimeout(res, pvLive ? fastInterval : interval); });
     }
@@ -135,7 +138,7 @@ export function runLocalPreviewJob({ ra, dec, name, pmra, pmdec, epoch, parallax
   const cancel = async () => {
     stopped = true;
     clearTimeout(timer);
-    await Promise.all([ids.preview, ids.full].filter(Boolean).map((id) =>
+    await Promise.all([ids.preview, ids.quick, ids.full].filter(Boolean).map((id) =>
       fetch(`/api/jobs/${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => null)));
   };
   return { promise, cancel };
@@ -198,4 +201,59 @@ export async function resultSummary(resultUrl) {
     const msg = ms.message || (ms.detection && ms.detection.message);
     return msg ? { text: iPtext(msg), meta: m, n } : { text: T("ex.eng.seasons", { n: (m.epochs || []).length }), meta: m, n };
   } catch { return null; }
+}
+
+// ---- quick decision (local/quick.py): "does the clicked object move?", preliminary -------------
+const QUICK_BIN = { D1: 1.0, D2: 1.5, D3: 2.0, D4: 3.0, D5: 4.0, D6: 4.6 };
+
+/** The quick decision as lines for the result bar and the viewer, or null while there is none yet.
+ *  text: the finder's plain sentence (detect.run.quick_verdict verdict.text) when it ran, else our
+ *  fallback sentence; line2: the numbers, labelled "quick measurement (preliminary)"; sure: the
+ *  finder's confidence (percent + sentence) when present. T = i18n t, fmt = i18n num. */
+export function quickLines(qd, T, fmt) {
+  if (!qd) return null;
+  const r = qd.state === "done" ? qd.result : qd.partial;
+  if (!r || !r.verdict) return null;
+  const v = r.verdict, m = r.measurement || {}, c = r.confidence || null;
+  const text = v.source !== "fallback" && v.text ? v.text
+    : !m.detected ? T("ex.qd.none")
+      : m.moving ? T("ex.qd.moving", { v: fmt(m.per_year_arcsec ?? m.shift_arcsec, 1) }) : T("ex.qd.still");
+  const line2 = (qd.state === "done" ? "" : T("ex.qd.partial")) + (m.detected
+    ? T("ex.qd.line", { shift: fmt(m.shift_arcsec, 2), err: fmt(m.err_arcsec, 2), from: m.from_epoch, to: m.to_epoch,
+      n: m.n_exposures, bands: (m.detectors_used || []).join("+") })
+    : T("ex.qd.lineNone", { n: r.n_exposures || 0 }));
+  const sure = c && c.percent != null ? T("ex.qd.sure", { p: fmt(c.percent, 0), s: c.sentence || "" }) : (c && c.sentence) || "";
+  return { text, line2, sure };
+}
+
+/** "Quick measurement: reading small boxes (40 of 333 exposures)…" while the quick job runs, else "". */
+export function quickProgress(qd, T) {
+  if (!qd || !["finding", "downloading", "processing"].includes(qd.state)) return "";
+  const pr = qd.progress || {};
+  return T("ex.qd.working", { done: pr.done || 0, total: pr.total || "?" }) + " · ";
+}
+
+/** The quick decision's own small blink when the object is brightest in another band than the
+ *  preview's (e.g. 4.6 um for a cold brown dwarf): {url, n, bin}, else null. */
+export function quickBlink(qd, shownBin) {
+  const r = qd && qd.state === "done" ? qd.result : null;
+  const m = (r && r.measurement) || {};
+  const bin = QUICK_BIN[m.best_detector];
+  if (!r || !r.blink || !m.detected || !bin || bin === shownBin) return null;
+  return { url: qd.result_url, n: ((m.detectors || {})[m.best_detector] || {}).n || r.n_exposures, bin };
+}
+
+/** "How sure are we" of a full result, from the finder's candidates.json (verdict.best -> confidence),
+ *  or "" while the finder has not written it (the place is kept for it). */
+export async function sureFor(resultUrl, T, fmt) {
+  try {
+    const q = await fetch(resultUrl + "candidates.json", { cache: "no-store" });
+    if (!q.ok) return "";
+    const d = await q.json();
+    const best = d && d.verdict && d.verdict.best;
+    const c = best && (d.candidates || []).find((x) => x && x.id === best);
+    const conf = c && c.confidence;
+    if (!conf) return "";
+    return conf.percent != null ? T("ex.qd.sure", { p: fmt(conf.percent, 0), s: conf.sentence || "" }) : conf.sentence || "";
+  } catch { return ""; }
 }

@@ -10,7 +10,7 @@ import { createCloseup } from "./closeup.js";
 import { installTileQueue } from "./tilequeue.js";
 import { createPrefetch } from "./prefetch.js";
 import { findLocal, sesame, plainType, typeName } from "./lookup.js";
-import { detectEngine, engineLabel, runLocalPreviewJob, jobLine, stateText, resultSummary, isLocalHost } from "./engine.js";
+import { detectEngine, engineLabel, runLocalPreviewJob, jobLine, stateText, resultSummary, isLocalHost, quickLines, quickProgress, quickBlink, sureFor } from "./engine.js";
 import { t as T, num as iNum, loc as iLoc, field as iField, tname as iName, onLang, ptext as iPtext } from "../js/i18n.js";
 
 // Aladin Lite v3 (CDS, GPL-3). Pinned. The npm build on jsDelivr is the same code CDS publishes;
@@ -915,6 +915,7 @@ window.addEventListener("message", (ev) => {
     fz.post.left = Array.isArray(d.pending) ? d.pending : [];
     rb.querySelector("small").textContent = fz.small();
   }
+  if (d.step === "candidates" && fz && fz.post) sureFor(fz.url, T, iNum).then((sv) => { if (sv) { fz.post.sure = sv; rb.querySelector("small").textContent = fz.small(); } });
   if (d.step === "candidates") import("./candidates.js").then((m) => m.showOnSky(state, $("blinkFrame").getAttribute("src"))).catch(() => {});
 });
 
@@ -965,7 +966,7 @@ function startLocalJob(p) {
   if (p.parallax > 0) req.parallax = p.parallax;              // mas (category points, fast stars): annual parallax term
   if (params.get("force") === "1") req.force = true;         // testing: ignore the engine's result cache
   const shown = { url: null, n: 0 };
-  const tick = ({ full: j, preview: pv }) => {
+  const tick = ({ full: j, preview: pv, quick: qd }) => {
     if (state.job !== job) return;
     const pvDone = pv && pv.state === "done";
     const pvUrl = pvDone ? pv.result_url : pv && pv.partial ? pv.partial.url : null;
@@ -976,11 +977,20 @@ function startLocalJob(p) {
       setStage("preview", pvN, T("ex.job.pvNote"));
       performance.mark("fz-preview");
     }
+    const qb = j.state !== "done" && quickBlink(qd, shown.bin);         // e.g. 4.6 um for a cold brown dwarf
+    if (qb && shown.url && shown.url !== qb.url) {
+      shown.url = qb.url; shown.n = qb.n; shown.bin = qb.bin;
+      loadFrame(`ornek.html?data=${qb.url}`);
+      setStage("preview", qb.n, T("ex.job.pvNote"));
+    }
     if (shown.url) {
       const im = (pv && pv.images) || {};
+      const q = quickLines(qd, T, iNum);                                  // quick decision (local/quick.py)
       rbar.hidden = false; rbar.classList.add("pending");
-      rbar.querySelector("b").textContent = T("ex.rb.preview", { n: shown.n, at: im.bin_um ? T("ex.rb.at", { um: iNum(im.bin_um, 1) }) : "" });
-      rbar.querySelector("small").textContent = T("ex.rb.bg", { line: jobLine(j) || stateText(j.state), elapsed: elapsed() });
+      rbar.querySelector("b").textContent = q ? q.text : T("ex.rb.preview", { n: shown.n, at: im.bin_um ? T("ex.rb.at", { um: iNum(im.bin_um, 1) }) : "" });
+      rbar.querySelector("small").textContent = (q ? q.line2 + (q.sure ? " " + q.sure : "") + " · " : quickProgress(qd, T))
+        + T("ex.rb.bg", { line: jobLine(j) || stateText(j.state), elapsed: elapsed() });
+      if (q) try { $("blinkFrame").contentWindow.postMessage({ type: "fazari-quick", ...q }, location.origin); } catch { /* not loaded */ }
       return;
     }
     // nothing on screen yet: progress of the preview (or of the full job when there is no preview)
@@ -1016,9 +1026,10 @@ function startLocalJob(p) {
         if (state.job || $("job").hidden === false) return;
         rbar.hidden = false; rbar.classList.remove("pending");
         rbar.querySelector("b").textContent = r ? r.text : (iPtext(j.message) || T("ex.job.done"));
-        const post = { left: j.post_pending ? j.post_pending.steps.slice() : [] };   // post-steps still running
+        const post = { left: j.post_pending ? j.post_pending.steps.slice() : [], sure: "" };   // post-steps still running
         const small = () => T("ex.rb.engine", { when: secs < 2 ? T("ex.rb.cached") : T("ex.rb.ready", { s: secs.toFixed(0) }) })
-          + (post.left.length ? T("ex.rb.adding", { steps: post.left.join(", ") }) : "");
+          + (post.left.length ? T("ex.rb.adding", { steps: post.left.join(", ") }) : "") + (post.sure ? " · " + post.sure : "");
+        sureFor(j.result_url, T, iNum).then((sv) => { if (sv && rbar._fz && rbar._fz.post === post) { post.sure = sv; rbar.querySelector("small").textContent = small(); } });
         rbar.querySelector("small").textContent = small();
         rbar._fz = { url: j.result_url, small, post };    // re-rendered on a language switch and on "fazari-post"
         setStage("full", r ? r.n : (j.progress || {}).total, T("ex.job.fullNote"));

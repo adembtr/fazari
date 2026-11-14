@@ -33,6 +33,7 @@ raw SPHEREx-WCS centroids (meta.measured.preliminary), labelled as such; the ful
 """
 import argparse
 import json
+import os
 import sys
 import threading
 import time
@@ -106,7 +107,7 @@ def read_s3(row, ra, dec):
     if not r["ok"]:
         return None, st.bytes_net, r.get("reason", "no overlap")
     return {"img": r["arrays"]["IMAGE"], "flg": r["arrays"]["FLAGS"], "zodi": None,
-            "header": r["headers"]["IMAGE"], "wcs": r["wcs"]}, st.bytes_net, ""
+            "header": r["headers"]["IMAGE"], "wcs": r["wcs"], "_region": r}, st.bytes_net, ""
 
 
 def read_local(path):
@@ -252,6 +253,27 @@ def render(out, groups, b, det, t, job_id, ra_c, dec_c, grid, shape, moving, loc
     return meta, used, prelim
 
 
+def keep_flags_file(src, name, link=None, region=None, ra=None, dec=None):
+    """src/<name>: a saved cutout (link) or the region just read (IMAGE + FLAGS), for pipeline/flags.py."""
+    import fetch_region as fr
+    p = src / name
+    if p.exists() or p.is_symlink():
+        return
+    src.mkdir(parents=True, exist_ok=True)
+    if link is not None:
+        os.symlink(link, p)
+    else:
+        part = src / f".{name}.part"
+        fr.write_cutout(region, part, ra, dec, REGION_DEG)
+        os.replace(part, p)
+
+
+def write_flags(out, meta, src, ra_c, dec_c):
+    """<out>/flags/ (flags.json + flags_<bin>um.png, pipeline/flags.py) of the preview frames."""
+    import flags
+    flags.build(meta, (ra_c, dec_c), [src], out / "flags", overwrite=True, log=lambda *x: print(*x, flush=True))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--job", required=True, help="job folder with request.json")
@@ -310,10 +332,18 @@ def main():
         t_dl = time.time()
         infos, groups, failed, nbytes, first = [], {}, [], 0, None
 
+        flag_src = jw.LOCAL / "inputs" / job_id            # <obs_id>D<det> -> cutout with IMAGE + FLAGS (flags.py)
+
         def get(row):
+            name = f"{row['obs_id']}D{row['detector']}"
             if local_dir is not None:
-                return read_local(local_dir / row["collection"] / Path(row["s3_key"]).name)
-            return read_s3(row, ra_c, dec_c)
+                path = local_dir / row["collection"] / Path(row["s3_key"]).name
+                keep_flags_file(flag_src, name, link=path)
+                return read_local(path)
+            data, nb, note = read_s3(row, ra_c, dec_c)
+            if data is not None:
+                keep_flags_file(flag_src, name, region=data.pop("_region"), ra=ra_c, dec=dec_c)
+            return data, nb, note
 
         def first_ready():
             per = {}
@@ -366,6 +396,10 @@ def main():
         extra.update(stage="complete", bytes=nbytes, skipped=failed, first_look=first,
                      seconds=dict(tm, total=round(time.time() - t_all, 2)))
         meta, used, prelim = render(out, groups, b, det, t, job_id, ra_c, dec_c, grid, shape, moving, local_dir, extra)
+        try:                                               # flags layer (pipeline/flags.py format) from the FLAGS rows read
+            write_flags(out, meta, flag_src, ra_c, dec_c)
+        except Exception:
+            traceback.print_exc()
         status.set(skipped=failed)
         status.stage("done", f"preview: {used} images at {b:.1f} um, {len(groups)} seasons")
         status.set(result={"epochs": meta["epochs"], "bins": [b], "status": "preview", "n_images": used,

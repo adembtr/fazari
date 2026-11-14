@@ -310,7 +310,7 @@ def measure(preps, grid, shape, t):
             continue
         k = int(np.argmin(np.where(peaks, dist, np.inf)))
         py_, px_ = divmod(k, n)
-        if mover and dist[py_, px_] > REF_PX * 2:
+        if mover and dist[py_, px_] > REF_PX:             # nothing at the predicted place in this band
             continue
         dets[det]["snr"] = round(float(comb[py_, px_] / noise), 1)
         cand[det] = (px_, py_, float(dist[py_, px_]), stacks)
@@ -323,7 +323,7 @@ def measure(preps, grid, shape, t):
         for e, (stk, satm, ns, start, mjd, nn) in stacks.items():
             x0, y0 = start if mover else (px_, py_)
             c = blink.centroid(stk, np.full(stk.shape, ns ** 2), np.isfinite(stk) & ~satm, x0, y0, half=4)
-            if not c or math.hypot(c[0] - x0, c[1] - y0) > REF_PX * 2:
+            if not c or math.hypot(c[0] - x0, c[1] - y0) > REF_PX * (1.0 if mover else 2.0):
                 continue
             r, d = (float(q) for q in grid.all_pix2world(c[0], c[1], 0))
             pos[e] = (r, d, mjd, nn)
@@ -448,10 +448,14 @@ def main():
                     traceback.print_exc()
                     core = {"error": f"{type(e).__name__}: {e}"}
             v = (core or {}).get("verdict") if isinstance(core, dict) else None
+            conf = None                                         # the finder's "how sure", of its best candidate
+            if v and v.get("best") is not None:
+                conf = next((c.get("confidence") for c in core.get("candidates") or [] if c.get("id") == v["best"]), None)
             doc = {"schema": "fazari-quick/1", "stage": "quick", "preliminary": True, "final": final,
                    "ra": ra_c, "dec": dec_c, "box_deg": BOX_DEG, "n_exposures": len(preps),
                    "verdict": v if v and v.get("text") else {"text": sentence(m), "stage": "quick", "source": "fallback"},
-                   "measurement": m, "core": core, "bytes": _bytes["n"], "seconds": round(time.time() - t_all, 1)}
+                   "measurement": m, "confidence": conf, "core": core, "bytes": _bytes["n"],
+                   "seconds": round(time.time() - t_all, 1)}
             return doc
 
         t_dl = time.time()
@@ -491,7 +495,7 @@ def main():
                     pri_done = round(time.time() - t_all, 1)
                     out.mkdir(parents=True, exist_ok=True)
                     (out / "quick.json").write_text(json.dumps(doc, indent=1, default=float))
-                    status.set(partial={"verdict": doc["verdict"], "measurement": doc["measurement"],
+                    status.set(partial={"verdict": doc["verdict"], "measurement": doc["measurement"], "confidence": doc["confidence"],
                                         "n_exposures": len(preps), "seconds": pri_done, "url": f"/jobs/{job_id}/quick.json"})
                     log(f"first decision after {pri_done} s from {len(preps)} boxes: {doc['verdict']['text']}")
         tm["downloading"] = round(time.time() - t_dl, 2)
@@ -523,7 +527,7 @@ def main():
         (out / "quick.json").write_text(json.dumps(doc, indent=1, default=float))
         status.set(skipped=failed[:50])
         status.stage("done", doc["verdict"]["text"])
-        status.set(result={"verdict": doc["verdict"], "measurement": m, "n_exposures": len(preps),
+        status.set(result={"verdict": doc["verdict"], "measurement": m, "confidence": doc["confidence"], "n_exposures": len(preps),
                            "first_decision_s": pri_done, "bytes": _bytes["n"], "status": "quick",
                            "blink": (out / "meta.json").exists()}, finished=time.time())
         log(f"quick decision done in {time.time() - t_all:.1f} s: {len(preps)} boxes, {_bytes['n'] / 1e6:.1f} MB, "

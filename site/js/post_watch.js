@@ -60,3 +60,26 @@ export function watchPostSteps(base, onStep, { interval = 4000, maxMinutes = 90 
   tick();
   return { stop() { stopped = true; clearTimeout(timer); } };
 }
+
+// The explorer sends the quick decision (local/quick.py, "does the clicked object move?") while a
+// preview is on screen: {type: "fazari-quick", text, line2, sure}. It is shown under the stage line
+// (#stagebar), labelled preliminary by the explorer's own wording; the full result replaces the page.
+if (typeof window !== "undefined") {
+  window.addEventListener("message", (ev) => {
+    const d = ev.data;
+    if (ev.origin !== location.origin || !d || d.type !== "fazari-quick" || ev.source !== window.parent) return;
+    const bar = document.getElementById("stagebar");
+    if (!bar) return;
+    let el = bar.querySelector(".fz-quick");
+    if (!el) {
+      el = document.createElement("span");
+      el.className = "fz-quick";
+      el.style.cssText = "display:block;margin-top:4px";
+      el.innerHTML = "<b></b><br><small></small>";
+      bar.appendChild(el);
+    }
+    el.querySelector("b").textContent = String(d.text || "");
+    el.querySelector("small").textContent = [d.line2, d.sure].filter(Boolean).join(" ");
+    bar.hidden = false;
+  });
+}

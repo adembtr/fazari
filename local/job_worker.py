@@ -53,7 +53,9 @@ SELECT_TOL = 0.055                # a bit tighter: the index wavelength is an ap
 EPOCH_GAP_DAYS = 30               # season separator, as in blink.py
 CUTOUT_DEG = 0.2                  # cutout size when request.json has no "cutout_deg" (older jobs); the
                                   # server sets it (local/serve.py FULL_CUTOUT_DEG, 0.4 for full results)
-IMAGE_WORKERS = 3                 # images in parallel; HTTP itself is capped at 4 by fetch_region
+IMAGE_WORKERS = 6                 # images in parallel (S3 test: no 429/5xx up to 128 requests in flight)
+S3_HTTP_SLOTS = 12                # requests in flight for the S3 downloads (fetch_region's polite 4 stays for IRSA)
+PRIORITY_DETECTORS = (3, 6)       # 2.0 and 4.6 um first: the blink fills those bins early
 PREVIEW_WAIT_MAX = 90             # s: never wait longer than this for previews (a stuck flag)
 SIA_URL = "https://irsa.ipac.caltech.edu/SIA"
 USER_AGENT = "fazari-spaceapps/1.0"
@@ -496,6 +498,15 @@ def main():
             if not chosen:
                 raise RuntimeError(f"SPHEREx has {len(rows)} images here, but no wavelength bin is covered "
                                    "in two seasons yet, so there is nothing to blink.")
+            # most useful first: 2.0 and 4.6 um (D3, D6) of every season, seasons interleaved, then the rest
+            rank = {}
+            for r in sorted(chosen, key=lambda r: r["mjd"]):
+                g = (r["detector"] not in PRIORITY_DETECTORS, r["detector"])
+                r["_rank"] = rank[g] = rank.get(g, -1) + 1
+            chosen.sort(key=lambda r: (r["detector"] not in PRIORITY_DETECTORS, r["_rank"], r["detector"]))
+            import fetch_region as _fr
+            if source == "sky index":                       # S3 only from here on (IRSA SIA stays at 4)
+                _fr._HTTP_SLOTS = threading.BoundedSemaphore(S3_HTTP_SLOTS)
             status.stage("downloading", f"reading {len(chosen)} {size:g} deg cutouts from the SPHEREx S3 bucket")
             status.set(progress={"done": 0, "total": len(chosen), "bytes": 0})
             store = LOCAL / "cutouts" / (req["point_key"] + ("" if size == CUTOUT_DEG else f"-s{size:g}"))

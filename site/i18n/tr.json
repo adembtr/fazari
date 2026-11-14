@@ -1162,5 +1162,13 @@
  "vw.t.gaiaPm": "Gaia DR3 {v} mas/yıl; bizim ölçüm {a}, {b} ± {e}: {k}σ",
  "ex.cat.astLink": "Körlemesine bulduğumuz bilinen asteroitler →",
  "v.ast.h": "Körlemesine bulunan bilinen asteroitler",
- "v.ast.p": "24 ekliptik alanda nereye bakacağımız söylenmeden aradık, sonra bulduklarımızı bilinen asteroitlerle eşleştirdik (SkyBoT, konumlar SPHEREx'in bulunduğu yere taşındı). <b>217 bilinen asteroit bulundu</b>: V&lt;17'de 53'ün 47'si, V&lt;18'de 132'nin 101'i. Medyan konum farkı 0,68″. 47 cisim iz olarak bağlandı; hızları yörünge tahminiyle medyan %0,36 uyuşuyor. <a href=\"asteroids.html\">Tüm asteroit sonuçları</a>."
+ "v.ast.p": "24 ekliptik alanda nereye bakacağımız söylenmeden aradık, sonra bulduklarımızı bilinen asteroitlerle eşleştirdik (SkyBoT, konumlar SPHEREx'in bulunduğu yere taşındı). <b>217 bilinen asteroit bulundu</b>: V&lt;17'de 53'ün 47'si, V&lt;18'de 132'nin 101'i. Medyan konum farkı 0,68″. 47 cisim iz olarak bağlandı; hızları yörünge tahminiyle medyan %0,36 uyuşuyor. <a href=\"asteroids.html\">Tüm asteroit sonuçları</a>.",
+ "ex.qd.moving": "Bu cisim hareket ediyor: bir yılda yaklaşık {v}″ kaymış.",
+ "ex.qd.still": "Burada hareket eden bir şey görmedik.",
+ "ex.qd.none": "Bu noktada ölçülecek belirgin bir cisim bulamadık.",
+ "ex.qd.line": "Hızlı ölçüm (ön sonuç): {from} ile {to} arasında {shift}″ ± {err}″, {n} çekim ({bands}).",
+ "ex.qd.lineNone": "Hızlı ölçüm (ön sonuç): {n} çekimden küçük kutular, tüm dalga boyları.",
+ "ex.qd.partial": "İlk tur (2,0 ve 4,6 µm). ",
+ "ex.qd.working": "Hızlı ölçüm: küçük kutular okunuyor ({total} çekimden {done})…",
+ "ex.qd.sure": "Ne kadar eminiz: %{p}. {s}"
 }

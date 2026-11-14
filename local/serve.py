@@ -25,7 +25,9 @@ Three lanes, each running one job at a time in a background thread:
            faint), next to the next full job. Meanwhile the job status has
            "post_pending": {"steps", "state"} and "complete": false; "post" fills in step by step.
 POST {"preview": true} with a full request also queues the preview of that point (unless the
-full result is cached) and returns its id as {"preview": {"id", "cached"}}. A queued job's
+full result is cached) and returns its id as {"preview": {"id", "cached"}}; right after it, in the
+same lane, the quick decision (`local/quick.py`, "mode": "quick": a 0.05 deg box of every exposure,
+"does the clicked object move?", preliminary) as {"quick": {"id", "cached"}}. A queued job's
 status carries {"queue": {"lane", "ahead", "position", "wait_s"}}; a running one "eta_s".
 Each job is one subprocess started in its own process group so that DELETE can stop it.
 Results are cached by rounded position and options: posting the same point again returns the
@@ -64,9 +66,12 @@ JOB_META = CACHE / "local" / "jobs"                            # request/status/
 PREVIEW_FLAG = CACHE / "local" / "preview.active"              # exists while a preview is queued/running
 WORKER = ROOT / "local" / "job_worker.py"
 PREVIEW_WORKER = ROOT / "local" / "preview.py"
+QUICK_WORKER = ROOT / "local" / "quick.py"
 UV_WITH = ["astropy", "reproject", "numpy", "scipy", "matplotlib", "pillow"]
 LANES = ("full", "preview", "post")   # post: the post-steps of a finished full job (job_worker.py --post-only)
-MODES = {"full": "full", "preview": "preview"}
+MODES = {"full": "full", "preview": "preview", "quick": "quick"}
+SMALL_MODES = {"preview": "-pv", "quick": "-qd"}   # preview-lane jobs: one id per point (bins/cap/size do not apply)
+EST_QUICK_S = 45.0                # a whole quick decision (all exposures, small boxes)
 # rough durations for the queue estimate (seconds; measured on the team's computer)
 EST_PREVIEW_S = 12.0              # a whole preview
 EST_FULL_S = 300.0                # a full job before its image count is known
@@ -186,6 +191,8 @@ def pipeline_hash(mode="full"):
     first = [ROOT / "pipeline" / "blink.py", ROOT / "pipeline" / "targets.json", ROOT / "pipeline" / "targets_extra.json"]
     if mode == "preview":
         first.append(PREVIEW_WORKER)
+    if mode == "quick":
+        first.append(QUICK_WORKER)
     rest = sorted(set(local_closure([f for f in first if f.suffix == ".py"])) - set(first))
     h = hashlib.sha1()
     for p in first + rest:                                   # blink.py alone gives the same value as before
@@ -382,7 +389,7 @@ def parse_request(body):
         raise BadRequest(f"cap must be an integer within {CAP_MIN}..{CAP_MAX}")
     mode = body.get("mode", "full")
     if mode not in MODES:
-        raise BadRequest("mode must be 'full' or 'preview'")
+        raise BadRequest("mode must be 'full', 'preview' or 'quick'")
     if body.get("preview") not in (None, True, False):
         raise BadRequest("preview must be true or false")
     size = num(body.get("cutout_deg", FULL_CUTOUT_DEG), "cutout_deg", 0.1, 1.0)
@@ -411,7 +418,8 @@ def job_identity(p):
     slug, target, local = resolve_target(p["ra"], p["dec"], p["name"], p["extra"])
     ra3, dec3 = round(p["ra"], 3) % 360.0, round(p["dec"], 3)
     mask = sum(1 << BINS_ALL.index(b) for b in p["bins"])
-    preview = p.get("mode") == "preview"                     # one id per point: bins/cap do not apply
+    preview = p.get("mode") in SMALL_MODES                   # one id per point: bins/cap do not apply
+    suffix = SMALL_MODES.get(p.get("mode"), "")
     size = LEGACY_CUTOUT_DEG if preview else p.get("cutout_deg", FULL_CUTOUT_DEG)
     ldir = local_data_dir()
     if local and not preview and size != LEGACY_CUTOUT_DEG:
@@ -423,7 +431,7 @@ def job_identity(p):
         else:
             size = LEGACY_CUTOUT_DEG
     if local:                                                # all local cutouts: options do not apply
-        jid = f"{slug}-local" + ("-pv" if preview else size_tag(size))
+        jid = f"{slug}-local" + (suffix if preview else size_tag(size))
         center = {"ra": target["ra"], "dec": target["dec"]}
     else:
         # motion hash: proper motion + epoch, and the parallax when there is one (ids of jobs without
@@ -431,7 +439,7 @@ def job_identity(p):
         motion = [target["pmra"], target["pmdec"], target["epoch"]] + ([target["plx"]] if target.get("plx") else [])
         pm = "" if not (target.get("pmra") or target.get("pmdec") or target.get("plx")) else \
             "-pm" + hashlib.sha1(json.dumps(motion).encode()).hexdigest()[:4]
-        opts = "-pv" if preview else f"-c{p['cap']}-b{mask}{size_tag(size)}"
+        opts = suffix if preview else f"-c{p['cap']}-b{mask}{size_tag(size)}"
         jid = f"{slug}-{ra3:.3f}{'n' if dec3 >= 0 else 's'}{abs(dec3):.3f}{opts}{pm}"
         center = {"ra": ra3, "dec": dec3}
         if target.get("pmra") or target.get("pmdec"):            # centre on the 2026.0 position
@@ -447,7 +455,7 @@ def job_identity(p):
 
 # ------------------------------------------------------------------------------- jobs
 def lane_of(j):
-    return "preview" if (j.get("req") or {}).get("mode") == "preview" else "full"
+    return "preview" if (j.get("req") or {}).get("mode") in SMALL_MODES else "full"
 
 
 class Jobs:
@@ -484,8 +492,10 @@ class Jobs:
     def _set_flag(self):
         """<cache>/local/preview.active exists while a preview is queued or running (lock held or init).
         The full job's worker does not start new image downloads while it exists."""
-        busy = self.running["preview"] is not None or any(
-            j["state"] == "queued" and lane_of(j) == "preview" for j in self.jobs.values())
+        isprev = lambda j: (j.get("req") or {}).get("mode") == "preview"   # the quick decision does not pause it
+        run = self.running["preview"]
+        busy = (run is not None and isprev(self.jobs.get(run[0]) or {})) or any(
+            j["state"] == "queued" and isprev(j) for j in self.jobs.values())
         try:
             if busy:
                 PREVIEW_FLAG.parent.mkdir(parents=True, exist_ok=True)
@@ -532,7 +542,7 @@ class Jobs:
             d = JOB_META / jid
             d.mkdir(parents=True, exist_ok=True)
             (d / "request.json").write_text(json.dumps(req, indent=1))
-            lane = "preview" if mode == "preview" else "full"
+            lane = "preview" if mode in SMALL_MODES else "full"
             st = {"state": "queued", "mode": mode, "progress": {"done": 0, "total": 0, "bytes": 0},
                   "message": "waiting for the job before it" if self.running[lane] else "starting",
                   "pipeline": ph, "queued": time.time()}
@@ -556,7 +566,8 @@ class Jobs:
         now = time.time()
         started = st.get("started") or now
         if lane == "preview":
-            return max(2.0, EST_PREVIEW_S - (now - started))
+            est = EST_QUICK_S if st.get("mode") == "quick" or "-qd" in jid else EST_PREVIEW_S
+            return max(2.0, est - (now - started))
         if st.get("post_running") or str(st.get("message", "")).startswith(("post-step", "faint-object")):
             return EST_POST_S / 2
         pr, tm = st.get("progress") or {}, st.get("timings") or {}
@@ -699,7 +710,8 @@ class Jobs:
         cmd = [self.uv, "run", "--no-project", "--quiet"]
         for w in UV_WITH:
             cmd += ["--with", w]
-        cmd += ["python", "-I", str(PREVIEW_WORKER if lane == "preview" else WORKER), "--job", str(d)]
+        worker = (QUICK_WORKER if j["req"].get("mode") == "quick" else PREVIEW_WORKER) if lane == "preview" else WORKER
+        cmd += ["python", "-I", str(worker), "--job", str(d)]
         if post_only:
             cmd += ["--post-only", ",".join(post_only)]
         elif lane == "full":
@@ -899,9 +911,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             out = {"id": jid, "cached": cached, "mode": p["mode"]}
             if p["mode"] == "full" and p["preview"]:          # quick look first, unless the result is ready
                 out["preview"] = None
+                out["quick"] = None
                 if not cached:
                     pid, pcached = self.jobs.submit(dict(p, mode="preview"))
                     out["preview"] = {"id": pid, "cached": pcached}
+                    qid, qcached = self.jobs.submit(dict(p, mode="quick"))   # after the preview, same lane
+                    out["quick"] = {"id": qid, "cached": qcached}
         except json.JSONDecodeError:
             return self._json(400, {"error": "invalid JSON"})
         except BadRequest as e:
