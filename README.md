@@ -251,6 +251,8 @@ Data and services
   Archive (IRSA), [doi:10.26131/IRSA678](https://doi.org/10.26131/IRSA678) and
   [doi:10.26131/IRSA662](https://doi.org/10.26131/IRSA662). The SPHEREx all-sky map layer is the IRSA
   SPHEREx DR1 HiPS.
+- SPHEREx mission: Crill, B. P. et al., "SPHEREx: NASA's Near-Infrared Spectrophotometric All-Sky Survey",
+  [arXiv:2404.11017](https://arxiv.org/abs/2404.11017).
 - [Registry of Open Data on AWS](https://registry.opendata.aws/spherex-qr/): the browser and local
   engines read SPHEREx images from IRSA's public S3 bucket `nasa-irsa-spherex` (accessed November 2026).
   Some DSS2 and Pan-STARRS map tiles come from STScI/MAST's public bucket `stpubdata`, one of several mirrors.
