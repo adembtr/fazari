@@ -186,7 +186,8 @@ async function startSky() {
       log: false, samp: false, realFullscreen: false, backgroundColor: "rgb(4,6,12)",
     });
     state.al = al;
-    applyFovLimit();                                     // wheel / pinch can never zoom out past 120°
+    if (params.get("idle") !== "0") import("./idleloop.js").then((m) => { state.idleLoop = m.idleAladinLoop(al); }).catch((e) => console.warn("idle loop", e));   // no frames while the sky is still
+    applyFovLimit();                                    // wheel / pinch can never zoom out past 120°
     addEventListener("resize", applyFovLimit);
     state.hips.visible = al.getBaseImageLayer();
     state.closeup = createCloseup({
