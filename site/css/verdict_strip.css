@@ -1,0 +1,70 @@
+/* Verdict strip (js/verdict_strip.js): one line of verdict at the top of the answer, the same weight for every
+   result class. vd-none = nothing moving found (calm, green), vd-unsure = not sure (amber), vd-moves = it moves
+   (blue), vd-wait = an interim verdict while wavelengths are still loading (grey, says so). */
+.vd { --vd-c:#9aa3b2; --vd-bg:#161b27; --vd-line:#2a3246;
+      display:flex; gap:12px; align-items:flex-start; margin:0 0 10px; padding:11px 14px 12px; border-radius:10px;
+      background:var(--vd-bg); border:1px solid var(--vd-line); border-left:5px solid var(--vd-c); min-width:0; }
+.vd[hidden] { display:none !important; }
+.vd.vd-none   { --vd-c:#5dd39e; --vd-bg:#0f2219; --vd-line:#24533b; }
+.vd.vd-unsure { --vd-c:#e0b85d; --vd-bg:#2a210c; --vd-line:#6e5520; }
+.vd.vd-moves  { --vd-c:#7fbfff; --vd-bg:#0f1f33; --vd-line:#2f5f8f; }
+.vd.vd-wait   { --vd-c:#8d97ab; --vd-bg:#161b27; --vd-line:#2f3850; }
+/* "it moves": today's look kept compact (title and catalogue line on one row when they fit) */
+.vd.vd-moves { padding:8px 12px; align-items:center; }
+.vd.vd-moves .vd-body { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 14px; }
+.vd.vd-moves .vd-t { font-size:1.1rem; }
+.vd.vd-moves .vd-l { margin:0; font-size:.86rem; }
+.vd.vd-moves .vd-ic { width:26px; height:26px; margin-top:0; }
+.vd.vd-moves .vd-field { flex-basis:100%; }
+.vd-ic { flex:none; width:30px; height:30px; border-radius:50%; display:grid; place-items:center; margin-top:1px;
+         color:#05070d; background:var(--vd-c); }
+.vd-ic svg { width:18px; height:18px; display:block; }
+.vd.vd-wait .vd-ic { background:none; border:2px solid var(--vd-c); color:var(--vd-c); }
+.vd.vd-wait .vd-ic svg { animation:vd-spin 1.6s linear infinite; }
+@keyframes vd-spin { to { transform:rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .vd.vd-wait .vd-ic svg { animation:none; } }
+.vd-body { min-width:0; flex:1; }
+.vd-t { margin:0; font-size:1.3rem; line-height:1.28; font-weight:700; color:#f1f4fa; overflow-wrap:anywhere; }
+.vd-tag { display:inline-block; vertical-align:2px; margin-left:8px; font-size:.72rem; font-weight:700; letter-spacing:.04em;
+          text-transform:uppercase; color:var(--vd-c); border:1px solid var(--vd-c); border-radius:999px; padding:0 8px; line-height:1.6; }
+.vd-l { margin:5px 0 0; font-size:.92rem; line-height:1.42; color:#d3d9e6; overflow-wrap:anywhere; }
+.vd-l:empty { display:none; }
+.vd-cat { color:#f1f4fa; font-weight:600; }
+.vd-lim { color:#b9c2d3; font-size:.86rem; }
+.vd-mean { color:#aab3c5; font-size:.86rem; }
+.vd-field b { color:#f1f4fa; font-weight:600; }
+.vd-field a, .vd-field button { color:var(--vd-c); }
+.vd-act { display:flex; flex-wrap:wrap; gap:8px; margin:9px 0 0; }
+.vd-act:empty { display:none; }
+.vd-act a, .vd-act button { font:inherit; font-size:.88rem; font-weight:600; display:inline-flex; align-items:center; gap:6px; text-decoration:none;
+  padding:5px 12px; border-radius:8px; cursor:pointer; color:#f1f4fa; background:#1f2638; border:1px solid #39435c; min-height:34px; }
+.vd-act a.vd-pri { color:#05170e; background:var(--vd-c); border-color:var(--vd-c); }
+.vd-act a:hover, .vd-act button:hover { filter:brightness(1.12); }
+.vd .vd-linkbtn { background:none; border:0; padding:0; font:inherit; text-decoration:underline; cursor:pointer; }
+
+/* the strip is the answer's heading: the small "The answer" kicker above it steps back */
+html.vd-on #uiAnswer > .ui-kicker { display:none; }
+/* nothing said twice: the strip carries the answer, so the bins bar's own answer line and (Simple mode) the
+   plain sentence under it step back; Detailed mode keeps the sentence */
+html.vd-on #pgBins .pg-ans, html.vd-on #pgCard .pg-ans { display:none !important; }
+html.vd-k-none[data-ui-mode="simple"] #explainSentence,
+html.vd-k-unsure[data-ui-mode="simple"] #explainSentence { display:none !important; }
+/* the viewer's own "nothing moving" limit line (js/viewer.js grPaint) is in the strip already */
+html.vd-k-none #grBox > .gr-limit { display:none !important; }
+html.vd-k-none #grBox:not(:has(> :not(.gr-limit))) { display:none !important; }
+/* "How sure": the technical line (5σ, S/N, detector) in Detailed mode; one plain sentence in Simple mode */
+html.ui[data-ui-mode="simple"] #verdict.vd-tech { display:none !important; }
+#vdSure { margin:0; font-size:.9rem; line-height:1.4; color:#c9d2e3; }
+html:not(.ui) #vdSure, html[data-ui-mode="detailed"] #vdSure { display:none !important; }
+/* sky.html: a guarded answer (too uncertain) must not show a speed in the measurement panel (tarayici_olcum H5) */
+html.vd-guarded #measure > p.big, html.vd-guarded #grSkyNl { display:none !important; }
+
+@media (max-width: 560px) {
+  .vd { display:block; padding:9px 11px 10px; }
+  .vd-ic { float:left; width:26px; height:26px; margin:0 9px 2px 0; }
+  .vd-ic svg { width:15px; height:15px; }
+  .vd-t { font-size:1.08rem; }
+  .vd-l { font-size:.85rem; }
+  .vd-lim, .vd-mean { font-size:.8rem; }
+  .vd-act a, .vd-act button { font-size:.82rem; padding:4px 10px; }
+}

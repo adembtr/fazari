@@ -232,7 +232,7 @@ function setupViewer() {
     ans.append(extra);
     // other plug-ins add notes after #verdict (e.g. the exoplanet-host note): keep them in the answer card,
     // below the three facts, not inside "How sure"
-    const own = new Set(["uiSurePct", "uiSureConf", "uiSureTxt", "verdict"]);
+    const own = new Set(["uiSurePct", "uiSureConf", "uiSureTxt", "verdict", "vdSure"]);   // vdSure: js/verdict_strip.js (Simple mode line)
     const tidy = () => {
       // a tile without a value ("Measured: –", "Compared with: –") adds nothing: hidden (viewer.js marks .empty too)
       for (const tl of document.querySelectorAll("#tiles > .tile")) { const b = tl.querySelector("b"); tl.classList.toggle("ui-empty", !!b && /^[–-]?$/.test(b.textContent.trim())); }
@@ -343,6 +343,39 @@ function paintFinder() {
   });
 }
 
+// The explorer's stage badge while the result panel loads wavelength by wavelength: the panel (js/verdict_strip.js)
+// reports loaded / all wavelengths and the image count ("fazari-vd-stage"); the badge says that, then
+// "Full result (N images)" at the end, instead of keeping "Preview (8 images)" from before the run.
+function stageBadge() {
+  const fr = $("blinkFrame");
+  if (!fr) return;
+  let last = null;
+  const sfx = (n) => { const d = n % 10, z = n % 100; return n === 0 ? "'ı" : d === 0 ? ({ 10: "'u", 20: "'si", 30: "'u", 40: "'ı", 50: "'si", 60: "'ı", 70: "'i", 80: "'i", 90: "'ı" })[z] || "'ı" : ["", "'i", "'si", "'ü", "'ü", "'i", "'sı", "'si", "'i", "'u"][d]; };
+  const paint = () => {
+    const b = $("blinkStage"), d = last;
+    if (!b || !d || fr.contentWindow == null) return;
+    let src = ""; try { src = fr.contentWindow.location.href; } catch (e) { /* other origin */ }
+    if (src && d.src && src !== d.src) return;            // a message from a page that is no longer in the panel
+    const tr = I.lang() === "tr";
+    const of = T("vd.of", { n: d.k, m: d.m, sfx: tr ? sfx(d.k) : "" });
+    const txt = d.complete ? T("vd.badge.full", { n: d.n }) : T("vd.badge.run", { of, n: d.n });
+    b.hidden = false;
+    b.className = "stage-badge " + (d.complete ? "full" : "preview");
+    if (b.textContent !== txt) b.textContent = txt;
+  };
+  window.addEventListener("message", (e) => {
+    const d = e.data;
+    if (e.origin !== location.origin || !d) return;
+    if (d.type === "fazari-vd-stage" && e.source === fr.contentWindow) { last = d; paint(); }
+    else if (d.type === "fazari-stage") setTimeout(paint, 0);   // the page's own badge message comes first, then ours
+  });
+  document.addEventListener("fazari:lang", () => setTimeout(paint, 60));
+  // a new panel page: forget the old numbers (the page's own badge takes over until the new page reports)
+  try { new MutationObserver(() => { last = null; }).observe(fr, { attributes: true, attributeFilter: ["src"] }); } catch (e) { /* ignore */ }
+  // main.js sets the badge itself when a job ends ("Full result"): keep ours when it would say the same thing
+  try { const b = $("blinkStage"); if (b) new MutationObserver(() => { if (last && last.complete === false) setTimeout(paint, 0); }).observe(b, { childList: true, characterData: true, subtree: true }); } catch (e) { /* ignore */ }
+}
+
 // =============================================================================================================
 // Sky Explorer (explore.html)
 // =============================================================================================================
@@ -350,6 +383,7 @@ function setupExplore() {
   const panel = $("panel");
   if (!panel || !$("sky")) return;
   H.classList.add("ui-page-explore");
+  safe("stageBadge", stageBadge);
   const body = $("panelBody");
 
   // one-line "what is this" at the top of the panel

@@ -148,9 +148,18 @@ export function answerFrom(astro, session, version, binsUsed, catalogue = "loade
     }[code];
   };
   let en = texts(false)[0], tr = texts(true)[1];
+  if (astro && astro.centre && astro.centre.status === "not_detected") {   // H3 (tarayici_olcum): free point, nothing consistent at the centre
+    en = "No source at the centre: nothing here is the same star in every season, so no motion is given.";
+    tr = "Merkezde kaynak yok: burada her sezonda aynı olan bir yıldız yok, bu yüzden hareket verilmiyor.";
+  }
   if (!cal && !["one_season", "no_measurement"].includes(code)) {
-    en += " Measured without the star catalogue: it could not be loaded (network), so there is no calibration and no catalogue prediction.";
-    tr += " Yıldız kataloğu olmadan ölçüldü: katalog yüklenemedi (ağ); kalibrasyon ve katalog tahmini yok.";
+    if (catalogue === "pending") {   // H2 (tarayici_olcum)
+      en += " Measured before the star catalogue arrived: no calibration and no catalogue prediction yet. The next wavelengths are measured with it.";
+      tr += " Yıldız kataloğu gelmeden ölçüldü: henüz kalibrasyon ve katalog tahmini yok. Sonraki dalga boyları katalogla ölçülüyor.";
+    } else {
+      en += " Measured without the star catalogue: it could not be loaded (network), so there is no calibration and no catalogue prediction.";
+      tr += " Yıldız kataloğu olmadan ölçüldü: katalog yüklenemedi (ağ); kalibrasyon ve katalog tahmini yok.";
+    }
   }
   return { ...out, code, reason, text_en: en, text_tr: tr };
 }
@@ -234,7 +243,7 @@ export async function runAll(session, id, opts, post, slim) {
         current = null;
         const astro = session.astrometry();
         const cs = session.cfg && session.cfg.calibrate === false ? null : await session.calStars;
-        const catalogue = cs && cs.ok ? "loaded" : cs ? "unavailable" : "off";
+        const catalogue = cs && cs.ok ? (astro && astro.catalogue === "pending" ? "pending" : "loaded") : cs ? (cs.pending ? "pending" : "unavailable") : "off";   // H1 (tarayici_olcum)
         answer = answerFrom(astro, session, version + 1, Object.keys(results).map(Number).sort((a, b) => a - b),
                             catalogue === "off" ? "loaded" : catalogue);
         post({ type: "bin", id, version: ++version, um, state: "done", result: slim(r), astrometry: { ...astro, headerChecks: undefined }, answer, ...plan() });
