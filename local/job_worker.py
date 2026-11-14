@@ -17,6 +17,14 @@ Steps
                range reader does not copy, is the same for every file of a detector (one
                '[CALIB] epsf <id>' per detector); it is cached in cache/local/epsf/.
   processing   pipeline/blink.py on the ad-hoc target -> cache/jobs/<id>/
+  post-steps   POST_STEPS (below): later steps of the full result that read the blink products,
+               run in order after blink.py (spectrum, candidates, faint); --post-only reruns
+               some of them on a finished job (the server does this when their code changed)
+
+Quick looks ("mode": "preview") are not done here but in local/preview.py (the server's fast
+lane). While a preview is queued or running the server keeps the flag file
+$FAZARI_PREVIEW_FLAG; this worker then starts no new image download (yield_to_preview), so
+the preview gets the network first. cache/ is $FAZARI_CACHE when that is set.
 """
 import argparse
 import csv
@@ -32,7 +40,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent                 # fazari/
 PIPE = ROOT / "pipeline"
-CACHE = ROOT / "cache"
+CACHE = Path(os.environ.get("FAZARI_CACHE") or ROOT / "cache").expanduser().resolve()
 LOCAL = CACHE / "local"
 sys.path.insert(0, str(PIPE))
 
@@ -41,8 +49,10 @@ BINS = {1.0: 1, 1.5: 2, 2.0: 3, 3.0: 4, 4.0: 5, 4.6: 6}
 BIN_TOL = 0.06                    # blink.py tolerance (+-6 %)
 SELECT_TOL = 0.055                # a bit tighter: the index wavelength is an approximation
 EPOCH_GAP_DAYS = 30               # season separator, as in blink.py
-CUTOUT_DEG = 0.2                  # IRSA cutout size used for the challenge data
+CUTOUT_DEG = 0.2                  # cutout size when request.json has no "cutout_deg" (older jobs); the
+                                  # server sets it (local/serve.py FULL_CUTOUT_DEG, 0.4 for full results)
 IMAGE_WORKERS = 3                 # images in parallel; HTTP itself is capped at 4 by fetch_region
+PREVIEW_WAIT_MAX = 90             # s: never wait longer than this for previews (a stuck flag)
 SIA_URL = "https://irsa.ipac.caltech.edu/SIA"
 USER_AGENT = "fazari-spaceapps/1.0"
 CSV_COLS = ["s_ra", "s_dec", "energy_bandpassname", "obs_id", "em_min", "em_max", "access_url",
@@ -87,6 +97,27 @@ class Status:
             self.set(message=message)
         else:
             self.set()
+
+
+# ---------------------------------------------------------------------------------------- priority
+def yield_to_preview(status=None):
+    """Wait while a preview is queued or running (flag file kept by local/serve.py), at most
+    PREVIEW_WAIT_MAX s in all per call; a flag older than 2 minutes is ignored (stale)."""
+    flag = os.environ.get("FAZARI_PREVIEW_FLAG")
+    if not flag:
+        return 0.0
+    p, t0, said = Path(flag), time.time(), False
+    while time.time() - t0 < PREVIEW_WAIT_MAX:
+        try:
+            if time.time() - p.stat().st_mtime > 120:
+                break
+        except OSError:                                  # no flag: no preview waiting
+            break
+        if status is not None and not said:
+            status.set(message="paused: a quick preview goes first")
+            said = True
+        time.sleep(0.2)
+    return time.time() - t0
 
 
 # ---------------------------------------------------------------------------------------- find
@@ -224,22 +255,23 @@ def epsf_hdu(img_header, s3_key, layout, local_data, stats):
         return h["EPSF"].copy()
 
 
-def fetch_cutout(row, ra, dec, store, local_data):
-    """Cutout FITS (IRSA layout: IMAGE FLAGS VARIANCE ZODI EPSF WCS-WAVE) of one S3 image."""
+def fetch_cutout(row, ra, dec, store, local_data, status=None, size=CUTOUT_DEG):
+    """Cutout FITS (IRSA layout: IMAGE FLAGS VARIANCE ZODI EPSF WCS-WAVE) of one S3 image, `size` deg."""
     import fetch_region as fr
     from astropy.io import fits
     name = Path(row["s3_key"]).name
     out = store / row["collection"] / name
     if out.exists():
         return out, 0, "cached"
+    yield_to_preview(status)
     st = fr.Stats()
-    r = fr.read_region(row["s3_key"], ra, dec, size_deg=CUTOUT_DEG, layers=fr.LAYERS_ALL,
+    r = fr.read_region(row["s3_key"], ra, dec, size_deg=size, layers=fr.LAYERS_ALL,
                        cache_dir=CACHE / "s3", stats=st)
     if not r["ok"]:
         return None, st.bytes_net, r.get("reason", "no overlap")
     ep = epsf_hdu(r["headers"]["IMAGE"], row["s3_key"], r["layout"], local_data, st)
     part = out.with_name(out.name + ".part")
-    fr.write_cutout(r, part, ra, dec, CUTOUT_DEG)
+    fr.write_cutout(r, part, ra, dec, size)
     with fits.open(part, mode="append") as h:
         h.append(ep)
     os.replace(part, out)
@@ -298,7 +330,8 @@ def run_blink(job_id, target, inputs, out_root, status, n_in):
 
     def gaia_field(name, ra, dec):
         site = ROOT / "site" / "data" / (gkey or name) / "gaia_field.json"
-        if site.exists():
+        radius = getattr(blink, "gaia_cache_radius", lambda p: 0.15)
+        if site.exists() and radius(site) >= getattr(blink, "GAIA_RADIUS_DEG", 0.15) - 1e-9:   # wide cutouts: refetch
             return json.loads(site.read_text())
         real_root = blink.ROOT
         blink.ROOT = LOCAL / "gaia"
@@ -326,13 +359,90 @@ def run_blink(job_id, target, inputs, out_root, status, n_in):
     blink.main(job_id)
 
 
+# ---------------------------------------------------------------------------------------- post-steps
+# Extension point for later steps of the FULL result (never the preview): each entry is
+# ("name", "module", "function") with module importable from pipeline/ (or local/);
+# module.function(ctx) runs after blink.py wrote <out>/meta.json, in this order.
+# ctx = {"job_id", "req", "target", "out": products folder (Path), "inputs": cutouts folder
+# (Path, <inputs>/<id>/{dr1,qr3}), "meta": parsed meta.json, "status": Status}. A step may add
+# files to ctx["out"] and return a small JSON-able dict, stored as status.post[name]; its
+# exceptions are logged and reported there, they do not fail the job.
+# Keep the entries as string constants: local/serve.py reads this list (without importing this
+# file) and fingerprints each step's module and the local modules it imports, so a cached job
+# reruns only the steps that are new or whose code changed (--post-only), not download + blink.
+POST_STEPS = []
+# spectrum of the target from every exposure of the job -> spectrum.csv, spectrum.json (pipeline/spectrum.py)
+POST_STEPS.append(("spectrum", "spectrum", "job_step"))
+# moving / changing sources in the whole field -> candidates.json (pipeline/detect, pipeline/DETECTION.md)
+POST_STEPS.append(("candidates", "detect.run", "job_step"))
+# faint-object mode: float frames, deep stacks, shift-and-stack -> faint/ (pipeline/faint.py, pipeline/FAINT.md)
+POST_STEPS.append(("faint", "faint", "post_step"))
+
+
+def _step_function(entry):
+    """The callable of a POST_STEPS entry: ("name", "module", "function") or ("name", callable)."""
+    if callable(entry[1]):
+        return entry[1]
+    import importlib
+    return getattr(importlib.import_module(entry[1]), entry[2])
+
+
+def run_post_steps(ctx, only=None, quiet=False):
+    """Run the POST_STEPS (or only the named ones, in list order). quiet: a finished job whose steps
+    are rerun; its status message is left alone (the step name goes to status.post_step)."""
+    results = {}
+    for entry in POST_STEPS:
+        name = entry[0]
+        if only is not None and name not in only:
+            continue
+        ctx["status"].set(**({"post_step": name} if quiet else {"message": f"post-step: {name}"}))
+        t0 = time.time()
+        try:
+            r = _step_function(entry)(ctx)
+            results[name] = {"ok": True, "seconds": round(time.time() - t0, 2), **(r if isinstance(r, dict) else {})}
+        except Exception as e:
+            traceback.print_exc()
+            results[name] = {"ok": False, "error": f"{type(e).__name__}: {e}", "seconds": round(time.time() - t0, 2)}
+    return results
+
+
+def run_post_only(jd, req, names):
+    """Rerun some post-steps of a finished job from its kept blink products and cutouts. The job
+    stays "done" (its result stays viewable); status.post is merged, the message restored."""
+    job_id = req["id"]
+    status = Status(jd / "status.json")
+    old = json.loads((jd / "status.json").read_text())
+    status.d = dict(old)
+    status.d.setdefault("progress", {"done": 0, "total": 0, "bytes": 0})
+    out = CACHE / "jobs" / job_id
+    m = json.loads((out / "meta.json").read_text())
+    print(f"[{time.strftime('%H:%M:%S')}] post-steps only: {', '.join(names)}", flush=True)
+    status.set(post_running=names)
+    t0 = time.time()
+    post = run_post_steps({"job_id": job_id, "req": req, "target": req["target"], "out": out,
+                           "inputs": LOCAL / "inputs" / job_id, "meta": m, "status": status},
+                          only=names, quiet=True)
+    with status.lock:
+        status.d.pop("post_running", None)
+        status.d.pop("post_step", None)
+    status.set(post=dict(old.get("post") or {}, **post), message=old.get("message", ""),
+               state=old.get("state", "done"), post_rerun={"steps": names, "seconds": round(time.time() - t0, 1),
+                                                           "finished": time.time()})
+    print(f"[{time.strftime('%H:%M:%S')}] post-steps done in {time.time() - t0:.1f} s: "
+          + ", ".join(f"{k} {'ok' if v.get('ok') else 'failed'}" for k, v in post.items()), flush=True)
+
+
 # ---------------------------------------------------------------------------------------- main
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--job", required=True, help="job folder with request.json")
+    ap.add_argument("--post-only", help="comma-separated POST_STEPS names: rerun only these on a finished job")
     a = ap.parse_args()
     jd = Path(a.job).resolve()
     req = json.loads((jd / "request.json").read_text())
+    if a.post_only:
+        run_post_only(jd, req, [n for n in a.post_only.split(",") if n])
+        return
     job_id, target = req["id"], req["target"]
     ra, dec = req["center"]["ra"], req["center"]["dec"]
     status = Status(jd / "status.json")
@@ -340,7 +450,9 @@ def main():
     tdir = inputs / job_id
     out_root = CACHE / "jobs"
     local_data = Path(req["local_data"]) if req.get("local_data") else None
+    size = float(req.get("cutout_deg") or CUTOUT_DEG)
     try:
+        status.set(cutout_deg=size)
         status.stage("finding", "looking up SPHEREx images of this point")
         if req.get("local_target"):
             src = local_data / req["local_target"]
@@ -370,12 +482,12 @@ def main():
             if not chosen:
                 raise RuntimeError(f"SPHEREx has {len(rows)} images here, but no wavelength bin is covered "
                                    "in two seasons yet, so there is nothing to blink.")
-            status.stage("downloading", f"reading {len(chosen)} cutouts from the SPHEREx S3 bucket")
+            status.stage("downloading", f"reading {len(chosen)} {size:g} deg cutouts from the SPHEREx S3 bucket")
             status.set(progress={"done": 0, "total": len(chosen), "bytes": 0})
-            store = LOCAL / "cutouts" / req["point_key"]
+            store = LOCAL / "cutouts" / (req["point_key"] + ("" if size == CUTOUT_DEG else f"-s{size:g}"))
             got, failed = [], []
             with ThreadPoolExecutor(max_workers=IMAGE_WORKERS) as ex:
-                futs = {ex.submit(fetch_cutout, r, ra, dec, store, local_data): r for r in chosen}
+                futs = {ex.submit(fetch_cutout, r, ra, dec, store, local_data, status, size): r for r in chosen}
                 for fu in as_completed(futs):
                     r = futs[fu]
                     try:
@@ -414,6 +526,10 @@ def main():
         if not meta.exists():
             raise RuntimeError("blink.py finished without writing meta.json")
         m = json.loads(meta.read_text())
+        if POST_STEPS:
+            post = run_post_steps({"job_id": job_id, "req": req, "target": target, "out": out_root / job_id,
+                                   "inputs": tdir, "meta": m, "status": status})
+            status.set(post=post)
         nb = len(m.get("wavelength_bins", []))
         meas = m.get("measured", {})
         msg = f"{len(m.get('epochs', []))} seasons, {nb} wavelength bin(s)"

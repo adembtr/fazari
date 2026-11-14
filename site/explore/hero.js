@@ -8,7 +8,7 @@
 //
 // Hook in explore.html: <script type="module" src="explore/hero.js"></script>. Independent of main.js.
 
-import { t, onLang, lang, langButton } from "../js/fz_i18n.js";
+import { t, onLang, lang, langButton } from "../js/i18n.js";
 
 const DATA = "data/barnard/";
 const KEY = "fz-hero-dismissed";

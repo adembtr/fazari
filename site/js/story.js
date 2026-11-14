@@ -2,7 +2,7 @@
 // SPHEREx frames), "How SPHEREx works" (inline SVG) and where the name comes from.
 // Numbers: data/verify/table.json (pipeline/verify_table.py) and each target's meta.json (frames, markers).
 
-import { t, apply, onLang, lang, langButton } from "./fz_i18n.js";
+import { t, apply, onLang, lang, langButton, tname } from "./i18n.js";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -101,7 +101,7 @@ function cardHtml(c) {
   return `<article class="scard" id="t-${c.id}">
     ${img}
     <span class="lbl">${esc(t(`s.${c.id}.tag`))}</span>
-    <h3>${esc(r?.name || c.id)}</h3>
+    <h3>${esc(r?.name ? tname(r.name) : c.id)}</h3>
     <p><b>${esc(t("s.what"))}</b> ${esc(t(`s.${c.id}.what`, v))}</p>
     <p><b>${esc(t("s.why"))}</b> ${esc(t(`s.${c.id}.why`, v))}</p>
     <p><b>${esc(t("s.shows"))}</b> ${esc(t(`s.${c.id}.shows`, v))}</p>

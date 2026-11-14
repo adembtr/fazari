@@ -1,3 +1,4 @@
+// UNUSED since 2026-11-14: these strings moved to site/i18n/tr.json (same keys). Edit tr.json instead.
 // Turkish text for fz_i18n.js (hero, verify.html, story.html). Keys missing here fall back to English.
 // Placeholders {name} are the same as in the English table.
 export const TR = {

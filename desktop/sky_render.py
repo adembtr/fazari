@@ -598,15 +598,24 @@ class SkyCanvas(app.Canvas):
                       dec=self.dec0 + dy * d)
 
     def zoom_at(self, factor, px=None, py=None):
+        """Zoom by factor. With a pixel (cursor, pinch centre) the sky point under it stays on it: change the
+        field, then move the centre to the sky point at (centre + error) until that point is back on its pixel
+        (the projection is not uniform, so a few rounds; converges to < 0.01 px)."""
         if px is None:
             self.set_view(fov=self.fov * factor)
             return
         ra_b, dec_b = self.pick(px, py)
         self.set_view(fov=self.fov * factor)
-        for _ in range(2):
-            ra_a, dec_a = self.pick(px, py)
-            dra = (ra_b - ra_a + 540.0) % 360.0 - 180.0
-            self.set_view(ra=self.ra0 + dra, dec=self.dec0 + (dec_b - dec_a))
+        w, h = self.size
+        for _ in range(5):
+            p = self.project(ra_b, dec_b)
+            if p is None:
+                break
+            ex, ey = p[0] - px, p[1] - py
+            if math.hypot(ex, ey) < 0.01:
+                break
+            ra_c, dec_c = self.pick(w / 2.0 + ex, h / 2.0 + ey)
+            self.set_view(ra=ra_c, dec=dec_c)
 
     def fly_to(self, ra, dec, fov=None, duration=None):
         fov = self.fov if fov is None else max(self.MIN_FOV, min(self.max_fov(), fov))

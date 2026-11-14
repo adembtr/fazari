@@ -80,7 +80,33 @@ export class Engine {
         this.worker.postMessage({ type: "loadBin", id, um });
       });
     }
+    this.net.setMaxParallel(this.net.MAX_PARALLEL);
     return this.session.loadBin(um, onProgress).then((result) => ({ result, astrometry: slimAstrometry(this.session.astrometry()) }));
+  }
+
+  /** Quick preview of one bin (SkySession.loadPreview). Resolves {result, astrometry: null}. */
+  loadPreview(um, opts = {}, onProgress = () => {}) {
+    if (this.useWorker) {
+      const id = ++this.seq;
+      return new Promise((resolve, reject) => {
+        this.pending.set(id, { resolve, reject, onProgress });
+        this.worker.postMessage({ type: "loadPreview", id, um, opts });
+      });
+    }
+    this.net.setMaxParallel(6);
+    return this.session.loadPreview(um, opts, onProgress).then((result) => ({ result, astrometry: null }));
+  }
+
+  /** Spectrum of the source from the exposures loaded so far (spectrum.js). Resolves {result: spec}. */
+  spectrum(onProgress = () => {}) {
+    if (this.useWorker) {
+      const id = ++this.seq;
+      return new Promise((resolve, reject) => {
+        this.pending.set(id, { resolve, reject, onProgress });
+        this.worker.postMessage({ type: "spectrum", id });
+      });
+    }
+    return import("./spectrum.js").then((m) => m.spectrumForSession(this.session, { onProgress })).then((result) => ({ result }));
   }
 
   /** Abort in-flight fetches and stop. The engine cannot be used afterwards. */

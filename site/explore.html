@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Fazari Sky Explorer</title>
+<title data-i18n="pg.brandFull">Fazari Sky Explorer</title>
 <meta name="description" content="Fly around the whole sky, pick any spot, and watch NASA SPHEREx infrared images of it blink across observing seasons. Fazari, NASA Space Apps 2026.">
 <meta name="theme-color" content="#05070d">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -12,138 +12,161 @@
 <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/aladin-lite@3.8.2/dist/aladin.js" crossorigin>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22 fill=%22%2305070d%22 stroke=%22%237fd4ff%22 stroke-width=%221.6%22/%3E%3Ccircle cx=%2216.5%22 cy=%228%22 r=%222%22 fill=%22%23ffc94d%22/%3E%3C/svg%3E">
 <link rel="stylesheet" href="explore/explore.css">
+<link rel="stylesheet" href="explore/starlayers.css">
 </head>
 <body data-sheet="peek">
-<a class="skip" href="#cats">Skip to categories</a>
+<a class="skip" href="#cats" data-i18n="ex.skip">Skip to categories</a>
 
 <!-- The sky: Aladin Lite renders here. -->
-<div id="sky" role="application" tabindex="0"
+<div id="sky" role="application" tabindex="0" data-i18n-attr="aria-label:ex.sky.aria"
      aria-label="Interactive sky. Drag to look around, scroll or pinch to zoom, click to pick a spot. With the keyboard: arrow keys move, plus and minus zoom, Enter picks the centre."></div>
 
 <!-- Shown while the sky loads; never blocks the panel. -->
 <div id="intro" class="intro" aria-hidden="true">
   <div class="intro-stars"></div>
   <div class="intro-globe"></div>
-  <p class="intro-text">Opening the sky…</p>
+  <p class="intro-text" data-i18n="ex.intro">Opening the sky…</p>
 </div>
 
 <header class="topbar">
-  <a class="brand" href="explore.html" aria-label="Fazari Sky Explorer, home">
+  <a class="brand" href="explore.html" aria-label="Fazari Sky Explorer, home" data-i18n-attr="aria-label:ex.brand.aria">
     <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="10" ry="4" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".7"/><circle cx="16.5" cy="8" r="1.6" fill="#ffc94d"/></svg>
-    <span><b>Fazari</b> Sky Explorer</span>
+    <span><b>Fazari</b> <span data-i18n="pg.brand">Sky Explorer</span></span>
   </a>
+  <span class="lang-slot" data-i18n-toggle></span>
   <form id="search" role="search" autocomplete="off">
-    <label class="sr-only" for="q">Search the sky by name or coordinates</label>
+    <label class="sr-only" for="q" data-i18n="ex.q.label">Search the sky by name or coordinates</label>
     <svg class="mag" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-    <input id="q" type="search" placeholder="Name or coordinates, e.g. M 31 or 269.45 +4.69" enterkeyhint="go" spellcheck="false" aria-describedby="qHelp">
-    <button type="submit">Go</button>
+    <input id="q" type="search" placeholder="Name or coordinates, e.g. M 31 or 269.45 +4.69" data-i18n-attr="placeholder:ex.q.ph" enterkeyhint="go" spellcheck="false" aria-describedby="qHelp">
+    <button type="submit" data-i18n="ex.q.go">Go</button>
   </form>
   <div class="tools">
-    <div id="bgSwitch" class="seg" role="radiogroup" aria-label="Sky map">
-      <button id="bg-visible" role="radio" aria-checked="true" title="Visible light (DSS2)">Visible</button>
-      <button id="bg-twomass" role="radio" aria-checked="false" title="Near-infrared (2MASS)">Near-IR</button>
-      <button id="bg-wise" role="radio" aria-checked="false" title="Mid-infrared (AllWISE)">WISE</button>
-      <button id="bg-spherex" role="radio" aria-checked="false" title="SPHEREx all-sky map (NASA, DR1)">SPHEREx</button>
+    <div id="bgSwitch" class="seg" role="radiogroup" aria-label="Sky map" data-i18n-attr="aria-label:ex.bg.aria">
+      <button id="bg-visible" role="radio" aria-checked="true" title="Visible light (DSS2)" data-i18n="ex.bg.visible" data-i18n-attr="title:ex.bg.visible.t">Visible</button>
+      <button id="bg-twomass" role="radio" aria-checked="false" title="Near-infrared (2MASS)" data-i18n="ex.bg.twomass" data-i18n-attr="title:ex.bg.twomass.t">Near-IR</button>
+      <button id="bg-wise" role="radio" aria-checked="false" title="Mid-infrared (AllWISE)" data-i18n-attr="title:ex.bg.wise.t">WISE</button>
+      <button id="bg-spherex" role="radio" aria-checked="false" title="SPHEREx all-sky map (NASA, DR1)" data-i18n-attr="title:ex.bg.spherex.t">SPHEREx</button>
     </div>
-    <button id="btnLayers" class="icon-btn" aria-expanded="false" aria-controls="layers" title="Layers">
+    <button id="btnLayers" class="icon-btn" aria-expanded="false" aria-controls="layers" title="Layers" data-i18n-attr="title:ex.layers">
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 3 2 8l10 5 10-5-10-5Z M2 13l10 5 10-5 M2 17.5l10 5 10-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-      <span class="lbl">Layers</span>
+      <span class="lbl" data-i18n="ex.layers">Layers</span>
     </button>
-    <button id="btnGuide" class="icon-btn" title="How to read a blink">
+    <button id="btnGuide" class="icon-btn" title="How to read a blink" data-i18n-attr="title:ex.guide">
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9.3 9.4a2.8 2.8 0 1 1 3.8 2.6c-.7.3-1.1.9-1.1 1.6v.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17.3" r="1.1" fill="currentColor"/></svg>
-      <span class="lbl">How to read a blink</span>
+      <span class="lbl" data-i18n="ex.guide">How to read a blink</span>
     </button>
   </div>
 </header>
 
-<ol id="steps" class="steps" aria-label="How it works, in 4 steps">
-  <li data-step="1" class="on"><i aria-hidden="true">1</i><span><b>Drag &amp; zoom</b> the sky</span></li>
-  <li data-step="2"><i aria-hidden="true">2</i><span><b>Tap</b> a point</span></li>
-  <li data-step="3"><i aria-hidden="true">3</i><span><b>Fetch</b> SPHEREx images</span></li>
-  <li data-step="4"><i aria-hidden="true">4</i><span><b>Watch</b> the blink</span></li>
+<ol id="steps" class="steps" aria-label="How it works, in 4 steps" data-i18n-attr="aria-label:ex.steps.aria">
+  <li data-step="1" class="on"><i aria-hidden="true">1</i><span data-i18n-html="ex.step1"><b>Drag &amp; zoom</b> the sky</span></li>
+  <li data-step="2"><i aria-hidden="true">2</i><span data-i18n-html="ex.step2"><b>Tap</b> a point</span></li>
+  <li data-step="3"><i aria-hidden="true">3</i><span data-i18n-html="ex.step3"><b>Fetch</b> SPHEREx images</span></li>
+  <li data-step="4"><i aria-hidden="true">4</i><span data-i18n-html="ex.step4"><b>Watch</b> the blink</span></li>
 </ol>
 <p id="searchMsg" class="msg" role="status" aria-live="polite" hidden></p>
 
 <div id="layers" class="popover" hidden>
-  <h2>Layers</h2>
-  <label><input type="checkbox" id="tgMarkers" checked> Place markers</label>
-  <label><input type="checkbox" id="tgEcliptic" checked> <span class="sw" style="--c:#ffd36e"></span> Ecliptic (asteroid lane)</label>
-  <label><input type="checkbox" id="tgGalactic" checked> <span class="sw" style="--c:#9fc8ff"></span> Milky Way plane</label>
-  <label><input type="checkbox" id="tgP9"> <span class="sw" style="--c:#ff7ad9"></span> Planet Nine predicted band</label>
-  <label><input type="checkbox" id="tgFoot"> <span class="sw" style="--c:#ffc94d"></span> SPHEREx image footprints at the picked spot</label>
-  <label id="covRow" hidden><input type="checkbox" id="tgCoverage"> <span class="sw" style="--c:#38e0a0"></span> SPHEREx visits: <span style="color:#7ff0c0">4+ seasons</span> / <span style="color:#ffb07a">only 1</span></label>
+  <h2 data-i18n="ex.layers">Layers</h2>
+  <label><input type="checkbox" id="tgMarkers" checked> <span data-i18n="ex.ly.markers">Place markers</span></label>
+  <label><input type="checkbox" id="tgEcliptic" checked> <span class="sw" style="--c:#ffd36e"></span> <span data-i18n="ex.ly.ecl">Ecliptic (asteroid lane)</span></label>
+  <label><input type="checkbox" id="tgGalactic" checked> <span class="sw" style="--c:#9fc8ff"></span> <span data-i18n="ex.ly.gal">Milky Way plane</span></label>
+  <label><input type="checkbox" id="tgP9"> <span class="sw" style="--c:#ff7ad9"></span> <span data-i18n="ex.ly.p9">Planet Nine predicted band</span></label>
+  <label><input type="checkbox" id="tgFoot"> <span class="sw" style="--c:#ffc94d"></span> <span data-i18n="ex.ly.foot">SPHEREx image footprints at the picked spot</span></label>
+  <label id="covRow" hidden><input type="checkbox" id="tgCoverage"> <span class="sw" style="--c:#38e0a0"></span> <span data-i18n-html="ex.ly.cov">SPHEREx visits: <span style="color:#7ff0c0">4+ seasons</span> / <span style="color:#ffb07a">only 1</span></span></label>
   <hr>
-  <label><input type="checkbox" id="tgAuto" checked> Fade to SPHEREx when you zoom in</label>
-  <label id="sliceRow" class="row">SPHEREx colour
-    <select id="slice" aria-label="SPHEREx wavelength"></select></label>
-  <p class="fine">SPHEREx sees 102 infrared colours. Shorter wavelengths look more like stars; longer ones show warm dust and cold brown dwarfs.</p>
+  <label><input type="checkbox" id="tgAuto" checked> <span data-i18n="ex.ly.auto">Fade to SPHEREx when you zoom in</span></label>
+  <label><input type="checkbox" id="tgSharp" checked> <span data-i18n="ex.ly.sharp">Sharp close-up below 0.5° (Pan-STARRS; DSS2 in the far south)</span></label>
+  <label class="row mix"><span data-i18n="ex.ly.mix">Sharp map through Near-IR, WISE or SPHEREx</span>
+    <span><input type="range" id="sharpMix" min="0" max="100" step="10" value="0"> <output id="sharpMixOut" for="sharpMix">0%</output></span></label>
+  <label id="sliceRow" class="row"><span data-i18n="ex.ly.slice">SPHEREx colour</span>
+    <select id="slice" aria-label="SPHEREx wavelength" data-i18n-attr="aria-label:ex.ly.slice.aria"></select></label>
+  <p class="fine" data-i18n="ex.ly.fine">SPHEREx sees 102 infrared colours. Shorter wavelengths look more like stars; longer ones show warm dust and cold brown dwarfs.</p>
 </div>
 
-<aside id="panel" class="panel" aria-label="Explore by category">
+<aside id="panel" class="panel" aria-label="Explore by category" data-i18n-attr="aria-label:ex.panel.aria">
   <button id="sheetToggle" class="sheet-handle" aria-expanded="false" aria-controls="panelBody">
-    <span class="grip" aria-hidden="true"></span><span class="sr-only">Show or hide the place list</span>
+    <span class="grip" aria-hidden="true"></span><span class="sr-only" data-i18n="ex.sheet">Show or hide the place list</span>
   </button>
   <div id="panelBody" class="panel-body">
-    <h2 class="panel-title">Explore the sky</h2>
-    <p class="hint">You are inside the sky, looking out from Earth. Pick a category, or tap anywhere on the sky.</p>
-    <p id="qHelp" class="examples">Or type in the box: <button type="button" data-example="Barnard's Star">Barnard's Star</button>
+    <h2 class="panel-title" data-i18n="ex.panel.h">Explore the sky</h2>
+    <p class="hint" data-i18n="ex.panel.hint">You are inside the sky, looking out from Earth. Pick a category, or tap anywhere on the sky.</p>
+    <p id="qHelp" class="examples"><span data-i18n="ex.examples">Or type in the box:</span> <button type="button" data-example="Barnard's Star" data-i18n="tname.Barnard's Star">Barnard's Star</button>
       <button type="button" data-example="M 31">M 31</button> <button type="button" data-example="269.45 +4.69">269.45 +4.69</button>
       <button type="button" data-example="05 35 17 -05 23 28">05 35 17 −05 23 28</button></p>
-    <div id="cats" class="cats" role="group" aria-label="Categories"><p class="hint">Loading categories…</p></div>
+    <div id="cats" class="cats" role="group" aria-label="Categories" data-i18n-attr="aria-label:ex.cats.aria"><p class="hint" data-i18n="ex.cats.loading">Loading categories…</p></div>
     <section id="catDetail" class="cat-detail" hidden aria-live="polite">
       <h3 id="catTitle"></h3>
       <p id="catDesc"></p>
       <p id="catDisclaimer" class="disclaimer" hidden></p>
       <ul id="points" class="points"></ul>
     </section>
-    <p class="howto"><button type="button" id="btnGuide2" class="linkish">How do I read a blink?</button></p>
-    <p class="credits-mini">SPHEREx data: NASA/IPAC IRSA · Sky viewer: Aladin Lite (CDS) ·
-      <button type="button" class="linkish" data-open-about>Credits</button> · Not endorsed by NASA.</p>
+    <p class="howto"><button type="button" id="btnGuide2" class="linkish" data-i18n="ex.howto">How do I read a blink?</button></p>
+    <p class="credits-mini"><span data-i18n="ex.cm.a">SPHEREx data: NASA/IPAC IRSA · Sky viewer: Aladin Lite (CDS) ·</span>
+      <button type="button" class="linkish" data-open-about data-i18n="ex.credits">Credits</button> <span data-i18n="ex.cm.b">· Not endorsed by NASA.</span></p>
   </div>
 </aside>
 
 <section id="card" class="card" hidden aria-labelledby="cardTitle">
-  <button id="cardClose" class="x" aria-label="Close this place">×</button>
+  <button id="cardClose" class="x" aria-label="Close this place" data-i18n-attr="aria-label:ex.card.close">×</button>
   <p id="cardKicker" class="kicker"></p>
   <h2 id="cardTitle"></h2>
   <p id="cardNote" class="note"></p>
   <dl class="coords">
     <div><dt>RA</dt><dd id="cardRa"></dd></div>
     <div><dt>Dec</dt><dd id="cardDec"></dd></div>
-    <div class="deg"><dt>Degrees</dt><dd id="cardDeg"></dd></div>
+    <div class="deg"><dt data-i18n="ex.card.deg">Degrees</dt><dd id="cardDeg"></dd></div>
   </dl>
-  <p id="cardMoved" class="fine" hidden>This star moves fast: the marker shows where it is now, not where old catalogues put it.</p>
+  <p id="cardMoved" class="fine" hidden data-i18n="ex.card.moved">This star moves fast: the marker shows where it is now, not where old catalogues put it.</p>
+  <div id="cardFast" class="fast-info" hidden aria-live="polite"></div>
   <p id="cardCov" class="cov" hidden></p>
   <p id="cardFoot" class="foot-legend" hidden></p>
   <div class="actions">
     <button id="btnLook" class="primary">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
-      Fetch SPHEREx images here</button>
-    <button id="btnGallery" class="secondary" hidden>Prepared blink</button>
-    <button id="btnZoom" class="ghost">Zoom in</button>
-    <button id="btnShare" class="ghost">Copy link</button>
+      <span data-i18n="ex.card.look">Fetch SPHEREx images here</span></button>
+    <button id="btnGallery" class="secondary" hidden data-i18n="ex.card.gallery">Prepared blink</button>
+    <button id="btnZoom" class="ghost" data-i18n="ex.card.zoom">Zoom in</button>
+    <button id="btnShare" class="ghost" data-i18n="ex.card.share">Copy link</button>
   </div>
   <p class="engine-tag"><span id="engineDot" aria-hidden="true"></span><span id="engineTag">In-browser engine</span></p>
 </section>
 
 <!-- Compass: north and east on the sky, kept correct while you look around. -->
-<div id="compass" class="compass" role="img" aria-label="Compass: N points to the north celestial pole, E to the east">
+<div id="compass" class="compass" role="img" aria-label="Compass: N points to the north celestial pole, E to the east" data-i18n-attr="aria-label:ex.cmp.aria">
   <svg viewBox="-42 -42 84 84" width="84" height="84" aria-hidden="true">
     <circle r="40" fill="rgba(8,12,24,.75)" stroke="rgba(160,180,230,.4)"/>
     <g id="cmpN"><path d="M0 -27 L6 -10 L0 -13 L-6 -10 Z" fill="#ff7a6b"/><line y1="-11" y2="0" stroke="#ff7a6b" stroke-width="2.4"/></g>
     <g id="cmpE" transform="rotate(-90)"><path d="M0 -23 L5 -10 L0 -12 L-5 -10 Z" fill="#7fd4ff"/><line y1="-11" y2="0" stroke="#7fd4ff" stroke-width="2.2"/></g>
     <circle r="3" fill="#fff"/>
-    <text id="cmpNt" x="0" y="-31" text-anchor="middle" dominant-baseline="middle" font-size="12" font-weight="800" fill="#ffd0c9" font-family="system-ui">N</text>
-    <text id="cmpEt" x="-31" y="0" text-anchor="middle" dominant-baseline="middle" font-size="12" font-weight="800" fill="#cfeeff" font-family="system-ui">E</text>
+    <text id="cmpNt" x="0" y="-31" text-anchor="middle" dominant-baseline="middle" font-size="12" font-weight="800" fill="#ffd0c9" font-family="system-ui" data-i18n="ex.cmp.n">N</text>
+    <text id="cmpEt" x="-31" y="0" text-anchor="middle" dominant-baseline="middle" font-size="12" font-weight="800" fill="#cfeeff" font-family="system-ui" data-i18n="ex.cmp.e">E</text>
   </svg>
+</div>
+
+<!-- Scale bar, the size of one SPHEREx pixel, and which map is on screen (with the years it was taken). -->
+<div id="scale" class="scale" hidden>
+  <div class="scale-row"><span id="scaleLbl"></span><span id="scaleBar" class="scale-bar" aria-hidden="true"></span></div>
+  <div id="scalePx" class="scale-px" hidden><span id="scaleBox" class="scale-box" aria-hidden="true"></span><span data-i18n="ex.scale.px">1 SPHEREx pixel = 6.15″</span></div>
+  <p id="scaleImg" class="scale-img" hidden></p>
+  <p id="scaleMove" class="scale-move" hidden></p>
 </div>
 
 <div id="spxBadge" class="badge" hidden><i aria-hidden="true"></i><span>SPHEREx infrared map</span></div>
 
+<!-- Star layers: Gaia DR3 stars where they are in 2026 (explore/starsnow.js) and fast stars (explore/faststars.js). -->
+<div id="starTools" class="star-tools" role="group" aria-label="Star layers" data-i18n-attr="aria-label:ex.stars.aria">
+  <button type="button" id="tgStarsNow" class="chip" aria-pressed="false" title="Gaia DR3 stars where they are in 2026. The sky maps are older, so fast-moving stars sit off their image." data-i18n-attr="title:ex.ss.title">
+    <i aria-hidden="true"></i><span data-i18n="ex.ss.name">Stars now (Gaia 2026)</span><small>zoom in below 1°</small></button>
+  <button type="button" id="tgFast" class="chip" aria-pressed="false" title="Gaia DR3 stars that move more than 0.5″ a year and that SPHEREx should see" data-i18n-attr="title:ex.fs.title">
+    <i aria-hidden="true"></i><span data-i18n="ex.fs.name">Fast stars</span><small data-i18n="ex.fs.sub">over 0.5″ a year</small></button>
+  <div id="fastLegend" class="fast-legend" hidden></div>
+</div>
+
 <div class="status" aria-hidden="true">
-  <span>Looking at <b id="stRa">–</b> <b id="stDec">–</b></span>
-  <span>field <b id="stFov">–</b></span>
-  <span class="tip">Drag to look around · scroll or pinch to zoom · tap to pick</span>
+  <span><span data-i18n="ex.st.at">Looking at</span> <b id="stRa">–</b> <b id="stDec">–</b></span>
+  <span><span data-i18n="ex.st.field">field</span> <b id="stFov">–</b></span>
+  <span class="tip" data-i18n="ex.st.tip">Drag to look around · scroll or pinch to zoom · tap to pick</span>
   <span class="eng"><i aria-hidden="true"></i><span id="stEngine">checking engine…</span></span>
 </div>
 
@@ -152,25 +175,26 @@
 <aside id="blink" class="blink" hidden role="dialog" aria-modal="false" aria-labelledby="blinkTitle">
   <header>
     <h2 id="blinkTitle">SPHEREx blink</h2>
-    <a id="blinkNew" href="sky.html" target="_blank" rel="noopener" class="ghost">Open in new tab ↗</a>
-    <button id="blinkClose" class="x" aria-label="Close the blink panel">×</button>
+    <span id="blinkStage" class="stage-badge" hidden></span>
+    <a id="blinkNew" href="sky.html" target="_blank" rel="noopener" class="ghost" data-i18n="ex.blink.new">Open in new tab ↗</a>
+    <button id="blinkClose" class="x" aria-label="Close the blink panel" data-i18n-attr="aria-label:ex.blink.close">×</button>
   </header>
   <p id="resultBar" class="result-bar" hidden aria-live="polite"><b></b><small></small></p>
   <div class="frame-wrap">
-    <p id="blinkLoading" class="loading">Fetching SPHEREx images… the first look at a new spot can take a few seconds.</p>
+    <p id="blinkLoading" class="loading" data-i18n="ex.blink.loading">Fetching SPHEREx images… the first look at a new spot can take a few seconds.</p>
     <!-- Local Python engine: job progress (shown instead of the viewer until the job is done) -->
     <section id="job" class="job" hidden aria-live="polite">
-      <p class="job-engine">Local Python engine</p>
+      <p class="job-engine" data-i18n="ex.job.engine">Local Python engine</p>
       <h3 id="jobState">Starting…</h3>
       <div class="bar" role="progressbar" aria-labelledby="jobState" aria-valuemin="0" aria-valuemax="100"><i id="jobBar"></i></div>
       <p id="jobDetail" class="fine"></p>
       <p id="jobMsg" class="job-msg"></p>
       <div class="actions">
-        <button id="jobCancel" class="ghost">Cancel</button>
-        <button id="jobBrowser" class="ghost" hidden>Use the in-browser engine instead</button>
+        <button id="jobCancel" class="ghost" data-i18n="ex.job.cancel">Cancel</button>
+        <button id="jobBrowser" class="ghost" hidden data-i18n="ex.job.browser">Use the in-browser engine instead</button>
       </div>
     </section>
-    <iframe id="blinkFrame" title="SPHEREx blink viewer" loading="lazy"></iframe>
+    <iframe id="blinkFrame" title="SPHEREx blink viewer" data-i18n-attr="title:ex.blink.frame" loading="lazy"></iframe>
   </div>
   <!-- Reserved for a later "Mark as candidate" feature (not built yet): mark a moving object, pick a type
        (brown dwarf, planet candidate, star, asteroid, don't know), give it a "Fazari registry name" that is
@@ -180,24 +204,24 @@
 </aside>
 
 <footer class="foot">
-  Not endorsed by NASA · <button type="button" class="linkish" data-open-about>Credits</button> ·
-  SPHEREx data: NASA/IPAC IRSA · Viewer: <a href="https://aladin.cds.unistra.fr/AladinLite/" target="_blank" rel="noopener">Aladin Lite</a> (CDS, Strasbourg) ·
-  Map: <span id="creditSurvey">DSS2 colour: STScI/NASA, CDS</span> · Names: SIMBAD (CDS) · Fazari, NASA Space Apps 2026
+  <span data-i18n="ex.ft.ne">Not endorsed by NASA</span> · <button type="button" class="linkish" data-open-about data-i18n="ex.credits">Credits</button> ·
+  <span data-i18n="ex.ft.spx">SPHEREx data: NASA/IPAC IRSA</span><span id="creditGaia" hidden data-i18n="ex.ft.gaia"> · Stars: Gaia DR3 (ESA/Gaia/DPAC)</span> · <span data-i18n="ex.ft.viewer">Viewer:</span> <a href="https://aladin.cds.unistra.fr/AladinLite/" target="_blank" rel="noopener">Aladin Lite</a> (CDS, Strasbourg) ·
+  <span data-i18n="ex.ft.map">Map:</span> <span id="creditSurvey">DSS2 colour: STScI/NASA, CDS</span> · <span data-i18n="ex.ft.names">Names: SIMBAD (CDS)</span> · Fazari, NASA Space Apps 2026
 </footer>
 
 <!-- How to read a blink -->
 <dialog id="guide" class="dlg guide" aria-labelledby="guideTitle">
-  <button class="x" data-close aria-label="Close">×</button>
-  <h2 id="guideTitle">How to read a blink</h2>
+  <button class="x" data-close aria-label="Close" data-i18n-attr="aria-label:ex.close">×</button>
+  <h2 id="guideTitle" data-i18n="ex.guide">How to read a blink</h2>
   <ol class="guide-steps">
     <li>
       <svg viewBox="0 0 120 80" aria-hidden="true">
         <rect x="1" y="1" width="118" height="78" rx="6" fill="#070a14" stroke="#2a3350"/>
         <g fill="#cfd8ff"><circle cx="22" cy="20" r="2"/><circle cx="80" cy="15" r="1.5"/><circle cx="60" cy="50" r="2.5"/><circle cx="98" cy="60" r="1.8"/><circle cx="30" cy="62" r="1.4"/></g>
-        <text x="8" y="74" fill="#ffc94d" font-size="10" font-family="system-ui">Mar 2025<animate attributeName="opacity" values="1;0" dur="2s" calcMode="discrete" repeatCount="indefinite"/></text>
-        <text x="8" y="74" fill="#7fd4ff" font-size="10" font-family="system-ui" opacity="0">Sep 2025<animate attributeName="opacity" values="0;1" dur="2s" calcMode="discrete" repeatCount="indefinite"/></text>
+        <text x="8" y="74" fill="#ffc94d" font-size="10" font-family="system-ui"><tspan data-i18n="ex.g.mar">Mar 2025</tspan><animate attributeName="opacity" values="1;0" dur="2s" calcMode="discrete" repeatCount="indefinite"/></text>
+        <text x="8" y="74" fill="#7fd4ff" font-size="10" font-family="system-ui" opacity="0"><tspan data-i18n="ex.g.sep">Sep 2025</tspan><animate attributeName="opacity" values="0;1" dur="2s" calcMode="discrete" repeatCount="indefinite"/></text>
       </svg>
-      <div><h3>1. Pictures flip back and forth</h3><p>A blink shows the same patch of sky, photographed months apart, one after the other. Your eye catches anything that changes.</p></div>
+      <div><h3 data-i18n="ex.g.1h">1. Pictures flip back and forth</h3><p data-i18n="ex.g.1p">A blink shows the same patch of sky, photographed months apart, one after the other. Your eye catches anything that changes.</p></div>
     </li>
     <li>
       <svg viewBox="0 0 120 80" aria-hidden="true">
@@ -205,7 +229,7 @@
         <g fill="#cfd8ff"><circle cx="22" cy="20" r="2"/><circle cx="80" cy="15" r="1.5"/><circle cx="60" cy="50" r="2.5"/><circle cx="98" cy="60" r="1.8"/><circle cx="30" cy="62" r="1.4"/><ellipse cx="45" cy="30" rx="4" ry="2" opacity=".8"/></g>
         <path d="M86 40l6 6 12-14" fill="none" stroke="#5cf0a0" stroke-width="3" stroke-linecap="round"/>
       </svg>
-      <div><h3>2. Still dots are the background</h3><p>Almost every star and galaxy is so far away that it never seems to move. If a dot stays put, it is background.</p></div>
+      <div><h3 data-i18n="ex.g.2h">2. Still dots are the background</h3><p data-i18n="ex.g.2p">Almost every star and galaxy is so far away that it never seems to move. If a dot stays put, it is background.</p></div>
     </li>
     <li>
       <svg viewBox="0 0 120 80" aria-hidden="true">
@@ -214,7 +238,7 @@
         <circle cy="44" r="3.2" fill="#ff8a5c"><animate attributeName="cx" values="50;64" dur="2s" calcMode="discrete" repeatCount="indefinite"/></circle>
         <path d="M50 52h14" stroke="#ff8a5c" stroke-width="1.2" stroke-dasharray="2 2"/>
       </svg>
-      <div><h3>3. A dot that jumps has moved</h3><p>A small, steady step is a nearby star or brown dwarf crossing the sky. A big jump, or a dot that is there only once, is usually an asteroid.</p></div>
+      <div><h3 data-i18n="ex.g.3h">3. A dot that jumps has moved</h3><p data-i18n="ex.g.3p">A small, steady step is a nearby star or brown dwarf crossing the sky. A big jump, or a dot that is there only once, is usually an asteroid.</p></div>
     </li>
     <li>
       <svg viewBox="0 0 120 80" aria-hidden="true">
@@ -222,7 +246,7 @@
         <g fill="#cfd8ff"><circle cx="22" cy="20" r="2"/><circle cx="80" cy="15" r="1.5"/><circle cx="98" cy="60" r="1.8"/><circle cx="30" cy="62" r="1.4"/></g>
         <circle cx="58" cy="42" fill="#ffe066"><animate attributeName="r" values="2;6" dur="2s" calcMode="discrete" repeatCount="indefinite"/><animate attributeName="opacity" values=".55;1" dur="2s" calcMode="discrete" repeatCount="indefinite"/></circle>
       </svg>
-      <div><h3>4. Same place, new brightness: a variable</h3><p>If a dot stays in place but grows brighter or fainter, it is a variable star, like a pulsing red giant or a young star behind moving dust.</p></div>
+      <div><h3 data-i18n="ex.g.4h">4. Same place, new brightness: a variable</h3><p data-i18n="ex.g.4p">If a dot stays in place but grows brighter or fainter, it is a variable star, like a pulsing red giant or a young star behind moving dust.</p></div>
     </li>
     <li>
       <svg viewBox="0 0 120 80" aria-hidden="true">
@@ -230,28 +254,30 @@
         <g fill="#cfd8ff"><circle cx="22" cy="20" r="2"/><circle cx="80" cy="15" r="1.5"/><circle cx="60" cy="50" r="2.5"/><circle cx="98" cy="60" r="1.8"/></g>
         <g opacity="0"><path d="M10 70 112 22" stroke="#ffffff" stroke-width="1.6" opacity=".8"/><rect x="36" y="22" width="3" height="3" fill="#fff"/><animate attributeName="opacity" values="0;1" dur="2s" calcMode="discrete" repeatCount="indefinite"/></g>
       </svg>
-      <div><h3>5. Some changes are not real</h3><p>Cosmic-ray hits, satellite trails and glitches near image edges appear in just one picture. A real object shows up in several pictures and wavelengths.</p></div>
+      <div><h3 data-i18n="ex.g.5h">5. Some changes are not real</h3><p data-i18n="ex.g.5p">Cosmic-ray hits, satellite trails and glitches near image edges appear in just one picture. A real object shows up in several pictures and wavelengths.</p></div>
     </li>
   </ol>
-  <p class="honest"><b>Spotted something odd?</b> Call it a <em>candidate</em>, not a discovery. Astronomers check it against star catalogues (like Gaia and WISE) and more data first. That is how real science works.</p>
-  <div class="dlg-actions"><button class="primary" data-close>Got it</button></div>
+  <p class="honest" data-i18n-html="ex.g.honest"><b>Spotted something odd?</b> Call it a <em>candidate</em>, not a discovery. Astronomers check it against star catalogues (like Gaia and WISE) and more data first. That is how real science works.</p>
+  <div class="dlg-actions"><button class="primary" data-close data-i18n="ex.g.ok">Got it</button></div>
 </dialog>
 
 <!-- Credits -->
 <dialog id="about" class="dlg about" aria-labelledby="aboutTitle">
-  <button class="x" data-close aria-label="Close">×</button>
-  <h2 id="aboutTitle">Credits</h2>
+  <button class="x" data-close aria-label="Close" data-i18n-attr="aria-label:ex.close">×</button>
+  <h2 id="aboutTitle" data-i18n="ex.credits">Credits</h2>
   <ul>
-    <li><b>SPHEREx images</b>: NASA/JPL-Caltech, SPHEREx team, served by the NASA/IPAC Infrared Science Archive (IRSA). The SPHEREx all-sky map layer is the IRSA SPHEREx DR1 HiPS (Caltech/IPAC).</li>
-    <li><b>Sky viewer</b>: <a href="https://aladin.cds.unistra.fr/AladinLite/" target="_blank" rel="noopener">Aladin Lite v3</a> by CDS, Strasbourg Astronomical Data Centre (GPL-3.0; Boch &amp; Fernique 2014, ASPC 485, 277), loaded unmodified from its published npm build.</li>
-    <li><b>Sky maps</b>: DSS2 colour (Digitized Sky Survey, STScI/NASA; coloured and HEALPixed by CDS); 2MASS (University of Massachusetts &amp; IPAC/Caltech, NASA/NSF); AllWISE (NASA/JPL-Caltech/UCLA, IPAC). Maps are fetched from CDS, IRSA or ESA ESASky mirrors.</li>
-    <li><b>Names and positions</b>: SIMBAD and Sesame (CDS, Strasbourg); Gaia DR3 (ESA/Gaia/DPAC) for the challenge targets.</li>
-    <li><b>Planet Nine band</b>: Brown &amp; Batygin 2021, AJ 162, 219; Brown, Holman &amp; Batygin 2024 (arXiv:2401.17977). Planet Nine is a hypothesis; it has not been detected.</li>
+    <li data-i18n-html="ex.ab.1"><b>SPHEREx images</b>: NASA/JPL-Caltech, SPHEREx team, served by the NASA/IPAC Infrared Science Archive (IRSA). The SPHEREx all-sky map layer is the IRSA SPHEREx DR1 HiPS (Caltech/IPAC).</li>
+    <li data-i18n-html="ex.ab.2"><b>Sky viewer</b>: <a href="https://aladin.cds.unistra.fr/AladinLite/" target="_blank" rel="noopener">Aladin Lite v3</a> by CDS, Strasbourg Astronomical Data Centre (GPL-3.0; Boch &amp; Fernique 2014, ASPC 485, 277), loaded unmodified from its published npm build.</li>
+    <li data-i18n-html="ex.ab.3"><b>Sky maps</b>: DSS2 colour (Digitized Sky Survey, STScI/NASA; coloured and HEALPixed by CDS); 2MASS (University of Massachusetts &amp; IPAC/Caltech, NASA/NSF); AllWISE (NASA/JPL-Caltech/UCLA, IPAC); for close-ups, Pan-STARRS DR1 colour (PS1 Science Consortium; images from STScI/MAST, HEALPixed by CDS). Maps are fetched from CDS, IRSA, ESA ESASky or STScI/MAST mirrors. Each map shows the sky in the years it was taken (DSS2 1975–1999, 2MASS 1997–2001, AllWISE 2010–2011, Pan-STARRS 2009–2015, SPHEREx 2025–2026), so fast-moving stars sit where they were then.</li>
+    <li data-i18n-html="ex.ab.4"><b>Names and positions</b>: SIMBAD and Sesame (CDS, Strasbourg); Gaia DR3 (ESA/Gaia/DPAC) for the challenge targets.</li>
+    <li data-i18n-html="ex.ab.5"><b>Stars now and fast stars</b>: Gaia DR3, ESA/Gaia/DPAC (Gaia Collaboration, Vallenari et al. 2023, A&amp;A 674, A1), via CDS VizieR (I/355/gaiadr3) and the ESA Gaia archive; positions moved to 2026.0 with Gaia proper motions. Near-infrared magnitudes of the fast stars: 2MASS and AllWISE through the Gaia DR3 cross-match.</li>
+    <li data-i18n-html="ex.ab.6"><b>Planet Nine band</b>: Brown &amp; Batygin 2021, AJ 162, 219; Brown, Holman &amp; Batygin 2024 (arXiv:2401.17977). Planet Nine is a hypothesis; it has not been detected.</li>
   </ul>
-  <p>Made by team Fazari for NASA Space Apps Challenge 2026 (“Planet X and SPHEREx”). This site is not endorsed by NASA. Source: <a href="https://github.com/adembtr/fazari" target="_blank" rel="noopener">github.com/adembtr/fazari</a>.</p>
-  <div class="dlg-actions"><button class="primary" data-close>Close</button></div>
+  <p data-i18n-html="ex.ab.p">Made by team Fazari for NASA Space Apps Challenge 2026 (“Planet X and SPHEREx”). This site is not endorsed by NASA. Source: <a href="https://github.com/adembtr/fazari" target="_blank" rel="noopener">github.com/adembtr/fazari</a>.</p>
+  <div class="dlg-actions"><button class="primary" data-close data-i18n="ex.close">Close</button></div>
 </dialog>
 
 <script type="module" src="explore/main.js"></script>
+<script type="module" src="explore/hero.js"></script>
 </body>
 </html>

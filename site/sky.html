@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SPHEREx Sky Blink</title>
+<title data-i18n="sk.title">SPHEREx Sky Blink</title>
 <meta name="description" content="Blink any point of the sky in SPHEREx images, built in your browser from the public NASA/IPAC data on AWS.">
 <style>
   :root { --bg:#0b0d12; --fg:#e8eaf0; --mut:#9aa3b2; --acc:#ffb347; --card:#151925; --line:#262c3c;
@@ -43,42 +43,49 @@
   td, th { text-align:left; padding:3px 6px; border-bottom:1px solid var(--line); }
   .big { font-size: 1.02rem; }
   #result { display:none; }
+  .stagerow { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 10px; }
+  .stagebadge { font-size:.82rem; font-weight:700; padding:2px 10px; border-radius:999px; border:1px solid; white-space:nowrap; }
+  .stagebadge.preview { color:#ffdf9e; border-color:#8a6a1f; background:#33290f; }
+  .stagebadge.full { color:#c4f2d4; border-color:#2f7a4c; background:#10291b; }
+  #bins button.loaded::after { content:" ✓"; color: var(--ok); }
   footer { margin: 18px 0 30px; }
+  .titlerow { display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; margin:0 0 4px; }
+  .titlerow h1 { margin:0; }
   @media (max-width: 520px) { body { font-size: 14px; } main { padding: 12px; } }
 </style>
 </head>
 <body>
 <main>
-  <h1>SPHEREx sky blink</h1>
-  <p class="sub">Pick any point of the sky. This page finds the SPHEREx exposures that cover it, reads only the
+  <div class="titlerow"><h1 data-i18n="sk.h1">SPHEREx sky blink</h1><span data-i18n-toggle></span></div>
+  <p class="sub" data-i18n="sk.intro">Pick any point of the sky. This page finds the SPHEREx exposures that cover it, reads only the
     needed rows of each image from the public archive on AWS (HTTP Range), and builds an aligned blink of the
     observing seasons in your browser. Moving stars jump; everything else stays still.</p>
 
   <form id="form">
-    <input id="q" type="text" placeholder="Name or RA Dec, e.g. Barnard's Star or 17:57:48.5 +04:41:36" autocomplete="off" aria-label="Name or coordinates">
-    <button type="submit">Go</button>
+    <input id="q" type="text" placeholder="Name or RA Dec, e.g. Barnard's Star or 17:57:48.5 +04:41:36" autocomplete="off" aria-label="Name or coordinates" data-i18n-attr="placeholder:sk.q.ph;aria-label:sk.q.aria">
+    <button type="submit" data-i18n="sk.go">Go</button>
   </form>
   <div class="examples">
-    <span>Examples:</span>
-    <a href="?target=barnard" data-q="Barnard's Star">Barnard's Star</a>
+    <span data-i18n="sk.examples">Examples:</span>
+    <a href="?target=barnard" data-q="Barnard's Star" data-i18n="tname.Barnard's Star">Barnard's Star</a>
     <a href="?target=eps_indi_b" data-q="Epsilon Indi B">Epsilon Indi B</a>
     <a href="?target=wise0855" data-q="WISE 0855-0714">WISE 0855−0714</a>
     <a href="?target=rw_aur" data-q="RW Aurigae">RW Aurigae</a>
     <a href="?target=r_dra" data-q="R Draconis">R Draconis</a>
-    <a href="?ra=162.3289&amp;dec=-53.3194" data-q="162.3289 -53.3194">Luhman 16AB (coordinates)</a>
+    <a href="?ra=162.3289&amp;dec=-53.3194" data-q="162.3289 -53.3194" data-i18n="sk.ex.luhman">Luhman 16AB (coordinates)</a>
   </div>
 
   <div class="card">
     <div id="what" class="sub"></div>
-    <div id="status" class="status">Loading...</div>
+    <div class="stagerow"><span id="stage" class="stagebadge" hidden></span><div id="status" class="status">Loading...</div></div>
     <div class="progressrow">
       <div class="barwrap"><div id="bar"></div></div>
-      <button id="cancel" type="button" hidden>Cancel</button>
+      <button id="cancel" type="button" hidden data-i18n="sk.cancel">Cancel</button>
     </div>
     <div id="progress" class="small"></div>
     <div id="found" class="small"></div>
     <div class="controls" style="margin-top:6px">
-      <label>Exposures per season <select id="cap">
+      <label><span data-i18n="sk.cap">Exposures per season</span> <select id="cap">
         <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
         <option value="6">6</option><option value="8">8</option></select></label>
       <span id="profile" class="small"></span>
@@ -87,46 +94,47 @@
 
   <section id="viewer" hidden>
     <div class="card">
-      <h2>Wavelength</h2>
+      <h2 data-i18n="sk.wl.h">Wavelength</h2>
       <div id="bins"></div>
       <div class="controls">
-        <button id="allbins" type="button">Load all wavelengths</button>
-        <span class="small">Each bin uses one detector; about 2.5 MB per exposure. Work runs in a background thread.</span>
+        <button id="allbins" type="button" data-i18n="sk.allbins">Load all wavelengths</button>
+        <span class="small" data-i18n="sk.allbins.note">Each bin uses one detector; about 2.5 MB per exposure. Work runs in a background thread.</span>
       </div>
     </div>
 
     <div class="card">
       <div class="controls">
-        <button id="prev" type="button" aria-label="Previous season">◀</button>
+        <button id="prev" type="button" aria-label="Previous season" data-i18n-attr="aria-label:sk.prev">◀</button>
         <button id="play" type="button">Pause</button>
-        <button id="next" type="button" aria-label="Next season">▶</button>
-        <label>Frame time <input id="speed" type="range" min="200" max="2000" step="50" value="800"></label>
+        <button id="next" type="button" aria-label="Next season" data-i18n-attr="aria-label:sk.next">▶</button>
+        <label><span data-i18n="sk.speed">Frame time</span> <input id="speed" type="range" min="200" max="2000" step="50" value="800"></label>
         <span id="speedv" class="small">800 ms</span>
-        <label>Zoom <select id="zoom"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option></select></label>
-        <label><input id="mark" type="checkbox" checked> Catalogue position</label>
-        <label><input id="cent" type="checkbox"> Measured centroid</label>
+        <label><span data-i18n="sk.zoom">Zoom</span> <select id="zoom"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option></select></label>
+        <label><input id="mark" type="checkbox" checked> <span data-i18n="sk.mark">Catalogue position</span></label>
+        <label><input id="cent" type="checkbox"> <span data-i18n="sk.cent">Measured centroid</span></label>
       </div>
       <div class="info"><span id="date"></span><span id="detail" class="small"></span></div>
-      <canvas id="blink" width="720" height="720" aria-label="Blink of the SPHEREx seasons"></canvas>
-      <p class="small">North up, east left, 3″ pixels. Orange ring: catalogue position moved to the season's mean date
-        (proper motion and parallax). White: saturated star core. <span id="fieldnote"></span></p>
+      <canvas id="blink" width="720" height="720" aria-label="Blink of the SPHEREx seasons" data-i18n-attr="aria-label:sk.blink.aria"></canvas>
+      <p class="small"><span data-i18n="sk.blink.cap">North up, east left, 3″ pixels. Orange ring: catalogue position moved to the season's mean date
+        (proper motion and parallax). White: saturated star core.</span> <span id="fieldnote"></span></p>
     </div>
 
     <div class="card">
-      <h2>Difference (last minus first season)</h2>
-      <canvas id="diff" width="720" height="720" aria-label="Difference image"></canvas>
+      <h2 data-i18n="sk.diff.h">Difference (last minus first season)</h2>
+      <canvas id="diff" width="720" height="720" aria-label="Difference image" data-i18n-attr="aria-label:sk.diff.aria"></canvas>
       <p id="diffcap" class="small"></p>
     </div>
 
     <div class="card">
-      <h2>Measured motion</h2>
+      <h2 data-i18n="sk.motion.h">Measured motion</h2>
       <div id="measure"></div>
     </div>
+    <div class="card" id="spectrum" hidden></div>
   </section>
 
   <footer class="small">
-    <p><a id="share" href="#">Link to this view</a> · <a href="ornek.html">Precomputed example</a> · <a href="index.html">Home</a></p>
-    <p>SPHEREx data: NASA/IPAC Infrared Science Archive (IRSA). Not endorsed by NASA.
+    <p><a id="share" href="#" data-i18n="sk.share">Link to this view</a> · <a href="ornek.html" data-i18n="sk.example">Precomputed example</a> · <a href="index.html" data-i18n="sk.home">Home</a></p>
+    <p data-i18n="sk.credits">SPHEREx data: NASA/IPAC Infrared Science Archive (IRSA). Not endorsed by NASA.
       Names: CDS Sesame / SIMBAD. Reference stars: Gaia DR3 and Tycho-2 via CDS VizieR.</p>
   </footer>
   <pre id="result" data-state="idle"></pre>

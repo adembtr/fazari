@@ -2,25 +2,83 @@
 Run: uv run --no-project --with astropy --with numpy python -I site/explore/tools/build_categories.py <repo root>
  Coordinates resolved live from SIMBAD via CDS Sesame,
 challenge targets taken from pipeline/targets.json (Gaia DR3) and cross-checked against SIMBAD,
-computed points (ecliptic, poles, Planet Nine path) from astropy."""
-import json, re, sys, math, urllib.request, urllib.parse, datetime
+computed points (ecliptic, poles, Planet Nine path) from astropy.
+Parallax (mas) of the nearby stars and brown dwarfs: the SIMBAD value (Gaia DR3 where SIMBAD takes it from Gaia,
+else the cited literature value); challenge targets: pipeline/targets_extra.json (the values blink.py uses).
+Turkish text (name_tr, description_tr, disclaimer_tr, note_tr) comes from categories_tr.json next to this script.
+Only the Turkish fields, no network, nothing recomputed: python3 -I site/explore/tools/build_categories.py <repo root> --tr-only"""
+import json, re, sys, math, urllib.request, urllib.parse, datetime, os
+
+REPO = sys.argv[1]
+TR_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "categories_tr.json")
+
+def add_tr(cats):
+    """Turkish fields from categories_tr.json, each right after its English field (category: name_tr,
+    description_tr, disclaimer_tr; point: name_tr, note_tr). Every other field stays as it is."""
+    tr = json.load(open(TR_FILE, encoding="utf-8"))
+    def put(d, extra):
+        if not extra:
+            return
+        new = {}
+        for k, v in d.items():
+            if k in extra:                       # an older Turkish value: replaced next to its English field
+                continue
+            new[k] = v
+            if k + "_tr" in extra:
+                new[k + "_tr"] = extra[k + "_tr"]
+        for k, v in extra.items():
+            new.setdefault(k, v)
+        d.clear(); d.update(new)
+    for c in cats:
+        put(c, tr["categories"].get(c["id"]))
+        for p in c.get("points", []):
+            put(p, tr["points"].get(p["id"]))
+    return cats
+
+if "--tr-only" in sys.argv[2:]:
+    path = f"{REPO}/site/data/categories.json"
+    data = json.load(open(path, encoding="utf-8"))
+    add_tr(data["categories"])
+    with open(path + ".tmp", "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=1, ensure_ascii=False)
+    os.replace(path + ".tmp", path)
+    sys.exit(0)
+
 import numpy as np
 import astropy.units as u
 from astropy.coordinates import SkyCoord, BarycentricMeanEcliptic, Galactic, ICRS, get_constellation
 
-REPO = sys.argv[1]
 targets = json.load(open(f"{REPO}/pipeline/targets.json"))
+targets_extra = json.load(open(f"{REPO}/pipeline/targets_extra.json"))
 TODAY = datetime.date.today().isoformat()
 
 def sesame(name):
-    url = "https://cds.unistra.fr/cgi-bin/nph-sesame/-oxp/S?" + urllib.parse.quote(name)
+    url = "https://cds.unistra.fr/cgi-bin/nph-sesame/-oxpI/S?" + urllib.parse.quote(name)
     x = urllib.request.urlopen(url, timeout=40).read().decode()
     g = lambda t: (re.search(f"<{t}>([^<]*)</{t}>", x) or [None, None])[1]
     if g("jradeg") is None:
         raise SystemExit(f"Sesame could not resolve {name!r}")
+    plx = re.search(r"<plx><v>([^<]*)</v><e>([^<]*)</e>(?:<q>[^<]*</q>)?<r>([^<]*)</r></plx>", x)
+    gaia = re.search(r"<alias>Gaia DR3 (\d+)</alias>", x)
     return dict(oname=g("oname"), ra=float(g("jradeg")), dec=float(g("jdedeg")),
                 pmra=float(g("pmRA")) if g("pmRA") else None,
-                pmdec=float(g("pmDE")) if g("pmDE") else None, otype=g("otype"))
+                pmdec=float(g("pmDE")) if g("pmDE") else None, otype=g("otype"),
+                plx=(float(plx[1]), float(plx[2]), plx[3].replace("&amp;", "&")) if plx else None,
+                gaia_dr3=gaia[1] if gaia else None)
+
+# SIMBAD parallax references: Gaia (E)DR3 catalogue entries, and readable names for the literature ones
+GAIA_REFS = {"2020yCat.1350....0G", "2022yCat.1355....0G", "2023A&A...674A...1G"}
+CITE = {"2018A&A...618A.111L": "Lazorenko & Sahlmann 2018, A&A 618, A111",
+        "2012ApJ...752...56F": "Faherty et al. 2012, ApJ 752, 56"}
+
+def parallax_fields(s):
+    """parallax (mas) and its source from a sesame() result, or {} when SIMBAD has none."""
+    if not s["plx"] or s["plx"][0] <= 0:
+        return {}
+    v, e, ref = s["plx"]
+    if ref in GAIA_REFS and s["gaia_dr3"]:
+        return dict(parallax=round(v, 3), parallax_source=f"Gaia DR3 {s['gaia_dr3']} ({v:.3f} +- {e:.3f} mas)")
+    return dict(parallax=v, parallax_source=f"{CITE.get(ref, ref)} ({v} +- {e} mas), via SIMBAD; no Gaia DR3 parallax")
 
 def move(ra, dec, pmra, pmdec, dt):
     d = dec + pmdec * dt / 3.6e6
@@ -29,11 +87,13 @@ def move(ra, dec, pmra, pmdec, dt):
 
 def r6(x): return None if x is None else round(x, 6)
 
-def simbad_point(pid, name, simbad_name, note, moving=False):
+def simbad_point(pid, name, simbad_name, note, moving=False, plx=False):
     s = sesame(simbad_name)
     p = dict(id=pid, name=name, ra=r6(s["ra"]), dec=r6(s["dec"]), epoch=2000.0)
     if moving and s["pmra"] is not None:
         p["pmra"], p["pmdec"] = s["pmra"], s["pmdec"]
+        if plx:                                  # nearby stars / brown dwarfs: the engine needs it
+            p.update(parallax_fields(s))
         p["ra_2026"], p["dec_2026"] = map(r6, move(s["ra"], s["dec"], s["pmra"], s["pmdec"], 26.0))
     p["note"] = note
     p["source"] = f"SIMBAD via CDS Sesame ({s['oname'].strip()}, type {s['otype']}), retrieved {TODAY}"
@@ -43,6 +103,9 @@ def challenge_point(tid, note, simbad_name):
     t = targets[tid]
     p = dict(id=tid, name=t["name"], ra=r6(t["ra"]), dec=r6(t["dec"]), epoch=t["epoch"],
              pmra=round(t["pmra"], 3), pmdec=round(t["pmdec"], 3))
+    x = targets_extra.get(tid, {})
+    if x.get("plx"):
+        p["parallax"], p["parallax_source"] = x["plx"], x.get("plx_source", "pipeline/targets_extra.json")
     p["ra_2026"], p["dec_2026"] = map(r6, move(t["ra"], t["dec"], t["pmra"], t["pmdec"], 2026.0 - t["epoch"]))
     # cross-check with SIMBAD (epoch 2000 -> target epoch)
     s = sesame(simbad_name)
@@ -84,14 +147,14 @@ cats.append(dict(id="fast_stars", name="Fast nearby stars", icon="🏃",
     description="Close neighbours of the Sun that crawl across the sky fast enough to notice between observing seasons.",
     points=[
         challenge[0] | {"challenge": True},
-        simbad_point("kapteyn", "Kapteyn's Star", "Kapteyn's star", "An old halo star passing through our neighbourhood; the second-fastest star in the sky.", True),
-        simbad_point("groombridge1830", "Groombridge 1830", "HD 103095", "An old, metal-poor star racing through the Sun's neighbourhood.", True),
-        simbad_point("61cyg_a", "61 Cygni A", "61 Cyg A", "The first star to have its distance measured (1838), thanks to its fast motion.", True),
-        simbad_point("lacaille9352", "Lacaille 9352", "GJ 887", "A bright red dwarf about 11 light-years away.", True),
-        simbad_point("van_maanen", "Van Maanen's Star", "Wolf 28", "The closest single white dwarf, a burnt-out star core.", True),
-        simbad_point("proxima", "Proxima Centauri", "Proxima Centauri", "The closest star to the Sun, 4.2 light-years away.", True),
-        simbad_point("wolf359", "Wolf 359", "Wolf 359", "One of the closest and faintest red dwarfs.", True),
-        simbad_point("teegarden", "Teegarden's Star", "Teegarden's star", "A tiny red dwarf with planets, found only in 2003 because of its fast motion.", True),
+        simbad_point("kapteyn", "Kapteyn's Star", "Kapteyn's star", "An old halo star passing through our neighbourhood; the second-fastest star in the sky.", True, plx=True),
+        simbad_point("groombridge1830", "Groombridge 1830", "HD 103095", "An old, metal-poor star racing through the Sun's neighbourhood.", True, plx=True),
+        simbad_point("61cyg_a", "61 Cygni A", "61 Cyg A", "The first star to have its distance measured (1838), thanks to its fast motion.", True, plx=True),
+        simbad_point("lacaille9352", "Lacaille 9352", "GJ 887", "A bright red dwarf about 11 light-years away.", True, plx=True),
+        simbad_point("van_maanen", "Van Maanen's Star", "Wolf 28", "The closest single white dwarf, a burnt-out star core.", True, plx=True),
+        simbad_point("proxima", "Proxima Centauri", "Proxima Centauri", "The closest star to the Sun, 4.2 light-years away.", True, plx=True),
+        simbad_point("wolf359", "Wolf 359", "Wolf 359", "One of the closest and faintest red dwarfs.", True, plx=True),
+        simbad_point("teegarden", "Teegarden's Star", "Teegarden's star", "A tiny red dwarf with planets, found only in 2003 because of its fast motion.", True, plx=True),
     ]))
 
 # 3. Brown dwarfs --------------------------------------------------------------
@@ -99,14 +162,14 @@ print("bd", file=sys.stderr)
 cats.append(dict(id="brown_dwarfs", name="Brown dwarfs", icon="🟤",
     description="\"Failed stars\": too small to shine like the Sun, they glow faintly in infrared light, which is what SPHEREx sees.",
     points=[
-        simbad_point("luhman16", "Luhman 16AB", "Luhman 16", "The closest brown dwarfs to the Sun, a pair 6.5 light-years away.", True),
+        simbad_point("luhman16", "Luhman 16AB", "Luhman 16", "The closest brown dwarfs to the Sun, a pair 6.5 light-years away.", True, plx=True),
         challenge[2] | {"challenge": True},
         challenge[1] | {"challenge": True},
-        simbad_point("gj229", "Gliese 229 (B)", "HD 42581", "The first brown dwarf ever imaged (1995) orbits this red dwarf. Point is the host star, Gliese 229 A.", True),
-        simbad_point("2m0415", "2MASS J0415-0935", "2MASS J04151954-0935066", "One of the coldest T-type brown dwarfs.", True),
-        simbad_point("ugps0722", "UGPS J0722-0540", "UGPS J072227.51-054031.2", "A very cold brown dwarf found in an infrared survey.", True),
-        simbad_point("gj570d", "Gliese 570 D", "GJ 570 D", "A cold brown dwarf orbiting a triple star system.", True),
-        simbad_point("ross458c", "Ross 458 C", "Ross 458 C", "A planet-mass brown dwarf companion of a double star.", True),
+        simbad_point("gj229", "Gliese 229 (B)", "HD 42581", "The first brown dwarf ever imaged (1995) orbits this red dwarf. Point is the host star, Gliese 229 A.", True, plx=True),
+        simbad_point("2m0415", "2MASS J0415-0935", "2MASS J04151954-0935066", "One of the coldest T-type brown dwarfs.", True, plx=True),
+        simbad_point("ugps0722", "UGPS J0722-0540", "UGPS J072227.51-054031.2", "A very cold brown dwarf found in an infrared survey.", True, plx=True),
+        simbad_point("gj570d", "Gliese 570 D", "GJ 570 D", "A cold brown dwarf orbiting a triple star system.", True, plx=True),
+        simbad_point("ross458c", "Ross 458 C", "Ross 458 C", "A planet-mass brown dwarf companion of a double star.", True, plx=True),
     ]))
 
 # 4. Variable stars ------------------------------------------------------------
@@ -235,10 +298,12 @@ cats.append(dict(id="surprise", name="Surprise me", icon="🎲", random=True,
 
 out = dict(
     _note=("Named sky categories for explore.html. ra/dec in degrees (ICRS) at 'epoch' (Julian year). "
-           "pmra = mu_alpha*cos(dec), pmdec in mas/yr when known. ra_2026/dec_2026 = position linearly moved to 2026.0 "
+           "pmra = mu_alpha*cos(dec), pmdec in mas/yr when known; parallax in mas (nearby stars and brown dwarfs, "
+           "with parallax_source). ra_2026/dec_2026 = position linearly moved to 2026.0 "
            "(use these to centre cutouts on fast movers). Points with 'challenge': true are the 5 official targets; "
            "'gallery' is the precomputed product folder (may not exist yet). Built by a script from SIMBAD (CDS Sesame), "
            "Gaia DR3 (pipeline/targets.json) and astropy."),
     generated=TODAY, categories=cats)
+add_tr(cats)                                     # Turkish fields from categories_tr.json
 json.dump(out, open(f"{REPO}/site/data/categories.json", "w"), indent=1, ensure_ascii=False)
 print("points:", sum(len(c["points"]) for c in cats), file=sys.stderr)

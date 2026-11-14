@@ -1,0 +1,297 @@
+{
+ "_note": "Turkish text for site/data/categories.json, keyed by category / point id. build_categories.py adds these as name_tr, description_tr, disclaimer_tr (categories) and name_tr, note_tr (points), next to the English fields. Patch the data without rebuilding: python3 -I site/explore/tools/build_categories.py <repo root> --tr-only",
+ "categories": {
+  "challenge": {
+   "name_tr": "Yarışma hedefleri",
+   "description_tr": "NASA Space Apps 2026 \"Planet X and SPHEREx\" yarışmasının beş resmi test hedefi."
+  },
+  "fast_stars": {
+   "name_tr": "Hızlı yakın yıldızlar",
+   "description_tr": "Güneş'in yakın komşuları. Gökyüzünde, iki gözlem sezonu arasında fark edilecek kadar hızlı ilerlerler."
+  },
+  "brown_dwarfs": {
+   "name_tr": "Kahverengi cüceler",
+   "description_tr": "\"Başarısız yıldızlar\": Güneş gibi parlayamayacak kadar küçükler. Kızılötesi ışıkta sönükçe parlarlar; SPHEREx de bu ışığı görür."
+  },
+  "variable_stars": {
+   "name_tr": "Değişen yıldızlar",
+   "description_tr": "Parlaklığı artıp azalan yıldızlar. Blink'te yerlerinde kalırlar ama parlaklıkları değişir."
+  },
+  "planet_nine": {
+   "name_tr": "Dokuzuncu Gezegen arama bölgesi",
+   "description_tr": "Kurama göre gizli bir dev gezegen bu gökyüzü şeridinde olabilir. Böyle bir gezegen GÖZLENMEDİ; burası bakılacak bir yer, bir tespit değil.",
+   "disclaimer_tr": "Dokuzuncu Gezegen bir varsayım. Doğrulanmış bir gözlem yok. Burada gördüğünüz hareketli bir nokta büyük olasılıkla bir asteroit, bir görüntü hatası ya da bilinen bir yıldızdır."
+  },
+  "milky_way": {
+   "name_tr": "Samanyolu'nun merkezi",
+   "description_tr": "Gökadamızın kalabalık kalbi. Görünür ışıkta tozun arkasında gizli, kızılötesinde çok daha net."
+  },
+  "nebulae": {
+   "name_tr": "Bulutsular",
+   "description_tr": "Yıldızların doğduğu ya da öldüğü gaz ve toz bulutları. Kızılötesi ışık tozun içinden geçer."
+  },
+  "galaxies": {
+   "name_tr": "Gökadalar",
+   "description_tr": "Samanyolu'nun çok ötesinde, milyarlarca yıldızdan oluşan başka adalar."
+  },
+  "ecliptic": {
+   "name_tr": "Asteroit yolu (ekliptik)",
+   "description_tr": "Güneş'in ve gezegenlerin gökyüzündeki yolu. Asteroitlerin çoğu bu çizginin yakınındadır; bu yüzden burada hareketli noktalar sık görülür."
+  },
+  "deep_fields": {
+   "name_tr": "SPHEREx derin alanları",
+   "description_tr": "İki ekliptik kutup. SPHEREx neredeyse her turunda bunların üzerinden geçer; bu yüzden en çok gözlem bu noktalarda."
+  },
+  "surprise": {
+   "name_tr": "Beni şaşırt",
+   "description_tr": "Rastgele bir noktaya git: yukarıdaki noktalardan biri ya da gökyüzünde herhangi bir yer."
+  }
+ },
+ "points": {
+  "barnard": {
+   "name_tr": "Barnard Yıldızı",
+   "note_tr": "Gökyüzümüzde en hızlı ilerleyen yıldız. Her yıl yaklaşık 10 yay saniyesi kayar; SPHEREx sezonları arasında görülecek kadar."
+  },
+  "eps_indi_b": {
+   "note_tr": "Yakındaki Güneş benzeri bir yıldızın çevresinde dönen iki soğuk kahverengi cüce. Gökyüzünde hızlı ilerlerler."
+  },
+  "wise0855": {
+   "note_tr": "Bilinen en soğuk kahverengi cüce; Kuzey Kutbu kadar soğuk. Çok sönük ama kızılötesinde parlak."
+  },
+  "rw_aur": {
+   "note_tr": "Hâlâ tozla çevrili genç bir yıldız. Önünden toz bulutları geçtikçe parlaklığı değişir."
+  },
+  "r_dra": {
+   "note_tr": "Nabız gibi atan bir kırmızı dev. Yaklaşık sekiz ayda parlayıp sönükleşir."
+  },
+  "kapteyn": {
+   "name_tr": "Kapteyn Yıldızı",
+   "note_tr": "Gökadamızın halesinden gelip yakınımızdan geçen yaşlı bir yıldız. Gökyüzünde en hızlı ikinci yıldız."
+  },
+  "groombridge1830": {
+   "note_tr": "Güneş'in yakınından hızla geçen yaşlı, metal bakımından fakir bir yıldız."
+  },
+  "61cyg_a": {
+   "note_tr": "Uzaklığı ölçülen ilk yıldız (1838). Bunu hızlı hareketi sağladı."
+  },
+  "lacaille9352": {
+   "note_tr": "Yaklaşık 11 ışık yılı uzaklıkta parlak bir kırmızı cüce."
+  },
+  "van_maanen": {
+   "name_tr": "Van Maanen Yıldızı",
+   "note_tr": "En yakın tek beyaz cüce: sönmüş bir yıldız çekirdeği."
+  },
+  "proxima": {
+   "note_tr": "Güneş'e en yakın yıldız, 4,2 ışık yılı uzaklıkta."
+  },
+  "wolf359": {
+   "note_tr": "En yakın ve en sönük kırmızı cücelerden biri."
+  },
+  "teegarden": {
+   "name_tr": "Teegarden Yıldızı",
+   "note_tr": "Gezegenleri olan küçücük bir kırmızı cüce. Hızlı hareketi sayesinde ancak 2003'te bulundu."
+  },
+  "luhman16": {
+   "note_tr": "Güneş'e en yakın kahverengi cüceler: 6,5 ışık yılı uzaklıkta bir çift."
+  },
+  "gj229": {
+   "note_tr": "Görüntüsü alınan ilk kahverengi cüce (1995) bu kırmızı cücenin çevresinde döner. İşaret, ev sahibi yıldız Gliese 229 A'nın üzerinde."
+  },
+  "2m0415": {
+   "note_tr": "En soğuk T türü kahverengi cücelerden biri."
+  },
+  "ugps0722": {
+   "note_tr": "Bir kızılötesi taramada bulunan çok soğuk bir kahverengi cüce."
+  },
+  "gj570d": {
+   "note_tr": "Üçlü bir yıldız sisteminin çevresinde dönen soğuk bir kahverengi cüce."
+  },
+  "ross458c": {
+   "note_tr": "Bir çift yıldızın, gezegen kütlesindeki kahverengi cüce eşi."
+  },
+  "mira": {
+   "note_tr": "Adı 'harika' demek olan klasik değişen yıldız. Yaklaşık 11 ayda sönükleşir."
+  },
+  "chi_cyg": {
+   "note_tr": "Nabız gibi atan bir dev. Bilinen en büyük parlaklık değişimlerinden biri onda."
+  },
+  "r_leo": {
+   "note_tr": "Aslan takımyıldızında parlak, kırmızı, nabız gibi atan bir yıldız."
+  },
+  "r_cas": {
+   "note_tr": "Nabız gibi atan bir kırmızı dev. Görünür ışıkta parlaklığı binlerce kat değişir."
+  },
+  "t_tau": {
+   "note_tr": "Genç ve parlaklığı titreyen Güneş benzeri yıldızların ilk örneği."
+  },
+  "betelgeuse": {
+   "note_tr": "Orion'da bir kırmızı süperdev. 2019-2020'de çok sönükleşti."
+  },
+  "irc10216": {
+   "note_tr": "Tozla sarılı bir karbon yıldızı. Yakın kızılötesi gökyüzünün en parlak cisimlerinden biri."
+  },
+  "p9_ra45": {
+   "name_tr": "En olası kısım (RA ≈ 3h)",
+   "note_tr": "Tahmin edilen yolun en olası yeri, yörüngenin uzak ucuna yakın. Yalnızca kuram; burada hiçbir şey bulunmadı."
+  },
+  "p9_ra25": {
+   "name_tr": "Tahmin edilen yol (RA ≈ 1,7h)",
+   "note_tr": "Tahmin edilen yol üzerinde bir nokta. Yalnızca kuram."
+  },
+  "p9_ra65": {
+   "name_tr": "Tahmin edilen yol (RA ≈ 4,3h)",
+   "note_tr": "Tahmin edilen yol üzerinde bir nokta. Yalnızca kuram."
+  },
+  "p9_galactic_crossing": {
+   "name_tr": "Yolun Samanyolu ile kesiştiği yer (RA ≈ 6,5h)",
+   "note_tr": "2024'e kadar yapılan aramalar, tahmin edilen parametre uzayının yaklaşık %78'ini dışladı. Kalanın çoğu, kuzey Samanyolu'nun ekliptiği kestiği yerde, buraya yakın. Yalnızca kuram."
+  },
+  "sgr_a": {
+   "name_tr": "Sgr A* (gökadamızın kara deliği)",
+   "note_tr": "Samanyolu'nun merkezindeki süper kütleli kara delik, 26.000 ışık yılı uzaklıkta."
+  },
+  "baade": {
+   "name_tr": "Baade Penceresi",
+   "note_tr": "Tozda bir boşluk. Buradan gökadanın merkezdeki şişkin bölümünün derinlerine bakabiliriz."
+  },
+  "gal_anticenter": {
+   "name_tr": "Galaktik antimerkez",
+   "note_tr": "Galaktik merkezin tam tersi yöndeki nokta, Boğa ve Arabacı takımyıldızlarında."
+  },
+  "cygnus_x": {
+   "name_tr": "Cygnus X yıldız oluşum bölgesi",
+   "note_tr": "Samanyolu diskinde dev bir yıldız fabrikası. Kızılötesinde parlıyor."
+  },
+  "m42": {
+   "name_tr": "Orion Bulutsusu (M42)",
+   "note_tr": "En yakın büyük yıldız doğumevi. Çıplak gözle görülebilir."
+  },
+  "horsehead": {
+   "name_tr": "Atbaşı Bulutsusu",
+   "note_tr": "At başına benzeyen karanlık bir toz bulutu."
+  },
+  "m16": {
+   "name_tr": "Kartal Bulutsusu (M16)",
+   "note_tr": "'Yaratılış Sütunları'nın evi."
+  },
+  "m8": {
+   "name_tr": "Lagün Bulutsusu (M8)",
+   "note_tr": "Yay takımyıldızında parlak bir yıldız oluşum bulutu."
+  },
+  "m17": {
+   "name_tr": "Omega Bulutsusu (M17)",
+   "note_tr": "Gökadadaki en parlak yıldız oluşum bölgelerinden biri."
+  },
+  "carina": {
+   "name_tr": "Karina Bulutsusu",
+   "note_tr": "Çok büyük kütleli Eta Carinae yıldızının çevresinde dev bir bulut."
+  },
+  "rho_oph": {
+   "name_tr": "Rho Ophiuchi bulutu",
+   "note_tr": "En yakın yıldız doğumevlerinden biri. Tozun içinde gizli genç yıldızlarla dolu."
+  },
+  "m1": {
+   "name_tr": "Yengeç Bulutsusu (M1)",
+   "note_tr": "1054 yılında patlayan bir yıldızın kalıntısı."
+  },
+  "helix": {
+   "name_tr": "Sarmal Bulutsusu",
+   "note_tr": "Ölmekte olan Güneş benzeri bir yıldızın parlayan kabuğu."
+  },
+  "m57": {
+   "name_tr": "Halka Bulutsusu (M57)",
+   "note_tr": "Ölmekte olan bir yıldızın küçük, halka biçimli kabuğu."
+  },
+  "m31": {
+   "name_tr": "Andromeda Gökadası (M31)",
+   "note_tr": "Büyük komşumuz, 2,5 milyon ışık yılı uzaklıkta."
+  },
+  "lmc": {
+   "name_tr": "Büyük Macellan Bulutu",
+   "note_tr": "Samanyolu'nun çevresinde dönen küçük bir gökada. Güney ekliptik kutbuna yakın."
+  },
+  "smc": {
+   "name_tr": "Küçük Macellan Bulutu",
+   "note_tr": "Büyük Bulut'un küçük eşi."
+  },
+  "m33": {
+   "name_tr": "Üçgen Gökadası (M33)",
+   "note_tr": "Yerel Grup'ta, bize yüzünü dönmüş bir sarmal gökada."
+  },
+  "m51": {
+   "name_tr": "Girdap Gökadası (M51)",
+   "note_tr": "Daha küçük bir eşini çeken klasik bir sarmal gökada."
+  },
+  "m81": {
+   "name_tr": "Bode Gökadası (M81)",
+   "note_tr": "Büyükayı'da, M82'nin yanında parlak bir sarmal gökada."
+  },
+  "m82": {
+   "name_tr": "Puro Gökadası (M82)",
+   "note_tr": "Yeni yıldızlarla dolup taşan bir gökada. Kızılötesinde çok parlak."
+  },
+  "m104": {
+   "name_tr": "Sombrero Gökadası (M104)",
+   "note_tr": "Kenardan gördüğümüz, karanlık bir toz şeridi olan bir gökada."
+  },
+  "cen_a": {
+   "note_tr": "Dev bir kara deliği ve göze çarpan bir toz şeridi olan bir gökada."
+  },
+  "ecl_000": {
+   "name_tr": "Balık'ta ekliptik (λ = 0°)",
+   "note_tr": "Asteroitler ve kuyruklu yıldızlar bu çizgiye yakın dolaşır. Burada sezonlar arasında sıçrayan bir nokta büyük olasılıkla bir asteroittir."
+  },
+  "ecl_030": {
+   "name_tr": "Koç'ta ekliptik (λ = 30°)",
+   "note_tr": "Asteroitler ve kuyruklu yıldızlar bu çizgiye yakın dolaşır. Burada sezonlar arasında sıçrayan bir nokta büyük olasılıkla bir asteroittir."
+  },
+  "ecl_060": {
+   "name_tr": "Boğa'da ekliptik (λ = 60°)",
+   "note_tr": "Asteroitler ve kuyruklu yıldızlar bu çizgiye yakın dolaşır. Burada sezonlar arasında sıçrayan bir nokta büyük olasılıkla bir asteroittir."
+  },
+  "ecl_090": {
+   "name_tr": "Boğa'da ekliptik (λ = 90°)",
+   "note_tr": "Asteroitler ve kuyruklu yıldızlar bu çizgiye yakın dolaşır. Burada sezonlar arasında sıçrayan bir nokta büyük olasılıkla bir asteroittir."
+  },
+  "ecl_120": {
+   "name_tr": "Yengeç'te ekliptik (λ = 120°)",
+   "note_tr": "Asteroitler ve kuyruklu yıldızlar bu çizgiye yakın dolaşır. Burada sezonlar arasında sıçrayan bir nokta büyük olasılıkla bir asteroittir."
+  },
+  "ecl_150": {
+   "name_tr": "Aslan'da ekliptik (λ = 150°)",
+   "note_tr": "Asteroitler ve kuyruklu yıldızlar bu çizgiye yakın dolaşır. Burada sezonlar arasında sıçrayan bir nokta büyük olasılıkla bir asteroittir."
+  },
+  "ecl_180": {
+   "name_tr": "Başak'ta ekliptik (λ = 180°)",
+   "note_tr": "Asteroitler ve kuyruklu yıldızlar bu çizgiye yakın dolaşır. Burada sezonlar arasında sıçrayan bir nokta büyük olasılıkla bir asteroittir."
+  },
+  "ecl_210": {
+   "name_tr": "Başak'ta ekliptik (λ = 210°)",
+   "note_tr": "Asteroitler ve kuyruklu yıldızlar bu çizgiye yakın dolaşır. Burada sezonlar arasında sıçrayan bir nokta büyük olasılıkla bir asteroittir."
+  },
+  "ecl_240": {
+   "name_tr": "Terazi'de ekliptik (λ = 240°)",
+   "note_tr": "Asteroitler ve kuyruklu yıldızlar bu çizgiye yakın dolaşır. Burada sezonlar arasında sıçrayan bir nokta büyük olasılıkla bir asteroittir."
+  },
+  "ecl_270": {
+   "name_tr": "Yay'da ekliptik (λ = 270°)",
+   "note_tr": "Asteroitler ve kuyruklu yıldızlar bu çizgiye yakın dolaşır. Burada sezonlar arasında sıçrayan bir nokta büyük olasılıkla bir asteroittir."
+  },
+  "ecl_300": {
+   "name_tr": "Oğlak'ta ekliptik (λ = 300°)",
+   "note_tr": "Asteroitler ve kuyruklu yıldızlar bu çizgiye yakın dolaşır. Burada sezonlar arasında sıçrayan bir nokta büyük olasılıkla bir asteroittir."
+  },
+  "ecl_330": {
+   "name_tr": "Kova'da ekliptik (λ = 330°)",
+   "note_tr": "Asteroitler ve kuyruklu yıldızlar bu çizgiye yakın dolaşır. Burada sezonlar arasında sıçrayan bir nokta büyük olasılıkla bir asteroittir."
+  },
+  "nep": {
+   "name_tr": "Kuzey Ekliptik Kutbu",
+   "note_tr": "SPHEREx'in kuzey derin alanı, Ejderha takımyıldızında. Çok sık gözlendiği için buradaki blink'ler zengindir."
+  },
+  "sep": {
+   "name_tr": "Güney Ekliptik Kutbu",
+   "note_tr": "SPHEREx'in güney derin alanı, Kılıçbalığı takımyıldızında, Büyük Macellan Bulutu'nun yanında."
+  }
+ }
+}

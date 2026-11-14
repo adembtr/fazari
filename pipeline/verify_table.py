@@ -128,6 +128,11 @@ def luhman_row():
                      f"ornek.html?data=/jobs/{job}/")
     row["local_job"] = job
     row["reference"]["label"] = "SIMBAD proper motion"
+    plx = (meta.get("gaia") or {}).get("parallax_mas") or 0      # jobs since the categories carry a parallax
+    if plx:
+        row["reference"]["detail"] = (f"SIMBAD via CDS Sesame (site/data/categories.json), epoch 2000. The prediction "
+                                      f"includes the annual parallax ({plx:g} mas).")
+        return row
     row["reference"]["detail"] = ("SIMBAD via CDS Sesame (site/data/categories.json), epoch 2000. The prediction has "
                                   "no parallax; between two seasons ~1 year apart the parallax shift nearly cancels.")
     # how much parallax can be left between the two seasons: |dt - 1 yr| of the Earth's orbit, plx ~0.5"

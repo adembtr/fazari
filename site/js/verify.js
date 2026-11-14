@@ -5,7 +5,7 @@
 //   data/verify/null_barnard.json   pipeline/naive_centroid.py --null (field stars that should not move)
 // A section whose JSON is missing stays hidden.
 
-import { t, apply, onLang, lang, langButton } from "./fz_i18n.js";
+import { t, apply, onLang, lang, langButton, tname } from "./i18n.js";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -36,12 +36,12 @@ function motionRow(r) {
     m1: sgn(pm.measured_mas_yr[0], 0), m2: sgn(pm.measured_mas_yr[1], 0), e: Math.round(pm.err_mas_yr[0]),
     r1: sgn(pm.reference_mas_yr[0], 0), r2: sgn(pm.reference_mas_yr[1], 0), s1: num(pm.diff_sigma[0], 1), s2: num(pm.diff_sigma[1], 1) }))}</small>` : "";
   const refName = r.id === "luhman16" ? t("v.ref.simbad") : r.id === "wise0855" ? t("v.ref.kirk") : t("v.ref.gaia");
-  const extra = r.id === "luhman16" ? `<small>${esc(t("v.luhmanRef", { p: num(r.reference.parallax_residual_max_arcsec, 2) }))}</small>` : "";
+  const extra = r.id === "luhman16" && r.reference.parallax_residual_max_arcsec != null ? `<small>${esc(t("v.luhmanRef", { p: num(r.reference.parallax_residual_max_arcsec, 2) }))}</small>` : "";
   const res = (r.status === "pass" ? `<span class="res pass">✓ ${esc(t("v.pass"))}</span>` : `<span class="res fail">✗ ${esc(t("v.fail"))}</span>`)
     + absLine(r.id);
   const view = r.local_job ? `<small>${esc(t("v.localJob"))}</small>` : `<small><a href="${esc(r.viewer)}">${esc(t("v.open"))} →</a></small>`;
   return `<tr>
-    <td data-h="${esc(t("v.col.target"))}"><span class="nm">${esc(r.name)}</span><br>${tag}${view}</td>
+    <td data-h="${esc(t("v.col.target"))}"><span class="nm">${esc(tname(r.name))}</span><br>${tag}${view}</td>
     <td data-h="${esc(t("v.col.what"))}">${esc(t("v.what", { from: month(m.from), to: month(m.to), dt: num(m.dt_years, 2) }))}
       <small>${esc(t("v.images", { n: r.n_images, s: (r.seasons || []).length }))}</small>${bins}${pmTxt}</td>
     <td class="num" data-h="${esc(t("v.col.measured"))}"><b class="me">${fmtA(m.shift_arcsec)} ± ${fmtA(m.err_arcsec)}</b><small>PA ${num(m.pa_deg, 1)}°</small></td>
@@ -70,7 +70,7 @@ function brightRow(r, bestErr) {
   const last = b ? b.ratio.length - 1 : -1;
   const br = b ? `<small>${esc(t("v.bright", { um: num(b.wavelength_um, 1), r: num(b.ratio[last], 2), e: num(b.err[last], 2), from: month(b.seasons[0]), to: month(b.seasons[last]) }))}</small>` : "";
   return `<tr class="na">
-    <td data-h="${esc(t("v.col.target"))}"><span class="nm">${esc(r.name)}</span><br><span class="tag ch">${esc(t("v.tag.challenge"))}</span>
+    <td data-h="${esc(t("v.col.target"))}"><span class="nm">${esc(tname(r.name))}</span><br><span class="tag ch">${esc(t("v.tag.challenge"))}</span>
       <small><a href="${esc(r.viewer)}">${esc(t("v.open"))} →</a></small></td>
     <td data-h="${esc(t("v.col.what"))}">${esc(t("v.motionOnly"))}<small>${esc(t("v.images", { n: r.n_images, s: (r.seasons || []).length }))}</small>${br}</td>
     <td class="num" data-h="${esc(t("v.col.measured"))}">—</td>

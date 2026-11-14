@@ -13,10 +13,13 @@ export const SURVEYS = {
     fmt: "jpeg",
     mirrors: [
       "https://skies.esac.esa.int/DSSColor",
+      "https://stpubdata.s3.us-east-1.amazonaws.com/mast/skybackgrounds/DSSColor",   // STScI/MAST copy (CORS ok, Nov 2026)
       "https://irsa.ipac.caltech.edu/data/hips/CDS/DSS2/color",
       "https://alasky.cds.unistra.fr/DSS/DSSColor",
     ],
     credit: "DSS2 colour: Digitized Sky Survey, STScI/NASA; coloured and HEALPixed by CDS",
+    short: "DSS2 colour", years: "1975–1999", epoch: 1990,
+    zoomPx: 5,                           // closest zoom when this is the sharpest map: 1" = 5 screen pixels
   },
   twomass: {
     key: "twomass",
@@ -30,6 +33,7 @@ export const SURVEYS = {
       "https://alasky.cds.unistra.fr/2MASS/Color",
     ],
     credit: "2MASS: University of Massachusetts & IPAC/Caltech, NASA/NSF",
+    short: "2MASS", years: "1997–2001", epoch: 1999,
   },
   wise: {
     key: "wise",
@@ -43,6 +47,7 @@ export const SURVEYS = {
       "https://alasky.cds.unistra.fr/AllWISE/RGB-W4-W2-W1",
     ],
     credit: "AllWISE: NASA/JPL-Caltech/UCLA, IPAC",
+    short: "AllWISE", years: "2010–2011", epoch: 2010.5,
   },
   spherex: {
     key: "spherex",
@@ -55,8 +60,53 @@ export const SURVEYS = {
       "https://irsa.ipac.caltech.edu/data/hips/SPHEREx/spherex_allsky_cube",
     ],
     credit: "SPHEREx DR1 all-sky HiPS: NASA/SPHEREx, Caltech/IPAC (NASA/IPAC Infrared Science Archive)",
+    short: "SPHEREx DR1", years: "2025–2026", epoch: 2025.8,
   },
 };
+
+// Sharp close-up maps, used automatically when you zoom in past CLOSEUP_FOV (not background buttons).
+// Pan-STARRS DR1 (0.25" pixels, ~1" seeing) covers Dec > -30 deg; south of that the sharpest map that
+// answers is DSS2 colour (key "visible"). Checked from headless Chrome on 2026-11-14: the MAST S3 copy
+// answers with CORS (*) and has tiles down to order 11; the CDS alasky copies returned 404, and the
+// CDS SkyMapper / DES / Legacy Surveys maps (sharper in the south) only exist on alasky, so not used.
+export const CLOSEUP_SURVEYS = {
+  panstarrs: {
+    key: "panstarrs",
+    title: "Pan-STARRS DR1 colour (i, r, g)",
+    fmt: "jpeg",
+    mirrors: [
+      "https://stpubdata.s3.us-east-1.amazonaws.com/mast/skybackgrounds/PanSTARRS",
+      "https://alasky.cds.unistra.fr/Pan-STARRS/DR1/color-i-r-g",
+    ],
+    credit: "Pan-STARRS DR1: PS1 Science Consortium, STScI/MAST; HEALPixed by CDS",
+    short: "Pan-STARRS DR1", years: "2009–2015", epoch: 2012,
+    decMin: -29.5,                       // stay clear of the -30 deg edge (black outside the survey)
+    zoomPx: 12,                          // closest zoom: 1" = 12 screen pixels
+  },
+};
+
+/** Survey or close-up map by key. */
+export const surveyInfo = (key) => SURVEYS[key] || CLOSEUP_SURVEYS[key];
+
+// Close-up rule (degrees of field width): the sharp map fades in from CLOSEUP_FOV[0] to CLOSEUP_FOV[1].
+export const CLOSEUP_FOV = [0.5, 0.3];
+export const SPHEREX_PIXEL_ARCSEC = 6.15;      // SPHEREx detector pixel
+export const SPHEREX_MAP_PIXEL_ARCSEC = 12.9;  // pixel of the IRSA all-sky HiPS (order 5 x 512 = order 14)
+
+/** Sharpest working map at a view centre: Pan-STARRS north of -30 deg, DSS2 colour further south. */
+export function closeupKeyAt(dec, fov) {
+  return dec - fov > CLOSEUP_SURVEYS.panstarrs.decMin ? "panstarrs" : "visible";
+}
+
+// Closest zoom (field width, degrees): as close as the sharpest map at that spot still shows real
+// detail, and never closer than 1' across. For a 1400 px wide sky:
+//   Pan-STARRS (Dec > -30): 1" = 12 screen px -> 1.9' (its 0.25" pixels are 3 px, its ~1" stars ~12 px);
+//   DSS2 colour (far south): 1" = 5 screen px -> 4.7' (its 0.8" map pixels are 4 px, 2-3" stars 10-15 px).
+// Any closer would only magnify pixels.
+export function minFov(widthPx, key = "panstarrs") {
+  const pxPerArcsec = surveyInfo(key)?.zoomPx || SURVEYS.visible.zoomPx;
+  return Math.max(1 / 60, (widthPx || 1400) / pxPerArcsec / 3600);
+}
 
 // SPHEREx DR1 cube: frame index = 17*(band-1) + (channel-1); wavelengths from the HiPS properties.
 export const SPHEREX_SLICES = [
@@ -82,7 +132,7 @@ async function probe(url, ms) {
 /** Resolve the working mirror URL of a survey (cached). Rejects when no mirror answers. */
 export function surveyUrl(key, ms = 5000) {
   if (!chosen.has(key)) {
-    const s = SURVEYS[key];
+    const s = surveyInfo(key);
     const p = (async () => {
       let remembered = null;
       try { remembered = sessionStorage.getItem("fz-hips-" + key); } catch { /* storage blocked */ }

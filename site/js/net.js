@@ -7,6 +7,7 @@
 
 export const S3_BASE = "https://nasa-irsa-spherex.s3.us-east-1.amazonaws.com/";
 export const MAX_PARALLEL = 4;
+let maxParallel = MAX_PARALLEL;          // raised to 6 (a browser's own per-host limit) for the quick preview
 const MAX_TRIES = 6;
 let CACHE_LIMIT = 192 * 1024 * 1024;   // lowered on phones (setCacheLimit)
 
@@ -20,13 +21,18 @@ function emit(type, detail) {
 // ---- concurrency limiter ---------------------------------------------------------------
 const waiting = [];
 function acquire() {
-  if (stats.inFlight < MAX_PARALLEL) { stats.inFlight++; return Promise.resolve(); }
+  if (stats.inFlight < maxParallel) { stats.inFlight++; return Promise.resolve(); }
   stats.queued++;
   return new Promise((res) => waiting.push(res));
 }
 function release() {
-  const next = waiting.shift();
+  const next = stats.inFlight <= maxParallel ? waiting.shift() : null;
   if (next) { stats.queued--; next(); } else { stats.inFlight--; }
+}
+/** Requests in flight at most (1..6). */
+export function setMaxParallel(n) {
+  maxParallel = Math.max(1, Math.min(6, Math.round(n)));
+  while (waiting.length && stats.inFlight < maxParallel) { stats.inFlight++; stats.queued--; waiting.shift()(); }
 }
 
 // ---- cache ------------------------------------------------------------------------------

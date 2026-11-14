@@ -17,26 +17,31 @@
 // the zoomed box), #frame / #zoomer (the frame image and the zoomed box: the whole PNG, no
 // letterboxing). Every frame change fires document event "fazari:frame" ({ epoch, bin_um, file }).
 
+import { t, lang, loc, month, tname, onLang } from "./i18n.js";
+
 const $ = (id) => document.getElementById(id);
 const ok = (v) => v != null && v !== "" && Number.isFinite(+v);
-const fx = (v, d = 2) => (ok(v) ? (+v).toFixed(d) : "–");
+const fx = (v, d = 2) => (ok(v) ? loc((+v).toFixed(d)) : "–");
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+// i18n: English from the code (unchanged), Turkish from site/i18n/tr.json (keys "vw.*")
+const L = (key, en, p) => (lang() === "tr" ? t(key, p, en) : p ? en.replace(/\{(\w+)\}/g, (m, k) => (p[k] != null ? String(p[k]) : m)) : en);
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
   "November", "December"];
 const season = (ep, long) => {
+  if (lang() === "tr") return month(ep, long);
   const m = /^(\d{4})-(\d{2})/.exec(ep || "");
   return m && +m[2] >= 1 && +m[2] <= 12 ? `${(long ? MONTHS : MON)[+m[2] - 1]} ${m[1]}` : String(ep || "");
 };
 const dayNum = (d) => { const t = Date.parse(String(d || "").slice(0, 10) + "T00:00:00Z"); return Number.isFinite(t) ? t / 864e5 : NaN; };
 const daysApart = (a, b) => Math.round(Math.abs(dayNum(b.date) - dayNum(a.date)));
-const arcsec = (v, err) => (+v).toFixed(Math.abs(v) < 1 || (ok(err) && err > 0 ? err < 0.095 : Math.abs(v) < 3) ? 2 : 1) + "″";
+const arcsec = (v, err) => loc((+v).toFixed(Math.abs(v) < 1 || (ok(err) && err > 0 ? err < 0.095 : Math.abs(v) < 3) ? 2 : 1) + "″");
 const span = (dt) => {
   if (!ok(dt) || dt <= 0) return "";
   const y = Math.round(dt);
-  if (y >= 1 && Math.abs(dt - y) < 0.12) return y === 1 ? "in 1 year" : `in ${y} years`;
+  if (y >= 1 && Math.abs(dt - y) < 0.12) return y === 1 ? L("vw.in1y", "in 1 year") : L("vw.inNy", "in {n} years", { n: y });
   const mo = Math.max(1, Math.round(dt * 12));
-  return mo === 1 ? "in 1 month" : `in ${mo} months`;
+  return mo === 1 ? L("vw.in1m", "in 1 month") : L("vw.inNm", "in {n} months", { n: mo });
 };
 
 // The five challenge targets: a short tag and whether the challenge tests motion or brightness.
@@ -134,11 +139,11 @@ function scaleBar() {
   const px = pick / perPx;
   el.hidden = false;
   const ne = !(S.meta.grid && S.meta.grid.north_up_east_left === false);
-  el.innerHTML = (ne ? `<svg class="compass" viewBox="0 0 34 34" width="34" height="34" aria-label="North up, east left">` +
+  el.innerHTML = (ne ? `<svg class="compass" viewBox="0 0 34 34" width="34" height="34" aria-label="${esc(L("vw.compass", "North up, east left"))}">` +
     `<path d="M24 26V9M24 26H7" stroke="currentColor" stroke-width="1.6" fill="none"/>` +
     `<path d="M20.5 12L24 7l3.5 5M10 22.5L5 26l5 3.5" stroke="currentColor" stroke-width="1.6" fill="none"/>` +
-    `<text x="24" y="5.5" font-size="7" text-anchor="middle" fill="currentColor">N</text>` +
-    `<text x="3" y="23" font-size="7" text-anchor="middle" fill="currentColor">E</text></svg>` : "") +
+    `<text x="24" y="5.5" font-size="7" text-anchor="middle" fill="currentColor">${L("vw.N", "N")}</text>` +
+    `<text x="3" y="23" font-size="7" text-anchor="middle" fill="currentColor">${L("vw.E", "E")}</text></svg>` : "") +
     `<span class="bar" style="width:${px.toFixed(0)}px"></span><span>${pick >= 60 ? pick / 60 + "′" : pick + "″"}</span>`;
 }
 
@@ -204,9 +209,9 @@ function motionPair(ea, eb) {
 function brightPair(ea, eb) {
   const ph = ((S.meta && S.meta.measured) || {}).photometry;
   const pb = ph && (ph.bins || []).find((b) => Math.abs(b.wavelength_um - S.bin.wavelength_um) < 0.05);
-  if (!pb || !(pb.seasons || []).length) return { none: true, why: ((pb && pb.flags) || []).join("; ") || "no photometry at this wavelength" };
+  if (!pb || !(pb.seasons || []).length) return { none: true, why: ((pb && pb.flags) || []).join("; ") || L("vw.why.noPhotWl", "no photometry at this wavelength") };
   const A = pb.seasons.find((x) => x.epoch === ea), B = pb.seasons.find((x) => x.epoch === eb);
-  if (!A || !B || !(+A.ratio_to_first > 0) || !ok(B.ratio_to_first)) return { none: true, why: "no photometry for this pair of seasons" };
+  if (!A || !B || !(+A.ratio_to_first > 0) || !ok(B.ratio_to_first)) return { none: true, why: L("vw.why.noPhotPair", "no photometry for this pair of seasons") };
   const rA = +A.ratio_to_first, rB = +B.ratio_to_first, r = rB / rA;
   const er = r * Math.hypot((+A.ratio_err || 0) / rA, (+B.ratio_err || 0) / rB);
   const c = bestChange(ph);
@@ -239,7 +244,7 @@ function arrowText(mp) {
   if (s == null) return null;
   const fa = S.bin.frames.find((f) => f.epoch === mp.ea), fb = S.bin.frames.find((f) => f.epoch === mp.eb);
   const dt = fa && fb ? daysApart(fa, fb) / 365.25 : null;
-  return { long: `≈${arcsec(s)}${dt ? " " + span(dt) : ""} (${S.ref.short} prediction)`, short: "≈" + arcsec(s) };
+  return { long: `≈${arcsec(s)}${dt ? " " + span(dt) : ""} (${L("vw.predOf", "{who} prediction", { who: S.ref.short })})`, short: "≈" + arcsec(s) };
 }
 const RING = 34;                  // ring radius in PNG px (about 25″ on the sky)
 function motionSvg(u, legend) {
@@ -253,10 +258,10 @@ function motionSvg(u, legend) {
     s += halo(d, 3.5 * u) + `<path d="${d}" fill="none" stroke="#e8eaf0" stroke-width="${1.4 * u}" stroke-dasharray="${4 * u} ${3 * u}"/>`;
     mp.path.filter((p) => p !== a && p !== b).forEach((p) => { s += `<circle cx="${p[0]}" cy="${p[1]}" r="${3 * u}" fill="#c9d2e3" stroke="#05070d" stroke-width="${1.2 * u}"/>`; });
   }
-  const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy);
-  if (L > 0.2) {
-    const ux = dx / L, uy = dy / L;
-    const hl = Math.min(12 * u, L * 0.75), hw = 6.5 * u;
+  const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy);
+  if (len > 0.2) {
+    const ux = dx / len, uy = dy / len;
+    const hl = Math.min(12 * u, len * 0.75), hw = 6.5 * u;
     const bx = b[0] - ux * hl, by = b[1] - uy * hl;
     const head = `M${b[0].toFixed(2)} ${b[1].toFixed(2)}L${(bx - uy * hw).toFixed(2)} ${(by + ux * hw).toFixed(2)}L${(bx + uy * hw).toFixed(2)} ${(by - ux * hw).toFixed(2)}Z`;
     const line = `M${a[0].toFixed(2)} ${a[1].toFixed(2)}L${bx.toFixed(2)} ${by.toFixed(2)}`;
@@ -293,9 +298,9 @@ function motionSvg(u, legend) {
       s += lab(pick.x, pick.y, pick.str, "#ffffff", pick.anchor, 15);
     }
   }
-  legend.push(mp.kind === "measured" ? `<span><i class="lg arrow"></i>measured motion</span>`
-    : `<span><i class="lg arrow dash"></i>${esc(S.ref.short)} predicted path</span>`);
-  legend.push(`<span><i class="lg first"></i>first season</span>`);
+  legend.push(mp.kind === "measured" ? `<span><i class="lg arrow"></i>${esc(L("vw.lg.measured", "measured motion"))}</span>`
+    : `<span><i class="lg arrow dash"></i>${esc(L("vw.lg.predPath", "{who} predicted path", { who: S.ref.short }))}</span>`);
+  legend.push(`<span><i class="lg first"></i>${esc(L("vw.lg.first", "first season"))}</span>`);
   return s;
 }
 function ringSvg(u, legend) {
@@ -307,13 +312,13 @@ function ringSvg(u, legend) {
     `<circle cx="${x}" cy="${y}" r="${RING}" fill="none" stroke="#ffb347" stroke-width="${2.4 * u}"/>`;
   const cross = `M${x - 7 * u} ${y}H${x + 7 * u}M${x} ${y - 7 * u}V${y + 7 * u}`;
   let s = ring + `<path d="${cross}" stroke="#05070d" stroke-width="${4 * u}"/><path d="${cross}" stroke="#ffb347" stroke-width="${2 * u}"/>`;
-  legend.push(`<span><i class="lg ring"></i>${S.ref.none ? "position you picked" : esc(S.ref.short) + " predicts"}</span>`);
+  legend.push(`<span><i class="lg ring"></i>${S.ref.none ? esc(L("vw.lg.picked", "position you picked")) : esc(L("vw.lg.predicts", "{who} predicts", { who: S.ref.short }))}</span>`);
   const p = measuredPos(f.epoch);
   if (p) {
     const [mx, my] = p.png_xy_measured;
     s += `<circle cx="${mx}" cy="${my}" r="${3.6 * u}" fill="#5dd39e" stroke="#05070d" stroke-width="${1.6 * u}"/>`;
     const d = Math.hypot(+p.minus_gaia_east_arcsec || 0, +p.minus_gaia_north_arcsec || 0);
-    legend.push(`<span><i class="lg dot"></i>we measured${ok(p.minus_gaia_east_arcsec) && !S.ref.none ? ` (${d.toFixed(2)}″ apart)` : ""}</span>`);
+    legend.push(`<span><i class="lg dot"></i>${esc(L("vw.lg.we", "we measured"))}${ok(p.minus_gaia_east_arcsec) && !S.ref.none ? " " + esc(L("vw.lg.apart", "({d}″ apart)", { d: loc(d.toFixed(2)) })) : ""}</span>`);
   }
   return s;
 }
@@ -357,15 +362,15 @@ function show() {
     hd.innerHTML = `<span class="before">${esc(season(A.epoch))}</span> | <span class="after">${esc(season(B.epoch))}</span>`;
   } else if (S.mode === "trail") {
     hd.className = "hud-date";
-    hd.innerHTML = `Trail · ${fs.map((x) => esc(season(x.epoch))).join(" + ")}`;
+    hd.innerHTML = `${esc(L("vw.trail", "Trail"))} · ${fs.map((x) => esc(season(x.epoch))).join(" + ")}`;
   } else {
     const r = roleOf(S.idx);
     hd.className = "hud-date " + r;
-    hd.innerHTML = (r ? `<b>${r === "before" ? "Before" : "After"}</b> ` : "") + esc(season(f.epoch, true));
+    hd.innerHTML = (r ? `<b>${r === "before" ? esc(L("vw.before", "Before")) : esc(L("vw.after", "After"))}</b> ` : "") + esc(season(f.epoch, true));
   }
-  $("date").textContent = S.mode === "trail" ? `Trail of ${fs.length} seasons (brightest value of each pixel)`
-    : `Season ${f.epoch} · mean date ${f.date}`;
-  $("detail").textContent = `SPHEREx ${(f.detectors || []).join("+")} · ${fx(f.wavelength_um)} µm · ${f.n_images} images stacked`;
+  $("date").textContent = S.mode === "trail" ? L("vw.dateTrail", "Trail of {n} seasons (brightest value of each pixel)", { n: fs.length })
+    : L("vw.dateSeason", "Season {ep} · mean date {date}", { ep: f.epoch, date: f.date });
+  $("detail").textContent = L("vw.detail", "SPHEREx {det} · {um} µm · {n} images stacked", { det: (f.detectors || []).join("+"), um: fx(f.wavelength_um), n: f.n_images });
   document.querySelectorAll("#seasons .chip").forEach((c) => c.classList.toggle("cur", +c.dataset.i === S.idx && S.mode !== "trail"));
   drawOverlay();
   try { document.dispatchEvent(new CustomEvent("fazari:frame", { detail: { epoch: f.epoch, bin_um: S.bin.wavelength_um, file: f.file, mode: S.mode } })); } catch (_) {}
@@ -380,7 +385,7 @@ function restart() {
   clearInterval(S.timer);
   S.timer = 0;
   if (S.mode === "blink" && S.playing && S.sel.length > 1) S.timer = setInterval(tick, +$("speed").value);
-  $("play").textContent = S.playing ? "Pause" : "Play";
+  $("play").textContent = S.playing ? L("vw.pause", "Pause") : L("vw.play", "Play");
   $("play").setAttribute("aria-pressed", String(!S.playing));
 }
 function step(d) {
@@ -404,12 +409,12 @@ function setMode(md, quiet) {
   if (md === "trail") { S.idx = S.sel[S.sel.length - 1]; buildTrail(); }
   if (md === "blink") S.playing = true;
   if (md === "swipe") applySwipe();
-  $("modeHint").textContent = {
+  $("modeHint").textContent = L("vw.hint." + md, {
     blink: "Blink: the compared seasons, one after the other.",
     step: "Step: one season at a time (← → keys).",
     swipe: "Swipe: drag the slider to compare the two seasons of the pair.",
     trail: "Trail: the brightest value of each pixel over the seasons; a mover leaves a streak.",
-  }[md];
+  }[md]);
   show(); restart();
   if (!quiet) writeUrl();
 }
@@ -448,32 +453,33 @@ function renderSeasons() {
   const fr = S.bin.frames;
   let h = "";
   fr.forEach((f, i) => {
-    if (i) h += `<span class="gap" aria-hidden="true">${daysApart(fr[i - 1], f)} days</span>`;
+    if (i) h += `<span class="gap" aria-hidden="true">${esc(L("vw.days", "{n} days", { n: daysApart(fr[i - 1], f) }))}</span>`;
     const on = S.sel.includes(i), r = roleOf(i);
     h += `<button type="button" class="chip${on ? " on" : ""}${r ? " " + r : ""}" data-i="${i}" aria-pressed="${on}" ` +
-      `title="${on ? "Remove from" : "Add to"} the comparison (${f.n_images} images, mean date ${f.date})">` +
-      `<b>${esc(season(f.epoch))}</b><small>${f.n_images} img</small></button>`;
+      `title="${esc(on ? L("vw.chip.remove", "Remove from the comparison ({n} images, mean date {date})", { n: f.n_images, date: f.date })
+        : L("vw.chip.add", "Add to the comparison ({n} images, mean date {date})", { n: f.n_images, date: f.date }))}">` +
+      `<b>${esc(season(f.epoch))}</b><small>${esc(L("vw.chip.img", "{n} img", { n: f.n_images }))}</small></button>`;
   });
   $("seasons").innerHTML = h;
   $("seasons").querySelectorAll(".chip").forEach((c) => { c.onclick = () => toggleSeason(+c.dataset.i); });
   const all = S.sel.length === fr.length, hi = headIdx();
   $("allSeasons").hidden = fr.length < 3;
-  $("allSeasons").textContent = all ? (hi ? "Headline pair only" : "First and last only") : "All seasons";
+  $("allSeasons").textContent = all ? (hi ? L("vw.all.head", "Headline pair only") : L("vw.all.firstLast", "First and last only")) : L("vw.all.all", "All seasons");
   const pr = pairIdx();
-  let line = `One season selected: add another to compare.`;
+  let line = esc(L("vw.cmp.one", "One season selected: add another to compare."));
   if (pr) {
     const A = fr[pr[0]], B = fr[pr[1]], ms = S.meta.measured || {};
     const isHead = !!(hi && hi[0] === pr[0] && hi[1] === pr[1]);
     let what = "";
     if (ok(ms.shift_arcsec)) {
       const v = motionPair(A.epoch, B.epoch);
-      what = isHead ? "headline pair, same spacecraft orientation" : v && v.same === false ? "different spacecraft orientation"
-        : v && v.same ? "same spacecraft orientation" : "";
-    } else if (ms.photometry && isHead) what = "strongest brightness change";
-    else if (pr[0] === 0 && pr[1] === fr.length - 1 && fr.length > 2) what = "most distant seasons";
+      what = isHead ? L("vw.cmp.headSame", "headline pair, same spacecraft orientation") : v && v.same === false ? L("vw.cmp.diffOrient", "different spacecraft orientation")
+        : v && v.same ? L("vw.cmp.sameOrient", "same spacecraft orientation") : "";
+    } else if (ms.photometry && isHead) what = L("vw.cmp.strongest", "strongest brightness change");
+    else if (pr[0] === 0 && pr[1] === fr.length - 1 && fr.length > 2) what = L("vw.cmp.distant", "most distant seasons");
     line = `<b class="before">${esc(season(A.epoch))}</b> ↔ <b class="after">${esc(season(B.epoch))}</b>: ` +
-      `<b>${daysApart(A, B)} days apart</b>${what ? ` (${what})` : ""}`;
-    if (S.sel.length > 2) line = `${S.sel.length} seasons in the blink; ${ok(ms.shift_arcsec) ? "arrow and result" : "result"}: ` + line;
+      `<b>${esc(L("vw.cmp.apart", "{n} days apart", { n: daysApart(A, B) }))}</b>${what ? ` (${what})` : ""}`;
+    if (S.sel.length > 2) line = esc(L("vw.cmp.many", "{n} seasons in the blink; {what}: ", { n: S.sel.length, what: ok(ms.shift_arcsec) ? L("vw.cmp.arrowResult", "arrow and result") : L("vw.cmp.result", "result") })) + line;
   }
   $("compareLine").innerHTML = line;
   fairBadge();
@@ -504,9 +510,9 @@ function fairBadge() {
   el.hidden = false;
   el.className = "badge " + (fair ? "fair" : "warn");
   el.innerHTML = fair
-    ? `<span aria-hidden="true">✓</span> Fair comparison: same detector ${esc(dets[0])}, same colour ${lo.toFixed(2)}–${hi.toFixed(2)} µm`
-    : `<span aria-hidden="true">!</span> Not like for like: ${dets.length > 1 ? `detectors ${esc(dets.join(", "))}` : ""}${dets.length > 1 && spread > 0.06 ? "; " : ""}${spread > 0.06 ? `colours ${lo.toFixed(2)}–${hi.toFixed(2)} µm` : ""}`;
-  el.title = "SPHEREx sees every point in a slightly different colour each time. Frames are compared only within one detector and one narrow wavelength bin (±6 %), so a still star looks the same in every season.";
+    ? `<span aria-hidden="true">✓</span> ${esc(L("vw.fair.yes", "Fair comparison: same detector {det}, same colour {lo}–{hi} µm", { det: dets[0], lo: loc(lo.toFixed(2)), hi: loc(hi.toFixed(2)) }))}`
+    : `<span aria-hidden="true">!</span> ${esc(L("vw.fair.no", "Not like for like:"))} ${dets.length > 1 ? esc(L("vw.fair.dets", "detectors {d}", { d: dets.join(", ") })) : ""}${dets.length > 1 && spread > 0.06 ? "; " : ""}${spread > 0.06 ? esc(L("vw.fair.cols", "colours {lo}–{hi} µm", { lo: loc(lo.toFixed(2)), hi: loc(hi.toFixed(2)) })) : ""}`;
+  el.title = L("vw.fair.tip", "SPHEREx sees every point in a slightly different colour each time. Frames are compared only within one detector and one narrow wavelength bin (±6 %), so a still star looks the same in every season.");
 }
 
 // --- wavelength bins -----------------------------------------------------------------------------
@@ -553,13 +559,13 @@ async function pairDiff() {
   const A = fr[pr[0]], B = fr[pr[1]];
   const own = pr[0] === 0 && pr[1] === fr.length - 1;          // the pipeline's own difference image
   $("diffKey").innerHTML =
-    `<span class="k"><i class="sw blue"></i><b>Blue = before</b><small>brighter in ${esc(season(A.epoch))}</small></span>` +
-    `<span class="k"><i class="sw white"></i><b>White</b><small>no change</small></span>` +
-    `<span class="k"><i class="sw red"></i><b>Red = after</b><small>brighter in ${esc(season(B.epoch))}</small></span>`;
-  $("diffCap").textContent = `${season(B.epoch)} minus ${season(A.epoch)} at ${S.bin.wavelength_um.toFixed(1)} µm` +
-    (own ? " (made by the pipeline). " : " (computed in your browser from these two frames, the same way as the pipeline). ") +
-    `Stars that stay the same cancel out. A star that moved leaves blue where it was and red where it went; ` +
-    `a star that got brighter turns red, one that got fainter turns blue.`;
+    `<span class="k"><i class="sw blue"></i><b>${esc(L("vw.diff.blue", "Blue = before"))}</b><small>${esc(L("vw.diff.brighterIn", "brighter in {s}", { s: season(A.epoch) }))}</small></span>` +
+    `<span class="k"><i class="sw white"></i><b>${esc(L("vw.diff.white", "White"))}</b><small>${esc(L("vw.diff.noChange", "no change"))}</small></span>` +
+    `<span class="k"><i class="sw red"></i><b>${esc(L("vw.diff.red", "Red = after"))}</b><small>${esc(L("vw.diff.brighterIn", "brighter in {s}", { s: season(B.epoch) }))}</small></span>`;
+  $("diffCap").textContent = L("vw.diff.cap", "{b} minus {a} at {um} µm", { b: season(B.epoch), a: season(A.epoch), um: loc(S.bin.wavelength_um.toFixed(1)) }) +
+    (own ? L("vw.diff.own", " (made by the pipeline). ") : L("vw.diff.browser", " (computed in your browser from these two frames, the same way as the pipeline). ")) +
+    L("vw.diff.explain", "Stars that stay the same cancel out. A star that moved leaves blue where it was and red where it went; " +
+    "a star that got brighter turns red, one that got fainter turns blue.");
   const cv = $("diffPair"), my = ++diffToken;
   if (own) { cv.hidden = true; return; }
   try {
@@ -611,77 +617,81 @@ function renderResult() {
   const m = S.meta, ms = m.measured || {}, pv = m.preview, R = S.ref;
   const nImg = pv ? pv.n_images : ok(m.n_cutouts) ? m.n_cutouts : S.bins.reduce((a, b) => a + b.frames.reduce((s, f) => s + (f.n_images || 0), 0), 0);
   const eps = m.epochs || [];
-  const tImg = tile("SPHEREx images", String(nImg), `${S.bins.length} wavelength bin${S.bins.length === 1 ? "" : "s"}${pv ? " (preview)" : ""}`);
-  const tSea = tile("Seasons", String(eps.length), eps.length ? `${esc(season(eps[0]))} – ${esc(season(eps[eps.length - 1]))}` : "");
+  const tImg = tile(esc(L("vw.t.images", "SPHEREx images")), String(nImg), esc(S.bins.length === 1 ? L("vw.t.bins.one", "{n} wavelength bin", { n: 1 }) : L("vw.t.bins.other", "{n} wavelength bins", { n: S.bins.length })) + (pv ? esc(L("vw.t.previewSfx", " (preview)")) : ""));
+  const tSea = tile(esc(L("vw.t.seasons", "Seasons")), String(eps.length), eps.length ? `${esc(season(eps[0]))} – ${esc(season(eps[eps.length - 1]))}` : "");
   // the card describes the pair on screen (the arrow's pair); without one (a single season), the headline
   const pe = (S.bin && pairEpochs()) || headEpochs() || null;
   const pairTxt = pe ? `${esc(season(pe[0]))} → ${esc(season(pe[1]))}` : "";
-  const back = `<button type="button" class="linkbtn" data-headline>Show the headline pair</button>`;
-  let tMeas, tRef, verdict = "", note = "";
+  const back = `<button type="button" class="linkbtn" data-headline>${esc(L("vw.r.showHead", "Show the headline pair"))}</button>`;
+  let tMeas, tRef, verdict = "", note = "", mainNote = false;
+  const tMeasured = esc(L("vw.t.measured", "Measured by us")), tPredicts = esc(L("vw.t.predicts", "{who} predicts", { who: R.Short }));
+  const headTxt = () => L("vw.r.headlineIs", "Headline: {v} ({a} → {b}).", { v: arcsec(ms.shift_arcsec, ms.shift_err_arcsec), a: esc(season(ms.from_epoch)), b: esc(season(ms.to_epoch)) });
   if (ok(ms.shift_arcsec)) {
     const v = pe ? motionPair(pe[0], pe[1]) : null;
     if (!v) {
-      tMeas = tile("Measured by us", "–", `not measured between ${pairTxt}`, "hero");
-      tRef = tile(`${esc(R.Short)} predicts`, "–", "", "ref");
-      verdict = `The target was not measured in both of these seasons.`;
-      note = `<b>${pairTxt}</b>. Headline: ${arcsec(ms.shift_arcsec, ms.shift_err_arcsec)} (${esc(season(ms.from_epoch))} → ${esc(season(ms.to_epoch))}). ${back}`;
+      tMeas = tile(tMeasured, "–", L("vw.t.notMeasured", "not measured between {pair}", { pair: pairTxt }), "hero");
+      tRef = tile(tPredicts, "–", "", "ref");
+      verdict = esc(L("vw.r.notBoth", "The target was not measured in both of these seasons."));
+      note = `<b>${pairTxt}</b>. ${headTxt()} ${back}`;
     } else {
       const s = v.s, e = v.e, p = v.p;
-      tMeas = tile("Measured by us", arcsec(s, e), `${e != null ? `± ${arcsec(e, e)}` : ""}<span class="x">${e != null ? " · " : ""}${pairTxt}</span>`, "hero");
+      tMeas = tile(tMeasured, arcsec(s, e), `${e != null ? `± ${arcsec(e, e)}` : ""}<span class="x">${e != null ? " · " : ""}${pairTxt}</span>`, "hero");
       if (R.none || p == null) {
-        tRef = tile("Compared with", "–", R.none ? "nothing: a picked sky position has no catalogue motion" : "no prediction for this result");
-        verdict = `Measured by us from SPHEREx images${R.none ? "; there is no catalogue motion to compare with" : ""}.`;
+        tRef = tile(esc(L("vw.t.compared", "Compared with")), "–", esc(R.none ? L("vw.t.nothingPicked", "nothing: a picked sky position has no catalogue motion") : L("vw.t.noPred", "no prediction for this result")));
+        verdict = esc(L("vw.r.measuredFrom", "Measured by us from SPHEREx images") + (R.none ? L("vw.r.noCatMotion", "; there is no catalogue motion to compare with") : "")) + ".";
       } else {
-        const dirTxt = ok(v.ppa) ? `toward ${S.ex.compass ? S.ex.compass(v.ppa) + " " : ""}(PA ${fx(v.ppa, 0)}°` +
-          (ok(v.pa) ? `; we ${fx(v.pa, 0)}°)` : ")") : "";
-        tRef = tile(`${esc(R.Short)} predicts`, arcsec(p, e), dirTxt, "ref");
+        const dirTxt = ok(v.ppa) ? L("vw.t.toward", "toward {dir}(PA {pa}°", { dir: S.ex.compass ? S.ex.compass(v.ppa) + " " : "", pa: fx(v.ppa, 0) }) +
+          (ok(v.pa) ? L("vw.t.weDeg", "; we {pa}°)", { pa: fx(v.pa, 0) }) : ")") : "";
+        tRef = tile(tPredicts, arcsec(p, e), dirTxt, "ref");
         const d = Math.abs(s - p), pct = p > 0 ? 100 * d / p : null;
-        const agree = e != null ? (d <= 2 * e ? ", within the error" : `, ${(d / e).toFixed(1)} times the error`) : "";
-        verdict = `<b>Measured by us from SPHEREx images</b>, compared with ${esc(R.label)}: ${arcsec(d, e)} apart` +
-          (pct != null ? ` (${pct < 1 ? pct.toFixed(1) : Math.round(pct)} %)` : "") + `${agree}.`;
+        const agree = e != null ? (d <= 2 * e ? L("vw.r.within", ", within the error") : L("vw.r.times", ", {k} times the error", { k: loc((d / e).toFixed(1)) })) : "";
+        verdict = L("vw.r.cmp", "<b>Measured by us from SPHEREx images</b>, compared with {ref}: {d} apart", { ref: esc(R.label), d: arcsec(d, e) }) +
+          (pct != null ? ` (${pct < 1 ? loc(pct.toFixed(1)) : Math.round(pct)} %)` : "") + `${agree}.`;
       }
+      mainNote = !!v.headline;
       note = v.headline
-        ? `<b>${pairTxt}</b>: the headline pair (same spacecraft orientation, where detector offsets cancel).`
-        : `<b>${pairTxt}</b> (${v.same === false ? "different spacecraft orientation; headline uses same-orientation seasons"
-            : v.same ? "same spacecraft orientation, but not the headline pair" : "not the headline pair"}` +
-          `${v.fromPositions ? "; from the per-season positions" : ""}). ` +
-          `Headline: ${arcsec(ms.shift_arcsec, ms.shift_err_arcsec)} (${esc(season(ms.from_epoch))} → ${esc(season(ms.to_epoch))}). ${back}`;
+        ? `<b>${pairTxt}</b>: ${esc(L("vw.r.isHead", "the headline pair (same spacecraft orientation, where detector offsets cancel)."))}`
+        : `<b>${pairTxt}</b> (${esc(v.same === false ? L("vw.r.diffOrient", "different spacecraft orientation; headline uses same-orientation seasons")
+            : v.same ? L("vw.r.sameNotHead", "same spacecraft orientation, but not the headline pair") : L("vw.r.notHead", "not the headline pair"))}` +
+          `${v.fromPositions ? esc(L("vw.r.fromPos", "; from the per-season positions")) : ""}). ` +
+          `${headTxt()} ${back}`;
     }
   } else if (ms.photometry) {
     const c = bestChange(ms.photometry);
     const v = pe && S.bin ? brightPair(pe[0], pe[1]) : null;
-    const um = S.bin ? S.bin.wavelength_um.toFixed(1) : "";
+    const um = S.bin ? loc(S.bin.wavelength_um.toFixed(1)) : "";
     if (v && !v.none) {
       const pc = Math.round(100 * (v.r - 1)), pce = Math.max(1, Math.round(100 * v.er));
-      tMeas = tile("Brightness change", `${pc > 0 ? "+" : pc < 0 ? "−" : "±"}${Math.abs(pc)} %`, `± ${pce} %<span class="x"> · ${um} µm · ${pairTxt}</span>`, "hero");
-      tRef = tile("Compared with", String(v.n || "–"), "stars in the same images", "ref");
+      tMeas = tile(esc(L("vw.t.bright", "Brightness change")), `${pc > 0 ? "+" : pc < 0 ? "−" : "±"}${Math.abs(pc)} %`, `± ${pce} %<span class="x"> · ${um} µm · ${pairTxt}</span>`, "hero");
+      tRef = tile(esc(L("vw.t.compared", "Compared with")), String(v.n || "–"), esc(L("vw.t.starsSame", "stars in the same images")), "ref");
     } else {
-      tMeas = tile("Brightness change", "–", v ? esc(v.why) : "select two seasons", "hero");
-      tRef = tile("Compared with", "–", "stars in the same images", "ref");
+      tMeas = tile(esc(L("vw.t.bright", "Brightness change")), "–", v ? esc(v.why) : esc(L("vw.t.selectTwo", "select two seasons")), "hero");
+      tRef = tile(esc(L("vw.t.compared", "Compared with")), "–", esc(L("vw.t.starsSame", "stars in the same images")), "ref");
     }
-    verdict = `<b>Measured by us from SPHEREx images</b>: the target's brightness relative to comparison stars in the same images.`;
+    verdict = L("vw.r.brightVerdict", "<b>Measured by us from SPHEREx images</b>: the target's brightness relative to comparison stars in the same images.");
     if (c && c.main) {
       const mpc = Math.round(100 * (c.main.r - 1));
-      note = v && v.main ? `<b>${um} µm, ${pairTxt}</b>: the strongest change in this result.`
-        : `<b>${um} µm, ${pairTxt}</b>. Strongest change: ${mpc > 0 ? "+" : "−"}${Math.abs(mpc)} % at ${c.main.b.wavelength_um.toFixed(1)} µm ` +
-          `(${esc(season(c.from))} → ${esc(season(c.to))}). <button type="button" class="linkbtn" data-headline>Show it</button>`;
+      mainNote = !!(v && v.main);
+      note = v && v.main ? `<b>${um} µm, ${pairTxt}</b>: ${esc(L("vw.r.strongestHere", "the strongest change in this result."))}`
+        : `<b>${um} µm, ${pairTxt}</b>. ` + L("vw.r.strongest", "Strongest change: {c} % at {um} µm ({a} → {b}).", { c: `${mpc > 0 ? "+" : "−"}${Math.abs(mpc)}`, um: loc(c.main.b.wavelength_um.toFixed(1)), a: esc(season(c.from)), b: esc(season(c.to)) }) +
+          ` <button type="button" class="linkbtn" data-headline>${esc(L("vw.r.showIt", "Show it"))}</button>`;
     }
   } else if (ms.preliminary && ok(ms.preliminary.shift_arcsec)) {
     const pre = ms.preliminary;
-    tMeas = tile("Rough first look", "≈" + arcsec(pre.shift_arcsec), `${esc(season(pre.from_epoch))} → ${esc(season(pre.to_epoch))}, no error bars`, "hero");
-    tRef = tile(`${esc(R.Short)} predicts`, ok(pre.catalogue_shift_arcsec) ? arcsec(pre.catalogue_shift_arcsec) : "–", "same seasons", "ref");
-    verdict = "A quick preview from a few SPHEREx images, not a measurement. The full result follows.";
+    tMeas = tile(esc(L("vw.t.rough", "Rough first look")), "≈" + arcsec(pre.shift_arcsec), L("vw.t.noErr", "{a} → {b}, no error bars", { a: esc(season(pre.from_epoch)), b: esc(season(pre.to_epoch)) }), "hero");
+    tRef = tile(tPredicts, ok(pre.catalogue_shift_arcsec) ? arcsec(pre.catalogue_shift_arcsec) : "–", esc(L("vw.t.sameSeasons", "same seasons")), "ref");
+    verdict = esc(L("vw.r.previewVerdict", "A quick preview from a few SPHEREx images, not a measurement. The full result follows."));
   } else {
     const st = ms.status || "";
-    tMeas = tile("Measured", "–", st === "not_detected" ? "not detected above the noise" : st === "preview" ? "full result follows" : esc(ms.message || "no measurement"), "hero");
-    tRef = tile(R.none ? "Compared with" : `${esc(R.Short)} predicts`, "–", R.none ? "nothing: a picked sky position has no catalogue motion" : "no prediction for this result", "ref");
+    tMeas = tile(esc(L("vw.t.measuredPlain", "Measured")), "–", st === "not_detected" ? esc(L("vw.t.notDet", "not detected above the noise")) : st === "preview" ? esc(L("vw.t.fullFollows", "full result follows")) : esc(ms.message || L("vw.t.noMeas", "no measurement")), "hero");
+    tRef = tile(R.none ? esc(L("vw.t.compared", "Compared with")) : tPredicts, "–", esc(R.none ? L("vw.t.nothingPicked", "nothing: a picked sky position has no catalogue motion") : L("vw.t.noPred", "no prediction for this result")), "ref");
     verdict = esc(ms.message || "");
   }
   $("tiles").innerHTML = tMeas + tRef + tImg + tSea;
   $("verdict").innerHTML = verdict;
   const pn = $("pairNote");
   pn.hidden = !note;
-  pn.className = "pairnote" + (note && !/headline pair \(same|strongest change in this/.test(note) ? " alt" : "");
+  pn.className = "pairnote" + (note && !(mainNote || /headline pair \(same|strongest change in this/.test(note)) ? " alt" : "");
   pn.innerHTML = note;
   const hb = pn.querySelector("[data-headline]");
   if (hb) hb.onclick = goHeadline;
@@ -693,10 +703,10 @@ function renderResult() {
   const sb = $("satBadge");
   sb.hidden = !satBins.size;
   if (satBins.size) {
-    sb.innerHTML = `Core saturated, measured from the wings`;
-    sb.title = `The star is so bright that its centre fills the detector pixels to the top (the white core) at ` +
-      `${[...satBins].sort((a, b) => a - b).map((v) => v.toFixed(1)).join(", ")} µm. ` +
-      (ms.photometry ? "Its brightness is measured in a ring around the core." : "Its position is fitted to the unsaturated outer glow (the wings) only.");
+    sb.innerHTML = esc(L("vw.sat.badge", "Core saturated, measured from the wings"));
+    sb.title = L("vw.sat.tip", "The star is so bright that its centre fills the detector pixels to the top (the white core) at {um} µm. ",
+      { um: [...satBins].sort((a, b) => a - b).map((v) => loc(v.toFixed(1))).join(lang() === "tr" ? "; " : ", ") }) +
+      (ms.photometry ? L("vw.sat.phot", "Its brightness is measured in a ring around the core.") : L("vw.sat.pos", "Its position is fitted to the unsaturated outer glow (the wings) only."));
   }
 }
 
@@ -722,16 +732,16 @@ function goHeadline() {
 
 function renderHeader() {
   const m = S.meta, ms = m.measured || {};
-  const name = m.target && !/^(none|null)$/i.test(m.target) ? m.target : "Sky field";
+  const name = m.target && !/^(none|null)$/i.test(m.target) ? tname(m.target) : L("vw.skyField", "Sky field");
   $("title").textContent = name;
-  document.title = `${name} · Fazari SPHEREx blink`;
+  document.title = L("vw.docTitle", "{name} · Fazari SPHEREx blink", { name });
   const kind = ms.photometry ? "varies" : (ok(ms.shift_arcsec) || ms.preliminary) && !S.ref.none ? "moves" : S.info ? S.info.kind : null;
   const kb = $("kindBadge");
   kb.hidden = !kind;
-  if (kind) { kb.textContent = KIND_TEXT[kind]; kb.className = "badge kind " + kind; kb.title = KIND_TIP[kind]; }
+  if (kind) { kb.textContent = L("vw.kind." + kind, KIND_TEXT[kind]); kb.className = "badge kind " + kind; kb.title = L("vw.kindTip." + kind, KIND_TIP[kind]); }
   const tg = $("tagList");
-  tg.innerHTML = S.info ? `<span class="tag" title="${esc(S.info.why)}">${esc(S.info.tag)}</span>` : "";
-  $("why").textContent = S.info ? S.info.why : "";
+  tg.innerHTML = S.info ? `<span class="tag" title="${esc(L(`vw.tgt.${S.info.id}.why`, S.info.why))}">${esc(L(`vw.tgt.${S.info.id}.tag`, S.info.tag))}</span>` : "";
+  $("why").textContent = S.info ? L(`vw.tgt.${S.info.id}.why`, S.info.why) : "";
   $("why").hidden = !S.info;
 }
 
@@ -744,8 +754,8 @@ function buildTargets() {
     b.type = "button";
     b.className = "tgt" + (cur === t.id ? " on" : "");
     b.setAttribute("aria-current", cur === t.id ? "page" : "false");
-    b.innerHTML = `<b>${esc(t.name)}</b><small><span class="dot ${t.kind}"></span>${esc(KIND_TEXT[t.kind])} · ${esc(t.tag)}</small>`;
-    b.title = t.why;
+    b.innerHTML = tgtHtml(t);
+    b.title = L(`vw.tgt.${t.id}.why`, t.why);
     b.disabled = true;
     b.onclick = () => {
       const p = new URLSearchParams();
@@ -755,8 +765,18 @@ function buildTargets() {
     };
     box.appendChild(b);
     fetch(`data/${t.id}/meta.json`, { method: "HEAD" })
-      .then((r) => { if (r.ok) b.disabled = false; else b.title = "Coming soon"; })
-      .catch(() => { b.title = "Coming soon"; });
+      .then((r) => { if (r.ok) b.disabled = false; else { b.dataset.soon = "1"; b.title = L("vw.soon", "Coming soon"); } })
+      .catch(() => { b.dataset.soon = "1"; b.title = L("vw.soon", "Coming soon"); });
+  });
+}
+const tgtHtml = (t) => `<b>${esc(tname(t.name))}</b><small><span class="dot ${t.kind}"></span>${esc(L("vw.kind." + t.kind, KIND_TEXT[t.kind]))} · ${esc(L(`vw.tgt.${t.id}.tag`, t.tag))}</small>`;
+/** Language switch: relabel the target buttons (no new requests). */
+function paintTargets() {
+  document.querySelectorAll("#targets .tgt").forEach((b, i) => {
+    const tg = TARGETS[i];
+    if (!tg) return;
+    b.innerHTML = tgtHtml(tg);
+    b.title = b.dataset.soon ? L("vw.soon", "Coming soon") : L(`vw.tgt.${tg.id}.why`, tg.why);
   });
 }
 
@@ -767,73 +787,73 @@ function renderMeasure() {
   if (ms.message) html += `<p class="status ${ms.status || ""}">${ms.message}</p>`;
   const pre = ms.preliminary;
   if (pre) {
-    html += `<p><b>Preliminary</b> (preview, not a measurement): ${pre.from_epoch} → ${pre.to_epoch} roughly ` +
-      `${fx(pre.shift_arcsec, 1)}" toward PA ${fx(pre.pa_deg, 0)}°; ${ref} predicts ${fx(pre.catalogue_shift_arcsec, 1)}" toward PA ` +
-      `${fx(pre.catalogue_pa_deg, 0)}°. <small>${pre.n_used} images; raw SPHEREx WCS, no Gaia field-star calibration, no error bars.</small></p>`;
+    html += `<p>` + L("vw.m.pre", "<b>Preliminary</b> (preview, not a measurement): {a} → {b} roughly {s}\" toward PA {pa}°; {ref} predicts {p}\" toward PA {ppa}°. <small>{n} images; raw SPHEREx WCS, no Gaia field-star calibration, no error bars.</small>",
+      { a: pre.from_epoch, b: pre.to_epoch, s: fx(pre.shift_arcsec, 1), pa: fx(pre.pa_deg, 0), ref, p: fx(pre.catalogue_shift_arcsec, 1), ppa: fx(pre.catalogue_pa_deg, 0), n: pre.n_used }) + `</p>`;
   }
   if (ms.shift_arcsec != null) {
-    html += `<p>${ms.from_epoch} → ${ms.to_epoch}: moved <b>${fx(ms.shift_arcsec)}"</b>` +
-      (ms.shift_err_arcsec ? ` ± ${fx(ms.shift_err_arcsec)}"` : "") + ` toward PA ${fx(ms.pa_deg, 0)}°. ` +
-      `${ref} predicts <b>${fx(ms.gaia_predicted_arcsec)}"</b> toward PA ${fx(ms.gaia_pa_deg, 0)}°.` +
-      (ms.same_orientation === false ? ` <small>(seasons seen with the telescope turned 180°)</small>` : "") + `</p>`;
+    html += `<p>` + L("vw.m.moved", "{a} → {b}: moved <b>{s}\"</b>", { a: ms.from_epoch, b: ms.to_epoch, s: fx(ms.shift_arcsec) }) +
+      (ms.shift_err_arcsec ? ` ± ${fx(ms.shift_err_arcsec)}"` : "") + L("vw.m.towardPa", " toward PA {pa}°. ", { pa: fx(ms.pa_deg, 0) }) +
+      L("vw.m.predicts", "{ref} predicts <b>{p}\"</b> toward PA {pa}°.", { ref, p: fx(ms.gaia_predicted_arcsec), pa: fx(ms.gaia_pa_deg, 0) }) +
+      (ms.same_orientation === false ? ` <small>${L("vw.m.turned", "(seasons seen with the telescope turned 180°)")}</small>` : "") + `</p>`;
   }
   if (ms.fit) {
-    html += `<p><small>Proper motion from ${ms.fit.n_used} images: ${fx(ms.fit.pmra_mas_yr, 0)} ± ${fx(ms.fit.pmra_err_mas_yr, 0)}, ` +
-      `${fx(ms.fit.pmdec_mas_yr, 0)} ± ${fx(ms.fit.pmdec_err_mas_yr, 0)} mas/yr (${ref}: ${fx(ms.fit.gaia_pmra_mas_yr, 0)}, ${fx(ms.fit.gaia_pmdec_mas_yr, 0)}).</small></p>`;
+    html += `<p><small>` + L("vw.m.fit", "Proper motion from {n} images: {a} ± {ae}, {d} ± {de} mas/yr ({ref}: {ga}, {gd}).",
+      { n: ms.fit.n_used, a: fx(ms.fit.pmra_mas_yr, 0), ae: fx(ms.fit.pmra_err_mas_yr, 0), d: fx(ms.fit.pmdec_mas_yr, 0), de: fx(ms.fit.pmdec_err_mas_yr, 0),
+        ref, ga: fx(ms.fit.gaia_pmra_mas_yr, 0), gd: fx(ms.fit.gaia_pmdec_mas_yr, 0) }) + `</small></p>`;
   }
   const rows = (ms.positions || []).map((p) =>
     `<tr><td>${p.epoch}</td><td>${p.date}</td><td>${p.n_images}</td>` +
     `<td class="num">${fx(p.minus_gaia_east_arcsec)}", ${fx(p.minus_gaia_north_arcsec)}"</td>` +
     `<td class="num">${fx(p.err_east_arcsec)}", ${fx(p.err_north_arcsec)}"</td></tr>`).join("");
-  if (rows) html += `<div class="tw"><table><tr><th>Season</th><th>Mean date</th><th>Images</th><th>Measured − ${ref.split(" (")[0]} (E, N)</th><th>± (E, N)</th></tr>${rows}</table></div>`;
+  if (rows) html += `<div class="tw"><table><tr><th>${L("vw.m.th.season", "Season")}</th><th>${L("vw.m.th.date", "Mean date")}</th><th>${L("vw.m.th.images", "Images")}</th><th>${L("vw.m.th.minus", "Measured − {ref} (E, N)", { ref: ref.split(" (")[0] })}</th><th>${L("vw.m.th.err", "± (E, N)")}</th></tr>${rows}</table></div>`;
   const fc = ms.field_calibration;
   if (fc && fc.applied && fc.n_exposures_calibrated > 0)
-    html += `<small>Positions are tied to Gaia DR3 with the field stars of the same images ` +
-      `(${fc.n_exposures_calibrated} exposures calibrated).</small> `;
+    html += `<small>` + L("vw.m.cal", "Positions are tied to Gaia DR3 with the field stars of the same images ({n} exposures calibrated).", { n: fc.n_exposures_calibrated }) + `</small> `;
   else if (fc && fc.applied)
-    html += `<small>Field-star calibration not applied: too few Gaia stars at these wavelengths; positions use the SPHEREx WCS.</small> `;
+    html += `<small>${L("vw.m.noCal", "Field-star calibration not applied: too few Gaia stars at these wavelengths; positions use the SPHEREx WCS.")}</small> `;
   if (rows && ms.positions.some((p) => p.bias_corrected) && ms.same_orientation === true)
-    html += `<small>Positions corrected for a small detector-fixed centroid bias (fitted per detector); ` +
-      `the main result above uses two seasons seen in the same orientation, where that bias cancels.</small>`;
+    html += `<small>` + L("vw.m.bias", "Positions corrected for a small detector-fixed centroid bias (fitted per detector); " +
+      "the main result above uses two seasons seen in the same orientation, where that bias cancels.") + `</small>`;
   const det = ms.detection;
   if (det && det.bins && det.bins.length) {
     const eps = m.epochs;
     const bl = [...new Set(det.bins.map((c) => c.wavelength_um))];
-    let t = `<tr><th>Bin</th>${eps.map((e) => `<th>${e}</th>`).join("")}</tr>`;
+    let t = `<tr><th>${L("vw.m.th.bin", "Bin")}</th>${eps.map((e) => `<th>${e}</th>`).join("")}</tr>`;
     bl.forEach((b) => {
-      t += `<tr><td>${b.toFixed(1)} µm (${det.bins.find((c) => c.wavelength_um === b).detector})</td>` + eps.map((e) => {
+      t += `<tr><td>${loc(b.toFixed(1))} µm (${det.bins.find((c) => c.wavelength_um === b).detector})</td>` + eps.map((e) => {
         const c = det.bins.find((q) => q.wavelength_um === b && q.epoch === e);
         if (!c) return "<td>–</td>";
-        const v = c.saturated_frac > 0.5 ? "sat." : fx(c.snr, 1);
+        const v = c.saturated_frac > 0.5 ? L("vw.m.sat", "sat.") : fx(c.snr, 1);
         return `<td class="num ${c.detected ? "det" : ""}">${v} <small>(${c.n})</small></td>`;
       }).join("") + "</tr>";
     });
-    html += `<details${ms.status === "detected" ? "" : " open"}><summary>Detection check: S/N at the predicted position ` +
-      `(single-season stacks, ≥${det.threshold_snr}σ in green; number of images in brackets)</summary><div class="tw"><table>${t}</table></div>` +
+    html += `<details${ms.status === "detected" ? "" : " open"}><summary>` + L("vw.m.detSum", "Detection check: S/N at the predicted position " +
+      "(single-season stacks, ≥{thr}σ in green; number of images in brackets)", { thr: det.threshold_snr }) + `</summary><div class="tw"><table>${t}</table></div>` +
       (det.blend_note ? `<small>${det.blend_note}</small>` : "") +
-      ((det.blend_check || []).length ? `<small>Nearest catalogue source to the predicted position: ` +
-        det.blend_check.map((b) => `${b.epoch} ${fx(b.nearest_arcsec, 1)}"`).join(", ") + ` (fitted together with the target).</small>` : "") +
+      ((det.blend_check || []).length ? `<small>` + L("vw.m.nearest", "Nearest catalogue source to the predicted position: {list} (fitted together with the target).",
+        { list: det.blend_check.map((b) => `${b.epoch} ${fx(b.nearest_arcsec, 1)}"`).join(lang() === "tr" ? "; " : ", ") }) + `</small>` : "") +
       `</details>`;
   }
   const ph = ms.photometry;
   if (ph) {
-    $("mtitle").textContent = "Brightness change (relative photometry)";
+    $("mtitle").textContent = L("vw.m.brightTitle", "Brightness change (relative photometry)");
     const eps = m.epochs;
-    let t = `<tr><th>Bin</th>${eps.map((e) => `<th>${e}</th>`).join("")}<th>Note</th></tr>`;
+    let t = `<tr><th>${L("vw.m.th.bin", "Bin")}</th>${eps.map((e) => `<th>${e}</th>`).join("")}<th>${L("vw.m.th.note", "Note")}</th></tr>`;
     ph.bins.forEach((b) => {
-      t += `<tr><td>${b.wavelength_um.toFixed(1)} µm</td>` + eps.map((e) => {
+      t += `<tr><td>${loc(b.wavelength_um.toFixed(1))} µm</td>` + eps.map((e) => {
         const s = (b.seasons || []).find((q) => q.epoch === e);
         if (!s) return "<td>–</td>";
-        return s.ratio_err ? `<td class="num">${fx(s.ratio_to_first)} ± ${fx(s.ratio_err)}</td>` : `<td class="num">1 (ref.)</td>`;
-      }).join("") + `<td><small>${(b.flags || []).join("; ") || (b.method === "psf" ? "PSF flux" : "")}` +
-      (b.n_comparison ? ` · ${b.n_comparison} comparison stars` : "") + `</small></td></tr>`;
+        return s.ratio_err ? `<td class="num">${fx(s.ratio_to_first)} ± ${fx(s.ratio_err)}</td>` : `<td class="num">${L("vw.m.ref1", "1 (ref.)")}</td>`;
+      }).join("") + `<td><small>${(b.flags || []).join("; ") || (b.method === "psf" ? L("vw.m.psf", "PSF flux") : "")}` +
+      (b.n_comparison ? L("vw.m.compStars", " · {n} comparison stars", { n: b.n_comparison }) : "") + `</small></td></tr>`;
     });
-    html += `<p>Target flux relative to comparison stars in the same images, as a ratio to the first season ` +
-      `(1.20 = 20 % brighter).</p><div class="tw"><table>${t}</table></div><p><small>${ph.method || ""} ${(ph.caveats || []).join(" ")}</small></p>`;
+    html += `<p>` + L("vw.m.photP", "Target flux relative to comparison stars in the same images, as a ratio to the first season " +
+      "(1.20 = 20 % brighter).") + `</p><div class="tw"><table>${t}</table></div><p><small>${ph.method || ""} ${(ph.caveats || []).join(" ")}</small></p>`;
   }
-  if (ms.finding) html += `<p><small><b>Finding:</b> ${ms.finding}</small></p>`;
+  if (ms.finding) html += `<p><small><b>${L("vw.m.finding", "Finding:")}</b> ${ms.finding}</small></p>`;
   if (ms.note) html += `<p><small>${ms.note}</small></p>`;
   $("measure").innerHTML = html;
+  if (!ph) $("mtitle").textContent = L("vw.m.title", "Measurement details");
 }
 
 function renderStagebar() {
@@ -844,9 +864,9 @@ function renderStagebar() {
   st.hidden = false;
   st.className = "stagebar " + (pv ? "preview" : "full");
   st.innerHTML = pv
-    ? `<b>Preview (${n} images)</b> · ${(+pv.bin_um).toFixed(1)} µm only (${pv.detector}), ${pv.seasons} seasons, small regions. ` +
-      `A quick look, not a measurement.`
-    : `<b>Full result (${n} images)</b> · ${S.bins.length} wavelength bin(s), ${(m.epochs || []).length} seasons.`;
+    ? L("vw.stage.preview", "<b>Preview ({n} images)</b> · {um} µm only ({det}), {s} seasons, small regions. A quick look, not a measurement.",
+      { n, um: loc((+pv.bin_um).toFixed(1)), det: pv.detector, s: pv.seasons })
+    : L("vw.stage.full", "<b>Full result ({n} images)</b> · {b} wavelength bin(s), {s} seasons.", { n, b: S.bins.length, s: (m.epochs || []).length });
 }
 
 function watchHint() {
@@ -854,9 +874,11 @@ function watchHint() {
   const ms = S.meta.measured || {};
   if (!pe) { $("watch").textContent = ""; return; }
   const A = season(pe[0], true), B = season(pe[1], true);
-  const tail = ms.photometry ? "the star in the ring changes brightness."
-    : (ok(ms.shift_arcsec) || ms.preliminary) && !S.ref.none ? "the arrow shows where it went." : "anything that jumps has moved.";
-  $("watch").innerHTML = `<b>Watch it.</b><span class="x"> ${S.sel.length > 2 ? `The image steps through ${S.sel.length} seasons; the pair is` : "The image switches between"} ${esc(A)} and ${esc(B)}; ${tail}</span>`;
+  const tail = ms.photometry ? L("vw.watch.bright", "the star in the ring changes brightness.")
+    : (ok(ms.shift_arcsec) || ms.preliminary) && !S.ref.none ? L("vw.watch.arrow", "the arrow shows where it went.") : L("vw.watch.jump", "anything that jumps has moved.");
+  $("watch").innerHTML = `<b>${esc(L("vw.watch.title", "Watch it."))}</b><span class="x"> ${esc(S.sel.length > 2
+    ? L("vw.watch.many", "The image steps through {n} seasons; the pair is {a} and {b}; {tail}", { n: S.sel.length, a: A, b: B, tail })
+    : L("vw.watch.two", "The image switches between {a} and {b}; {tail}", { a: A, b: B, tail }))}</span>`;
 }
 
 // --- "Find the mover" game ---------------------------------------------------------------------------
@@ -882,9 +904,9 @@ function startGame() {
   S.game = { revealed: false, click: null, hit: false };
   $("stage").classList.add("game");
   const vary = !!(S.meta.measured || {}).photometry;
-  gameMsg(vary ? "Find the star that changes brightness: watch the blink, then click it."
-    : "Find the mover: watch the blink, then click the thing that moves.", "ask");
-  $("gameBtn").textContent = "Show me";
+  gameMsg(esc(vary ? L("vw.g.askBright", "Find the star that changes brightness: watch the blink, then click it.")
+    : L("vw.g.askMove", "Find the mover: watch the blink, then click the thing that moves.")), "ask");
+  $("gameBtn").textContent = L("vw.g.showMe", "Show me");
   drawOverlay();
 }
 function gameMsg(html, cls) {
@@ -896,22 +918,24 @@ function gameMsg(html, cls) {
 function reveal(hit) {
   S.game.revealed = true;
   S.game.hit = hit;
-  const m = S.meta, ms = m.measured || {}, name = esc(m.target || "the target");
+  const m = S.meta, ms = m.measured || {}, name = esc(m.target ? tname(m.target) : L("vw.g.theTarget", "the target"));
   let msg;
   if (ms.photometry) {
     const pe = pairEpochs(), v = pe ? brightPair(pe[0], pe[1]) : null;
-    const what = v && !v.none ? ` Our measurement: ${Math.abs(Math.round(100 * (v.r - 1)))} % ${v.r < 1 ? "fainter" : "brighter"} at ${S.bin.wavelength_um.toFixed(1)} µm, ${season(pe[0])} → ${season(pe[1])}.` : "";
-    msg = hit ? `<b>Correct!</b> That is ${name}.${what}` : `<b>Not quite: here it is</b> (in the orange ring).${what}`;
+    const what = v && !v.none ? " " + esc(L("vw.g.ourBright", "Our measurement: {p} % {dir} at {um} µm, {a} → {b}.", { p: Math.abs(Math.round(100 * (v.r - 1))),
+      dir: v.r < 1 ? L("vw.g.fainter", "fainter") : L("vw.g.brighter", "brighter"), um: loc(S.bin.wavelength_um.toFixed(1)), a: season(pe[0]), b: season(pe[1]) })) : "";
+    msg = hit ? L("vw.g.correct", "<b>Correct!</b> That is {name}.", { name }) + what : L("vw.g.missRing", "<b>Not quite: here it is</b> (in the orange ring).") + what;
   } else {
-    const who = S.ref.who;
+    const who = S.ref.who === "The catalogue" ? L("vw.g.catalogue", "The catalogue") : S.ref.who;
     const pe = pairEpochs(), v = pe ? motionPair(pe[0], pe[1]) : null;
-    const nums = v ? ` ${season(pe[0])} → ${season(pe[1])}: we measured ${arcsec(v.s, v.e)}` +
-      (who && v.p != null ? `; ${who} predicts ${arcsec(v.p, v.e)}.` : ".") : "";
-    msg = hit ? `<b>${who ? `${who} confirms!` : "Yes!"}</b> You found ${name}.${nums}` : `<b>Not quite: here it is</b> (follow the arrow).${nums}`;
+    const nums = v ? " " + esc(L("vw.g.nums", "{a} → {b}: we measured {s}", { a: season(pe[0]), b: season(pe[1]), s: arcsec(v.s, v.e) }) +
+      (who && v.p != null ? L("vw.g.numsPred", "; {who} predicts {p}.", { who, p: arcsec(v.p, v.e) }) : ".")) : "";
+    msg = hit ? `<b>${esc(who ? L("vw.g.confirms", "{who} confirms!", { who }) : L("vw.g.yes", "Yes!"))}</b> ${L("vw.g.found", "You found {name}.", { name })}${nums}`
+      : L("vw.g.missArrow", "<b>Not quite: here it is</b> (follow the arrow).") + nums;
   }
-  gameMsg(msg + ` <button type="button" id="gameAgain">Play again</button>`, hit ? "hit" : "miss");
+  gameMsg(msg + ` <button type="button" id="gameAgain">${esc(L("vw.g.again", "Play again"))}</button>`, hit ? "hit" : "miss");
   $("gameAgain").onclick = () => { endGame(); startGame(); };
-  $("gameBtn").textContent = "Find the mover";
+  $("gameBtn").textContent = L("vw.g.find", "Find the mover");
   $("stage").classList.remove("game");
   drawOverlay();
 }
@@ -919,7 +943,7 @@ function endGame() {
   S.game = null;
   $("stage").classList.remove("game");
   gameMsg("");
-  $("gameBtn").textContent = "Find the mover";
+  $("gameBtn").textContent = L("vw.g.find", "Find the mover");
   drawOverlay();
 }
 function onStageClick(ev) {
@@ -946,8 +970,8 @@ async function copyLink() {
     i.hidden = false; i.value = url; i.focus(); i.select();
     try { done = document.execCommand("copy"); } catch (_) {}
   }
-  b.textContent = done ? "Link copied" : "Copy the link below";
-  setTimeout(() => { b.textContent = "Copy link"; }, 2200);
+  b.textContent = done ? L("vw.copied", "Link copied") : L("vw.copyBelow", "Copy the link below");
+  setTimeout(() => { b.textContent = L("vw.copy", "Copy link"); }, 2200);
 }
 
 // --- start ---------------------------------------------------------------------------------------------
@@ -957,15 +981,15 @@ export async function startViewer() {
   S.base = baseFromUrl();
   S.ex = await import("./explain.js").catch((e) => { console.warn("explain.js", e); return {}; });
   buildTargets();
-  stageMsg("Loading…");
+  stageMsg(L("vw.loading", "Loading…"));
   let m;
   try {
     const r = await fetch(S.base + "meta.json");
     if (!r.ok) throw new Error("HTTP " + r.status);
     m = await r.json();
   } catch (e) {
-    stageMsg(`Could not load ${S.base}meta.json (${e.message || e}).`);
-    $("explainSentence").textContent = "This result could not be loaded. Pick a target above.";
+    stageMsg(L("vw.loadErr", "Could not load {f} ({e}).", { f: S.base + "meta.json", e: e.message || e }));
+    $("explainSentence").textContent = L("vw.loadErr2", "This result could not be loaded. Pick a target above.");
     return null;
   }
   S.meta = m;
@@ -973,21 +997,25 @@ export async function startViewer() {
   S.ref = refInfo(m);
   const tid = targetIdOf(S.base);
   S.info = TARGETS.find((t) => t.id === tid) || TARGETS.find((t) => t.name === m.target) || null;
-  if (!S.bins.length) { stageMsg("This result has no SPHEREx frames."); return null; }
+  if (!S.bins.length) { stageMsg(L("vw.noFrames", "This result has no SPHEREx frames.")); return null; }
   stageMsg("");
   renderHeader();
   renderStagebar();
   renderResult();
   renderMeasure();
-  $("marklabel").textContent = S.ref.none ? "Centre ring" : `${S.ref.Short} ring`;
-  $("subtitle").textContent = `Centre RA ${fx(m.ra, 4)}°, Dec ${fx(m.dec, 4)}° (epoch ${m.epoch_center}).`;
-  $("src").textContent = "Data: " + (m.data_source || "SPHEREx") + ". Generated " + (m.generated || "") + ".";
-  $("realNote").textContent = `All frames are real SPHEREx images (${m.data_source || "NASA/IPAC IRSA"}), stacked per season; nothing is simulated.`;
+  const paintFixed = () => {
+    $("marklabel").textContent = S.ref.none ? L("vw.ring.centre", "Centre ring") : L("vw.ring.of", "{who} ring", { who: S.ref.Short });
+    $("subtitle").textContent = L("vw.sub", "Centre RA {ra}°, Dec {dec}° (epoch {ep}).", { ra: fx(m.ra, 4), dec: fx(m.dec, 4), ep: loc(m.epoch_center) });
+    $("src").textContent = L("vw.src", "Data: {ds}. Generated {gen}.", { ds: m.data_source || "SPHEREx", gen: m.generated || "" });
+    $("realNote").textContent = L("vw.realNote", "All frames are real SPHEREx images ({ds}), stacked per season; nothing is simulated.", { ds: m.data_source || "NASA/IPAC IRSA" });
+    [...$("wl").options].forEach((o, i) => { const b = m.wavelength_bins[i]; if (b) o.textContent = L("vw.wlOpt", "{um} µm ({n} seasons)", { um: loc(b.wavelength_um.toFixed(1)), n: b.frames.length }); });
+  };
   m.wavelength_bins.forEach((b, i) => {
     const o = document.createElement("option");
-    o.value = i; o.textContent = b.wavelength_um.toFixed(1) + " µm (" + b.frames.length + " seasons)";
+    o.value = i;
     $("wl").appendChild(o);
   });
+  paintFixed();
 
   // zoom: ?z=, else 4x around the target (a preview's smaller region: 3x shows about the same sky)
   const pv = m.preview;
@@ -1075,6 +1103,18 @@ export async function startViewer() {
 
   selectBin(start, sel && sel.length ? sel : null);
   watchHint();
+  // language switch: new text only; bin, seasons, frame, mode, zoom, game and marks stay as they are
+  onLang(() => {
+    try {
+      renderHeader(); paintTargets(); paintFixed(); renderStagebar(); renderMeasure(); renderResult(); renderSeasons(); pairDiff(); watchHint();
+      $("modeHint").textContent = t("vw.hint." + S.mode);
+      show(); scaleBar();
+      $("play").textContent = S.playing ? L("vw.pause", "Pause") : L("vw.play", "Play");
+      if (S.game && S.game.revealed) reveal(S.game.hit);
+      else if (S.game) { gameMsg(esc((S.meta.measured || {}).photometry ? t("vw.g.askBright") : t("vw.g.askMove")), "ask"); $("gameBtn").textContent = L("vw.g.showMe", "Show me"); }
+      else $("gameBtn").textContent = L("vw.g.find", "Find the mover");
+    } catch (e) { console.warn("viewer language switch", e); }
+  });
   return {
     meta: m, base: S.base,
     current: () => ({ frame: S.bin && S.bin.frames[S.idx], bin_um: S.bin && S.bin.wavelength_um }),
@@ -1082,8 +1122,8 @@ export async function startViewer() {
     fallbackSentence() {
       const box = $("explainSentence");
       if (box.textContent.trim()) return;
-      const t = ok(ms.shift_arcsec) ? `${m.target} moved ${arcsec(ms.shift_arcsec, ms.shift_err_arcsec)} between ${season(ms.from_epoch, true)} and ${season(ms.to_epoch, true)}.`
-        : ms.photometry ? `${m.target} changes brightness between the SPHEREx seasons.` : ms.message || "";
+      const t = ok(ms.shift_arcsec) ? L("vw.fb.moved", "{name} moved {s} between {a} and {b}.", { name: tname(m.target), s: arcsec(ms.shift_arcsec, ms.shift_err_arcsec), a: season(ms.from_epoch, true), b: season(ms.to_epoch, true) })
+        : ms.photometry ? L("vw.fb.bright", "{name} changes brightness between the SPHEREx seasons.", { name: tname(m.target) }) : ms.message || "";
       box.innerHTML = t ? `<p>${esc(t)}</p>` : "";
     },
     on(fn) { if (typeof fn === "function") S.listeners.push(fn); },

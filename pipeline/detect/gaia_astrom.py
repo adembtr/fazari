@@ -1,0 +1,204 @@
+"""Detector B: catalogue-based astrometry of every Gaia DR3 star in the field.
+
+Each Gaia DR3 star (G < 19, the blink.py gaia_field.json list) is predicted in every exposure
+with its Gaia proper motion and parallax and measured there (astrometry.py: EPSF fit, Gaia
+registration, all ~120 exposures per season). The season offsets measured - Gaia give a drift
+d (mas/yr) with errors; the measured proper motion is Gaia + d.
+
+Classes (only the first two are written to candidates.json)
+  known mover confirmed   |measured pm| >= SIG_MOTION sigma and d < SIG_ANOMALY sigma  -> gaia-known
+  anomalous vs Gaia       d >= SIG_ANOMALY sigma, both detector halves agree           -> candidate
+  no significant motion   everything else (counted in the summary)
+Gaia 2-parameter solutions (no proper motion) that move significantly are candidates.
+
+When <out>/field_stars.csv from pipeline/blink.py (field_calibration export) exists, the same
+drift is also computed from its per-star, per-exposure measurements (status 'used', minus the
+applied cell calibration) and compared star by star (summary 'field_stars_csv_check').
+"""
+import csv
+import math
+
+import numpy as np
+
+from . import astrometry as AS
+from . import reject as RJ
+from . import schema as SC
+
+NAME = "B"
+SIG_MOTION = 5.0
+SIG_ANOMALY = 5.0
+MIN_SEASON_N = 3
+GAIA_EPOCH = 2016.0
+
+
+def run(ctx):
+    gt = ctx.gaia
+    info = {"name": "Gaia DR3 astrometry (catalogue-based)"}
+    if gt is None or gt.n == 0:
+        ctx.info[NAME] = dict(info, skipped="no Gaia DR3 field stars")
+        return []
+    from . import deep_astrom
+    src, ng = deep_astrom.field_sources(ctx)     # Gaia stars first, then the non-Gaia deep sources
+    A, T = deep_astrom.field_measure(ctx)        # measured together (blends modelled)
+    ref = np.nonzero(gt.reference())[0]
+    floor, nfl = AS.estimate_season_floor(T, ref)
+    ctx.season_floor = floor
+    ctx.shared["gaia_meas"] = (A, T)
+    ctx.log(f"  B: {gt.n} Gaia stars measured; per-season systematic floor {floor:.3f}\" from {nfl} stars")
+    cands, counts, fits = [], {"measured": 0, "known_mover_confirmed": 0, "anomalous": 0, "no_significant_motion": 0}, {}
+    for j in range(ng):
+        f = AS.fit_drift(T, j, floor=floor, min_n=MIN_SEASON_N)
+        if f is None:
+            continue
+        counts["measured"] += 1
+        pmE = (0 if not np.isfinite(gt.pmra[j]) else gt.pmra[j]) + f["bE"] * 1000
+        pmN = (0 if not np.isfinite(gt.pmdec[j]) else gt.pmdec[j]) + f["bN"] * 1000
+        eE, eN = f["ebE"] * 1000, f["ebN"] * 1000
+        sig_abs = AS._sigma_from_chi2((pmE / eE) ** 2 + (pmN / eN) ** 2, 2)
+        dev = f["sig_motion"]                     # drift vs the Gaia prediction
+        fits[int(gt.sid[j])] = (f["bE"], f["bN"], f["ebE"], f["ebN"])
+        two_par = not gt.has5p[j]
+        cls = None
+        flags = []
+        if dev >= SIG_ANOMALY:
+            groups, agree = AS.group_agreement(ctx.exps, A, ctx.seasons, j, f, floor)
+            if not agree:
+                flags.append("detector halves disagree")
+            bad_line = f["p_linear"] is not None and f["p_linear"] < 1e-3
+            if bad_line:
+                flags.append("season positions not on a straight line")
+            if np.isfinite(gt.ruwe[j]) and gt.ruwe[j] > 1.4:
+                flags.append(f"Gaia RUWE {gt.ruwe[j]:.1f} (possible binary)")
+            if f["saturated"]:
+                flags.append("saturated: wing fit")
+            near = _brighter_neighbour(gt, j, 8.0)
+            if near:
+                flags.append(f"brighter Gaia star {near:.1f}\" away (blend)")
+            zone = RJ.in_sat_zone(ctx, src.ra0[j], src.dec0[j], allow_core=True)[0]
+            if zone:
+                flags.append("in the wings of a saturated star")
+            ori_ok, ori_note = AS.orientation_check(T, j, f, floor, min_n=MIN_SEASON_N)
+            flags.append(ori_note)
+            # a real motion change since Gaia also moves the star away from the Gaia position:
+            # offset at 2026 ~ drift x (2026 - Gaia epoch). A drift without that offset is a
+            # wavelength-dependent photocentre (blend with a redder source) or a measurement effect.
+            dt_g = 2026.0 - GAIA_EPOCH
+            res = math.hypot(f["aE"] - f["bE"] * dt_g, f["aN"] - f["bN"] * dt_g)
+            tol = max(1.0, 3 * math.hypot(0.1, dt_g * math.hypot(f["ebE"], f["ebN"]) / math.sqrt(2)))
+            off_ok = res <= tol
+            if not off_ok:
+                flags.append(f"offset from Gaia at 2026 is {math.hypot(f['aE'], f['aN']):.1f}\", the drift implies "
+                             f"{dt_g * math.hypot(f['bE'], f['bN']):.1f}\" since {GAIA_EPOCH:.0f} (blend / colour shift?)")
+            if agree and not near and not zone and not bad_line and ori_ok and off_ok:
+                cls = "candidate"
+                counts["anomalous"] += 1
+                flags.insert(0, "Gaia 2-parameter solution: motion not in Gaia" if two_par else "anomalous vs Gaia")
+            else:
+                cls = "artifact"
+        elif sig_abs >= SIG_MOTION and not two_par:
+            cls = "gaia-known"
+            counts["known_mover_confirmed"] += 1
+            flags.append("known mover confirmed")
+        else:
+            counts["no_significant_motion"] += 1
+        if cls is None:
+            continue
+        mo = SC.motion_dict(pmE, pmN, eE, eN, sig=sig_abs, method="B: EPSF astrometry, all exposures, Gaia-registered")
+        mo["deviation_from_gaia_sigma"] = round(dev, 1)
+        mo["drift_vs_gaia_mas_yr"] = [round(f["bE"] * 1000, 1), round(f["bN"] * 1000, 1)]
+        pos = _season_positions(T, j, src, ctx)
+        # barycentric position at 2026.0 (prediction + fitted offset)
+        c = SC.new_candidate(NAME, "motion", src.ra0[j] + f["aE"] / 3600 / math.cos(math.radians(src.dec0[j])),
+                             src.dec0[j] + f["aN"] / 3600, 2026.0, cls=cls, motion=mo, positions=pos,
+                             snr=round(float(np.nanmax(T["snr"][:, j])), 1),
+                             flux_ujy=_flux(T, j), bins=sorted({e["detector"] for a, e in enumerate(ctx.exps) if A["ok"][a, j]}),
+                             season_pairs=[[ctx.seasons[0], ctx.seasons[-1]]], flags=flags)
+        c["mag_ab"] = None if not c["flux_ujy"] else round(23.9 - 2.5 * math.log10(c["flux_ujy"]), 2) if c["flux_ujy"] > 0 else None
+        c["match"]["gaia_dr3"] = {"source_id": str(gt.sid[j]), "G": _r(gt.G[j], 2), "pmra_mas_yr": _r(gt.pmra[j], 1),
+                                  "pmdec_mas_yr": _r(gt.pmdec[j], 1), "parallax_mas": _r(gt.plx[j], 2),
+                                  "ruwe": _r(gt.ruwe[j], 2), "sep_arcsec": round(math.hypot(f["aE"], f["aN"]), 2)}
+        c["fit"] = {"chi2": round(f["chi2"], 2), "dof": f["dof"], "n_seasons": f["n_seasons"],
+                    "orient_term": f["orient_term"], "season_floor_arcsec": round(floor, 3)}
+        cands.append(c)
+    info.update(counts=counts, season_floor_arcsec=round(floor, 4), n_floor_stars=nfl,
+                thresholds={"motion_sigma": SIG_MOTION, "anomaly_sigma": SIG_ANOMALY})
+    if ctx.field.field_stars_csv and ctx.field.field_stars_csv.exists():
+        info["field_stars_csv_check"] = csv_check(ctx.field.field_stars_csv, fits, ctx)
+    ctx.info[NAME] = info
+    ctx.log(f"  B: {counts}")
+    return cands
+
+
+def _brighter_neighbour(gt, j, rad):
+    """Distance to a Gaia star that can bias this star's position: brighter within rad, or
+    within 4" and less than 2.5 mag fainter."""
+    cosd = math.cos(math.radians(gt.dec[j]))
+    d = np.hypot((gt.ra - gt.ra[j]) * cosd, gt.dec - gt.dec[j]) * 3600
+    m = (d > 0.05) & (((d < rad) & (gt.G < gt.G[j])) | ((d < 4.0) & (gt.G < gt.G[j] + 2.5)))
+    return float(d[m].min()) if m.any() else None
+
+
+def _season_positions(T, j, src, ctx):
+    out = []
+    for k, s in enumerate(ctx.seasons):
+        if T["n"][k, j] < 1 or not np.isfinite(T["E"][k, j]):
+            continue
+        t = float(T["t"][k, j])
+        r, d = src.at(_mjd(t), t)
+        cosd = math.cos(math.radians(d[j]))
+        out.append({"season": s, "jyear": round(t, 4), "ra": float(r[j] + T["E"][k, j] / 3600 / cosd),
+                    "dec": float(d[j] + T["N"][k, j] / 3600), "n": int(T["n"][k, j]),
+                    "err_arcsec": round(float(math.hypot(T["eE"][k, j], T["eN"][k, j])), 3)})
+    return out
+
+
+def _flux(T, j):
+    f = T["flux"][:, j][np.isfinite(T["flux"][:, j])]
+    return round(float(np.median(f)) * AS.BL.PIXEL_UJY, 1) if len(f) else None
+
+
+def _mjd(jyear):
+    return (jyear - 2000.0) * 365.25 + 51544.5
+
+
+def _r(v, n):
+    return None if v is None or not np.isfinite(v) else round(float(v), n)
+
+
+def csv_check(path, fits, ctx):
+    """Drift of the reference stars from blink.py's field_stars.csv, compared with B."""
+    per = {}
+    try:
+        with open(path, newline="") as fh:
+            for r in csv.DictReader(fh):
+                if r.get("status") != "used" or r.get("east_arcsec") in ("", None):
+                    continue
+                cE = float(r["calib_east_arcsec"] or 0)
+                cN = float(r["calib_north_arcsec"] or 0)
+                per.setdefault(r["source_id"], {}).setdefault(r["season"], []).append(
+                    (float(r["mjd"]), float(r["east_arcsec"]) - cE, float(r["north_arcsec"]) - cN))
+    except (OSError, ValueError, KeyError) as ex:
+        return {"error": str(ex)}
+    diffs = []
+    for sid, ss in per.items():
+        pts = []
+        for s, rows in ss.items():
+            if len(rows) < 3:
+                continue
+            a = np.array(rows)
+            pts.append(((a[:, 0].mean() - 51544.5) / 365.25 + 2000.0, np.median(a[:, 1]), np.median(a[:, 2])))
+        if len(pts) < 2 or int(sid) not in fits:
+            continue
+        p = np.array(pts)
+        if np.ptp(p[:, 0]) < 0.2:
+            continue
+        bE = np.polyfit(p[:, 0], p[:, 1], 1)[0]
+        bN = np.polyfit(p[:, 0], p[:, 2], 1)[0]
+        f = fits[int(sid)]
+        diffs.append((bE - f[0], bN - f[1]))
+    if not diffs:
+        return {"n_stars": 0}
+    d = np.array(diffs) * 1000
+    return {"n_stars": len(d), "median_diff_mas_yr": [round(float(np.median(d[:, 0])), 1), round(float(np.median(d[:, 1])), 1)],
+            "robust_spread_mas_yr": [round(AS.BL.robust_sigma(d[:, 0]), 1), round(AS.BL.robust_sigma(d[:, 1]), 1)],
+            "note": "drift of blink.py's field_stars.csv measurements minus detector B's, per reference star"}

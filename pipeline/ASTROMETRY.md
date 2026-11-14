@@ -12,7 +12,9 @@ result is that target positions are on the Gaia frame, not just on the SPHEREx L
 ## Catalogue and propagation
 
 - Gaia DR3 stars within 0.15 deg of the target (at 2026.0) with G < 19. They are cached in
-  `site/data/<target>/gaia_field.json`. Columns: source_id, ra, dec, pmra, pmdec, parallax,
+  `site/data/<target>/gaia_field.json`. For wider cutouts the radius grows to the farthest cutout
+  corner (0.4 deg cutouts: ~0.29 deg; `footprint_radius`), and a cache with a smaller query radius
+  is not used. Columns: source_id, ra, dec, pmra, pmdec, parallax,
   phot_g_mean_mag, ruwe. Reference epoch J2016.0.
 - Each star is propagated to the exposure mid-time (`MJD-AVG`) with the same function as the
   target:

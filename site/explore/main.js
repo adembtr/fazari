@@ -5,9 +5,10 @@ import {
   parseCoords, looksLikeCoords, formatRA, formatDec, formatFov, applyPM, nowYear,
   randomSky, eclToEq, galToEq, separation,
 } from "./coords.js";
-import { SURVEYS, SPHEREX_SLICES, surveyUrl } from "./surveys.js";
+import { SURVEYS, SPHEREX_SLICES, CLOSEUP_FOV, surveyUrl, minFov } from "./surveys.js";
+import { createCloseup } from "./closeup.js";
 import { findLocal, sesame, plainType } from "./lookup.js";
-import { detectEngine, engineLabel, runLocalJob, stateText, resultSummary, isLocalHost } from "./engine.js";
+import { detectEngine, engineLabel, runLocalPreviewJob, jobLine, stateText, resultSummary, isLocalHost } from "./engine.js";
 
 // Aladin Lite v3 (CDS, GPL-3). Pinned. The npm build on jsDelivr is the same code CDS publishes;
 // the CDS host is the fallback (its /api/v3/<version>/ path returned 404 in Nov 2026).
@@ -48,6 +49,20 @@ const state = {
 // ---------------------------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------------------------
+// Extra star layers (starsnow.js: Gaia stars at 2026.0; faststars.js: fast stars, Surprise options).
+// Loaded on their own, so a failure there never breaks the sky; they listen to these hooks.
+const hooks = { view: [], card: [] };
+let extrasP = null;
+function loadExtras() {
+  extrasP ||= Promise.all([import("./starsnow.js"), import("./faststars.js")]).then(([sn, fs]) => {
+    const ext = { state, hooks, select, flyTo, toast, coverageAt, setSheet, isPhone, syncCatalogs };
+    state.starsNow = sn.initStarsNow(ext);
+    state.fast = fs.initFastStars(ext);
+    return state.fast;
+  });
+  extrasP.catch((e) => console.warn("Star layers unavailable", e));
+  return extrasP;
+}
 const catsReady = loadCategories();
 function setEngine(e) {
   state.engine = e;
@@ -120,11 +135,15 @@ async function startFlat(reason) {
   await catsReady;
   const { startFlatMap } = await import("./flatmap.js");
   const sv = startView();
+  state.closeup = createCloseup({ state, size: skySize, pix2sky: (x, y) => state.flat?.toSky(x, y) });   // scale bar only
+  const onFlatView = (v) => { showView(v.ra, v.dec, v.fov); setCompass(0, -90); state.closeup.update(v.ra, v.dec, v.fov); state.closeup.render(); };
   state.flat = startFlatMap($("sky"), {
     points: state.points, colors: CAT_COLORS, ra: sv.ra, dec: sv.dec, fov: sv.fov,
     onPick: (q) => select({ id: null, name: "Your spot", ra: q.ra, dec: q.dec, cat: null, manual: true }),
-    onView: (v) => { showView(v.ra, v.dec, v.fov); setCompass(0, -90); },
+    onView: onFlatView,
   });
+  onFlatView(state.flat.getView());
+  loadExtras();
   performance.mark("fz-sky");
   const sp = startView().point;
   if (sp) select(sp.id ? state.byId.get(sp.id) || sp : sp);
@@ -153,7 +172,12 @@ async function startSky() {
     applyFovLimit();                                     // wheel / pinch can never zoom out past 120°
     addEventListener("resize", applyFovLimit);
     state.hips.visible = al.getBaseImageLayer();
+    state.closeup = createCloseup({
+      A, al, state, size: skySize, onChange: () => onViewChange(), onLimits: () => applyFovLimit(),
+      pix2sky: (x, y) => { try { const q = al.pix2world(x, y); return q && Number.isFinite(q[0]) ? { ra: q[0], dec: q[1] } : null; } catch { return null; } },
+    });
     setupOverlays();
+    loadExtras();
     al.on("zoomChanged", () => onViewChange());
     al.on("positionChanged", () => onViewChange());
     al.on("objectClicked", (obj) => onObjectClicked(obj));
@@ -161,6 +185,9 @@ async function startSky() {
     // A two-finger pinch is never a tap, even when it ends without moving the view (e.g. at the zoom limit).
     const noteMulti = (e) => { if (e.touches.length > 1 || (e.type === "touchend" && e.touches.length)) state.multiTouchAt = performance.now(); };
     for (const t of ["touchstart", "touchmove", "touchend"]) $("sky").addEventListener(t, noteMulti, { capture: true, passive: true });
+    // Wheel, trackpad pinch and two-finger pinch zoom toward the cursor / finger midpoint (zoomanchor.js).
+    import("./zoomanchor.js").then((m) => { state.zoomAnchor = m.anchorAladinZoom(al, { limits: () => [minWidthFov(), maxWidthFov()] }); })
+      .catch((e) => console.warn("Zoom toward the cursor unavailable", e));
     onViewChange();
     performance.mark("fz-sky");
     intro.classList.add("gone");
@@ -365,16 +392,25 @@ function maxWidthFov() {
   const w = el.clientWidth || innerWidth, h = el.clientHeight || innerHeight;
   return MAX_FOV * Math.min(1, w / Math.max(1, h));
 }
+// Closest zoom: where the sharpest map at this spot still shows real detail (see minFov in surveys.js).
+function minWidthFov() {
+  return state.closeup ? state.closeup.minFov() : minFov($("sky").clientWidth || innerWidth);
+}
+function skySize() {
+  const el = $("sky");
+  return [el.clientWidth, el.clientHeight];
+}
 function applyFovLimit() {
   const al = state.al;
   if (!al) return;
-  const m = maxWidthFov();
-  al.setFoVRange(undefined, m);
+  const m = maxWidthFov(), lo = minWidthFov();
+  al.setFoVRange(lo, m);
   if (al.getFov()[0] > m) al.setFoV(m);
+  else if (al.getFov()[0] < lo) al.setFoV(lo);
 }
 
 function zoomTo(fov, secs = 1.2) {
-  fov = Math.min(fov, state.al ? maxWidthFov() : MAX_FOV);
+  fov = Math.max(minWidthFov(), Math.min(fov, state.al ? maxWidthFov() : MAX_FOV));
   return new Promise((res) => {
     const al = state.al;
     if (!al) {
@@ -429,7 +465,9 @@ function onViewChange() {
     const fov = al.getFov()[0];
     showView(ra, dec, fov);
     updateCompass(ra, dec, fov);
+    state.closeup?.update(ra, dec, fov);
     updateSpherexFade(fov);
+    for (const f of hooks.view) f(ra, dec, fov);
   });
 }
 
@@ -539,14 +577,16 @@ async function ensureSpherexOverlay(want) {
 function updateSpherexFade(fov) {
   const auto = state.spxReady && state.autoSpx && state.bg !== "spherex";
   const [a, b] = SPHEREX_FADE;
+  // Closer in, the SPHEREx map (12.9" pixels) gives way to the sharp close-up map.
+  const keep = state.closeup ? state.closeup.spherexFactor(fov) : 1;
   // Add the layer a bit before it starts to show, drop it again well after (hysteresis).
-  if (auto && fov < a * 1.25 && !state.spxOverlay) ensureSpherexOverlay(true);
-  else if ((!auto || fov > a * 1.8) && state.spxOverlay) ensureSpherexOverlay(false);
+  if (auto && fov < a * 1.25 && keep > 0 && !state.spxOverlay) ensureSpherexOverlay(true);
+  else if ((!auto || fov > a * 1.8 || (keep === 0 && fov < CLOSEUP_FOV[1] * 0.6)) && state.spxOverlay) ensureSpherexOverlay(false);
   const h = state.spxOverlay;
   let op = 0;
   if (h && auto) {
     const t = Math.max(0, Math.min(1, (a - fov) / (a - b)));
-    op = t * t * (3 - 2 * t);
+    op = t * t * (3 - 2 * t) * keep;
   }
   if (h) { try { h.setOpacity(op); } catch { /* not ready yet */ } }
   const showing = state.bg === "spherex" || op > 0.5;
@@ -556,8 +596,12 @@ function updateSpherexFade(fov) {
     const sl = SPHEREX_SLICES.find((s) => s.slice === state.slice);
     badge.querySelector("span").textContent = `SPHEREx infrared map${sl ? " · " + sl.label : ""}`;
   }
-  $("creditSurvey").textContent = showing && state.bg !== "spherex"
-    ? `${SURVEYS[state.bg].credit}; ${SURVEYS.spherex.credit}` : SURVEYS[state.bg].credit;
+  const credits = [SURVEYS[state.bg].credit];
+  if (showing && state.bg !== "spherex") credits.push(SURVEYS.spherex.credit);
+  const cc = state.closeup?.credit();
+  if (cc && !credits.includes(cc)) credits.push(cc);
+  $("creditSurvey").textContent = credits.join("; ");
+  state.closeup?.render(op);
 }
 
 async function setBackground(key) {
@@ -720,6 +764,7 @@ function renderCard() {
       if (r.ok && state.selected?.id === p.id) { g.hidden = false; g.dataset.src = `ornek.html?data=${p.gallery}`; }
     }).catch(() => {});
   }
+  for (const f of hooks.card) f(p);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -797,23 +842,53 @@ function loadFrame(src) {
     $("blinkLoading").hidden = false;
     fr.setAttribute("src", src);
   }
+  import("./candidates.js").then((m) => m.showOnSky(state, src)).catch(() => {});   // finder candidates on the sphere
 }
+
+// Stage badge in the panel header: "Preview (12 images)" (amber) -> "Full result (N images)" (green),
+// with real counts. The local engine sets it from its jobs; sky.html (in-browser engine) reports its
+// stage with postMessage. window.__fzTimes keeps the click and stage times (Date.now) for timing runs.
+function setStage(kind, n, note = "") {
+  const el = $("blinkStage");
+  if (kind) { const t = (window.__fzTimes ||= {}); t[kind + "Shown"] ||= Date.now(); t[kind + "N"] = n; }
+  if (!el) return;
+  el.hidden = !kind;
+  el.className = "stage-badge" + (kind ? " " + kind : "");
+  el.textContent = kind === "preview" ? `Preview (${n} images)` : kind === "full" ? `Full result (${n} images)` : "";
+  el.title = note;
+}
+window.addEventListener("message", (ev) => {
+  const d = ev.data;
+  if (ev.origin !== location.origin || !d || d.type !== "fazari-stage" || state.job) return;
+  if (ev.source !== $("blinkFrame").contentWindow) return;
+  setStage(d.stage, d.n, d.note || "");
+});
 
 function openBlink(src, title) {
   stopJob();
   $("resultBar").hidden = true;
   showPanel(title);
+  setStage(null);
+  window.__fzTimes = { click: Date.now(), engine: "browser" };
   loadFrame(src);
 }
 
-// Local Python engine: run a job, show progress, then open the products in ornek.html.
+// Local Python engine: a quick preview first (the engine's fast lane: one wavelength, a few images
+// per season, small regions), shown as soon as it exists; the full result replaces it when done.
 function stopJob() {
-  if (state.job) { state.job.cancel(); state.job = null; }
+  let done = null;
+  if (state.job) { done = state.job.cancel(); state.job = null; }
+  return done;                                   // resolves when the engine has the cancel
 }
 
 function startLocalJob(p) {
-  stopJob();
+  // Fetch again on the spot whose jobs are still running: keep them (no cancel and restart)
+  const key = `${p.pos.ra.toFixed(6)},${p.pos.dec.toFixed(6)},${p.name}`;
+  if (state.job && state.job.key === key && params.get("force") !== "1") { showPanel(`SPHEREx blink: ${p.name}`); return; }
+  const prevCancel = stopJob();
   showPanel(`SPHEREx blink: ${p.name}`);
+  setStage(null);
+  window.__fzTimes = { click: Date.now(), engine: "local" };
   const fr = $("blinkFrame");
   fr.removeAttribute("src");
   $("blinkLoading").hidden = true;
@@ -825,47 +900,76 @@ function startLocalJob(p) {
   $("jobCancel").hidden = false; $("jobBrowser").hidden = true;
   const bar = $("jobBar").parentElement;
   bar.classList.add("indet");
-  $("resultBar").hidden = true;
+  const rbar = $("resultBar");
+  rbar.hidden = true; rbar.classList.remove("pending");
   const t0 = performance.now();
+  const elapsed = () => { const el = Math.round((performance.now() - t0) / 1000); return `${Math.floor(el / 60)}:${String(el % 60).padStart(2, "0")} elapsed`; };
   const req = { ra: +p.pos.ra.toFixed(6), dec: +p.pos.dec.toFixed(6), name: p.manual && !p.pmra ? undefined : p.name };
-  if (p.manual && p.pmra != null && Math.hypot(p.pmra, p.pmdec || 0) > 0) {
-    Object.assign(req, { pmra: p.pmra, pmdec: p.pmdec || 0, epoch: +(p.moved ? nowYear() : 2000).toFixed(3) });
+  if ((p.manual || p.pmEpoch != null) && p.pmra != null && Math.hypot(p.pmra, p.pmdec || 0) > 0) {   // pmEpoch: fast stars (2026.0)
+    Object.assign(req, { pmra: p.pmra, pmdec: p.pmdec || 0, epoch: +(p.pmEpoch ?? (p.moved ? nowYear() : 2000)).toFixed(3) });
   }
-  if (params.get("force") === "1") req.force = true;          // testing: ignore the engine's result cache
-  const job = runLocalJob(req, (j) => {
+  if (p.parallax > 0) req.parallax = p.parallax;              // mas (category points, fast stars): annual parallax term
+  if (params.get("force") === "1") req.force = true;         // testing: ignore the engine's result cache
+  const shown = { url: null, n: 0 };
+  const job = runLocalPreviewJob(req, ({ full: j, preview: pv }) => {
     if (state.job !== job) return;
-    $("jobState").textContent = stateText(j.state);
-    const pr = j.progress || {};
-    // Only the download has a real count; the other stages show a moving bar.
-    const pct = j.state === "downloading" && pr.total ? Math.round(100 * (pr.done || 0) / pr.total) : null;
+    const pvDone = pv && pv.state === "done";
+    const pvUrl = pvDone ? pv.result_url : pv && pv.partial ? pv.partial.url : null;
+    const pvN = pvDone ? ((pv.result || {}).n_images || (pv.images || {}).selected) : pv && pv.partial ? pv.partial.n_images : 0;
+    if (j.state !== "done" && pvUrl && shown.url !== pvUrl) {          // first look, then the complete preview
+      shown.url = pvUrl; shown.n = pvN; shown.bin = (pv.images || {}).bin_um || null;
+      loadFrame(`ornek.html?data=${pvUrl}`);
+      setStage("preview", pvN, "A quick look at one wavelength, not a measurement. The full result replaces it when it is ready.");
+      performance.mark("fz-preview");
+    }
+    if (shown.url) {
+      const im = (pv && pv.images) || {};
+      rbar.hidden = false; rbar.classList.add("pending");
+      rbar.querySelector("b").textContent = `Preview (${shown.n} images)${im.bin_um ? ` at ${im.bin_um.toFixed(1)} µm` : ""}: a quick look, not a measurement.`;
+      rbar.querySelector("small").textContent = `Full result in the background: ${jobLine(j) || stateText(j.state)} · ${elapsed()}`;
+      return;
+    }
+    // nothing on screen yet: progress of the preview (or of the full job when there is no preview)
+    const cur = pv && !["done", "error", "cancelled"].includes(pv.state) ? pv : j;
+    $("jobState").textContent = cur !== j
+      ? (pv.state === "queued" ? "Waiting for a quick preview…" : "Building a quick preview: one wavelength, a few images per season…")
+      : stateText(j.state);
+    const pr = cur.progress || {};
+    const pct = cur.state === "downloading" && pr.total ? Math.round(100 * (pr.done || 0) / pr.total) : null;
     bar.classList.toggle("indet", pct == null);
     $("jobBar").style.width = pct == null ? "" : pct + "%";
     bar.setAttribute("aria-valuenow", pct == null ? "" : String(pct));
     const bits = [];
     if (pr.total) bits.push(`${pr.done || 0} of ${pr.total} images`);
     if (pr.bytes) bits.push(`${(pr.bytes / 1048576).toFixed(1)} MB`);
-    const el = Math.round((performance.now() - t0) / 1000);
-    bits.push(`${Math.floor(el / 60)}:${String(el % 60).padStart(2, "0")} elapsed`);
-    $("jobDetail").textContent = bits.join(" · ") || $("jobDetail").textContent;
-    if (j.message) $("jobMsg").textContent = j.message;
-  });
+    bits.push(elapsed());
+    $("jobDetail").textContent = bits.join(" · ");
+    $("jobMsg").textContent = cur !== j ? `Full result after it: ${jobLine(j) || stateText(j.state)}`
+      : j.state === "queued" && j.queue ? `Full result: ${jobLine(j)}` : (j.message || "");
+  }, { after: prevCancel });
+  job.key = key;
   state.job = job;
   job.promise.then((j) => {
     if (state.job !== job) return;
     state.job = null;
     if (j.state === "done" && j.result_url) {
-      loadFrame(`ornek.html?data=${j.result_url}`);
+      loadFrame(`ornek.html?data=${j.result_url}` + (shown.bin ? `&bin=${shown.bin.toFixed(1)}` : ""));   // stay at the preview's wavelength
       const secs = (performance.now() - t0) / 1000;
       performance.mark("fz-result");
       resultSummary(j.result_url).then((r) => {
         if (state.job || $("job").hidden === false) return;
-        const bar = $("resultBar");
-        bar.hidden = false;
-        bar.querySelector("b").textContent = r ? r.text : (j.message || "Done.");
-        bar.querySelector("small").textContent = `Local Python engine · ${secs < 2 ? "cached result" : `ready in ${secs.toFixed(0)} s`}`;
+        rbar.hidden = false; rbar.classList.remove("pending");
+        rbar.querySelector("b").textContent = r ? r.text : (j.message || "Done.");
+        const extra = j.post_pending ? ` · adding ${j.post_pending.steps.join(", ")} in the background (open this point again to see it)` : "";
+        rbar.querySelector("small").textContent = `Local Python engine · ${secs < 2 ? "cached result" : `ready in ${secs.toFixed(0)} s`}${extra}`;
+        setStage("full", r ? r.n : (j.progress || {}).total, "All wavelengths, Gaia-calibrated measurement.");
       });
     } else if (j.state !== "cancelled") {
-      jobFailed(p, j.message || "The local engine could not finish this job.");
+      if (shown.url) {                                             // keep the preview on screen
+        rbar.querySelector("small").textContent = `The full result failed: ${j.message || "unknown error"}`;
+      } else {
+        jobFailed(p, j.message || "The local engine could not finish this job.");
+      }
     }
   }).catch((e) => { if (state.job === job) { state.job = null; jobFailed(p, e.message); } });
 }
@@ -948,7 +1052,12 @@ async function runSearch(text) {
   }
 }
 
+// "Surprise me": two options (a fast star, or a truly random spot), from faststars.js.
 function surprise() {
+  (extrasP || loadExtras()).then((fs) => fs.openSurprise()).catch(() => surpriseQuick());
+}
+
+function surpriseQuick() {
   const pick = Math.random();
   let target;
   if (state.coverage && pick < 0.5) {
@@ -1079,7 +1188,7 @@ function wireUi() {
     const [ra, dec] = al.getRaDec();
     const step = fov / 8;
     const k = e.key;
-    if (k === "+" || k === "=") { zoomTo(Math.max(fov / 1.6, 0.02), 0.35); e.preventDefault(); }
+    if (k === "+" || k === "=") { zoomTo(Math.max(fov / 1.6, minWidthFov()), 0.35); e.preventDefault(); }
     else if (k === "-" || k === "_") { zoomTo(Math.min(fov * 1.6, MAX_FOV), 0.35); e.preventDefault(); }
     else if (k.startsWith("Arrow")) {
       e.preventDefault();
@@ -1095,7 +1204,8 @@ function wireUi() {
 
   // Step 1 -> 2 as soon as the person moves the sky themselves.
   $("sky").addEventListener("pointerdown", () => { if (state.step < 2) setStep(2); }, { passive: true });
-  $("sky").addEventListener("wheel", () => { if (state.step < 2) setStep(2); }, { passive: true });
+  // capture: Aladin stops the wheel event on its canvas, so a bubbling listener here never ran.
+  $("sky").addEventListener("wheel", () => { if (state.step < 2) setStep(2); }, { capture: true, passive: true });
 }
 
 function openDialog(id) {

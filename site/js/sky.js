@@ -87,14 +87,7 @@ export class SkySession {
     this.emit = onEvent;
     if (target) [this.ra0, this.dec0] = propagate(target, jyearToMjd(this.cfg.epochCenter), false);
     else [this.ra0, this.dec0] = [ra, dec];
-    this.n = Math.round(this.cfg.fovDeg * 3600 / this.cfg.pixArcsec);
-    this.grid = new TanGrid(this.ra0, this.dec0, this.cfg.pixArcsec, this.n);
-    const N = this.n * this.n;
-    this.gridRa = new Float64Array(N); this.gridDec = new Float64Array(N);
-    for (let j = 0; j < this.n; j++) for (let i = 0; i < this.n; i++) {
-      const [a, d] = this.grid.pixToSky(i, j);
-      this.gridRa[j * this.n + i] = a; this.gridDec[j * this.n + i] = d;
-    }
+    Object.assign(this, makeGrid(this.ra0, this.dec0, this.cfg.pixArcsec, this.cfg.fovDeg));   // n, grid, gridRa, gridDec
     this.images = images;
     this.seasons = splitSeasons(images.map((i) => i.mjd), this.cfg.gapDays);
     for (const im of images) im.season = (seasonOf(this.seasons, im.mjd) || {}).label;
@@ -110,14 +103,21 @@ export class SkySession {
       const nSeasons = Object.values(bySeason).filter((a) => a.length).length;
       return { ...b, candidates: bySeason, nSeasons, available: nSeasons >= this.cfg.minSeasons };
     });
-    // Gaia DR3 field stars for the astrometric calibration (fetched once, cached in gaia.js)
-    this.calStars = !this.cfg.calibrate ? Promise.resolve(null)
-      : gaiaStars(this.ra0, this.dec0, CALIB.maxFieldRadius + 0.01, { gmax: CALIB.gmaxQuery, signal })
-        .then((stars) => ({ ok: true, nGaia: stars.length, cal: prepareStars(stars, this.ra0, this.dec0) }))
-        .catch((e) => ({ ok: false, error: e.message, cal: [] }));
+    // Gaia DR3 field stars for the astrometric calibration: fetched once, on first use (not during the
+    // quick preview, which does not calibrate and needs the network for the images)
+    this._calStars = null;
     this.exposures = [];      // processed exposures (all bins)
     this.results = {};        // bin um -> result
     this.headerChecks = 0;
+  }
+
+  /** Promise of the Gaia DR3 field stars ({ok, nGaia, cal}); the query starts on first use. */
+  get calStars() {
+    this._calStars ||= !this.cfg.calibrate ? Promise.resolve(null)
+      : gaiaStars(this.ra0, this.dec0, CALIB.maxFieldRadius + 0.01, { gmax: CALIB.gmaxQuery, signal: this.signal })
+        .then((stars) => ({ ok: true, nGaia: stars.length, cal: prepareStars(stars, this.ra0, this.dec0) }))
+        .catch((e) => ({ ok: false, error: e.message, cal: [] }));
+    return this._calStars;
   }
 
   /** Target position at `mjd` (with parallax), or the fixed point. */
@@ -145,20 +145,25 @@ export class SkySession {
              orient: wcs.orientation(), ra_pred: ra, dec_pred: dec };
   }
 
-  /** Data stage: read the rows, clean, reproject, centroid. */
-  async process(ex) {
+  /** Data stage: read the rows, clean, reproject, centroid. G: output grid (default the session's);
+   * zodi: false reads no ZODI (the frame median removes the level); calibrate: Gaia field stars. */
+  async process(ex, { G = this, zodi = true, calibrate = this.cfg.calibrate } = {}) {
     const { f, wcs } = ex;
-    const N = this.n * this.n;
+    const N = G.n * G.n;
     const px = new Float32Array(N), py = new Float32Array(N);
     let ymin = Infinity, ymax = -Infinity;
+    // G.disk: only the rows of the grid's inscribed circle are read (preview: fewer bytes; the
+    // corners stay empty and are filled for display)
+    const c = (G.n - 1) / 2, r2 = G.disk ? (G.n / 2) ** 2 : Infinity;
     for (let k = 0; k < N; k++) {
-      const [x, y] = wcs.skyToPix(this.gridRa[k], this.gridDec[k]);
+      const [x, y] = wcs.skyToPix(G.gridRa[k], G.gridDec[k]);
       px[k] = x; py[k] = y;
+      if (r2 !== Infinity && ((k % G.n) - c) ** 2 + (Math.floor(k / G.n) - c) ** 2 > r2) continue;
       if (x > -2 && x < NDET + 1 && y > -2 && y < NDET + 1) { ymin = Math.min(ymin, y); ymax = Math.max(ymax, y); }
     }
     ymin = Math.min(ymin, ex.y - 7); ymax = Math.max(ymax, ex.y + 7);
     const y0 = Math.max(0, Math.floor(ymin) - 1), y1 = Math.min(NDET - 1, Math.ceil(ymax) + 1);
-    const reg = await f.readRegion(y0, y1);
+    const reg = await f.readRegion(y0, y1, { zodi });
     const bits = { ...DEFAULT_BITS, ...flagBits(f.flags.header) };
     const badMask = this.cfg.badFlags.reduce((m, n) => m | (bits[n] || 0), 0);
     const satMask = this.cfg.satFlags.reduce((m, n) => m | (bits[n] || 0), 0);
@@ -167,7 +172,7 @@ export class SkySession {
     for (let k = 0; k < W * H; k++) {
       const fl = reg.flags[k];
       sat[k] = (fl & satMask) ? 1 : 0;
-      data[k] = (fl & badMask) && !sat[k] ? NaN : reg.image[k] - reg.zodi[k];
+      data[k] = (fl & badMask) && !sat[k] ? NaN : reg.image[k] - (reg.zodi ? reg.zodi[k] : 0);
     }
     // noise (for the centroid weights) from a box around the target
     const box = [];
@@ -196,7 +201,7 @@ export class SkySession {
       ex.x_fit = fit.x; ex.y_fit = fit.y + y0;
       [ex.ra_fit, ex.dec_fit] = wcs.pixToSky(ex.x_fit, ex.y_fit);
       ex.fit = fit;
-      if (this.cfg.calibrate) await this.calibrate(ex, { data, sat, W, H, y0, wcs, sigma0, gx, gy });
+      if (calibrate) await this.calibrate(ex, { data, sat, W, H, y0, wcs, sigma0, gx, gy });
     }
     // bilinear reprojection (NaN if any neighbour is NaN, like reproject_interp order=1)
     const out = new Float32Array(N), satOut = new Uint8Array(N);
@@ -250,9 +255,9 @@ export class SkySession {
       ex.satRefs = (sc.pts || []).map((p) => ({ nmask: p.nmask, rE: p.rE, rN: p.rN, mag: p.mag }));
       delete sc.pts;
     }
-    const field = await this.calStars;
+    const field = await this.calStars;          // getter: starts the Gaia query on first use
     const fc = field && field.cal.length
-      ? calibrateExposure({ cal: field.cal, data, sat, W, H, y0, wcs, mjd: ex.mjd, target, sigma0 })
+      ? calibrateExposure({ cal: field.cal, data, sat, W, H, y0, wcs, mjd: ex.mjd, target, sigma0, file: ex.f })
       : { ok: false, reason: field && !field.ok ? field.error : "no Gaia stars" };
     const cosd = Math.cos(ex.dec_fit * Math.PI / 180);
     const apply = (c) => (c && c.ok ? [ex.ra_fit - c.corrE / 3600 / cosd, ex.dec_fit - c.corrN / 3600] : null);
@@ -273,17 +278,72 @@ export class SkySession {
     if (this.results[um]) return this.results[um];
     const bin = this.bins.find((b) => b.um === um);
     if (!bin || !bin.available) throw new Error(`no SPHEREx images for ${um} um here`);
-    const cap = this.cfg.cap;
+    const perSeason = await this._collect(bin, um, this.cfg.cap, {}, onProgress);
+    for (const { season, exposures } of perSeason) {
+      for (const ex of exposures) { ex.bin = um; ex.season = season.label; }
+      this.exposures.push(...exposures);
+    }
+    const result = this._stack(perSeason, um, bin, this);
+    result.rejected = perSeason.flatMap((p) => p.rejected.filter((r) => r.lam).map((r) => ({ obs: r.img.obs_id, lam: r.lam, inside: r.inside })));
+    this.results[um] = result;
+    return result;
+  }
+
+  /**
+   * Quick preview of one bin: `perSeason` exposures per season (default 2..4, `total` in all),
+   * small regions (a north-up grid of `fovDeg`, IMAGE + FLAGS rows only, no ZODI), no Gaia
+   * calibration. Not a measurement: the exposures are not added to the session's astrometry.
+   * For a catalogue target, result.prelim is a raw-WCS first -> last season shift.
+   */
+  async loadPreview(um, { perSeason = 0, total = 12, fovDeg = 0.1 } = {}, onProgress = () => {}) {
+    const bin = this.bins.find((b) => b.um === um);
+    if (!bin || !bin.available) throw new Error(`no SPHEREx images for ${um} um here`);
+    const nS = this.seasons.filter((s) => bin.candidates[s.label].length).length;
+    const cap = perSeason || Math.max(2, Math.min(4, Math.floor(total / Math.max(nS, 1))));
+    if (!this.previewGrid || this.previewGrid.fovDeg !== fovDeg) {
+      this.previewGrid = { ...makeGrid(this.ra0, this.dec0, this.cfg.pixArcsec, fovDeg), fovDeg, disk: true };
+    }
+    const G = this.previewGrid;
+    const perS = await this._collect(bin, um, cap, { G, zodi: false, calibrate: false }, onProgress);
+    for (const { season, exposures } of perS) for (const ex of exposures) { ex.bin = um; ex.season = season.label; }
+    const result = this._stack(perS, um, bin, G);
+    const n = result.frames.reduce((a, f) => a + f.n, 0);
+    result.preview = { perSeason: cap, nImages: n, fovDeg, zodi: false, calibrated: false };
+    result.prelim = this.preliminary(perS);
+    return result;
+  }
+
+  /** First -> last season shift of a catalogue target from raw WCS centroids (preview only). */
+  preliminary(perSeason) {
+    if (!this.target) return null;
+    const pos = [];
+    for (const { season, exposures } of perSeason) {
+      const f = exposures.filter((e) => e.ra_fit != null);
+      if (!f.length) continue;
+      const m = (get) => f.reduce((s, e) => s + get(e), 0) / f.length;
+      const g = f.map((e) => this.posAt(e.mjd));
+      pos.push({ season: season.label, n: f.length, ra: m((e) => e.ra_fit), dec: m((e) => e.dec_fit),
+                 gra: g.reduce((s, p) => s + p[0], 0) / g.length, gdec: g.reduce((s, p) => s + p[1], 0) / g.length });
+    }
+    if (pos.length < 2) return null;
+    const A = pos[0], Z = pos[pos.length - 1];
+    const o = offsetArcsec(A.ra, A.dec, Z.ra, Z.dec), g = offsetArcsec(A.gra, A.gdec, Z.gra, Z.gdec);
+    return { from: A.season, to: Z.season, shift: o[2], pa: o[3], gaiaShift: g[2], gaiaPa: g[3],
+             n: pos.reduce((a, p) => a + p.n, 0), method: "raw SPHEREx WCS centroids, no Gaia field-star calibration, no error bars" };
+  }
+
+  /** Per season: inspect candidates (closest to the bin centre first) until `cap` are accepted,
+   * process each accepted one with `popt` (see process). Returns [{season, exposures, rejected}]. */
+  async _collect(bin, um, cap, popt, onProgress) {
     const progress = { checked: 0, accepted: 0, done: 0, planned: 0 };
     const tick = () => onProgress({ ...progress });
-    const perSeason = await Promise.all(this.seasons.map(async (s) => {
+    return Promise.all(this.seasons.map(async (s) => {
       const queue = bin.candidates[s.label].slice();
       const accepted = [];
       const jobs = [];
       const rejected = [];
       while (accepted.length < cap && queue.length) {
         const batch = queue.splice(0, Math.min(4, cap - accepted.length + 1));
-        progress.planned += 0;
         const res = await Promise.all(batch.map((img) => this.inspect(img, um).catch((e) => {
           if (e.name === "AbortError") throw e;
           return { img, ok: false, error: e.message };
@@ -294,7 +354,7 @@ export class SkySession {
           if (ex.ok && accepted.length < cap) {
             accepted.push(ex);
             progress.accepted++; tick();
-            jobs.push(this.process(ex).then((r) => { progress.done++; tick(); return r; }, (e) => {
+            jobs.push(this.process(ex, popt).then((r) => { progress.done++; tick(); return r; }, (e) => {
               if (e.name === "AbortError") throw e;
               ex.error = e.message; progress.done++; tick(); return null;
             }));
@@ -304,13 +364,14 @@ export class SkySession {
       const done = (await Promise.all(jobs)).filter(Boolean);
       return { season: s, exposures: done, rejected };
     }));
-    // stack per season
-    const N = this.n * this.n;
+  }
+
+  /** Median per season on grid G, one asinh stretch for all seasons (as blink.py), last minus first. */
+  _stack(perSeason, um, bin, G) {
+    const N = G.n * G.n;
     const frames = [];
     for (const { season, exposures } of perSeason) {
       if (!exposures.length) continue;
-      for (const ex of exposures) { ex.bin = um; ex.season = season.label; }
-      this.exposures.push(...exposures);
       const img = new Float32Array(N), satm = new Uint8Array(N);
       const vals = new Float64Array(exposures.length);
       for (let k = 0; k < N; k++) {
@@ -323,7 +384,7 @@ export class SkySession {
         }
         satm[k] = ns / exposures.length > 0.5 ? 1 : 0;
       }
-      dropSmallBlobs(satm, this.n, 4);
+      dropSmallBlobs(satm, G.n, 4);
       const mjds = exposures.map((e) => e.mjd);
       const mjdMean = mjds.reduce((a, b) => a + b, 0) / mjds.length;
       frames.push({
@@ -334,13 +395,12 @@ export class SkySession {
         mjdMean, date: mjdToDate(mjdMean),
         dateFirst: mjdToDate(Math.min(...mjds)), dateLast: mjdToDate(Math.max(...mjds)),
         obs: exposures.map((e) => e.img.obs_id + "D" + e.detector),
-        gaiaXY: this.target ? this.grid.skyToPix(...propagate(this.target, mjdMean)) : null,
+        gaiaXY: this.target ? G.grid.skyToPix(...propagate(this.target, mjdMean)) : null,
       });
     }
     if (frames.length < this.cfg.minSeasons) {
       throw new Error(`only ${frames.length} season(s) with usable ${um} um images at this position`);
     }
-    // one asinh stretch for all seasons of the bin (as blink.py)
     const all = [];
     for (const fr of frames) for (const v of fr.img) if (Number.isFinite(v)) all.push(v);
     const sorted = Float64Array.from(all).sort();
@@ -354,15 +414,12 @@ export class SkySession {
         const v = fr.img[k];
         fr.norm[k] = fr.sat[k] ? 1 : Number.isFinite(v) ? Math.min(1, Math.max(0, Math.asinh((v - st.lo) / st.soft) / den)) : NaN;
       }
-      fillNaN(fr.norm, this.n);
+      fillNaN(fr.norm, G.n);
     }
     const first = frames[0], last = frames[frames.length - 1];
     const diff = new Float32Array(N);
     for (let k = 0; k < N; k++) diff[k] = last.norm[k] - first.norm[k];
-    const result = { um, det: bin.det, frames, diff, stretch: st, n: this.n,
-                     rejected: perSeason.flatMap((p) => p.rejected.filter((r) => r.lam).map((r) => ({ obs: r.img.obs_id, lam: r.lam, inside: r.inside }))) };
-    this.results[um] = result;
-    return result;
+    return { um, det: bin.det, frames, diff, stretch: st, n: G.n };
   }
 
   /** Centroid bias of saturated stars per detector, in detector pixels: the offsets (measured
@@ -522,6 +579,18 @@ export class SkySession {
                               ? `saturated target, ${(satBias[e.detector] || {}).reason || "no saturated reference stars"}`
                               : (e.cell ? e.cell.reason : "off"))))] } };
   }
+}
+
+/** Output grid: n x n pixels of pixArcsec around (ra0, dec0) and the sky position of every pixel. */
+function makeGrid(ra0, dec0, pixArcsec, fovDeg) {
+  const n = Math.round(fovDeg * 3600 / pixArcsec);
+  const grid = new TanGrid(ra0, dec0, pixArcsec, n);
+  const gridRa = new Float64Array(n * n), gridDec = new Float64Array(n * n);
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const [a, d] = grid.pixToSky(i, j);
+    gridRa[j * n + i] = a; gridDec[j * n + i] = d;
+  }
+  return { n, grid, gridRa, gridDec };
 }
 
 /** Remove connected blobs (4-neighbour) smaller than minPx from a 0/1 mask (n x n). */

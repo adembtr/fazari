@@ -4,10 +4,13 @@
 // tap to pick a spot. Shows the Milky Way plane, the ecliptic and our named places.
 
 import { eclToEq, galToEq } from "./coords.js";
+import { minFov, closeupKeyAt } from "./surveys.js";
+import { pinSky, wheelDelta } from "./zoomanchor.js";
 
 const R = Math.PI / 180;
 export const MAX_FOV = 120;
-const MIN_FOV = 0.5;
+// Closest zoom: the same limit as the 3D sky (depends on the sharpest map there, see surveys.js).
+const minW = (host, dec) => minFov(host.clientWidth || 1400, closeupKeyAt(dec, 0));
 
 export function startFlatMap(host, { points, colors, onPick, onView, ra = 83.8, dec = -1, fov = 90 }) {
   host.innerHTML = "";
@@ -119,7 +122,10 @@ export function startFlatMap(host, { points, colors, onPick, onView, ra = 83.8, 
     try { canvas.setPointerCapture(e.pointerId); } catch { /* synthetic or already released */ }
     ptrs.set(e.pointerId, [e.clientX, e.clientY]);
     if (ptrs.size === 1) { downAt = [e.clientX, e.clientY]; moved = 0; }
-    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = { dist: Math.hypot(a[0] - b[0], a[1] - b[1]), fov: view.fov }; }
+    if (ptrs.size === 2) {
+      const [a, b] = [...ptrs.values()], m = mid(a, b);
+      pinch0 = { dist: Math.hypot(a[0] - b[0], a[1] - b[1]), fov: view.fov, sky: unproject(m[0], m[1]) };   // stays under the midpoint
+    }
   });
   canvas.addEventListener("pointermove", (e) => {
     if (!ptrs.has(e.pointerId)) return;
@@ -128,6 +134,8 @@ export function startFlatMap(host, { points, colors, onPick, onView, ra = 83.8, 
     if (ptrs.size === 2 && pinch0) {
       const [a, b] = [...ptrs.values()];
       zoomTo(pinch0.fov * pinch0.dist / Math.max(1, Math.hypot(a[0] - b[0], a[1] - b[1])));
+      const m = mid(a, b);
+      pinSky(flatView, pinch0.sky.ra, pinch0.sky.dec, m[0], m[1]);
       moved += 10;
       return;
     }
@@ -149,16 +157,28 @@ export function startFlatMap(host, { points, colors, onPick, onView, ra = 83.8, 
   };
   canvas.addEventListener("pointerup", up);
   canvas.addEventListener("pointercancel", (e) => { ptrs.delete(e.pointerId); downAt = null; });
-  canvas.addEventListener("wheel", (e) => { e.preventDefault(); zoomTo(view.fov * Math.exp(e.deltaY * 0.0012)); }, { passive: false });
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    const q = unproject(x, y);                                        // the spot under the cursor stays there
+    zoomTo(view.fov * Math.exp(wheelDelta(e) * 0.0012));
+    pinSky(flatView, q.ra, q.dec, x, y);
+  }, { passive: false });
   addEventListener("resize", redraw);
 
   // fov is the width; keep the taller side within MAX_FOV too (portrait phones).
   const maxW = () => MAX_FOV * Math.min(1, (host.clientWidth || 1) / Math.max(1, host.clientHeight || 1));
-  function zoomTo(f) { view.fov = Math.max(MIN_FOV, Math.min(maxW(), f)); redraw(); }
+  function zoomTo(f) { view.fov = Math.max(minW(host, view.dec), Math.min(maxW(), f)); redraw(); }
+  // Zoom toward the cursor / finger midpoint (zoomanchor.js): move the centre until the point is back on its pixel.
+  const flatView = {
+    toPixel: project, centre: () => [view.ra, view.dec], setCentre: (ra, dec) => { view.ra = ra; view.dec = dec; redraw(); },
+    toSky: (x, y) => { const q = unproject(x, y); return [q.ra, q.dec]; },
+  };
+  const mid = (a, b) => { const r = canvas.getBoundingClientRect(); return [(a[0] + b[0]) / 2 - r.left, (a[1] + b[1]) / 2 - r.top]; };
   draw();
   return {
     setSelection(pos) { sel = pos; redraw(); },
-    goTo(ra, dec, fov) { view.ra = ra; view.dec = dec; if (fov) view.fov = Math.max(MIN_FOV, Math.min(maxW(), fov)); redraw(); },
+    goTo(ra, dec, fov) { view.ra = ra; view.dec = dec; if (fov) view.fov = Math.max(minW(host, dec), Math.min(maxW(), fov)); redraw(); },
     getView: () => ({ ...view }),
     // For tests: sky <-> canvas pixel (ICRS degrees, CSS pixels).
     toPixel: (ra, dec) => project(ra, dec),

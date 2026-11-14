@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fazari Blink Viewer</title>
+<title data-i18n="vw.pageTitle">Fazari Blink Viewer</title>
 <meta name="color-scheme" content="dark">
 <script>
 // ?t=<target> is a shortcut for ?data=data/<target>/; rewrite it first so every module sees ?data=
@@ -256,18 +256,19 @@
 </style>
 </head>
 <body>
-<a class="skip" href="#stage">Skip to the image</a>
+<a class="skip" href="#stage" data-i18n="vw.skip">Skip to the image</a>
 <div class="app">
   <header class="top">
     <div class="tl">
-      <a class="brand" href="explore.html" title="Fazari Sky Explorer">Fazari</a>
+      <a class="brand" href="explore.html" title="Fazari Sky Explorer" data-i18n-attr="title:pg.brandFull">Fazari</a>
       <h1 id="title">SPHEREx blink</h1>
+      <span class="langslot" data-i18n-toggle></span>
       <span id="kindBadge" class="badge kind" hidden></span>
       <span id="tagList"></span>
     </div>
-    <span class="real" title="Every frame on this page is a SPHEREx spectral image from NASA/IPAC IRSA, stacked per season. Nothing is simulated.">Real SPHEREx data, not a simulation</span>
+    <span class="real" title="Every frame on this page is a SPHEREx spectral image from NASA/IPAC IRSA, stacked per season. Nothing is simulated." data-i18n="vw.real" data-i18n-attr="title:vw.realTip">Real SPHEREx data, not a simulation</span>
   </header>
-  <nav class="targets" id="targets" aria-label="Challenge targets"></nav>
+  <nav class="targets" id="targets" aria-label="Challenge targets" data-i18n-attr="aria-label:vw.a.targets"></nav>
   <p class="stagebar" id="stagebar" hidden></p>
 
   <div class="viewer">
@@ -276,11 +277,11 @@
         <div id="explainSentence"></div>
         <p class="watch" id="watch"></p>
       </section>
-      <div class="stage" id="stage" aria-label="SPHEREx image of the field">
+      <div class="stage" id="stage" aria-label="SPHEREx image of the field" data-i18n-attr="aria-label:vw.a.stage">
         <div class="zoom" id="zoomer">
-          <img id="frame" alt="SPHEREx frame of the season on screen" draggable="false">
-          <img id="frameB" alt="SPHEREx frame of the last compared season" draggable="false" hidden>
-          <canvas id="trail" aria-label="Trail: brightest value of each pixel over the compared seasons" hidden></canvas>
+          <img id="frame" alt="SPHEREx frame of the season on screen" draggable="false" data-i18n-attr="alt:vw.a.frame">
+          <img id="frameB" alt="SPHEREx frame of the last compared season" draggable="false" hidden data-i18n-attr="alt:vw.a.frameB">
+          <canvas id="trail" aria-label="Trail: brightest value of each pixel over the compared seasons" hidden data-i18n-attr="aria-label:vw.a.trail"></canvas>
           <svg id="candLayer" aria-hidden="true"></svg>
           <svg id="ov" aria-hidden="true" viewBox="0 0 720 770"></svg>
         </div>
@@ -291,24 +292,24 @@
         </div>
         <div id="swipeUi" class="swipe-ui" hidden>
           <span id="swipeLine" class="swipe-line"></span>
-          <input id="swipe" type="range" min="0" max="100" step="0.5" value="50" aria-label="Swipe between the first and the last season">
+          <input id="swipe" type="range" min="0" max="100" step="0.5" value="50" aria-label="Swipe between the first and the last season" data-i18n-attr="aria-label:vw.a.swipe">
         </div>
         <div id="gameMsg" class="game-msg" hidden aria-live="polite"></div>
         <div id="stageMsg" class="stage-msg" hidden></div>
       </div>
       <div class="below">
         <div class="row">
-          <div class="seg" id="modes" role="group" aria-label="How to show the seasons">
-            <button type="button" data-mode="blink" aria-pressed="true">Blink</button><button type="button" data-mode="step" aria-pressed="false">Step</button><button type="button" data-mode="swipe" aria-pressed="false">Swipe</button><button type="button" data-mode="trail" aria-pressed="false">Trail</button>
+          <div class="seg" id="modes" role="group" aria-label="How to show the seasons" data-i18n-attr="aria-label:vw.a.modes">
+            <button type="button" data-mode="blink" aria-pressed="true" data-i18n="vw.mode.blink">Blink</button><button type="button" data-mode="step" aria-pressed="false" data-i18n="vw.mode.step">Step</button><button type="button" data-mode="swipe" aria-pressed="false" data-i18n="vw.mode.swipe">Swipe</button><button type="button" data-mode="trail" aria-pressed="false" data-i18n="vw.mode.trail">Trail</button>
           </div>
           <div class="transport">
-            <button type="button" id="prev" aria-label="Previous season" title="Previous season (←)">◀</button>
+            <button type="button" id="prev" aria-label="Previous season" title="Previous season (←)" data-i18n-attr="aria-label:vw.a.prev;title:vw.a.prevTip">◀</button>
             <button type="button" id="play" aria-pressed="false">Pause</button>
-            <button type="button" id="next" aria-label="Next season" title="Next season (→)">▶</button>
+            <button type="button" id="next" aria-label="Next season" title="Next season (→)" data-i18n-attr="aria-label:vw.a.next;title:vw.a.nextTip">▶</button>
           </div>
-          <div class="seasons" id="seasons" role="group" aria-label="Seasons in the comparison"></div>
+          <div class="seasons" id="seasons" role="group" aria-label="Seasons in the comparison" data-i18n-attr="aria-label:vw.a.seasons"></div>
           <button type="button" id="allSeasons" class="ghost" hidden>All seasons</button>
-          <button type="button" id="gameBtn" class="game-btn" hidden>Find the mover</button>
+          <button type="button" id="gameBtn" class="game-btn" hidden data-i18n="vw.g.find">Find the mover</button>
         </div>
         <p class="compare"><span id="compareLine"></span><span id="fairBadge" class="badge fair" hidden></span></p>
         <p class="mode-hint" id="modeHint"></p>
@@ -322,37 +323,37 @@
     </div>
 
     <div class="side">
-      <section class="result" id="result" aria-label="Our result">
-        <h2>Our result</h2>
+      <section class="result" id="result" aria-label="Our result" data-i18n-attr="aria-label:vw.ourResult">
+        <h2 data-i18n="vw.ourResult">Our result</h2>
         <div class="tiles" id="tiles"></div>
         <p class="pairnote" id="pairNote" hidden></p>
         <p class="verdict" id="verdict"></p>
         <p class="badges"><span id="satBadge" class="badge sat" hidden></span></p>
       </section>
-      <section class="controls" aria-label="View settings">
-        <label class="fld">Wavelength <select id="wl"></select></label>
-        <label class="fld">Zoom <select id="zoom"><option value="1">1× (whole field)</option><option value="2">2×</option><option value="3">3×</option><option value="4">4×</option><option value="6">6× (close-up)</option></select></label>
-        <label class="fld">Frame time <span class="speed"><input id="speed" type="range" min="150" max="2000" step="50" value="800"><span id="speedv">800 ms</span></span></label>
+      <section class="controls" aria-label="View settings" data-i18n-attr="aria-label:vw.a.controls">
+        <label class="fld"><span data-i18n="vw.c.wl">Wavelength</span> <select id="wl"></select></label>
+        <label class="fld"><span data-i18n="vw.c.zoom">Zoom</span> <select id="zoom"><option value="1" data-i18n="vw.c.z1">1× (whole field)</option><option value="2">2×</option><option value="3">3×</option><option value="4">4×</option><option value="6" data-i18n="vw.c.z6">6× (close-up)</option></select></label>
+        <label class="fld"><span data-i18n="vw.c.speed">Frame time</span> <span class="speed"><input id="speed" type="range" min="150" max="2000" step="50" value="800"><span id="speedv">800 ms</span></span></label>
         <label class="chk"><input id="mark" type="checkbox" checked> <span id="marklabel">Gaia ring</span></label>
-        <label class="chk"><input id="arrowOn" type="checkbox" checked> Motion arrow and path</label>
+        <label class="chk"><input id="arrowOn" type="checkbox" checked> <span data-i18n="vw.c.arrow">Motion arrow and path</span></label>
       </section>
       <div id="faintControls"></div>
-      <section class="actions" aria-label="Share">
-        <a id="saveGif" class="btn" href="#" download hidden>Save GIF</a>
-        <button type="button" id="copyLink" class="btn">Copy link</button>
-        <input id="linkOut" readonly hidden aria-label="Link to this view">
+      <section class="actions" aria-label="Share" data-i18n-attr="aria-label:vw.a.share">
+        <a id="saveGif" class="btn" href="#" download hidden data-i18n="vw.gif">Save GIF</a>
+        <button type="button" id="copyLink" class="btn" data-i18n="vw.copy">Copy link</button>
+        <input id="linkOut" readonly hidden aria-label="Link to this view" data-i18n-attr="aria-label:vw.a.link">
       </section>
       <p class="why" id="why" hidden></p>
-      <p class="more"><a href="sky.html">Any coordinate (beta): blink any point of the sky in your browser &rarr;</a></p>
+      <p class="more"><a href="sky.html" data-i18n="vw.more">Any coordinate (beta): blink any point of the sky in your browser &rarr;</a></p>
     </div>
   </div>
 
   <div id="explainStrip"></div>
   <div class="lower">
     <section class="card diff">
-      <h2>Difference image: what changed</h2>
+      <h2 data-i18n="vw.diff.h">Difference image: what changed</h2>
       <div class="key" id="diffKey"></div>
-      <div class="diffview" id="diffView"><div class="zoom" id="diffZoom"><img id="diff" alt="Difference image: last season minus first season"><canvas id="diffPair" aria-label="Difference image of the two seasons on screen" hidden></canvas></div></div>
+      <div class="diffview" id="diffView"><div class="zoom" id="diffZoom"><img id="diff" alt="Difference image: last season minus first season" data-i18n-attr="alt:vw.a.diff"><canvas id="diffPair" aria-label="Difference image of the two seasons on screen" hidden data-i18n-attr="aria-label:vw.a.diffPair"></canvas></div></div>
       <small id="diffCap"></small>
     </section>
     <section class="card">
@@ -376,6 +377,7 @@ if (v) {
   import("./js/explain.js").then(x => x.mountExplain(v.meta, v.base)).catch(e => { console.warn("explain.js", e); v.fallbackSentence(); });
   import("./js/marking.js").then(x => v.setMarking(x.mountMarking({ meta: v.meta, base: v.base, current: v.current })))
     .catch(e => console.warn("marking.js", e));
+  import("./explore/candidates.js").then(x => x.mountCandidates(v)).catch(e => console.warn("candidates.js", e));   // candidate finder: list + rings
 }
 </script>
 <script src="js/faint_view.js"></script>

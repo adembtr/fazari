@@ -832,7 +832,7 @@ def pairs_and_headline(measured, positions, min_n, method):
 
 
 # ---- Gaia DR3 field stars (relative astrometry) ---------------------------------------------
-GAIA_RADIUS_DEG = 0.15      # covers the 0.2 deg cutouts
+GAIA_RADIUS_DEG = 0.15      # covers the 0.2 deg cutouts; main() raises it for larger ones (footprint_radius)
 GAIA_GMAX = 19.0
 GAIA_TAP = "https://irsa.ipac.caltech.edu/TAP/sync"     # IRSA copy of the Gaia DR3 source table
 
@@ -840,12 +840,13 @@ GAIA_TAP = "https://irsa.ipac.caltech.edu/TAP/sync"     # IRSA copy of the Gaia 
 def gaia_field(name, ra, dec):
     """Gaia DR3 stars around the target. Read from site/data/<target>/gaia_field.json (repo
     targets, committed so runs are reproducible offline), else from <out>/<target>/; if
-    neither exists, fetched from IRSA TAP and cached in <out>/<target>/gaia_field.json."""
+    neither exists, fetched from IRSA TAP and cached in <out>/<target>/gaia_field.json.
+    A cache whose query radius is smaller than GAIA_RADIUS_DEG (wider cutouts) is not used."""
     cache = ROOT / "site" / "data" / name / "gaia_field.json"
-    if cache.exists():
+    if cache.exists() and gaia_cache_radius(cache) >= GAIA_RADIUS_DEG - 1e-9:
         return json.loads(cache.read_text())
     cache = OUT / name / "gaia_field.json"            # ad-hoc targets: next to their products
-    if cache.exists():
+    if cache.exists() and gaia_cache_radius(cache) >= GAIA_RADIUS_DEG - 1e-9:
         return json.loads(cache.read_text())
     import urllib.parse
     import urllib.request
@@ -863,11 +864,40 @@ def gaia_field(name, ra, dec):
               num(r["parallax"]), num(r["phot_g_mean_mag"]), num(r["ruwe"])] for r in rows]
     out = {"source": "Gaia DR3 (gaia_dr3_source at NASA/IPAC IRSA TAP)", "query": q, "ref_epoch": 2016.0,
            "columns": ["source_id", "ra", "dec", "pmra", "pmdec", "parallax", "phot_g_mean_mag", "ruwe"],
-           "retrieved": datetime.now(timezone.utc).strftime("%Y-%m-%d"), "stars": stars}
+           "retrieved": datetime.now(timezone.utc).strftime("%Y-%m-%d"), "radius_deg": GAIA_RADIUS_DEG,
+           "stars": stars}
     cache.parent.mkdir(parents=True, exist_ok=True)
     cache.write_text(json.dumps(out, separators=(",", ":")))
     print(f"  cached {len(stars)} Gaia DR3 stars in {cache}")
     return out
+
+
+def gaia_cache_radius(path):
+    """Query radius (deg) of a gaia_field.json: 'radius_deg', else the CIRCLE of its query, else 0.15."""
+    import re
+    d = json.loads(Path(path).read_text())
+    if d.get("radius_deg"):
+        return float(d["radius_deg"])
+    m = re.search(r"CIRCLE\('ICRS',\s*[-0-9.]+,\s*[-0-9.]+,\s*([0-9.]+)\)", d.get("query", ""))
+    return float(m.group(1)) if m else 0.15
+
+
+def footprint_radius(infos, ra_c, dec_c):
+    """Largest distance (deg) from the grid centre to a cutout corner: the Gaia query must reach that
+    far (0.2 deg cutouts: <= 0.148, so GAIA_RADIUS_DEG stays 0.15; 0.4 deg: ~0.29). Stars near the
+    corner that could lack an isolation neighbour are < 7 px from the edge and not used anyway."""
+    r = 0.0
+    for i in infos:
+        px = i.get("_px")
+        if not px:
+            continue
+        ny, nx = px["clean"].shape
+        try:
+            ra, dec = px["wcs"].all_pix2world([-0.5, nx - 0.5, -0.5, nx - 0.5], [-0.5, -0.5, ny - 0.5, ny - 0.5], 0)
+        except Exception:
+            continue
+        r = max(r, max(offset_arcsec(ra_c, dec_c, float(a), float(b))[2] for a, b in zip(ra, dec)) / 3600)
+    return r
 
 
 # Field-star selection / fit (documented in pipeline/ASTROMETRY.md; keep the two in sync)
@@ -1336,7 +1366,9 @@ def detection_check(t, infos, epochs):
         i.update(phot_flux_ujy=r["flux"] * PIXEL_UJY, phot_err_ujy=r["err"] * PIXEL_UJY,
                  phot_snr=r["flux"] / r["err"], blended=r["blended"])
         i["_blank"] = blank_snr(i)
-    dets = sorted({i["detector"] for i in infos if "phot_snr" in i})
+    # a detector whose exposures all have a saturated core (no forced fit) stays in: its cells
+    # count as detected (saturated_frac 1) and its exposures go to the wing-fit astrometry
+    dets = sorted({i["detector"] for i in infos if "phot_snr" in i or i.get("phot_sat_only")})
     cells, detected = [], set()
     for e in epochs:
         for d in dets:
@@ -1866,6 +1898,8 @@ def main(name, inline=None):
 
     # ---- motion targets: detection check first, then astrometry on what is detected ----
     if t.get("kind", "motion") == "motion":
+        global GAIA_RADIUS_DEG                       # wider cutouts need a wider Gaia query
+        GAIA_RADIUS_DEG = max(GAIA_RADIUS_DEG, round(footprint_radius(infos, ra_c, dec_c), 3))
         # Gaia DR3 field stars near the target: fitted as fixed-position neighbours
         try:
             gf = gaia_field(name, ra_c, dec_c)

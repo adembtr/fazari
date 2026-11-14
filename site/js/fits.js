@@ -267,6 +267,32 @@ export class SpherexFile {
   async openLayers() {
     if (this._layers) return this._layers;
     this._layers = (async () => {
+      await this.openFlags();
+      // VARIANCE follows FLAGS; ZODI follows VARIANCE. Guess the VARIANCE header length (11520
+      // in all files seen), check that the guess lands on the ZODI header, else walk.
+      const varOff = this.flags.nextOffset;
+      const imgBytes = this.image.dataSize;
+      let zodi = null;
+      try {
+        const z = await readHduAt(this.src, varOff + VAR_HDR_GUESS + pad(imgBytes), 4 * BLOCK);
+        if (z.name === "ZODI") zodi = z;
+      } catch (_) { /* fall back */ }
+      if (!zodi) {
+        const v = await readHduAt(this.src, varOff, 4 * BLOCK);
+        zodi = await readHduAt(this.src, v.nextOffset, 4 * BLOCK);
+      }
+      if (zodi.name !== "ZODI") throw new Error(`expected ZODI, found ${zodi.name}`);
+      delete zodi.extra;
+      this.zodi = zodi;
+      return this;
+    })();
+    try { return await this._layers; } catch (e) { this._layers = null; throw e; }
+  }
+
+  /** FLAGS header + tile descriptors only (one request; enough for a region without ZODI). */
+  async openFlags() {
+    if (this._flags) return this._flags;
+    this._flags = (async () => {
       const flagsOff = this.image.nextOffset;
       const descBytes = 8 * 2040;
       const flags = await readHduAt(this.src, flagsOff, 6 * BLOCK + descBytes);
@@ -305,25 +331,9 @@ export class SpherexFile {
       }
       delete flags.extra;
       this.flags = flags;
-      // VARIANCE follows FLAGS; ZODI follows VARIANCE. Guess the VARIANCE header length (11520
-      // in all files seen), check that the guess lands on the ZODI header, else walk.
-      const varOff = flags.nextOffset;
-      const imgBytes = this.image.dataSize;
-      let zodi = null;
-      try {
-        const z = await readHduAt(this.src, varOff + VAR_HDR_GUESS + pad(imgBytes), 4 * BLOCK);
-        if (z.name === "ZODI") zodi = z;
-      } catch (_) { /* fall back */ }
-      if (!zodi) {
-        const v = await readHduAt(this.src, varOff, 4 * BLOCK);
-        zodi = await readHduAt(this.src, v.nextOffset, 4 * BLOCK);
-      }
-      if (zodi.name !== "ZODI") throw new Error(`expected ZODI, found ${zodi.name}`);
-      delete zodi.extra;
-      this.zodi = zodi;
       return this;
     })();
-    try { return await this._layers; } catch (e) { this._layers = null; throw e; }
+    try { return await this._flags; } catch (e) { this._flags = null; throw e; }
   }
 
   /** Rows y0..y1 (0-based, inclusive) of a float32 image HDU -> Float32Array (ny x NAXIS1). */
@@ -374,13 +384,14 @@ export class SpherexFile {
     return out;
   }
 
-  /** IMAGE, FLAGS and ZODI rows y0..y1 (three requests in parallel). */
-  async readRegion(y0, y1) {
-    await this.openLayers();
+  /** IMAGE, FLAGS and ZODI rows y0..y1 (three requests in parallel). zodi: false skips the ZODI
+   * header and rows (the quick preview subtracts a median instead); zodi is then null. */
+  async readRegion(y0, y1, { zodi: withZodi = true } = {}) {
+    if (withZodi) await this.openLayers(); else await this.openFlags();
     const [image, flags, zodi] = await Promise.all([
       this.readFloatRows(this.image, y0, y1),
       this.readFlagRows(y0, y1),
-      this.readFloatRows(this.zodi, y0, y1),
+      withZodi ? this.readFloatRows(this.zodi, y0, y1) : Promise.resolve(null),
     ]);
     return { y0, y1, nx: this.image.header.num("NAXIS1"), image, flags, zodi };
   }

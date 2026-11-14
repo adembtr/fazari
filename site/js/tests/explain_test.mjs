@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { plainSentence } from "../explain.js";
+import { explainResult } from "../explain.js";
 import { gridOf } from "../marking.js";
 
 const SITE = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -72,6 +73,49 @@ for (const [k, m] of Object.entries(synth)) {
   check(!/discover/i.test(JSON.stringify(s)), `${k}: says discover`);
 }
 check(/candidate/.test(plainSentence(synth.field_candidate).text), "field_candidate: no 'candidate'");
+
+// Turkish (plainSentence(meta, { lang: "tr" }); on the page the language comes from js/i18n.js)
+const EXPECT_TR = {
+  barnard: [/^Barnard Yıldızı bir yılda 10,2″ kuzeye kaydı; Gaia'nın tahminiyle aynı\.$/],
+  eps_indi_b: [/^Epsilon Indi B bir yılda 4,5″ güneydoğuya kaydı; Gaia'nın tahminiyle aynı\.$/],
+  wise0855: [/bir yılda 8,4″ batıya kaydı \(yalnızca 4–5 µm'de görüldü\)/, /Spitzer/],
+  rw_aur: [/^RW Aurigae, Eylül 2025 ile Eylül 2026 arasında 4–5 µm'de yaklaşık yarı yarıya sönükleşti\.$/],
+  r_dra: [/^R Draconis, Haziran 2025 ile Haziran 2026 arasında .*sönükleşti\.$/],
+};
+const noDiscover = (k, s) => check(!/discover|keşif|keşf/i.test(JSON.stringify(s)), `${k} (tr): says discover / keşif`);
+const commaOnly = (k, txt) => check(!/\d\.\d/.test(txt || ""), `${k} (tr): decimal point instead of comma: "${txt}"`);
+for (const t of Object.keys(EXPECT_TR)) {
+  const m = JSON.parse(readFileSync(`${SITE}/data/${t}/meta.json`, "utf8"));
+  const s = plainSentence(m, { lang: "tr" });
+  console.log(`${t} (tr): ${s && s.text}${s && s.note ? `  [${s.note}]` : ""}`);
+  check(s && s.text, `${t} (tr): no sentence`);
+  for (const re of EXPECT_TR[t]) check(s && re.test(s.text), `${t} (tr): "${s && s.text}" !~ ${re}`);
+  noDiscover(t, s); commaOnly(t, s && s.text); commaOnly(t, s && s.note);
+  const r = explainResult(m, { spectrum: true, cands: true }, { lang: "tr" });
+  check(r.sentence === (s && s.text), `${t} (tr): explainResult sentence differs`);
+  for (const it of r.items) {
+    check(it.name && it.ask && !/^(Ring|Arrow|Difference image|Light curve|Spectrum|Candidate rings)$/.test(it.name), `${t} (tr): strip item ${it.key} not Turkish`);
+    commaOnly(`${t} strip ${it.key}`, it.text);
+  }
+  noDiscover(`${t} strip`, r.items);
+}
+for (const [k, m] of Object.entries(synth)) {
+  let s;
+  try { s = plainSentence(m, { lang: "tr" }); explainResult(m, {}, { lang: "tr" }); } catch (e) { fails.push(`${k} (tr): threw ${e}`); continue; }
+  console.log(`(synthetic, tr) ${k}: ${s ? s.text : "null"}${s && s.note ? `  [${s.note}]` : ""}`);
+  if (k !== "empty" && k !== "no_measured") check(s && s.text, `${k} (tr): no sentence`);
+  noDiscover(k, s); commaOnly(k, s && s.text); commaOnly(k, s && s.note);
+}
+check(/aday/.test(plainSentence(synth.field_candidate, { lang: "tr" }).text), "field_candidate (tr): no 'aday'");
+// the page's language (globalThis.__fzI18n from js/i18n.js) is the default
+{
+  const bm = JSON.parse(readFileSync(`${SITE}/data/barnard/meta.json`, "utf8"));
+  globalThis.__fzI18n = { lang: () => "tr", tname: (n) => (n === "Barnard's Star" ? "Barnard Yıldızı" : n) };
+  check(/^Barnard Yıldızı bir yılda/.test((plainSentence(bm) || {}).text || ""), "global tr: not Turkish");
+  globalThis.__fzI18n = { lang: () => "en" };
+  check(/^Barnard's Star moved 10\.2″ north/.test((plainSentence(bm) || {}).text || ""), "global en: not English");
+  delete globalThis.__fzI18n;
+}
 
 const url = process.argv[2];
 if (url) {

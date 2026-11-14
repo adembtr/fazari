@@ -1,5 +1,9 @@
 // UI of sky.html: input -> sky index -> Engine (SkySession in a Web Worker) -> blink,
 // difference, motion. The main thread only resolves the input, draws and reacts.
+// Order: a quick preview first (one wavelength, 2 then up to 4 exposures per season, small
+// regions, no calibration; labelled "Preview (N images)"), then the full result in the
+// background (all wavelengths, Gaia calibration; "Full result (N images)"). ?preview=0 = old flow.
+// Inside the explorer (iframe) the stage is also posted to the parent ({type: "fazari-stage"}).
 import { CONFIG } from "./sky.js";
 import { Engine, workersSupported } from "./engine.js";
 import { TanGrid } from "./wcs.js";
@@ -7,6 +11,7 @@ import { TARGETS } from "./targets.js";
 import { parseCoords, matchTarget, sesame } from "./resolve.js";
 import { highPmStars } from "./gaia.js";
 import { propagate, offsetArcsec, jyearToMjd } from "./astro.js";
+import { t, tn, num, loc, lang, tname, onLang } from "./i18n.js";
 
 // Sky index: the real module (skyindex.js) when it is there, else the dev stand-in.
 // To switch for good, change this one line.
@@ -41,11 +46,16 @@ let frameIdx = 0, timer = null, playing = true;
 let fieldStars = [];       // Gaia high-PM stars (other coordinates)
 const t0 = { start: 0 };
 
+let lastStatus = null;     // [msg, kind]; msg may be a function, re-run when the language changes
 function setStatus(msg, kind = "") {
+  lastStatus = [msg, kind];
   const el = $("status");
-  el.textContent = msg;
+  el.textContent = typeof msg === "function" ? msg() : msg;
   el.className = "status " + kind;
 }
+// Text that follows the language switch: element id -> function that builds it (cleared per run).
+const live = new Map();
+function setLive(id, fn) { live.set(id, fn); $(id).textContent = fn(); }
 function fmtMB(b) { return (b / 1e6).toFixed(1) + " MB"; }
 
 let progressInfo = { checked: 0, accepted: 0, done: 0 };
@@ -54,9 +64,9 @@ function renderProgress() {
   rafPending = false;
   if (!run) return;
   const sec = ((performance.now() - t0.start) / 1000).toFixed(1);
-  $("progress").textContent = `Images: ${progressInfo.done} downloaded of ${progressInfo.accepted} selected`
-    + ` (${progressInfo.checked} headers checked) · ${fmtMB(netStats.bytes)} in ${netStats.requests} requests`
-    + (netStats.retries ? ` · ${netStats.retries} retries` : "") + ` · ${sec} s`;
+  $("progress").textContent = t("sk.progress", { done: progressInfo.done, accepted: progressInfo.accepted, checked: progressInfo.checked,
+    mb: loc(fmtMB(netStats.bytes)), req: netStats.requests })
+    + (netStats.retries ? t("sk.progress.retries", { n: netStats.retries }) : "") + ` · ${loc(sec)} s`;
   const p = progressInfo.accepted ? progressInfo.done / progressInfo.accepted : 0;
   $("bar").style.width = `${Math.round(p * 100)}%`;
 }
@@ -113,15 +123,16 @@ function drawOverlay(canvas, toCanvas, frame, zoom) {
   }
   if ($("mark").checked && fieldStars.length && run) {
     ctx.strokeStyle = "#5ad1ff";
+    const grid = current.n === run.info.n ? run.grid : new TanGrid(run.info.ra0, run.info.dec0, run.info.pixArcsec, current.n);
     for (const s of fieldStars) {
-      const [gx, gy] = run.grid.skyToPix(...propagate(s, frame.mjdMean));
+      const [gx, gy] = grid.skyToPix(...propagate(s, frame.mjdMean));
       if (gx < -5 || gy < -5 || gx > current.n + 5 || gy > current.n + 5) continue;
       const [x, y] = toCanvas(gx, gy);
       const r = Math.max(8, 9 * pxPerArcsec);
       ctx.strokeRect(x - r, y - r, 2 * r, 2 * r);
     }
   }
-  if ($("cent").checked && run) {
+  if ($("cent").checked && run && !current.preview) {
     const pos = run.astro && run.astro.positions.find((p) => p.season === frame.season);
     if (pos) {
       const [x, y] = toCanvas(...pos.grid);
@@ -140,8 +151,30 @@ function drawOverlay(canvas, toCanvas, frame, zoom) {
   }
   const cx = canvas.width - 30, cy = canvas.height - 18;
   ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - 40); ctx.moveTo(cx, cy); ctx.lineTo(cx - 40, cy); ctx.stroke();
-  ctx.fillText("N", cx - 5, cy - 46); ctx.fillText("E", cx - 58, cy + 6);
+  ctx.fillText(t("sk.cN"), cx - 5, cy - 46); ctx.fillText(t("sk.cE"), cx - 58, cy + 6);
 }
+
+// ---- stage label: "Preview (N images)" -> "Full result (N images)" ------------------------------
+function setStage(kind, n, note = "") {
+  const el = $("stage");
+  if (el) {
+    el.hidden = !kind;
+    el.className = "stagebadge " + (kind || "");
+    el.textContent = kind === "preview" ? t("sk.stage.preview", { n }) : kind === "full" ? t("sk.stage.full", { n }) : "";
+    el.title = note;
+  }
+  if (run) run.stage = { kind, n, note };
+  if (kind) {
+    const t = (window.__fzTimes ||= {});
+    t[kind + "Shown"] ||= Date.now();
+    t[kind + "N"] = n;
+  }
+  if (window.parent !== window) {
+    try { window.parent.postMessage({ type: "fazari-stage", stage: kind, n, note }, location.origin); } catch (_) { /* ignore */ }
+  }
+}
+const imagesIn = (r) => r.frames.reduce((a, f) => a + f.n, 0);
+const fullCount = () => Object.values(run.results).reduce((a, r) => a + imagesIn(r), 0);
 
 function showFrame() {
   if (!current) return;
@@ -151,8 +184,9 @@ function showFrame() {
   const cv = $("blink");
   const toCanvas = drawToCanvas(cv, grayImageData(fr.norm, current.n), current.n, zoom);
   drawOverlay(cv, toCanvas, fr, zoom);
-  $("date").textContent = `${fr.season}  (${fr.dateFirst === fr.dateLast ? fr.dateFirst : fr.dateFirst + " to " + fr.dateLast})`;
-  $("detail").textContent = `${fr.lam.toFixed(2)} µm · SPHEREx ${fr.detectors.join("+")} · ${fr.n} exposure${fr.n > 1 ? "s" : ""} (median)`;
+  $("date").textContent = `${fr.season}  (${fr.dateFirst === fr.dateLast ? fr.dateFirst : t("sk.dateRange", { a: fr.dateFirst, b: fr.dateLast })})`;
+  $("detail").textContent = `${num(fr.lam, 2)} µm · SPHEREx ${fr.detectors.join("+")} · ${tn("sk.exposures", fr.n)}`
+    + (current.preview ? t("sk.detail.preview") : "");
 }
 
 function showDiff() {
@@ -160,7 +194,7 @@ function showDiff() {
   const zoom = Number($("zoom").value);
   const toCanvas = drawToCanvas(cv, divergingImageData(current.diff, current.n, 0.6), current.n, zoom);
   const first = current.frames[0], last = current.frames[current.frames.length - 1];
-  $("diffcap").textContent = `${last.season} minus ${first.season} at ${current.um.toFixed(1)} µm. Red = later, blue = earlier. Stars that do not move cancel out.`;
+  $("diffcap").textContent = t("sk.diffcap", { last: last.season, first: first.season, um: num(current.um, 1) });
   if ($("mark").checked && first.gaiaXY) {
     const ctx = cv.getContext("2d");
     ctx.lineWidth = 2;
@@ -176,62 +210,82 @@ function startBlink() {
   if (playing && current && current.frames.length > 1) {
     timer = setInterval(() => { frameIdx = (frameIdx + 1) % current.frames.length; showFrame(); }, Number($("speed").value));
   }
-  $("play").textContent = playing ? "Pause" : "Play";
+  $("play").textContent = playing ? t("sk.pause") : t("sk.play");
 }
 
 // ---- motion card -------------------------------------------------------------------------------
-function fmtArc(v) { return `${v.toFixed(2)}″`; }
+function fmtArc(v) { return `${num(v, 2)}″`; }
+/** Motion card while only the preview is there: never presented as a measurement. */
+function showPreliminary(r) {
+  const p = r.prelim;
+  let html = `<p class="status warn">${t("sk.pre.head", { n: imagesIn(r), um: num(r.um, 1), s: r.frames.length })}</p>`;
+  if (p) {
+    html += `<p>${t("sk.pre.body", { from: p.from, to: p.to, shift: num(p.shift, 1), pa: p.pa.toFixed(0), gs: num(p.gaiaShift, 1), gpa: p.gaiaPa.toFixed(0) })}`
+      + ` <span class="small">${t("sk.pre.small", { n: p.n })}</span></p>`;
+  }
+  $("measure").innerHTML = html;
+}
 function showMotion() {
   const el = $("measure");
   const a = run.astro;
   if (!a || !a.positions.length) {
-    el.innerHTML = "<p>No centroid could be fitted (no point source at the centre, or it is too faint).</p>";
+    el.innerHTML = `<p>${t("sk.m.none")}</p>`;
     return;
   }
-  const who = run.target ? run.target.name : "the source at the centre";
+  const who = run.target ? tname(run.target.name) : t("sk.m.who");
   let html = "";
   if (a.pairs.length) {
     const p = a.pairs.find((q) => q.from === a.positions[0].season && q.to === a.positions[a.positions.length - 1].season);
-    html += `<p class="big">Shift of ${who}, ${p.from} → ${p.to}: <b>${fmtArc(p.shift)}</b> at PA <b>${p.pa.toFixed(1)}°</b>`
-      + ` (± ${p.err.toFixed(2)}″)`;
-    if (p.gaiaShift != null) html += `<br>Catalogue prediction (proper motion + parallax): ${fmtArc(p.gaiaShift)} at PA ${p.gaiaPa.toFixed(1)}°`;
+    html += `<p class="big">${t("sk.m.shift", { who, from: p.from, to: p.to, shift: fmtArc(p.shift), pa: num(p.pa, 1), err: num(p.err, 2) })}`;
+    if (p.gaiaShift != null) html += t("sk.m.cat", { shift: fmtArc(p.gaiaShift), pa: num(p.gaiaPa, 1) });
     html += "</p>";
   }
-  html += `<table><tr><th>Season</th><th>Mean date</th><th>N</th><th>Detector angle</th>`
-    + (run.target ? "<th>Measured − catalogue (E, N)</th>" : "<th>Offset from centre (E, N)</th>") + "</tr>";
+  html += `<table><tr><th>${t("sk.m.th.season")}</th><th>${t("sk.m.th.date")}</th><th>N</th><th>${t("sk.m.th.angle")}</th>`
+    + (run.target ? `<th>${t("sk.m.th.vsCat")}</th>` : `<th>${t("sk.m.th.vsCentre")}</th>`) + "</tr>";
   for (const p of a.positions) {
     const ref = p.gaia || [run.info.ra0, run.info.dec0];
     const o = offsetArcsec(ref[0], ref[1], p.ra, p.dec);
     html += `<tr><td>${p.season}</td><td>${p.date}</td><td>${p.n}${p.calibrated ? "" : "*"}</td><td>${p.orient.toFixed(0)}°</td>`
-      + `<td>${o[0].toFixed(2)}″, ${o[1].toFixed(2)}″ <span class="small">± ${p.errEast.toFixed(2)}, ${p.errNorth.toFixed(2)}</span></td></tr>`;
+      + `<td>${num(o[0], 2)}″${lang() === "tr" ? ";" : ","} ${num(o[1], 2)}″ <span class="small">± ${num(p.errEast, 2)}${lang() === "tr" ? ";" : ","} ${num(p.errNorth, 2)}</span></td></tr>`;
   }
   html += "</table>";
   const c = a.calibration;
   if (c && c.nCalibratedTarget) {
-    html += `<p class="small"><b>Calibrated against ${Math.round(c.stars)} Gaia DR3 stars (rms ${c.rms.toFixed(2)}″)</b> per season and detector`
-      + `, ${c.nCalibratedTarget} of ${c.nFits} exposures`
-      + (c.saturatedTarget && c.satRefs ? `; saturated-core bias from ${c.satRefs} saturated Tycho-2 stars on the same detectors` : "")
-      + (c.nCalibratedTarget < c.nFits ? `. * = season not (fully) calibrated: ${c.reasons.join("; ")}` : "") + ".</p>";
+    html += `<p class="small">${t("sk.m.cal", { stars: Math.round(c.stars), rms: num(c.rms, 2), n: c.nCalibratedTarget, m: c.nFits })}`
+      + (c.saturatedTarget && c.satRefs ? t("sk.m.calSat", { n: c.satRefs }) : "")
+      + (c.nCalibratedTarget < c.nFits ? t("sk.m.calPart", { reasons: c.reasons.join("; ") }) : "") + ".</p>";
   } else {
-    html += `<p class="small"><b>Uncalibrated</b> (raw WCS positions): ${(c && c.reasons.join("; ")) || "no Gaia stars"}.</p>`;
+    html += `<p class="small">${t("sk.m.uncal", { why: (c && c.reasons.join("; ")) || t("sk.m.noGaia") })}</p>`;
   }
   if (a.pairs.length > 1) {
-    html += `<table class="pairs"><tr><th>Pair</th><th>Measured</th><th>Catalogue</th><th>Same orientation</th></tr>`;
+    const sep = lang() === "tr" ? "; " : ", ";
+    html += `<table class="pairs"><tr><th>${t("sk.m.th.pair")}</th><th>${t("sk.m.th.measured")}</th><th>${t("sk.m.th.cat")}</th><th>${t("sk.m.th.same")}</th></tr>`;
     for (const p of a.pairs) {
-      html += `<tr><td>${p.from} → ${p.to}</td><td>${fmtArc(p.shift)}, ${p.pa.toFixed(1)}°</td>`
-        + `<td>${p.gaiaShift != null ? fmtArc(p.gaiaShift) + ", " + p.gaiaPa.toFixed(1) + "°" : "–"}</td><td>${p.sameOrientation ? "yes" : "no"}</td></tr>`;
+      html += `<tr><td>${p.from} → ${p.to}</td><td>${fmtArc(p.shift)}${sep}${num(p.pa, 1)}°</td>`
+        + `<td>${p.gaiaShift != null ? fmtArc(p.gaiaShift) + sep + num(p.gaiaPa, 1) + "°" : "–"}</td><td>${p.sameOrientation ? t("sk.yes") : t("sk.no")}</td></tr>`;
     }
     html += "</table>";
   }
-  html += `<p class="small">Centroid: Gaussian fit to the unsaturated wings in native 6.15″ pixels, per exposure, `
-    + `converted with each exposure's SIP WCS; season = mean after clipping. ${a.nFits} of ${a.nExposures} downloaded exposures fitted `
-    + `(bins loaded so far: ${Object.keys(run.results).map(Number).sort((a, b) => a - b).map((u) => u.toFixed(1)).join(", ")} µm). `
-    + `Relative astrometry (as pipeline/ASTROMETRY.md): isolated Gaia DR3 stars (10 ≤ G ≤ 17.5, RUWE ≤ 1.4, moved to each exposure's date `
-    + `with proper motion and parallax) are centroided the same way; their offsets, pooled per season and detector (shift, or shift + `
-    + `rotation + scale with ≥ 12 stars around the target, 3σ clipped), correct the target. `
-    + `A saturated target's wing-only centroid has a bias fixed to the detector (it flips when SPHEREx turns 180° between `
-    + `August and March); it is measured on saturated Tycho-2 stars in the same rows and removed.</p>`;
+  html += `<p class="small">${t("sk.m.method", { fits: a.nFits, exp: a.nExposures,
+    bins: Object.keys(run.results).map(Number).sort((a, b) => a - b).map((u) => num(u, 1)).join(lang() === "tr" ? "; " : ", ") })}</p>`;
   el.innerHTML = html;
+}
+
+// ---- spectrum of the loaded exposures (spectrum.js in the worker, chart: spectrum_chart.js) -----------
+async function showSpectrum() {
+  const box = $("spectrum");
+  if (!box || !run || !run.engine || run.engine.closed || typeof run.engine.spectrum !== "function") return;
+  const myRun = run;
+  try {
+    const { result } = await run.engine.spectrum();
+    if (run !== myRun) return;
+    const [{ renderSpectrum }, { toCsv }] = await Promise.all([import("./spectrum_chart.js"), import("./spectrum.js")]);
+    if (run.spectrumUrl) URL.revokeObjectURL(run.spectrumUrl);
+    run.spectrumUrl = URL.createObjectURL(new Blob([toCsv(result)], { type: "text/csv" }));
+    run.spectrum = result;
+    box.dataset.n = result.summary.n_exposures;
+    renderSpectrum(box, result, { csvUrl: run.spectrumUrl, csvName: `${String(result.target || "source").replace(/[^A-Za-z0-9]+/g, "_")}_spectrum.csv` });
+  } catch (e) { if (e.name !== "AbortError") console.warn("spectrum failed:", e); }
 }
 
 // ---- result for headless checks -----------------------------------------------------------------
@@ -248,6 +302,10 @@ function writeResult(state, extra = {}) {
     loaded: s ? Object.values(run.results).sort((a, b) => a.um - b.um).map((r) => ({ um: r.um, detector: r.det,
       frames: r.frames.map((f) => ({ season: f.season, n: f.n, detectors: f.detectors, lam_um: +f.lam.toFixed(4), lams: f.lams,
                                      date_first: f.dateFirst, date_last: f.dateLast })) })) : [],
+    stage: run && run.stage ? run.stage : null,
+    times_ms: run && run.times ? run.times : null,
+    preview: run && run.preview ? { n_images: imagesIn(run.preview), um: run.preview.um, per_season: run.preview.preview.perSeason,
+                                    fov_deg: run.preview.preview.fovDeg, prelim: run.preview.prelim || null } : null,
     astrometry: run && run.astro ? { pairs: run.astro.pairs, calibration: run.astro.calibration,
                                      positions: run.astro.positions.map((p) => ({ ...p, grid: undefined })) } : null,
     gaia_field: run ? run.gaiaField : null,
@@ -265,15 +323,15 @@ async function resolveInput(text) {
   const key = matchTarget(text);
   if (key) {
     const t = TARGETS[key];
-    return { key, target: { ...t }, label: t.name };
+    return { key, target: { ...t }, label: () => tname(t.name) };
   }
   const c = parseCoords(text);
-  if (c) return { key: null, target: null, ra: c[0], dec: c[1], label: `RA ${c[0].toFixed(5)}°, Dec ${c[1].toFixed(5)}°` };
-  setStatus(`Resolving “${text}” with CDS Sesame (SIMBAD)...`);
+  if (c) return { key: null, target: null, ra: c[0], dec: c[1], label: () => `RA ${num(c[0], 5)}°, Dec ${num(c[1], 5)}°` };
+  setStatus(() => t("sk.resolving", { text }));
   const r = await sesame(text, { signal: run.ctl.signal });
-  if (!r) throw new Error(`“${text}” is not a coordinate and the name resolver does not know it`);
+  if (!r) throw new Error(t("sk.err.unknown", { text }));
   const moving = Math.hypot(r.pmra, r.pmdec) > 0;
-  return { key: null, target: moving ? r : null, ra: r.ra, dec: r.dec, label: `${r.name} (${r.source})`, resolved: r };
+  return { key: null, target: moving ? r : null, ra: r.ra, dec: r.dec, label: () => `${tname(r.name)} (${r.source})`, resolved: r };
 }
 
 function updateUrl(q) {
@@ -282,30 +340,90 @@ function updateUrl(q) {
   for (const [k, v] of Object.entries(q)) u.searchParams.set(k, v);
   history.replaceState(null, "", u);
   $("share").href = u.toString();
-  $("share").textContent = "Link to this view";
+  $("share").textContent = t("sk.share");
 }
 
-async function loadBin(um) {
+async function loadBin(um, { show = true, background = false } = {}) {
   const myRun = run;
   const b = run.info.bins.find((x) => x.um === um);
-  for (const btn of document.querySelectorAll("#bins button")) btn.classList.toggle("on", Number(btn.dataset.um) === um);
+  if (show) for (const btn of document.querySelectorAll("#bins button")) btn.classList.toggle("on", Number(btn.dataset.um) === um);
   let r = run.results[um];
   if (!r) {
-    setStatus(`Downloading ${um.toFixed(1)} µm images (detector D${b.det}) from S3...`);
+    if (!background) setStatus(() => t("sk.st.download", { um: num(um, 1), det: b.det }));
     progressInfo = { checked: 0, accepted: 0, done: 0 };
     busy(true);
+    run.pending ||= {};
     try {
-      const out = await run.engine.loadBin(um, (p) => { progressInfo = p; queueProgress(); });
+      run.pending[um] ||= run.engine.loadBin(um, (p) => { if (run === myRun) { progressInfo = p; queueProgress(); } });
+      const out = await run.pending[um];
       if (run !== myRun) return;
       r = run.results[um] = out.result;
       run.astro = out.astrometry;
-    } finally { if (run === myRun) busy(false); }
+      const btn = document.querySelector(`#bins button[data-um="${um}"]`);
+      if (btn) btn.classList.add("loaded");
+    } finally { if (run === myRun && !background) busy(false); }
+  }
+  if (!show) {                         // background: refresh the motion card unless the preview is on screen
+    if (current && !current.preview) showMotion();
+    return;
   }
   current = r; frameIdx = 0;
   $("viewer").hidden = false;
   showFrame(); showDiff(); startBlink();
   showMotion();
   renderProgress();
+}
+
+/** Show a preview result (first look / preview) of bin um. */
+function showPreview(r) {
+  run.preview = r;
+  if (current && !current.preview) return;                 // the user already looks at a full result
+  for (const btn of document.querySelectorAll("#bins button")) btn.classList.toggle("on", Number(btn.dataset.um) === r.um);
+  current = r; frameIdx = 0;
+  $("viewer").hidden = false;
+  showFrame(); showDiff(); startBlink();
+  showPreliminary(r);
+}
+
+/** Quick preview first, then the full result in the background (desktop: every wavelength). */
+async function previewThenFull(first, avail, myRun) {
+  run.times = {};
+  const ms = () => Math.round(performance.now() - t0.start);
+  const nSeasons = run.info.bins.find((x) => x.um === first).nSeasons;
+  for (const k of [2, 0]) {                                 // 2 per season, then 2..4 (12 in all)
+    if (k === 0 && run.preview && run.preview.preview.perSeason >= Math.max(2, Math.min(4, Math.floor(12 / Math.max(nSeasons, 1))))) break;
+    setStatus(() => (k ? t("sk.st.quick", { um: num(first, 1), k }) : t("sk.st.more", { um: num(first, 1) })), "warn");
+    progressInfo = { checked: 0, accepted: 0, done: 0 };
+    let out;
+    try {
+      out = await run.engine.loadPreview(first, { perSeason: k, total: 12, fovDeg: 0.1 }, (p) => { if (run === myRun) { progressInfo = p; queueProgress(); } });
+    } catch (e) {
+      if (e.name === "AbortError" || run !== myRun) throw e;
+      console.warn("preview failed, going on with the full result:", e);
+      break;
+    }
+    if (run !== myRun) return;
+    const r = out.result;
+    if (!run.preview || imagesIn(r) > imagesIn(run.preview)) {
+      showPreview(r);
+      run.times[k ? "firstLook" : "preview"] = ms();
+      window.__fzPreviewAt ||= Date.now();
+      setStage("preview", imagesIn(r), t("sk.stage.previewNote"));
+      writeResult("preview");
+    }
+  }
+  const bins = [first, ...(PROFILE.name === "phone" ? [] : avail.map((b) => b.um).filter((u) => u !== first))];
+  for (let i = 0; i < bins.length; i++) {
+    const um = bins[i];
+    const onScreen = !!(current && current.preview);
+    setStatus(() => (onScreen ? t("sk.st.onScreen") : "") + t("sk.st.full", { um: num(um, 1), i: i + 1, n: bins.length }), "warn");
+    await loadBin(um, { show: um === first && (!current || current.preview), background: true });
+    if (run !== myRun) return;
+    if (i === 0) run.times.firstFull = ms();
+    setStage("full", fullCount(), i < bins.length - 1 ? t("sk.stage.more") : t("sk.stage.all"));
+  }
+  run.times.full = ms();
+  window.__fzFullAt = Date.now();
 }
 
 function stopRun() {
@@ -319,7 +437,9 @@ async function go(text, opts = {}) {
   stopRun();
   clearInterval(timer);
   current = null; fieldStars = [];
-  $("viewer").hidden = true; $("bins").innerHTML = ""; $("measure").innerHTML = ""; $("fieldnote").textContent = "";
+  setStage(null);
+  $("viewer").hidden = true; $("bins").innerHTML = ""; $("measure").innerHTML = ""; $("fieldnote").textContent = ""; live.clear();
+  if ($("spectrum")) $("spectrum").hidden = true;
   run = { ctl: new AbortController(), input: text, finished: false, gaiaField: null, results: {} };
   const myRun = run;
   t0.start = performance.now();
@@ -331,9 +451,9 @@ async function go(text, opts = {}) {
     run.target = r.target;
     const [ra, dec] = r.target ? propagate(r.target, jyearToMjd(CONFIG.epochCenter), false) : [r.ra, r.dec];
     updateUrl(r.key ? { target: r.key } : r.resolved ? { q: text } : { ra: ra.toFixed(6), dec: dec.toFixed(6) });
-    $("what").textContent = r.label + (r.target && (r.target.pmra || r.target.pmdec)
-      ? ` · proper motion ${Math.hypot(r.target.pmra, r.target.pmdec).toFixed(0)} mas/yr` : "");
-    setStatus("Searching the SPHEREx sky index...");
+    setLive("what", () => r.label() + (r.target && (r.target.pmra || r.target.pmdec)
+      ? t("sk.pm", { pm: Math.hypot(r.target.pmra, r.target.pmdec).toFixed(0) }) : ""));
+    setStatus(() => t("sk.st.index"));
     let idx = await loadIndex();
     let images;
     try {
@@ -346,8 +466,8 @@ async function go(text, opts = {}) {
     }
     if (myRun !== run) return;
     if (!images || !images.length) {
-      const devNote = indexName === "skyindex_dev.js" ? " (development index: it only knows the 5 challenge targets)" : "";
-      throw new Error(`No SPHEREx images here${devNote}.`);
+      const devNote = indexName === "skyindex_dev.js" ? t("sk.err.devIndex") : "";
+      throw new Error(t("sk.err.none", { dev: devNote }));
     }
     const cfg = { cap: Number($("cap").value) || PROFILE.cap };
     if (params.get("fov")) cfg.fovDeg = Math.max(0.05, Math.min(0.3, Number(params.get("fov"))));
@@ -358,13 +478,11 @@ async function go(text, opts = {}) {
     run.info = session;
     run.grid = new TanGrid(session.ra0, session.dec0, session.pixArcsec, session.n);
     const avail = session.bins.filter((b) => b.available);
-    $("found").textContent = `${images.length} SPHEREx exposures cover this point, in ${session.seasons.length} season(s): `
-      + session.seasons.map((x) => x.label).join(", ") + ".";
-    if (!avail.length) throw new Error("No SPHEREx images here with at least two seasons in one wavelength bin.");
+    setLive("found", () => t("sk.found", { n: images.length, s: session.seasons.length, list: session.seasons.map((x) => x.label).join(", ") }));
+    if (!avail.length) throw new Error(t("sk.err.twoSeasons"));
     for (const b of session.bins) {
       const btn = document.createElement("button");
-      btn.textContent = `${b.um.toFixed(1)} µm`;
-      btn.title = `detector D${b.det}; ${b.nSeasons} season(s) with images`;
+      binLabel(btn, b);
       btn.dataset.um = b.um;
       btn.disabled = !b.available;
       btn.onclick = () => loadBin(b.um).catch(fail);
@@ -376,29 +494,36 @@ async function go(text, opts = {}) {
         if (myRun !== run) return;
         fieldStars = stars;
         run.gaiaField = { ok: true, n: stars.length, stars: stars.map((s) => ({ id: s.source_id, pm: s.pm, gmag: s.gmag })) };
-        $("fieldnote").textContent = stars.length
-          ? `Blue squares: ${stars.length} Gaia DR3 star(s) with proper motion > 100 mas/yr, moved to each season's date (VizieR).`
-          : "Gaia DR3 (VizieR): no star with proper motion > 100 mas/yr in this field.";
+        setLive("fieldnote", () => (stars.length ? t("sk.field.some", { n: stars.length }) : t("sk.field.none")));
         if (current) { showFrame(); showDiff(); }
       }).catch((e) => {
         if (myRun !== run) return;
         run.gaiaField = { ok: false, error: e.message };
-        $("fieldnote").textContent = `Gaia field stars not shown: ${e.message}.`;
+        setLive("fieldnote", () => t("sk.field.err", { msg: e.message }));
       });
     }
     let first = Number(params.get("bin")) || 2.0;
     if (!avail.some((b) => b.um === first)) first = avail[0].um;
-    await loadBin(first);
-    if (opts.all || params.get("all") === "1") {
-      for (const b of avail) if (b.um !== first) { await loadBin(b.um); }
+    if (params.get("preview") !== "0") {
+      await previewThenFull(first, avail, myRun);
+    } else {
       await loadBin(first);
+      if (opts.all || params.get("all") === "1") {
+        for (const b of avail) if (b.um !== first) { await loadBin(b.um); }
+        await loadBin(first);
+      }
+      setStage("full", fullCount());
     }
     if (myRun !== run) return;
     run.finished = true;
     busy(false);
-    setStatus(`Done. ${current.frames.length} seasons at ${current.um.toFixed(1)} µm. Pick another wavelength above to download it.`, "ok");
+    const nb = Object.keys(run.results).length;
+    const imgs = fullCount(), ns = current.frames.length, more = nb < avail.length;
+    setStatus(() => (nb > 1 ? t("sk.done.other", { imgs, n: nb, s: ns }) : t("sk.done.one", { imgs, n: nb, s: ns }))
+      + (more ? t("sk.done.pick") : ""), "ok");
     renderProgress();
     writeResult("done");
+    showSpectrum();
   } catch (e) {
     if (myRun !== run) return;
     if (e.name === "AbortError") { busy(false); return; }
@@ -411,7 +536,7 @@ function fail(e) {
   if (run) run.finished = true;
   busy(false);
   const msg = /Failed to fetch|NetworkError|did not answer/.test(e.message)
-    ? `Network problem: ${e.message}. S3 or your connection may be busy; try again in a minute.` : e.message;
+    ? t("sk.err.net", { msg: e.message }) : e.message;
   setStatus(msg, "err");
   writeResult("error", { error: msg });
 }
@@ -427,7 +552,7 @@ $("cancel").onclick = () => {
   if (!run || run.finished) return;
   const loaded = Object.keys(run.results).length;
   stopRun();
-  setStatus(loaded ? "Cancelled. The wavelengths already loaded stay available." : "Cancelled.", "warn");
+  setStatus(() => (loaded ? t("sk.st.cancelledKeep") : t("sk.st.cancelled")), "warn");
   writeResult("cancelled");
 };
 $("cap").onchange = () => { const v = $("q").value.trim(); if (v && run) go(v); };
@@ -435,8 +560,9 @@ $("allbins").onclick = async () => {
   if (!run || !run.info || !run.engine || run.engine.closed) return;
   try {
     for (const b of run.info.bins.filter((x) => x.available)) await loadBin(b.um);
-    setStatus("All wavelength bins loaded.", "ok");
+    setStatus(() => t("sk.st.allBins"), "ok");
     writeResult("done");
+    showSpectrum();
   } catch (e) { fail(e); }
 };
 for (const a of document.querySelectorAll("[data-q]")) a.onclick = (ev) => { ev.preventDefault(); $("q").value = a.dataset.q; go(a.dataset.q); };
@@ -447,13 +573,37 @@ for (const a of document.querySelectorAll("[data-q]")) a.onclick = (ev) => { ev.
   const sel = $("cap");
   if (![...sel.options].some((o) => Number(o.value) === want)) sel.add(new Option(String(want), String(want)));
   sel.value = String(want);
-  $("profile").textContent = PROFILE.name === "phone"
-    ? `Phone mode: ${want} exposures per season, one wavelength at a time (choose more above).`
-    : "";
-  if (!WORKER) $("profile").textContent += " Web Workers unavailable: running on the main thread.";
+  const prof = () => (PROFILE.name === "phone" ? t("sk.phone", { n: want }) : "") + (WORKER ? "" : t("sk.noWorker"));
+  $("profile").textContent = prof();
+  onLang(() => { $("profile").textContent = prof(); });
 }
 
 const start = params.get("target") ? (TARGETS[params.get("target")] || {}).name || params.get("target")
   : params.get("ra") && params.get("dec") ? `${params.get("ra")} ${params.get("dec")}` : params.get("q");
 if (start) { $("q").value = start; go(start); }
-else setStatus("Enter a name or a coordinate, or pick an example.");
+else setStatus(() => t("sk.st.enter"));
+
+// ---- language switch: re-render text only (run, frames, wavelength, season and input stay) ----------
+function binLabel(btn, b) {
+  btn.textContent = `${num(b.um, 1)} µm`;
+  btn.title = t("sk.bin.title", { det: b.det, n: b.nSeasons });
+}
+onLang(() => {
+  if (lastStatus && typeof lastStatus[0] === "function") setStatus(...lastStatus);
+  for (const [id, fn] of live) $(id).textContent = fn();
+  if (run && run.info) for (const btn of document.querySelectorAll("#bins button")) {
+    const b = run.info.bins.find((x) => x.um === Number(btn.dataset.um));
+    if (b) binLabel(btn, b);
+  }
+  if (run && run.stage && run.stage.kind) {
+    const el = $("stage");
+    el.textContent = t(run.stage.kind === "preview" ? "sk.stage.preview" : "sk.stage.full", { n: run.stage.n });
+  }
+  $("play").textContent = playing ? t("sk.pause") : t("sk.play");
+  if ($("share").getAttribute("href") !== "#") $("share").textContent = t("sk.share");
+  renderProgress();
+  if (current) {
+    showFrame(); showDiff();
+    if (current.preview) showPreliminary(current); else showMotion();
+  }
+});
