@@ -29,7 +29,11 @@ Motions are then re-measured with the native-pixel EPSF astrometry of all exposu
 Rejections (-> not reported, or class 'artifact'): saturated cores (dilated) and missing pixels,
 the stack edge, PSF wings of bright stars (|flux change| < WING_FRAC of the star), dipoles
 without a significant shift, motions seen only in opposite-orientation pairs below
-FLIP_MIN_SHIFT, objects seen in a single bin and a single season pair.
+FLIP_MIN_SHIFT, objects seen in a single bin and a single season pair, separated lobe pairs
+whose source is still present at the old position or was already present at the new one (two
+unrelated flux changes, e.g. two variable stars, are not a motion: a moving object leaves its
+old place), and motions that the native-pixel astrometry along the track does not confirm at
+>= SIG_REFINE sigma (a real mover is a point source on its track in every exposure).
 """
 import math
 
@@ -63,6 +67,9 @@ CLUSTER_N = 3
 WIDTH_RANGE = (0.6, 1.6)    # fitted Gaussian width / PSF width of a point source
 MIN_SHIFT_SIG = 4.0         # stack-fit shift must be this many sigma
 GROUP_POS = 4.0             # arcsec: records of one object agree to this (+ errors) at 2026.0
+ABSENT_FRAC = 0.3           # separated lobes: flux left at the old / already at the new position must be
+#                             below this fraction of the object's flux (and below 3 sigma)
+SIG_REFINE = 5.0            # significance of the motion in the native-pixel astrometry along the track
 
 
 def _units(ctx):
@@ -330,9 +337,19 @@ def _motion_from_stacks(ctx, u, sig, s1, s2, A1, A2, pn, pp, dd, dt, same, z):
     rec = dict(unit=u, s1=s1, s2=s2, same=same, dt=dt, ra1=float(r1[0]), dec1=float(d1[0]), ra2=float(r2[0]),
                dec2=float(d2[0]), dE=dE, dN=dN, sep=sep, err=err, f1=q1["flux"], f2=q2["flux"], z=z,
                ra=float(r2[0]), dec=float(d2[0]))
+    still = None
+    if dd >= 3.5 * sig:
+        # separated lobes: the object must have left its old place and must not have been at the new one
+        o1 = fit_gauss(A2["img"], A2["var"], q1["x"], q1["y"], sig, fix_pos=True)      # old position, later stack
+        o2 = fit_gauss(A1["img"], A1["var"], q2["x"], q2["y"], sig, fix_pos=True)      # new position, earlier stack
+        for o, q, what in ((o1, q1, "still present at the old position"), (o2, q2, "already present at the new position")):
+            if o is not None and o["flux"] > max(3 * o["eflux"], ABSENT_FRAC * q["flux"]):
+                still = what
     if RJ.in_sat_zone(ctx, rec["ra1"], rec["dec1"], allow_core=True)[0] or \
             RJ.in_sat_zone(ctx, rec["ra2"], rec["dec2"], allow_core=True)[0]:
         rec["artifact"] = "in the wings of a saturated star"
+    elif still:
+        rec["artifact"] = f"source {still} (two flux changes, not a motion)"
     elif sep < MIN_SHIFT_SIG * err:
         rec["artifact"] = "dipole without a significant shift (registration / PSF residual)"
     elif not same and sep < FLIP_MIN_SHIFT:
@@ -445,7 +462,14 @@ def _group_motion(ctx, recs):
     cands = [c for c in cands if not (c["class"] == "artifact" and c.get("_sat_only"))]
     for c in cands:
         if c["class"] == "candidate":
-            _refine(ctx, c)
+            ok = _refine(ctx, c)
+            sig = (c.get("motion") or {}).get("significance_sigma") or 0
+            if not ok:
+                c["class"] = "artifact"
+                c["flags"].append("not confirmed by the native-pixel astrometry along the track")
+            elif sig < SIG_REFINE:
+                c["class"] = "artifact"
+                c["flags"].append(f"motion only {sig:.1f} sigma in the native-pixel astrometry along the track")
     return cands
 
 
@@ -562,10 +586,13 @@ def _linear_plx(sp):
 
 
 def _refine(ctx, c):
-    """Re-measure an A motion in every exposure along its track (EPSF or wing fit)."""
+    """Re-measure an A motion in every exposure along its track (EPSF fit, or wing fit where the
+    core is saturated), with one position offset per detector and errors calibrated on the
+    residuals (astrometry.py). Returns True when the track astrometry confirms the stack motion
+    (a fit exists and differs from the stack motion by less than half of it)."""
     mo = c["motion"]
     if not mo:
-        return
+        return False
     # the candidate plus the field sources near its track (fitted together: blends modelled)
     from . import deep_astrom
     fs, ng = deep_astrom.field_sources(ctx)
@@ -579,15 +606,23 @@ def _refine(ctx, c):
                      np.r_[0.0, fs.plx[nb]])
     allow = np.zeros(src.n, bool)
     allow[0] = True
-    # only the detectors where it was seen (a very red object is noise in the blue detectors)
+    # only the detectors where A saw the motion: in the others the object may be absent (a very
+    # red object is noise in the blue detectors) and a static background source near the track
+    # would then be measured instead, as a drift opposite to the motion
     dets = sorted({d for u in c["bins"] for d in unit_dets(u)})
     A, T = AS.measure_seasons(ctx.exps, src, ctx.cal, ctx.seasons, images=ctx.images, sat_path=allow,
                               nb=AS.bright_neighbours(ctx.gaia), iters=3, det_subset=dets or None)
+    cells = {d: t for d, t in AS.cell_tables(ctx.exps, A, ctx.seasons).items() if not dets or d in dets}
     floor = ctx.season_floor if ctx.season_floor else AS.SEASON_FLOOR
-    f = AS.fit_drift(T, 0, floor=floor, fit_plx=True, ra=c["ra"], dec=c["dec"], min_snr=5.0)
+    f = AS.fit_motion(T, cells, 0, floor, c["ra"], c["dec"], min_snr=5.0)
     if f is None or math.hypot(f["bE"], f["bN"]) > 0.5 * max(mo["speed_arcsec_yr"], 1.0):
         c["flags"].append("native-pixel refinement failed (stack motion kept)")
-        return
+        return False
+    base = (mo["pmra_mas_yr"] / 1000, mo["pmdec_mas_yr"] / 1000)
+    f = AS.calibrate(ctx.exps, A, T, ctx.seasons, 0, f, floor, cells=cells, base=base, min_snr=5.0,
+                     orient_term=bool(f.get("orient_model")))
+    if f["motion_model"] != "linear":
+        c["flags"].append("motion model: " + f["motion_model"])
     pmE = mo["pmra_mas_yr"] + f["bE"] * 1000
     pmN = mo["pmdec_mas_yr"] + f["bN"] * 1000
     eE, eN = max(f["ebE"] * 1000, 1.0), max(f["ebN"] * 1000, 1.0)
@@ -601,8 +636,10 @@ def _refine(ctx, c):
     sig = AS._sigma_from_chi2((pmE / eE) ** 2 + (pmN / eN) ** 2, 2)
     stack_est = mo["speed_arcsec_yr"]
     c["motion"] = SC.motion_dict(pmE, pmN, eE, eN, sig=sig,
-                                 method="found by A; motion from EPSF/wing astrometry of all exposures along the track")
+                                 method="found by A; motion from EPSF/wing astrometry of all exposures along the track, "
+                                        "one offset per detector, errors from residual permutation")
     c["motion"]["stack_estimate_arcsec_yr"] = stack_est
+    c["motion"]["stack_minus_track_arcsec_yr"] = round(dpm / 1000, 3)
     if f.get("parallax_mas"):
         c["motion"]["parallax_mas"] = round(f["parallax_mas"][0], 1)
         c["motion"]["err_parallax_mas"] = round(f["parallax_mas"][1], 1)
@@ -626,7 +663,11 @@ def _refine(ctx, c):
         c["mag_ab"] = round(m, 2) if m else None
     if f["saturated"]:
         c["flags"].append("saturated: wing-fit astrometry")
-    c["fit"] = {"chi2": round(f["chi2"], 2), "dof": f["dof"], "n_seasons": f["n_seasons"], "orient_term": f["orient_term"]}
+    c["fit"] = {"chi2": round(f["chi2"], 2), "dof": f["dof"], "n_seasons": f["n_seasons"], "orient_term": f["orient_term"],
+                "saturated": bool(f["saturated"]), "model": f.get("model", "pooled detectors"),
+                "motion_model": f.get("motion_model"), "p_linear": f.get("p_linear"), "n_cells": f.get("n_cells"),
+                "detectors": f.get("detectors"), "error_inflation": f.get("error_inflation"), "bootstrap": f.get("bootstrap")}
+    return True
 
 
 def _group_lone(ctx, recs):

@@ -137,16 +137,27 @@ def one(a, field, prepared, mag):
     _, OT = AS.measure_seasons(inj, osrc, cal, seasons, sat_path=False)
     floor = ctx.season_floor or AS.SEASON_FLOOR
     allsrc = deep_astrom.field_sources(base)[0]
+    # coverage of every injected source (static ones too) and whether the finder's source list
+    # (Gaia + deep-stack peaks of the injected data) holds it
+    asrc = AS.Sources([s["ra"] for s in srcs], [s["dec"] for s in srcs], 2026.0, [s["pmra"] for s in srcs],
+                      [s["pmdec"] for s in srcs], None)
+    _, AT = AS.measure_seasons(inj, asrc, cal, seasons, sat_path=False, iters=1)
+    fsrc = ctx.shared.get("field_sources", (None, 0))[0]
     results = []
     for s in srcs:
         r = dict(s)
         r.pop("season_factor", None)
         near = [c for c in cands if SC.sep_arcsec(c["ra"], c["dec"], s["ra"], s["dec"]) < 5.0]
-        # environment
         cosd = math.cos(math.radians(s["dec"]))
         dd = np.hypot((allsrc.ra0 - s["ra"]) * cosd, allsrc.dec0 - s["dec"]) * 3600 if allsrc.n else np.array([])
         r["nearest_source_arcsec"] = round(float(dd.min()), 1) if len(dd) else None
         r["in_sat_zone"] = bool(RJ.in_sat_zone(ctx, s["ra"], s["dec"])[0])
+        k_all = srcs.index(s)
+        r["n_exposures"] = int(np.nansum(AT["n"][:, k_all]))
+        r["season_snr"] = round(float(np.nanmedian(AT["snr"][:, k_all])), 1) if np.isfinite(AT["snr"][:, k_all]).any() else None
+        if fsrc is not None and fsrc.n:
+            ds = np.hypot((fsrc.ra0 - s["ra"]) * cosd, fsrc.dec0 - s["dec"]) * 3600
+            r["in_source_list"] = bool(ds.min() < 3.0)
         if s["kind"] == "motion":
             j = mv.index(s)
             fo = AS.fit_drift(OT, j, floor=floor, min_snr=0)
@@ -187,13 +198,15 @@ def one(a, field, prepared, mag):
                 reasons.append("saturated-star zone")
             if r["nearest_source_arcsec"] is not None and r["nearest_source_arcsec"] < 8:
                 reasons.append("blended (source within 8\")")
-            if s["kind"] == "motion" and r.get("oracle_n_exposures") == 0:
+            if r.get("n_exposures") == 0:
                 reasons.append("outside the exposures (no data at its position)")
             elif s["kind"] == "motion":
                 if (r.get("oracle_season_snr") or 0) < 10:
                     reasons.append("too faint (season S/N < 10)")
                 elif r.get("oracle_pm_err_mas_yr") and 1000 * s["speed"] < 5 * r["oracle_pm_err_mas_yr"]:
                     reasons.append("too slow (< 5 x achievable motion error)")
+            if r.get("n_exposures") and r.get("in_source_list") is False and s["kind"] in ("motion", "variable"):
+                reasons.append("not in the deep-stack source list")
             rej = [c for c in near if c["class"] == "artifact"]
             if rej:
                 reasons.append("rejected: " + "; ".join(rej[0]["flags"][:2]))

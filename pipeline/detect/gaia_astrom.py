@@ -31,6 +31,85 @@ MIN_SEASON_N = 3
 GAIA_EPOCH = 2016.0
 
 
+def judge(ctx, exps, A, T, cells, src, j, floor, smax=None, n_perm=AS.N_PERM):
+    """Decision of detector B for Gaia star j of a measurement (A, T, cells). None if the star has
+    no drift fit, else dict: f (fit; errors calibrated by residual permutation when the star is
+    reported), pmE, pmN, eE, eN (mas/yr, measured = Gaia + drift), sig_abs (significance of the
+    total motion), dev (drift vs the Gaia prediction, sigma), dev_formal (before calibration),
+    cls (None | 'gaia-known' | 'candidate' | 'artifact'), flags, groups."""
+    gt = ctx.gaia
+    f = AS.fit_drift(T, j, floor=floor, min_n=MIN_SEASON_N, cells=cells)
+    if f is None:
+        return None
+    two_par = not gt.has5p[j]
+
+    def total(f):
+        pmE = (0 if not np.isfinite(gt.pmra[j]) else gt.pmra[j]) + f["bE"] * 1000
+        pmN = (0 if not np.isfinite(gt.pmdec[j]) else gt.pmdec[j]) + f["bN"] * 1000
+        eE, eN = f["ebE"] * 1000, f["ebN"] * 1000
+        return pmE, pmN, eE, eN, AS._sigma_from_chi2((pmE / eE) ** 2 + (pmN / eN) ** 2, 2)
+    pmE, pmN, eE, eN, sig_abs = total(f)
+    out = {"f": f, "dev_formal": f["sig_motion"], "dev": f["sig_motion"], "cls": None, "flags": [], "groups": {},
+           "two_par": two_par, "pmE": pmE, "pmN": pmN, "eE": eE, "eN": eN, "sig_abs": sig_abs}
+    if f["sig_motion"] < SIG_ANOMALY and (sig_abs < SIG_MOTION or two_par):
+        return out
+    f = AS.calibrate(exps, A, T, ctx.seasons, j, f, floor, cells=cells, n_perm=n_perm, min_n=MIN_SEASON_N)
+    pmE, pmN, eE, eN, sig_abs = total(f)
+    dev = f["sig_motion"]
+    out.update(f=f, dev=dev, pmE=pmE, pmN=pmN, eE=eE, eN=eN, sig_abs=sig_abs)
+    flags = out["flags"]
+    if dev >= SIG_ANOMALY:
+        groups, agree = AS.group_agreement(exps, A, ctx.seasons, j, f, floor, cells=cells, T=T, min_n=MIN_SEASON_N)
+        out["groups"] = groups
+        if not agree:
+            flags.append("detector halves disagree")
+        bad_line = f["p_linear"] is not None and f["p_linear"] < 1e-3
+        if bad_line:
+            flags.append("season positions not on a straight line")
+        if np.isfinite(gt.ruwe[j]) and gt.ruwe[j] > 1.4:
+            flags.append(f"Gaia RUWE {gt.ruwe[j]:.1f} (possible binary)")
+        if f["saturated"]:
+            flags.append("saturated: wing fit")
+        # a real motion change since Gaia also moves the star away from the Gaia position:
+        # offset at 2026 ~ drift x (2026 - Gaia epoch). A drift without that offset is not the
+        # catalogued star's own motion: a wavelength- or brightness-dependent photocentre of a
+        # blend, or (rarely) another source moving through the star's position.
+        dt_g = 2026.0 - GAIA_EPOCH
+        res = math.hypot(f["aE"] - f["bE"] * dt_g, f["aN"] - f["bN"] * dt_g)
+        tol = max(1.0, 3 * math.hypot(0.1, dt_g * math.hypot(f["ebE"], f["ebN"]) / math.sqrt(2)))
+        off_ok = res <= tol
+        out["own_motion"] = bool(off_ok)
+        out["offset_2026_arcsec"] = math.hypot(f["aE"], f["aN"])
+        # blends: Gaia magnitudes describe the star (used when the star itself moves); the measured
+        # S/N of the listed neighbours describes whatever light is at this position
+        near = _brighter_neighbour(gt, j, 8.0)
+        if near is None and smax is not None:
+            near = AS.blend_neighbour(src, smax, j)
+        if near:
+            flags.append(f"blended: comparable or brighter source {near:.1f}\" away")
+        zone = RJ.in_sat_zone(ctx, src.ra0[j], src.dec0[j], allow_core=True)[0]
+        if zone:
+            flags.append("in the wings of a saturated star")
+        ori_ok, ori_note = AS.orientation_check(T, j, f, floor, min_n=MIN_SEASON_N, cells=cells)
+        flags.append(ori_note)
+        if not off_ok:
+            flags.append(f"offset from Gaia at 2026 is {math.hypot(f['aE'], f['aN']):.1f}\", the drift implies "
+                         f"{dt_g * math.hypot(f['bE'], f['bN']):.1f}\" since {GAIA_EPOCH:.0f} (blend / colour shift?)")
+        # v1: a drift without the matching offset is rejected (seen on a variable star in the
+        # Luhman 16 field: 0.44"/yr together with a 17 % fading = variability-induced motion of
+        # an unresolved blend). Accepting "another source moving through the star's position"
+        # needs the brightness test (astrometry.vim_suspect) and is not switched on yet.
+        if agree and not near and not zone and not bad_line and ori_ok and off_ok:
+            out["cls"] = "candidate"
+            flags.insert(0, "Gaia 2-parameter solution: motion not in Gaia" if two_par else "anomalous vs Gaia")
+        else:
+            out["cls"] = "artifact"
+    elif sig_abs >= SIG_MOTION and not two_par:
+        out["cls"] = "gaia-known"
+        flags.append("known mover confirmed")
+    return out
+
+
 def run(ctx):
     gt = ctx.gaia
     info = {"name": "Gaia DR3 astrometry (catalogue-based)"}
@@ -40,70 +119,29 @@ def run(ctx):
     from . import deep_astrom
     src, ng = deep_astrom.field_sources(ctx)     # Gaia stars first, then the non-Gaia deep sources
     A, T = deep_astrom.field_measure(ctx)        # measured together (blends modelled)
+    cells = deep_astrom.field_cells(ctx)
+    smax = deep_astrom.snr_max(T)
     ref = np.nonzero(gt.reference())[0]
     floor, nfl = AS.estimate_season_floor(T, ref)
     ctx.season_floor = floor
     ctx.shared["gaia_meas"] = (A, T)
     ctx.log(f"  B: {gt.n} Gaia stars measured; per-season systematic floor {floor:.3f}\" from {nfl} stars")
-    cands, counts, fits = [], {"measured": 0, "known_mover_confirmed": 0, "anomalous": 0, "no_significant_motion": 0}, {}
+    cands, counts, fits = [], {"measured": 0, "known_mover_confirmed": 0, "anomalous": 0, "no_significant_motion": 0,
+                               "rejected": 0}, {}
     for j in range(ng):
-        f = AS.fit_drift(T, j, floor=floor, min_n=MIN_SEASON_N)
-        if f is None:
+        r = judge(ctx, ctx.exps, A, T, cells, src, j, floor, smax)
+        if r is None:
             continue
         counts["measured"] += 1
-        pmE = (0 if not np.isfinite(gt.pmra[j]) else gt.pmra[j]) + f["bE"] * 1000
-        pmN = (0 if not np.isfinite(gt.pmdec[j]) else gt.pmdec[j]) + f["bN"] * 1000
-        eE, eN = f["ebE"] * 1000, f["ebN"] * 1000
-        sig_abs = AS._sigma_from_chi2((pmE / eE) ** 2 + (pmN / eN) ** 2, 2)
-        dev = f["sig_motion"]                     # drift vs the Gaia prediction
+        f, cls, flags = r["f"], r["cls"], r["flags"]
         fits[int(gt.sid[j])] = (f["bE"], f["bN"], f["ebE"], f["ebN"])
-        two_par = not gt.has5p[j]
-        cls = None
-        flags = []
-        if dev >= SIG_ANOMALY:
-            groups, agree = AS.group_agreement(ctx.exps, A, ctx.seasons, j, f, floor)
-            if not agree:
-                flags.append("detector halves disagree")
-            bad_line = f["p_linear"] is not None and f["p_linear"] < 1e-3
-            if bad_line:
-                flags.append("season positions not on a straight line")
-            if np.isfinite(gt.ruwe[j]) and gt.ruwe[j] > 1.4:
-                flags.append(f"Gaia RUWE {gt.ruwe[j]:.1f} (possible binary)")
-            if f["saturated"]:
-                flags.append("saturated: wing fit")
-            near = _brighter_neighbour(gt, j, 8.0)
-            if near:
-                flags.append(f"brighter Gaia star {near:.1f}\" away (blend)")
-            zone = RJ.in_sat_zone(ctx, src.ra0[j], src.dec0[j], allow_core=True)[0]
-            if zone:
-                flags.append("in the wings of a saturated star")
-            ori_ok, ori_note = AS.orientation_check(T, j, f, floor, min_n=MIN_SEASON_N)
-            flags.append(ori_note)
-            # a real motion change since Gaia also moves the star away from the Gaia position:
-            # offset at 2026 ~ drift x (2026 - Gaia epoch). A drift without that offset is a
-            # wavelength-dependent photocentre (blend with a redder source) or a measurement effect.
-            dt_g = 2026.0 - GAIA_EPOCH
-            res = math.hypot(f["aE"] - f["bE"] * dt_g, f["aN"] - f["bN"] * dt_g)
-            tol = max(1.0, 3 * math.hypot(0.1, dt_g * math.hypot(f["ebE"], f["ebN"]) / math.sqrt(2)))
-            off_ok = res <= tol
-            if not off_ok:
-                flags.append(f"offset from Gaia at 2026 is {math.hypot(f['aE'], f['aN']):.1f}\", the drift implies "
-                             f"{dt_g * math.hypot(f['bE'], f['bN']):.1f}\" since {GAIA_EPOCH:.0f} (blend / colour shift?)")
-            if agree and not near and not zone and not bad_line and ori_ok and off_ok:
-                cls = "candidate"
-                counts["anomalous"] += 1
-                flags.insert(0, "Gaia 2-parameter solution: motion not in Gaia" if two_par else "anomalous vs Gaia")
-            else:
-                cls = "artifact"
-        elif sig_abs >= SIG_MOTION and not two_par:
-            cls = "gaia-known"
-            counts["known_mover_confirmed"] += 1
-            flags.append("known mover confirmed")
-        else:
-            counts["no_significant_motion"] += 1
+        counts[{"gaia-known": "known_mover_confirmed", "candidate": "anomalous", "artifact": "rejected",
+                None: "no_significant_motion"}[cls]] += 1
         if cls is None:
             continue
-        mo = SC.motion_dict(pmE, pmN, eE, eN, sig=sig_abs, method="B: EPSF astrometry, all exposures, Gaia-registered")
+        pmE, pmN, eE, eN, sig_abs, dev = r["pmE"], r["pmN"], r["eE"], r["eN"], r["sig_abs"], r["dev"]
+        mo = SC.motion_dict(pmE, pmN, eE, eN, sig=sig_abs, method="B: EPSF astrometry, all exposures, Gaia-registered, "
+                            "one offset per detector, errors from residual permutation")
         mo["deviation_from_gaia_sigma"] = round(dev, 1)
         mo["drift_vs_gaia_mas_yr"] = [round(f["bE"] * 1000, 1), round(f["bN"] * 1000, 1)]
         pos = _season_positions(T, j, src, ctx)
@@ -117,11 +155,16 @@ def run(ctx):
         c["match"]["gaia_dr3"] = {"source_id": str(gt.sid[j]), "G": _r(gt.G[j], 2), "pmra_mas_yr": _r(gt.pmra[j], 1),
                                   "pmdec_mas_yr": _r(gt.pmdec[j], 1), "parallax_mas": _r(gt.plx[j], 2),
                                   "ruwe": _r(gt.ruwe[j], 2), "sep_arcsec": round(math.hypot(f["aE"], f["aN"]), 2)}
+        if r.get("own_motion") is not None:
+            c["match"]["gaia_dr3"]["own_motion"] = r["own_motion"]
         c["fit"] = {"chi2": round(f["chi2"], 2), "dof": f["dof"], "n_seasons": f["n_seasons"],
-                    "orient_term": f["orient_term"], "season_floor_arcsec": round(floor, 3)}
+                    "orient_term": f["orient_term"], "season_floor_arcsec": round(floor, 3),
+                    "saturated": bool(f.get("saturated")), "model": f.get("model", "pooled detectors"),
+                    "n_cells": f.get("n_cells"), "error_inflation": f.get("error_inflation"), "bootstrap": f.get("bootstrap")}
         cands.append(c)
     info.update(counts=counts, season_floor_arcsec=round(floor, 4), n_floor_stars=nfl,
-                thresholds={"motion_sigma": SIG_MOTION, "anomaly_sigma": SIG_ANOMALY})
+                thresholds={"motion_sigma": SIG_MOTION, "anomaly_sigma": SIG_ANOMALY},
+                model="one position offset per detector; drift errors calibrated by residual permutation")
     if ctx.field.field_stars_csv and ctx.field.field_stars_csv.exists():
         info["field_stars_csv_check"] = csv_check(ctx.field.field_stars_csv, fits, ctx)
     ctx.info[NAME] = info

@@ -13,10 +13,27 @@ and detector the normalised fluxes are fitted as
 
     F_i / z_i = a_season + c (lambda_i - mean lambda)
 
-(one level per season, one colour slope shared by the seasons). Season-to-season changes
-a_s2 / a_s1 - 1 get errors from the fit plus a per-detector systematic floor (the scatter of
-the same ratio for all bright sources of the field). A source is a variable candidate when
-|change| >= SIG_VAR sigma in >= 2 (detector, season pair) combinations, and >= MIN_FRAC.
+(one level per season, one colour slope shared by the seasons). The levels of one detector are
+only ever compared with each other (same wavelength range), never across detectors.
+
+Decision (per source and season pair): each detector d gives a fractional change
+r_d = (a_s2 - a_s1) / mean level, with variance from the fit plus a per-detector systematic
+floor (the season-to-season scatter of all bright sources of the field in that detector, their
+statistical errors removed). The detectors are combined by inverse-variance weighting:
+
+    r = sum(w_d r_d) / sum(w_d),   sigma_r = 1 / sqrt(sum(w_d)),   Z = r / sigma_r
+
+A source is a variable candidate when |Z| >= SIG_VAR and |r| >= MIN_FRAC, AND the change does
+not rest on one detector: with the most significant detector left out the rest still shows it
+at >= SIG_LOO sigma, and >= 2 detectors show the same sign at >= 2 sigma. (A source measured in
+a single detector needs two season pairs without a common season instead: one season x detector
+level alone is never enough.) Levels are compared at matched wavelengths: a season enters a
+detector's comparison only if its exposures sample >= MIN_LAM_COVER of the wavelength range that
+detector sampled over all seasons (no extrapolation of the colour term). Requiring 5 sigma in two single detectors,
+as before, wasted most of the information: six detectors of ~18 exposures each see a 5-10 %
+change of an AB 16 source at only ~2-4 sigma each, but at 5-10 sigma together.
+A change seen only between opposite telescope orientations (when a same-orientation pair
+exists and does not show it) is rejected (ghosts and stray light follow the orientation).
 """
 import math
 
@@ -29,12 +46,17 @@ from . import reject as RJ
 from . import schema as SC
 
 NAME = "V"
-SIG_VAR = 5.0
+SIG_VAR = 5.0               # combined significance (all detectors) of a season-to-season change
+SIG_LOO = 3.0               # ... and with the most significant detector left out
+SIG_DET = 2.0               # a detector "agrees" when it shows the same sign at this significance
 MIN_FRAC = 0.03             # smallest fractional change reported
+FLOOR_MIN_SNR = 30.0        # sources used for the per-detector systematic floor
+FLOOR_DEFAULT = 0.02
 EXP_FLOOR = 0.02            # per-exposure fractional photometric floor
 ZP_MIN_SNR = 30.0
 ZP_MIN_N = 5
 MIN_EXP_SEASON = 3
+MIN_LAM_COVER = 0.5         # a season must sample this fraction of the detector's wavelength range (see _fit_levels)
 BLEND_ARCSEC = 8.0
 
 
@@ -83,21 +105,25 @@ def run(ctx):
     allv = dict(levels)
     for key, v in sat_levels.items():
         allv[("sat", key[0], key[1])] = v
-    # systematic floor per detector from bright, unsaturated sources
-    floor = {}
+    # systematic floor per detector: the excess of the season-to-season scatter of the bright
+    # unsaturated sources over their statistical errors (robust: real variables do not set it)
+    floor, pooled = {}, []
+    per = {}
+    for (j, dd), L in levels.items():
+        ss = [s for s in seasons if s in L and L[s][2] >= MIN_EXP_SEASON]
+        for a_, b_ in zip(ss[:-1], ss[1:]):
+            a1, e1, _ = L[a_]
+            a2, e2, _ = L[b_]
+            if a1 > 0 and a2 > 0 and a1 / e1 > FLOOR_MIN_SNR and a2 / e2 > FLOOR_MIN_SNR:
+                per.setdefault(dd, []).append((a2 / a1 - 1, (e1 / a1) ** 2 + (e2 / a2) ** 2))
     for d in np.unique(dets):
-        fr = []
-        for (j, dd), L in levels.items():
-            if dd != d:
-                continue
-            ss = [s for s in seasons if s in L and L[s][2] >= MIN_EXP_SEASON]
-            for a_, b_ in zip(ss[:-1], ss[1:]):
-                a1, e1, _ = L[a_]
-                a2, e2, _ = L[b_]
-                if a1 > 0 and a1 / e1 > 100 and a2 / e2 > 100:
-                    fr.append(a2 / a1 - 1)
-        floor[d] = round(max(BL.robust_sigma(fr) / math.sqrt(2), 0.005), 4) if len(fr) >= 8 else 0.02
-    info["season_floor_frac"] = floor
+        pooled += per.get(d, [])
+    f_all = _excess_floor(pooled) if len(pooled) >= 8 else FLOOR_DEFAULT
+    for d in np.unique(dets):
+        fr = per.get(d, [])
+        floor[d] = round(_excess_floor(fr), 4) if len(fr) >= 8 else round(max(f_all, 0.01), 4)
+    info["season_floor_frac"] = {str(k): v for k, v in floor.items()}
+    info["n_floor_pairs"] = {str(d): len(per.get(d, [])) for d in np.unique(dets)}
     # per-exposure point-source noise per detector (sensitivity card)
     vn = {}
     for d in np.unique(dets):
@@ -110,13 +136,13 @@ def run(ctx):
             vn[str(d)] = (s1, float(np.median(nps)) if nps else 0, floor.get(d, 0.02))
     ctx.shared["V_noise"] = vn
     cands = []
-    counts = {"tested": 0, "variable": 0, "appearing_disappearing": 0}
+    counts = {"tested": 0, "variable": 0, "appearing_disappearing": 0, "rejected": 0}
     keys = {}
     for key, L in allv.items():
         keys.setdefault(key[:-1], {})[key[-1]] = L
     for skey, per_det in keys.items():
         counts["tested"] += 1
-        hits, rows = [], []
+        rows = []
         for d, L in per_det.items():
             ss = [s for s in seasons if s in L and L[s][2] >= MIN_EXP_SEASON]
             for i1 in range(len(ss)):
@@ -124,7 +150,7 @@ def run(ctx):
                     a1, e1, n1 = L[ss[i1]]
                     a2, e2, n2 = L[ss[i2]]
                     ref = max(abs(a1), abs(a2), 1e-30)
-                    fl = floor.get(d, 0.02) * ref
+                    fl = floor.get(d, FLOOR_DEFAULT) * ref
                     err = math.sqrt(e1 ** 2 + e2 ** 2 + 2 * fl ** 2)
                     sig = (a2 - a1) / err
                     frac = a2 / a1 - 1 if a1 > 3 * e1 else float("inf") if a2 > 0 else float("nan")
@@ -133,17 +159,24 @@ def run(ctx):
                                  "flux_ujy": [round(a1 * BL.PIXEL_UJY, 1), round(a2 * BL.PIXEL_UJY, 1)],
                                  "err_ujy": [round(e1 * BL.PIXEL_UJY, 1), round(e2 * BL.PIXEL_UJY, 1)],
                                  "change_frac": None if not np.isfinite(frac) else round(frac, 4), "sigma": round(sig, 1)})
-                    if abs(sig) >= SIG_VAR and (not np.isfinite(frac) or abs(frac) >= MIN_FRAC):
-                        hits.append(rows[-1])
+        comb = combined_changes(per_det, seasons, floor, sinfo)
+        if not comb:
+            continue
+        single = max(c["n_detectors"] for c in comb) < 2
+        hits = [c for c in comb if abs(c["sigma"]) >= SIG_VAR and abs(c["change"]) >= MIN_FRAC and
+                (c["n_detectors"] < 2 or (c["sigma_without_best_detector"] >= SIG_LOO and c["n_detectors_agree"] >= 2))]
         if not hits:
             continue
-        ndet = len({h["detector"] for h in hits})
-        npair = len({(h["from"], h["to"]) for h in hits})
-        if len(hits) < 2 or (ndet < 2 and npair < 2):
-            continue
+        if single:
+            # one detector only: a change that rests on one season x detector level cannot be told
+            # from one bad level; two season pairs without a common season are needed (>= 4 seasons)
+            pairs = [(h["from"], h["to"]) for h in hits]
+            if not any(not (set(a) & set(b)) for i, a in enumerate(pairs) for b in pairs[i + 1:]):
+                counts["single_detector_unconfirmed"] = counts.get("single_detector_unconfirmed", 0) + 1
+                continue
         flags0 = []
         cls0 = None
-        same_avail = any(r["same_orientation"] for r in rows)
+        same_avail = any(c["same_orientation"] for c in comb)
         if same_avail and not any(h["same_orientation"] for h in hits):
             cls0 = "artifact"
             flags0.append("changes only between opposite telescope orientations (ghost / stray light?)")
@@ -154,7 +187,8 @@ def run(ctx):
             cosd = math.cos(math.radians(src.dec0[j]))
             dd = np.hypot((src.ra0 - src.ra0[j]) * cosd, src.dec0 - src.dec0[j]) * 3600
             fl_j = np.nanmax(T["flux"][:, j]) if np.isfinite(T["flux"][:, j]).any() else 0
-            nbf = np.nanmax(T["flux"], 0)
+            with np.errstate(all="ignore"):
+                nbf = np.nanmax(T["flux"], 0)
             blend = (dd > 0.05) & (dd < BLEND_ARCSEC) & (np.nan_to_num(nbf) > 0.3 * max(fl_j, 0))
             if blend.any():
                 cls0 = "artifact"
@@ -175,29 +209,107 @@ def run(ctx):
             sn = round(float(np.nanmax(T["snr"][:, j])), 1)
         best = max(hits, key=lambda h: abs(h["sigma"]))
         kind, cls = "variable", "variable"
-        lows = [h for h in hits if h["flux_ujy"][0] < 3 * h["err_ujy"][0] or h["flux_ujy"][1] < 3 * h["err_ujy"][1]]
-        if len(lows) >= 2:
+        if best["absent_in"]:
             kind = "appearing" if best["sigma"] > 0 else "disappearing"
             cls = "candidate"
         flags = flags0 + flags
         if cls0 == "artifact":
             cls = "artifact"
-            counts["rejected"] = counts.get("rejected", 0) + 1
+            counts["rejected"] += 1
         elif kind == "variable":
             counts["variable"] += 1
         else:
             counts["appearing_disappearing"] += 1
         c = SC.new_candidate(NAME, kind, ra, dec, 2026.0, cls=cls, snr=sn,
-                             bins=sorted({h["detector"] for h in hits}),
+                             bins=sorted({d for h in hits for d in h["detectors"]}),
                              season_pairs=sorted([list(p) for p in {(h["from"], h["to"]) for h in hits}]), flags=flags)
-        c["brightness"] = {"max_change_frac": best["change_frac"], "max_sigma": best["sigma"], "changes": rows}
+        c["brightness"] = {"max_change_frac": best["change_frac"], "max_sigma": best["sigma"], "changes": rows,
+                           "combined": comb,
+                           "method": "detectors combined by inverse-variance weighting of their fractional changes; "
+                                     "confirmed with the most significant detector left out"}
         if skey[0] != "sat" and skey[0] < ng and ctx.gaia is not None:
             c["match"]["gaia_dr3"] = {"source_id": str(ctx.gaia.sid[skey[0]]), "G": round(float(ctx.gaia.G[skey[0]]), 2)}
         cands.append(c)
-    info.update(counts=counts, thresholds={"sigma": SIG_VAR, "min_frac": MIN_FRAC, "exp_floor": EXP_FLOOR})
+    info.update(counts=counts, thresholds={"sigma": SIG_VAR, "sigma_without_best_detector": SIG_LOO,
+                                           "detector_agree_sigma": SIG_DET, "min_frac": MIN_FRAC, "exp_floor": EXP_FLOOR})
     ctx.info[NAME] = info
     ctx.log(f"  V: {counts}; season floors {floor}")
     return cands
+
+
+def _excess_floor(pairs):
+    """Fractional floor f (per season level) that makes the season-to-season changes z of bright
+    sources scatter as sqrt(their statistical variance + 2 f^2): pairs = [(z, var_stat), ...]."""
+    z = np.array([p[0] for p in pairs], float)
+    v = np.array([p[1] for p in pairs], float)
+    z = z - np.median(z)
+
+    def spread(f):
+        return BL.robust_sigma(z / np.sqrt(v + 2 * f * f))
+    if not np.isfinite(spread(0.0)) or spread(0.0) <= 1.0:
+        return 0.003
+    lo, hi = 0.0, 0.5
+    for _ in range(40):
+        mid = 0.5 * (lo + hi)
+        if spread(mid) > 1.0:
+            lo = mid
+        else:
+            hi = mid
+    return float(max(hi, 0.003))
+
+
+def combined_changes(per_det, seasons, floor, sinfo):
+    """Season-to-season changes of one source with its detectors combined.
+    per_det: {detector: {season: (level, error, n)}}. Returns one dict per season pair:
+      from, to, same_orientation, change (fraction of the mean level), err, sigma,
+      change_frac (level_to / level_from - 1, None when the source is absent in 'from'),
+      n_detectors, n_detectors_agree, sigma_without_best_detector, detectors, absent_in."""
+    use = {}
+    for d, L in per_det.items():
+        ss = [s for s in seasons if s in L and L[s][2] >= MIN_EXP_SEASON and np.isfinite(L[s][0]) and L[s][1] > 0]
+        if len(ss) < 2:
+            continue
+        a = np.array([L[s][0] for s in ss])
+        e = np.array([L[s][1] for s in ss])
+        w = 1 / e ** 2
+        m = float(np.sum(w * a) / np.sum(w))
+        if m <= 0 or m * math.sqrt(np.sum(w)) < 5:
+            continue                                # the detector does not detect the source
+        use[d] = (m, {s: (L[s][0] / m, L[s][1] / m) for s in ss}, floor.get(d, FLOOR_DEFAULT))
+    out = []
+    for i1 in range(len(seasons)):
+        for i2 in range(i1 + 1, len(seasons)):
+            s1, s2 = seasons[i1], seasons[i2]
+            ds = [d for d in use if s1 in use[d][1] and s2 in use[d][1]]
+            if not ds:
+                continue
+            r = np.array([use[d][1][s2][0] - use[d][1][s1][0] for d in ds])
+            v = np.array([use[d][1][s1][1] ** 2 + use[d][1][s2][1] ** 2 + 2 * use[d][2] ** 2 for d in ds])
+            w = 1 / v
+            rr, sr = float(np.sum(w * r) / np.sum(w)), float(1 / math.sqrt(np.sum(w)))
+            z = rr / sr
+            zd = r / np.sqrt(v)
+            agree = int(np.sum(np.sign(rr) * zd >= SIG_DET))
+            if len(ds) >= 2:
+                k = int(np.argmax(np.sign(rr) * zd))            # the detector that carries most of it
+                keep = np.arange(len(ds)) != k
+                loo = float(np.sign(rr) * np.sum(w[keep] * r[keep]) / math.sqrt(np.sum(w[keep])))
+            else:
+                loo = 0.0
+            # combined levels of the two seasons (same weights) and whether the source is absent in one
+            l1 = float(np.sum(w * np.array([use[d][1][s1][0] for d in ds])) / np.sum(w))
+            l2 = float(np.sum(w * np.array([use[d][1][s2][0] for d in ds])) / np.sum(w))
+            e1 = float(math.sqrt(np.sum(w ** 2 * np.array([use[d][1][s1][1] ** 2 for d in ds]))) / np.sum(w))
+            e2 = float(math.sqrt(np.sum(w ** 2 * np.array([use[d][1][s2][1] ** 2 for d in ds]))) / np.sum(w))
+            absent = s1 if l1 < 3 * e1 else s2 if l2 < 3 * e2 else None
+            out.append({"from": s1, "to": s2,
+                        "same_orientation": Dt.same_orientation(sinfo[s1]["orient_deg"], sinfo[s2]["orient_deg"]),
+                        "change": round(rr, 4), "err": round(sr, 4), "sigma": round(z, 1),
+                        "change_frac": round(l2 / l1 - 1, 4) if l1 > 3 * e1 else None,
+                        "n_detectors": len(ds), "n_detectors_agree": agree,
+                        "sigma_without_best_detector": round(loo, 1), "detectors": sorted(str(d) for d in ds),
+                        "absent_in": absent})
+    return out
 
 
 def _fit_levels(f, e, lam, sea, seasons):
@@ -226,8 +338,17 @@ def _fit_levels(f, e, lam, sea, seasons):
     chi = float(np.sum(((f[keep] - X[keep] @ p) * sw[keep]) ** 2)) / max(keep.sum() - X.shape[1], 1)
     sc = math.sqrt(max(chi, 1.0))
     out = {}
+    span = float(np.ptp(lam[np.isfinite(lam)])) if np.isfinite(lam).any() else 0.0
     for k, s in enumerate(present):
-        n = int(((sea == s) & keep).sum())
+        m = (sea == s) & keep
+        n = int(m.sum())
+        # wavelength coverage: a level is the flux at the mean wavelength of ALL seasons. A season
+        # that sampled only a small part of the detector's wavelength range (a season that has just
+        # begun, a source near the field edge) gets there by extrapolating the colour term, which
+        # is wrong for any spectrum that is not a straight line (seen: three exposures of a new
+        # season made a G = 16 star "disappear"). Such a season has no level in this detector.
+        if span > 0.01 and n and np.isfinite(lam[m]).any() and float(np.ptp(lam[m][np.isfinite(lam[m])])) < MIN_LAM_COVER * span:
+            continue
         out[s] = (float(p[k]), float(math.sqrt(max(cov[k, k], 0)) * sc), n)
     return out
 

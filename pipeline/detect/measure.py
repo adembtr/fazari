@@ -31,6 +31,10 @@ ITERS = 6
 MAX_STEP = 0.5              # native px per Gauss-Newton step
 FD_H = 0.02                 # finite-difference step (native px) for the PSF derivatives
 NB_PAD = 4                  # neighbours up to R + NB_PAD px away are subtracted
+NB_MIN_SEP = 0.5            # native px: list entries closer than this cannot be told apart (FWHM ~1-1.5 px) and
+#                             are NOT subtracted from each other: each then measures their common light. Subtracting
+#                             them made the Jacobi sweep oscillate (a Gaia pair 0.4" apart: fluxes 7 / 0.7, then
+#                             5 / 33, then 0 / 0 in consecutive exposures), which looked like a vanished star.
 
 
 def _kern(px, dx, dy, R):
@@ -91,7 +95,7 @@ def measure(e, ra, dec, R=R_STAMP, fix_pos=False, model_err=MODEL_ERR, image=Non
     lim = R + NB_PAD
     xs, ys = x0[idx], y0[idx]
     for a in range(n):
-        m = (np.abs(xs - xs[a]) <= lim) & (np.abs(ys - ys[a]) <= lim)
+        m = (np.abs(xs - xs[a]) <= lim) & (np.abs(ys - ys[a]) <= lim) & (np.hypot(xs - xs[a], ys - ys[a]) >= NB_MIN_SEP)
         m[a] = False
         for b in np.nonzero(m)[0]:
             pairs_s.append(a)
@@ -248,7 +252,7 @@ def measure_linear(e, ra, dec, R=R_STAMP, model_err=MODEL_ERR, image=None, jacob
     lim = R + NB_PAD
     ps, pt = [], []
     for a in range(n):
-        m = (np.abs(xs - xs[a]) <= lim) & (np.abs(ys - ys[a]) <= lim)
+        m = (np.abs(xs - xs[a]) <= lim) & (np.abs(ys - ys[a]) <= lim) & (np.hypot(xs - xs[a], ys - ys[a]) >= NB_MIN_SEP)
         m[a] = False
         for b in np.nonzero(m)[0]:
             ps.append(a)

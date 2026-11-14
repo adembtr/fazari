@@ -1,0 +1,316 @@
+{
+ "schema": "fazari-verify-tests/1",
+ "code_version": "e80289c + note: core = TEST-READY v1 working tree (six uncommitted v1 files in pipeline/detect); e80289c was HEAD when the round started 16:59; commits during the round (0345f66, 455f09f, 1a09d7d) touch no pipeline/detect file",
+ "thresholds_frozen": "TEST-READY v1 16:58 (ajan_durumu/algoritma.md)",
+ "generated": "2026-11-14T14:42:32Z",
+ "tests": [
+  {
+   "id": "V1",
+   "title": {
+    "en": "Barnard's Star (fastest known star)",
+    "tr": "Barnard Yıldızı (bilinen en hızlı yıldız)"
+   },
+   "result": {
+    "en": "Found blind as gaia-known (A+B): 10.361 ± 0.051\"/yr at PA 355.4°, reference 10.393\"/yr at 355.6° (-0.6 sigma in speed, -0.6 sigma in direction).",
+    "tr": "Konum verilmeden bilinen Gaia hareketlisi olarak bulundu (A+B): 10,361 ± 0,051\"/yıl, yön 355,4°; referans 10,393\"/yıl, 355,6° (hızda -0,6, yönde -0,6 sigma)."
+   },
+   "numbers": {
+    "speed_arcsec_yr": 10.361,
+    "err_speed": 0.051,
+    "ref_speed": 10.393,
+    "d_speed_sigma": -0.6,
+    "pa_deg": 355.4,
+    "err_pa": 0.3,
+    "ref_pa": 355.6,
+    "d_pa_deg": -0.2,
+    "d_pa_sigma": -0.6,
+    "class": "gaia-known",
+    "detectors": "A+B",
+    "criterion_sigma": 3,
+    "seconds": 447.5
+   },
+   "status": "pass",
+   "evidence": "data/verify/evidence/blind.csv",
+   "v0": null
+  },
+  {
+   "id": "V2",
+   "title": {
+    "en": "Epsilon Indi B (brown dwarf)",
+    "tr": "Epsilon Indi B (kahverengi cüce)"
+   },
+   "result": {
+    "en": "Found blind as gaia-known (A+B): 4.678 ± 0.02\"/yr at PA 121.6°, reference 4.684\"/yr at 121.8° (-0.3 sigma in speed, -0.9 sigma in direction).",
+    "tr": "Konum verilmeden bilinen Gaia hareketlisi olarak bulundu (A+B): 4,678 ± 0,02\"/yıl, yön 121,6°; referans 4,684\"/yıl, 121,8° (hızda -0,3, yönde -0,9 sigma)."
+   },
+   "numbers": {
+    "speed_arcsec_yr": 4.678,
+    "err_speed": 0.02,
+    "ref_speed": 4.684,
+    "d_speed_sigma": -0.3,
+    "pa_deg": 121.6,
+    "err_pa": 0.2,
+    "ref_pa": 121.8,
+    "d_pa_deg": -0.2,
+    "d_pa_sigma": -0.9,
+    "class": "gaia-known",
+    "detectors": "A+B",
+    "criterion_sigma": 3,
+    "seconds": 97.6
+   },
+   "status": "pass",
+   "evidence": "data/verify/evidence/blind.csv",
+   "v0": null
+  },
+  {
+   "id": "V3",
+   "title": {
+    "en": "Luhman 16 (nearest brown dwarfs)",
+    "tr": "Luhman 16 (en yakın kahverengi cüceler)"
+   },
+   "result": {
+    "en": "Found blind as candidate (A+D): 2.678 ± 0.059\"/yr at PA 274.3°, reference 2.79\"/yr at 277.4° (-1.9 sigma in speed, -2.0 sigma in direction). Measured parallax 426.4 mas (not yet checked against a reference).",
+    "tr": "Konum verilmeden aday olarak bulundu (A+D): 2,678 ± 0,059\"/yıl, yön 274,3°; referans 2,79\"/yıl, 277,4° (hızda -1,9, yönde -2,0 sigma). Ölçülen paralaks 426,4 mas (henüz referansla karşılaştırılmadı)."
+   },
+   "numbers": {
+    "speed_arcsec_yr": 2.678,
+    "err_speed": 0.059,
+    "ref_speed": 2.79,
+    "d_speed_sigma": -1.9,
+    "pa_deg": 274.3,
+    "err_pa": 1.5,
+    "ref_pa": 277.4,
+    "d_pa_deg": -3.0,
+    "d_pa_sigma": -2.0,
+    "class": "candidate",
+    "detectors": "A+D",
+    "criterion_sigma": 3,
+    "seconds": 156.8,
+    "parallax_mas": 426.4
+   },
+   "status": "pass",
+   "evidence": "data/verify/evidence/blind.csv",
+   "v0": null
+  },
+  {
+   "id": "V4",
+   "title": {
+    "en": "WISE 0855-0714 (coldest known brown dwarf)",
+    "tr": "WISE 0855-0714 (bilinen en soğuk kahverengi cüce)"
+   },
+   "result": {
+    "en": "Found blind as candidate (A): 8.429 ± 0.377\"/yr at PA 284.2°, reference 8.152\"/yr at 274.7° (0.7 sigma in speed, 3.8 sigma in direction); the direction is off by more than 3 sigma.",
+    "tr": "Konum verilmeden aday olarak bulundu (A): 8,429 ± 0,377\"/yıl, yön 284,2°; referans 8,152\"/yıl, 274,7° (hızda 0,7, yönde 3,8 sigma); yön 3 sigmadan fazla sapıyor."
+   },
+   "numbers": {
+    "speed_arcsec_yr": 8.429,
+    "err_speed": 0.377,
+    "ref_speed": 8.152,
+    "d_speed_sigma": 0.7,
+    "pa_deg": 284.2,
+    "err_pa": 2.5,
+    "ref_pa": 274.7,
+    "d_pa_deg": 9.5,
+    "d_pa_sigma": 3.8,
+    "class": "candidate",
+    "detectors": "A",
+    "criterion_sigma": 3,
+    "seconds": 58.5
+   },
+   "status": "fail",
+   "evidence": "data/verify/evidence/blind.csv",
+   "v0": null
+  },
+  {
+   "id": "V5",
+   "title": {
+    "en": "False motion in null fields (field stars)",
+    "tr": "Boş alanlarda sahte hareket (alan yıldızları)"
+   },
+   "result": {
+    "en": "In 6 fields with no known mover the finder reported 0 moving candidates; 3 brightness-change candidates were reported there.",
+    "tr": "Bilinen hareketli cisim olmayan 6 alanda 0 hareketli aday çıktı; parlaklık değişimi adayı sayısı 3."
+   },
+   "numbers": {
+    "null_fields": 6,
+    "moving_candidates": 0,
+    "variable_candidates": 3,
+    "moving_candidates_all_12_fields_besides_targets": 0
+   },
+   "status": "pass",
+   "evidence": "data/verify/evidence/blind.csv",
+   "v0": null
+  },
+  {
+   "id": "V6",
+   "title": {
+    "en": "Injection recovery (fake movers added to real images)",
+    "tr": "Enjeksiyon testi (gerçek görüntülere eklenen sahte cisimler)"
+   },
+   "result": {
+    "en": "473/868 injected movers and 158/287 brightness changes recovered; best bin 89/91 = 97.8 % (Epsilon Indi B, at least 0.3\"/yr, AB 12-14), below the 99 % target; 88 false candidates in 20 runs.",
+    "tr": "Eklenen 868 hareketli cismin 473 tanesi, 287 parlaklık değişiminin 158 tanesi bulundu; en iyi aralık 89/91 = %97,8 (Epsilon Indi B, en az 0,3\"/yıl, AB 12-14), %99 hedefinin altında; 20 koşuda 88 sahte aday."
+   },
+   "numbers": {
+    "motion_recovered": 473,
+    "motion_injected": 868,
+    "brightness_recovered": 158,
+    "brightness_injected": 287,
+    "best_bin_recovered": 89,
+    "best_bin_injected": 91,
+    "best_bin_percent": 97.8,
+    "best_bin_min_speed_arcsec_yr": 0.3,
+    "best_bin_mag_lo": 12,
+    "best_bin_mag_hi": 14,
+    "target_percent": 99,
+    "false_candidates": 88,
+    "runs": 20,
+    "wise0855_ab18_ge1_recovered": 15,
+    "wise0855_ab18_ge1_injected": 24
+   },
+   "status": "fail",
+   "evidence": "data/verify/evidence/injection.csv",
+   "v0": {
+    "motion_recovered": 466,
+    "motion_injected": 868,
+    "brightness_recovered": 140,
+    "brightness_injected": 287,
+    "best_bin_recovered": 88,
+    "best_bin_injected": 91,
+    "best_bin_percent": 96.7,
+    "false_candidates": 126,
+    "runs": 20,
+    "wise0855_ab18_ge1_recovered": 18,
+    "wise0855_ab18_ge1_injected": 24,
+    "note": "v0 seed 1 only, same injected positions"
+   }
+  },
+  {
+   "id": "V7",
+   "title": {
+    "en": "Date-shuffle null test",
+    "tr": "Tarih karıştırma testi"
+   },
+   "result": {
+    "en": "With exposure dates shuffled 100 times in each of 12 fields, 15 fake movers appeared in 1200 field-shuffles (v0: 26); with the real dates 0 movers appeared. The test still applies the v0 decision rule.",
+    "tr": "Poz tarihleri 12 alanın her birinde 100 kez karıştırıldı: 1200 denemede 15 sahte hareketli cisim çıktı (v0: 26); gerçek tarihlerle 0. Test hâlâ v0 karar kuralını kullanıyor."
+   },
+   "numbers": {
+    "fields": 12,
+    "shuffles_per_field": 100,
+    "field_shuffles": 1200,
+    "fake_movers": 15,
+    "fake_per_field_shuffle": 0.0125,
+    "real_label_movers": 0,
+    "v0_fake_movers": 26,
+    "criterion_fake_movers": 0,
+    "decision_rule": "v0 (tests/shuffle.py not switched to DA.null_movers)"
+   },
+   "status": "fail",
+   "evidence": "data/verify/evidence/shuffle.csv",
+   "v0": {
+    "fake_movers": 26,
+    "fake_per_field_shuffle": 0.0217
+   }
+  },
+  {
+   "id": "V8",
+   "title": {
+    "en": "Known asteroids",
+    "tr": "Bilinen asteroitler"
+   },
+   "result": {
+    "en": "In 24 fields: 47/53 known asteroids to V 17, 101/132 to V 18, 205/451 to V 19 found; median offset 0.111 px; 96 false detections in total; 47 tracklets linked, 1 wrong.",
+    "tr": "24 alanda bilinen asteroitlerden V 17'ye kadar 47/53, V 18'e kadar 101/132, V 19'a kadar 205/451 bulundu; konum farkı ortancası 0,111 piksel; toplam 96 sahte tespit; 47 iz bağlandı, 1 tanesi yanlış."
+   },
+   "numbers": {
+    "fields": 24,
+    "found_v17": 47,
+    "known_v17": 53,
+    "found_v18": 101,
+    "known_v18": 132,
+    "found_v19": 205,
+    "known_v19": 451,
+    "found_v20": 217,
+    "known_v20": 1400,
+    "v_limit_17": 17,
+    "v_limit_18": 18,
+    "v_limit_19": 19,
+    "offset_px_median": 0.111,
+    "offset_px_p90": 0.337,
+    "frac_within_1px": 0.9919,
+    "false_total": 96,
+    "false_median_per_field": 4.0,
+    "tracklets_tried": 135,
+    "tracklets_linked": 47,
+    "tracklets_wrong": 1,
+    "source": "site/data/asteroids/summary.json",
+    "source_generated": "2026-11-14T13:41:58Z"
+   },
+   "status": "limit",
+   "evidence": "data/verify/evidence/asteroids.csv",
+   "v0": null
+  },
+  {
+   "id": "V9",
+   "title": {
+    "en": "Blind recovery of all known movers",
+    "tr": "Bilinen tüm hareketli cisimlerin körlemesine bulunması"
+   },
+   "result": {
+    "en": "4 of 4 known movers were found without being told where they are; of the 2 brightness targets R Draconis was found and RW Aurigae was not.",
+    "tr": "Bilinen 4 hareketli cismin 4 tanesi konumu verilmeden bulundu; 2 parlaklık hedefinden R Draconis bulundu, RW Aurigae bulunamadı."
+   },
+   "numbers": {
+    "movers_found": 4,
+    "movers_known": 4,
+    "brightness_targets": 2,
+    "brightness_found": 1,
+    "rw_aur_found": false,
+    "r_dra_found": true,
+    "slowest_field_seconds": 447.5
+   },
+   "status": "pass",
+   "evidence": "data/verify/evidence/blind.csv",
+   "v0": null
+  },
+  {
+   "id": "V10",
+   "title": {
+    "en": "Saturated core / edge method (Barnard's Star from wrong starting tracks)",
+    "tr": "Doymuş çekirdek / kenar yöntemi (yanlış başlangıçla Barnard Yıldızı)"
+   },
+   "result": {
+    "en": "Started from the Gaia track and from 4 wrong tracks up to 1.039\"/yr off, the measurement always returned 10.2963-10.3267\"/yr, 1.1-1.5 sigma from Gaia's 10.3933\"/yr; every wrong start ended within 0.0413\"/yr of the true-start result.",
+    "tr": "Gaia izinden ve 1,039\"/yıla kadar hatalı 4 yanlış izden başlatılan ölçüm her seferinde 10,2963-10,3267\"/yıl verdi; Gaia'nın 10,3933\"/yıl değerinden 1,1-1,5 sigma uzakta; her yanlış başlangıç gerçek başlangıç sonucuna 0,0413\"/yıl yakın bitti."
+   },
+   "numbers": {
+    "gaia_speed_arcsec_yr": 10.3933,
+    "wrong_starts": 4,
+    "max_start_error_arcsec_yr": 1.039,
+    "measured_min": 10.2963,
+    "measured_max": 10.3267,
+    "err_arcsec_yr": 0.0777,
+    "sigma_min": 1.1,
+    "sigma_max": 1.5,
+    "max_dist_to_true_start_result": 0.0413,
+    "pct_recovered_vs_gaia": [
+     77,
+     90,
+     92,
+     89
+    ],
+    "pct_recovered_vs_true_start_result": [
+     95,
+     97,
+     96,
+     96
+    ],
+    "verdict": "real measurement, not pulled toward the starting track"
+   },
+   "status": "pass",
+   "evidence": "data/verify/evidence/saturated.csv",
+   "v0": null
+  }
+ ]
+}
