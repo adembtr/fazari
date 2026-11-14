@@ -83,6 +83,24 @@ detector.
 Per-exposure fits are also computed, but only as a diagnostic: `per_exposure_chi2r` is the
 scatter of single-exposure offsets about the cell value, in units of their errors.
 
+## Field-star neighbours of a bright target (bright path only)
+
+Before the calibration, the saturated target's wing fit is redone with nearby bright Gaia DR3
+stars modelled.
+
+- Stars with G < 17 and more than 2.5 native px (15 arcsec) from the target are moved to the
+  exposure epoch (proper motion) and placed with the WCS.
+- Each is fitted as an extra pixel-integrated Gaussian with the same width as the target, at
+  its fixed position, with a free flux.
+- Fainter or closer stars are left out. A free flux right next to a saturated core soaks up
+  wing light: when all G < 19 stars were fitted, Barnard's proper motion moved by -250 mas/yr.
+
+Barnard's Star shows why this matters.
+
+- A G = 15.0 star 35 arcsec to the NE sits in the corner of the 11x11 px fit box.
+- Without it modelled, the joint-fit position offset grew with the box size: 0.26, 0.41 and
+  0.48 arcsec (total) for 11, 15 and 19 px boxes. It always pointed NE, in both orientations.
+
 ## After calibration
 
 - Bright path (saturated or high S/N targets): the joint fit stays as before. It fits
@@ -101,7 +119,20 @@ scatter of single-exposure offsets about the cell value, in units of their error
   detector-fixed centroid bias, not a sky-fixed WCS error. The SPHEREx L2 WCS is on the Gaia
   frame at the <~0.1 arcsec level.
 - Barnard's Star: Gaia DR3 RV = -110.47 km/s. Perspective acceleration adds +0.064 arcsec
-  along the proper motion over 2016 -> 2026. It is included.
+  along the proper motion over 2016 -> 2026 and is included. The propagation (proper motion,
+  perspective, parallax from the Earth's barycentric position at MJD-AVG) agrees with astropy
+  `SkyCoord.apply_space_motion` plus a topocentric parallax to < 1 mas.
+- Barnard's Star, measured - Gaia per season (E, N; +-0.04 arcsec):
+  - without the neighbour model: (+0.17, +0.22), (+0.19, +0.15), (+0.20, +0.10);
+  - with the neighbour model: (-0.05, +0.15), (-0.05, +0.13), (-0.05, +0.11).
+- The remaining ~+0.13 arcsec N is not understood.
+  - Candidates: fainter (G > 17) neighbours to the N, and the saturation-dependent wing bias
+    in D1/D2. In those detectors the core covers 40-50 % of the fit box, and the
+    per-detector offsets there are 0.2-0.4 arcsec, against <= 0.1 arcsec in D3-D6.
+  - Adding terms for saturation size, wavelength or detector position to the bias model did
+    not change the common offset.
+  - Saturated Gaia reference stars cannot calibrate it in these cutouts: only 6 measurements
+    of saturated, isolated stars exist in the 0.2 deg Barnard cutouts.
 - Epsilon Indi B: the Gaia DR3 solution (6412596012146801152) has RUWE 4.30, astrometric
   excess noise 5.8 mas (significance 425) and ipd_frac_multi_peak 8 (Ba+Bb are not resolved
   in that solution). The measured - Gaia offset of about +0.25 arcsec E, -0.5 arcsec N is the

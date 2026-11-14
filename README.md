@@ -10,17 +10,21 @@ Work in progress during the hackathon (14–15 November 2026).
 
 Live site: https://adembtr.github.io/fazari/
 
-- **Works now:** the data pipeline and a local viewer, demonstrated on Barnard's Star (three seasons, six wavelength bins, motion measured and compared with Gaia).
-- **Planned:** the other four challenge targets (Epsilon Indi B, WISE 0855-0714, RW Aurigae, R Draconis), search by any user-entered coordinate, and a public site on GitHub Pages.
+- **Works now:** the data pipeline and the viewer for all five challenge targets: motion measured and compared with the reference astrometry for Barnard's Star, Epsilon Indi B and WISE 0855-0714; relative brightness for RW Aurigae and R Draconis.
+- **In progress:** a sky explorer (`site/explore.html`). Click any point on the sky; a static index finds the SPHEREx images that cover it, and the local engine (`local/`) fetches only the needed image regions and builds a blink for that point.
 
 ## Repository layout
 
 - `pipeline/targets.json` — target catalog (position, proper motion, reference epoch, source).
 - `pipeline/targets_extra.json` — parallaxes used for the Gaia prediction.
 - `pipeline/download.py` — lists and downloads SPHEREx image cutouts from IRSA (Python standard library only).
-- `pipeline/blink.py` — builds the blink frames and measures the motion.
+- `pipeline/blink.py` — builds the blink frames and runs the detection check, measures the motion (motion targets) or the relative brightness (brightness targets).
+- `pipeline/ASTROMETRY.md` — the Gaia DR3 field-star calibration, step by step.
+- `pipeline/sky_index.py` — builds the static index of all SPHEREx DR1 and QR3 images (`site/index/`, format in `site/index/FORMAT.md`).
+- `site/js/skyindex.js` — browser lookup in that index: which images cover a given RA/Dec.
+- `local/` — local engine: serves the site and runs on-demand blink jobs for any clicked position (see `local/README.md`).
 - `site/ornek.html` — viewer page (blink, wavelength choice, zoom, Gaia marker, difference image, measured motion).
-- `site/data/<target>/` — pipeline output: `frames/*.png`, `blink_*um.gif`, `diff_*um.png`, `images.csv` (per-exposure diagnostics), `meta.json` (read by the viewer).
+- `site/data/<target>/` — pipeline output: `frames/*.png`, `blink_*um.gif`, `diff_*um.png`, `images.csv` (per-exposure diagnostics), `meta.json` (read by the viewer). `gaia_field.json` — cached Gaia DR3 field stars (motion targets).
 
 ## Reproduce
 
@@ -53,30 +57,172 @@ Requires Python 3 and [uv](https://docs.astral.sh/uv/).
 
 ## Method
 
-1. SPHEREx Level 2 spectral images that contain the target are found with the IRSA SIA service; a 0.2° cutout is downloaded from each.
-2. Exposures are grouped into seasons wherever consecutive dates are more than 30 days apart.
-3. The wavelength at the target pixel is read from each image's spectral WCS. Exposures are put into bins at 1.0, 1.5, 2.0, 3.0, 4.0 and 4.6 µm (±6 %), so that only matching wavelengths are blinked.
-4. Each exposure: the ZODI (zodiacal light) model is subtracted, bad pixels from the FLAGS layer are masked, saturated pixels are marked.
-5. Exposures are reprojected onto one north-up TAN grid centred on the target (3″/pixel, 0.15° field) and median-stacked per season and bin. All frames of a bin share one asinh stretch.
-6. Astrometry: a pixel-integrated Gaussian is fitted to the unsaturated wings of the star in native pixels. A joint fit of all exposures solves for position and proper motion, with the parallax fixed to the catalog value and one centroid offset per detector.
+1. **Data.** We find the SPHEREx Level 2 spectral images that contain the target with the
+   IRSA SIA service and download a 0.2° cutout of each.
+2. **Seasons.** Exposures are grouped into observing seasons wherever consecutive dates are
+   more than 30 days apart.
+3. **Wavelength bins.** We read the wavelength at the target pixel from each image's spectral
+   WCS. Exposures go into bins at 1.0, 1.5, 2.0, 3.0, 4.0 and 4.6 µm (±6 %).
+   - Each bin is tied to one detector: D1, D2, D3, D4, D5, D6. So 4.0 µm means D5 at
+     3.83–4.24 µm, and 4.6 µm means D6 at 4.42–4.88 µm.
+   - A frame never mixes detectors, and only matching wavelengths are blinked.
+4. **Cleaning.** In each exposure we subtract the ZODI (zodiacal light) model, mask the bad
+   pixels from the FLAGS layer and mark saturated pixels.
+5. **Blink frames.** Exposures are reprojected onto one north-up TAN grid centred on the
+   target (3″/pixel, 0.15° field) and median-stacked per season and bin. All frames of a bin
+   share one asinh stretch.
+6. **Predicted position.** We move the catalogue position to each exposure's time with:
+   - proper motion;
+   - perspective acceleration, when a radial velocity is known (Barnard's Star);
+   - annual parallax, from the Earth's barycentric position.
+7. **Detection check.** This runs before any astrometric fit.
+   - We fit the SPHEREx empirical PSF (the EPSF extension of each file) at the predicted
+     position, with the flux free.
+   - Catalogue neighbours and Gaia DR3 field stars are fitted at the same time at fixed
+     positions, plus a constant background.
+   - Fluxes are combined per season and detector. Errors are calibrated with the same fit at
+     random positions in the same exposures.
+   - A season × detector stack counts as a detection at S/N ≥ 5 (or a saturated core).
+   - The astrometric fit uses only the detected stacks. A target detected nowhere gets
+     `status: not_detected` and no motion numbers.
+8. **Astrometric calibration against Gaia DR3.**
+   - In every exposure we measure unsaturated, isolated Gaia DR3 field stars (G 10–17.5,
+     RUWE ≤ 1.4), moved to the exposure time.
+   - Their measured − Gaia offsets are pooled per season and detector. We fit a shift, plus
+     rotation and scale when enough stars surround the target, with 3σ clipping.
+   - That offset is removed from the target. Weak cells use the median of the same season.
+   - The field-star lists are cached in `site/data/<target>/gaia_field.json`. The exact
+     algorithm is in [`pipeline/ASTROMETRY.md`](pipeline/ASTROMETRY.md).
+9. **Astrometry, bright targets** (saturated core, or S/N ≥ 20 per exposure):
+   - A pixel-integrated Gaussian is fitted to the unsaturated pixels in native pixels.
+   - Gaia DR3 stars with G < 17 and more than 15″ away are fitted at the same time at their
+     fixed positions. Their light would otherwise pull the wing fit: for Barnard's Star, a
+     G = 15 star 35″ to the NE moved the position by about 0.2″.
+   - A joint fit of all exposures solves for position and proper motion. The parallax is
+     fixed to the catalogue value, and there is one centroid offset per detector, fixed in
+     detector axes.
+10. **Astrometry, faint targets.**
+    - For each season, one common position is fitted to all detected exposures. It is the
+      EPSF position that minimises the summed χ² on a grid around the prediction, with the
+      neighbours modelled.
+    - Errors are the larger of the χ² curvature and a bootstrap over the exposures.
+    - A weighted linear fit of the season positions then gives the proper motion.
+11. **Relative photometry, brightness targets.**
+    - In each exposure of a bin, the target flux is divided by the mean of 2–5 comparison
+      stars. The comparison stars are bright, isolated and unsaturated, found in the stacks.
+    - A saturated target core is measured in an annulus just outside the largest saturated
+      core of the bin. The annulus is the same for all seasons; it is a wing-based estimate
+      and is flagged.
+    - The season value is the median. It is reported as a ratio to the first season.
+    - The error combines the robust scatter of both seasons and the apparent
+      season-to-season change of the comparison stars themselves.
 
-## Result: Barnard's Star
+## Result
 
-From `site/data/barnard/meta.json` (358 cutouts; seasons 2025-08, 2026-03, 2026-08):
+From `site/data/<target>/meta.json`. The headline shift uses two seasons seen with the same
+telescope orientation, where detector-fixed centroid offsets cancel.
+
+### Barnard's Star
+
+358 cutouts; seasons 2025-08, 2026-03, 2026-08. Detected in every season and bin (saturated
+core).
 
 | | Measured | Gaia DR3 prediction |
 |---|---|---|
-| Shift 2025-08 → 2026-08 (0.98 yr, same telescope orientation) | 10.13″ at PA 355.8° | 10.23″ at PA 355.7° |
-| Proper motion (joint fit, 354 exposures) | −788.5 ± 53.1, 10264.5 ± 53.1 mas/yr | −801.6, 10362.4 mas/yr |
+| Shift 2025-08 → 2026-08 (0.98 yr) | 10.21″ ± 0.06″ at PA 355.7° | 10.24″ at PA 355.7° |
+| Proper motion (joint fit, 335 exposures) | −810 ± 56, 10336 ± 56 mas/yr | −802, 10362 mas/yr |
+| Position − Gaia, per season (E, N) | (−0.05″, +0.15″), (−0.05″, +0.13″), (−0.05″, +0.11″) ± 0.04″ | 0 |
 
-The headline shift uses two seasons seen with the same orientation, where the detector-fixed centroid offset cancels. The March season is seen rotated by 180° and is used to calibrate that offset, so it is not an independent check.
+### Epsilon Indi B
+
+458 cutouts; seasons 2025-04, 2025-10, 2026-04, 2026-09. Detected in every season and bin.
+
+| | Measured | Gaia DR3 prediction |
+|---|---|---|
+| Shift 2025-10 → 2026-09 (0.96 yr) | 4.54″ ± 0.03″ at PA 122.0° | 4.56″ at PA 121.8° |
+| Proper motion (joint fit, 439 exposures) | 3945 ± 25, −2419 ± 25 mas/yr | 3982, −2467 mas/yr |
+
+**Finding.** SPHEREx's infrared position of Epsilon Indi B is offset from the Gaia DR3
+prediction by about +0.27″ E, −0.53″ N (±0.03″ per season).
+
+- The offset is the same in both spacecraft orientations, so it is on the sky, not
+  instrumental.
+- It is the same before and after the field-star calibration.
+- It is larger at 4–5 µm (about 0.7″) than at 1–3 µm (about 0.5″).
+- No Gaia DR3 star lies within 45″ that could contaminate the fit.
+
+This is consistent with the binary nature of the source. Ba+Bb are not resolved in the Gaia
+DR3 solution, which has RUWE 4.30 and astrometric excess noise 5.8 mas. The infrared
+photocentre, where the cooler Bb contributes more, can differ from Gaia's G-band photocentre.
+Orbital motion since the Gaia epoch (2016) adds to this.
+
+### WISE 0855-0714
+
+258 cutouts; seasons 2025-05, 2025-11, 2026-05. The object is not in Gaia. Reference
+astrometry is Kirkpatrick et al. 2021 (ApJS 253, 7), from Spitzer:
+
+- position at MJD 57633.39;
+- μ = −8123.7, +673.2 mas/yr;
+- parallax 439.0 mas.
+
+It is **detected only at 4.0 and 4.6 µm** (D5, D6):
+
+- single-season S/N 10–16 per detector;
+- about 270–530 µJy within the PSF core;
+- not detected (S/N < 5) at 1.0–3.0 µm.
+
+A W2 = 15.2 background star (CatWISE J085501.95-071428.2) lies 11″, 8″ and 4″ from the
+predicted position in the three seasons. It is fitted together with the target.
+
+| | Measured (D5+D6) | Kirkpatrick et al. 2021 prediction |
+|---|---|---|
+| Shift 2025-05 → 2026-05 (0.99 yr) | 8.4″ ± 0.6″ at PA 277° | 8.03″ at PA 274.6° |
+| Proper motion (3 season positions) | −8370 ± 600, +1100 ± 630 mas/yr | −8124, +673 mas/yr |
+
+Earlier versions fitted all wavelengths. At short wavelengths only the background star is
+visible, so the fit locked onto it and gave no motion. The detection check now prevents
+this.
+
+As a control, a static W2 = 15.5 field star in the same images was put through the same
+faint-target fit. It gave 34 ± 160, 159 ± 155 mas/yr.
+
+### RW Aurigae and R Draconis (relative photometry)
+
+Both are saturated in every band, so the values are wing (annulus) estimates. Ratios are to
+the first season.
+
+| Target | Bin | Season 2 | Season 3 |
+|---|---|---|---|
+| RW Aur (2025-09 → 2026-03, 2026-09) | 1.0 µm | 1.13 ± 0.13 | 1.37 ± 0.13 |
+| | 2.0 µm | 1.09 ± 0.09 | 1.05 ± 0.05 |
+| | 4.0 µm | 0.82 ± 0.04 | 0.50 ± 0.04 |
+| | 4.6 µm | 0.69 ± 0.04 | 0.49 ± 0.04 |
+| R Dra (2025-06 → 2025-11, 2026-06) | 1.0 µm | 0.65 ± 0.10 | 0.58 ± 0.08 |
+| | 2.0 µm | 0.94 ± 0.19 | 0.54 ± 0.12 |
+| | 4.6 µm | 0.79 ± 0.05 | 0.52 ± 0.03 |
+
+- RW Aur fades by about a factor of 2 at 4–5 µm over the year, while it is constant or
+  brighter at 1–2 µm. RW Aur A is known for deep dimming events, so a change of this size is
+  plausible.
+- R Dra is a Mira variable (P ≈ 245 d), so changes of a factor of 2 are expected.
+- These are differential wing measurements of saturated stars. Treat them as indicative, not
+  as calibrated light curves. Full tables with errors and flags are in the viewer.
 
 ## Known limitations
 
-- The 4.0 and 4.6 µm bins mix exposures from two detectors (D4+D5 and D5+D6).
 - The pipeline uses 0.2° cutouts around each target, not full SPHEREx images.
-- WISE 0855-0714 is not in Gaia; its position and motion in the catalog are approximate (literature values).
-- Barnard's Star is saturated in its core; its position comes from the wings only.
+- Barnard's Star is saturated in its core; its position comes from the unsaturated wings,
+  with one centroid offset per detector fitted in detector axes. Every season is still about
+  +0.13″ N (±0.04″) from the Gaia DR3 prediction, and agrees in E. It cancels in the shifts
+  and proper motions.
+- WISE 0855-0714 is faint for SPHEREx. Its season positions have 0.2–0.45″ errors. The
+  field-star calibration is not applied to it: D5/D6 have too few Gaia stars (5 per cell,
+  ±0.1″), well below its own errors.
+- Relative photometry of saturated stars uses the PSF wings in an annulus. Static stars inside
+  the annulus dilute the measured change. A ±6 % bin can sample molecular bands differently
+  in different seasons. R Dra has no photometry at 4.0 µm (too few usable comparison stars).
+- The detection threshold (5σ per season and detector) and the noise calibration are
+  empirical.
 
 ## Data and credits
 

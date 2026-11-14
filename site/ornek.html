@@ -238,6 +238,7 @@ fetch(BASE + "meta.json").then(r => r.json()).then(m => {
     html += `<p>Target flux relative to comparison stars in the same images, as a ratio to the first season ` +
       `(1.20 = 20 % brighter).</p><table>${t}</table><p><small>${ph.method} ${(ph.caveats || []).join(" ")}</small></p>`;
   }
+  if (ms.finding) html += `<p><small><b>Finding:</b> ${ms.finding}</small></p>`;
   if (ms.note) html += `<p><small>${ms.note}</small></p>`;
   $("measure").innerHTML = html;
   $("src").textContent = "Data: " + m.data_source + ". Generated " + m.generated + ".";

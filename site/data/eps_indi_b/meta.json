@@ -1999,7 +1999,8 @@
    "blend_note": "Gaia DR3 field stars are fitted together with the target; sources not in Gaia (e.g. very red objects) are not modelled.",
    "astrometry_path": "bright",
    "median_exposure_snr": 102.6
-  }
+  },
+  "finding": "SPHEREx's infrared position is offset from the Gaia DR3 prediction by about +0.27\u2033 E, \u22120.53\u2033 N, the same in both spacecraft orientations, and larger at 4\u20135 \u00b5m than at 1\u20133 \u00b5m. This is consistent with the unresolved Ba+Bb binary (Gaia DR3 RUWE 4.30): the infrared photocentre differs from Gaia's G-band photocentre, plus orbital motion since 2016."
  },
  "n_cutouts": 458,
  "data_source": "NASA/IPAC IRSA SPHEREx DR1 + QR3 spectral images",

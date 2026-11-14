@@ -230,9 +230,12 @@ def centroid_epsf(img, var, ok, x0, y0, psf, ovs=5, half=4):
     return float(best.x[1]), float(best.x[2]), float(2 * best.cost / max(m.sum() - 4, 1)), int(m.sum())
 
 
-def centroid(img, var, ok, x0, y0, half=5):
+def centroid(img, var, ok, x0, y0, half=5, nb=()):
     """Fit the star in native pixels. The saturated core is NaN, so the fit uses the wings
-    (a symmetric model still pins the centre). Returns (x, y, sigma, npix) or None."""
+    (a symmetric model still pins the centre). Returns (x, y, sigma, npix) or None.
+    nb: pixel positions of known field stars (Gaia DR3) near the box; each is fitted at its
+    fixed position with the same width and a free flux, so that its light does not pull the
+    wing fit (for Barnard's Star a G = 15 star 35" to the NE did exactly that)."""
     ix, iy = int(round(x0)), int(round(y0))
     ys, xs = slice(iy - half, iy + half + 1), slice(ix - half, ix + half + 1)
     sub, sv, so = img[ys, xs], var[ys, xs], ok[ys, xs]
@@ -245,11 +248,19 @@ def centroid(img, var, ok, x0, y0, half=5):
     err = np.sqrt(np.clip(sv[m], 1e-6, None) + (0.05 * np.abs(d)) ** 2)
     nsat = int(np.sum(~np.isfinite(sub)))
     amp0 = max(np.nanmax(d), 1.0) * (6.0 if nsat else 2.0)
-    p0 = [amp0, x0, y0, 0.6, float(np.median(d))]
-    lo = [0, x0 - 2.5, y0 - 2.5, 0.25, -np.inf]
-    hi = [np.inf, x0 + 2.5, y0 + 2.5, 3.0, np.inf]
+    near = [(a, b) for a, b in nb if abs(a - ix) <= half + 2 and abs(b - iy) <= half + 2
+            and math.hypot(a - x0, b - y0) > 1.0]
+    p0 = [amp0, x0, y0, 0.6, float(np.median(d))] + [1.0] * len(near)
+    lo = [0, x0 - 2.5, y0 - 2.5, 0.25, -np.inf] + [0.0] * len(near)
+    hi = [np.inf, x0 + 2.5, y0 + 2.5, 3.0, np.inf] + [np.inf] * len(near)
+
+    def model(p):
+        f = gauss_model(p[:5], xx, yy)
+        for k, (a, b) in enumerate(near):
+            f = f + gauss_model([p[5 + k], a, b, p[3], 0.0], xx, yy)
+        return f
     try:
-        r = least_squares(lambda p: (gauss_model(p, xx, yy) - d) / err, p0,
+        r = least_squares(lambda p: (model(p) - d) / err, p0,
                           bounds=(lo, hi), x_scale="jac")
     except Exception:
         return None
@@ -995,6 +1006,44 @@ def fit_offsets(rows):
                 n=n, n_stars=nd, model=model, rms=[round(sE, 3), round(sN, 3)])
 
 
+NB_FIT_GMAX = 17.0          # Gaia neighbours fitted in the bright-target wing fit: G < 17 ...
+NB_FIT_MINPX = 2.5          # ... and > 2.5 native px (15") from the target. Fainter or closer
+                            # stars are left out: a free flux next to a saturated core soaks up
+                            # wing light and biases the centroid differently in every season
+
+
+def refit_with_neighbours(t, used):
+    """Bright path: redo the target's wing centroid with the bright Gaia DR3 field stars near it
+    fitted at their fixed positions (see centroid())."""
+    n = 0
+    for i in used:
+        if "ra_fit" not in i or not t.get("_gaia_nb"):
+            continue
+        px = i["_px"]
+        dt = (i["mjd"] - 51544.5) / 365.25 + 2000.0 - 2016.0
+        nbs = [(g[0] + (g[2] or 0) * dt / 3.6e6 / math.cos(math.radians(g[1])), g[1] + (g[3] or 0) * dt / 3.6e6)
+               for g in t["_gaia_nb"] if g[4] is not None and g[4] < NB_FIT_GMAX]
+        nb = []
+        if nbs:
+            xy = px["wcs"].all_world2pix(np.array([a for a, _ in nbs]), np.array([b for _, b in nbs]), 0)
+            nb = [(float(a), float(b)) for a, b in zip(*xy) if math.hypot(a - i["x"], b - i["y"]) > NB_FIT_MINPX]
+        if not nb:
+            continue
+        c = centroid(px["clean"].astype(float), px["var"].astype(float), px["good"], i["x"], i["y"], nb=nb)
+        if not c:
+            continue
+        wcs = px["wcs"]
+        rr, dd = (float(v) for v in wcs.all_pix2world(c[0], c[1], 0))
+        r1, d1 = (float(v) for v in wcs.all_pix2world(c[0] + 1, c[1], 0))
+        r2, d2 = (float(v) for v in wcs.all_pix2world(c[0], c[1] + 1, 0))
+        jx, jy = offset_arcsec(rr, dd, r1, d1)[:2], offset_arcsec(rr, dd, r2, d2)[:2]
+        i.update(x_fit=c[0], y_fit=c[1], fit_quality=c[2], fit_npix=c[3], ra_fit=rr, dec_fit=dd,
+                 jac=[[jx[0], jy[0]], [jx[1], jy[1]]], fit_method="gauss+neighbours")
+        n += 1
+    print(f"  target re-centroided with field-star neighbours in {n} exposures")
+    return n
+
+
 def field_calibration(t, name, used, path, ra_c, dec_c):
     """Tie the target measurements to Gaia DR3 with the field stars of the same exposures.
     Star residuals (measured - Gaia) are pooled per season x detector (same pointing pattern,
@@ -1664,7 +1713,7 @@ def main(name, inline=None):
         try:
             gf = gaia_field(name, ra_c, dec_c)
             cosc = math.cos(math.radians(dec_c))
-            t["_gaia_nb"] = [(s_[1], s_[2], s_[3], s_[4]) for s_ in gf["stars"]
+            t["_gaia_nb"] = [(s_[1], s_[2], s_[3], s_[4], s_[6]) for s_ in gf["stars"]
                              if math.hypot((s_[1] - ra_c) * cosc, s_[2] - dec_c) * 3600 < 75]
         except Exception as e:
             print("  WARNING: no Gaia field stars for the neighbour model:", e)
@@ -1678,6 +1727,8 @@ def main(name, inline=None):
         if detection["status"] in ("not_detected", "detected_one_season"):
             measured = {"positions": [], "pairs": []}
         else:
+            if bright:
+                refit_with_neighbours(t, used)
             calib = field_calibration(t, name, used, "bright" if bright else "faint", ra_c, dec_c)
             if bright:
                 measured = astrometry(t, used, epochs, ra_c, dec_c, grid_xy)
@@ -1685,6 +1736,8 @@ def main(name, inline=None):
             else:
                 measured = faint_astrometry(t, used, epochs, ra_c, dec_c, grid_xy)
             measured["field_calibration"] = calib
+        if t.get("finding"):
+            measured["finding"] = t["finding"]
         measured["status"] = detection["status"]
         measured["message"] = detection["message"]
         measured["detection"] = detection
