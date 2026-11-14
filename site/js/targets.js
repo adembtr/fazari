@@ -11,6 +11,8 @@ export const TARGETS = {
   "pmra": -801.5509783684709,
   "pmdec": 10362.394206546573,
   "plx": 546.976,
+  "rv": -110.47,
+  "rv_source": "Gaia DR3 radial velocity; used for the perspective acceleration (+0.064 arcsec 2016 -> 2026)",
   "gaia_dr3": "4472832130942575872",
   "source": "Gaia DR3 4472832130942575872"
  },

@@ -1,6 +1,8 @@
-// UI of sky.html: input -> sky index -> SkySession (sky.js) -> blink, difference, motion.
-import { stats, events } from "./net.js";
-import { SkySession, CONFIG } from "./sky.js";
+// UI of sky.html: input -> sky index -> Engine (SkySession in a Web Worker) -> blink,
+// difference, motion. The main thread only resolves the input, draws and reacts.
+import { CONFIG } from "./sky.js";
+import { Engine, workersSupported } from "./engine.js";
+import { TanGrid } from "./wcs.js";
 import { TARGETS } from "./targets.js";
 import { parseCoords, matchTarget, sesame } from "./resolve.js";
 import { highPmStars } from "./gaia.js";
@@ -12,7 +14,15 @@ const INDEX_MODULES = ["./skyindex.js", "./skyindex_dev.js"];
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
-const SCALE = 4;            // display pixels per grid pixel (180 -> 720)
+
+// Device profile: phones / low memory get a lighter default (fewer exposures, smaller cache).
+const small = typeof matchMedia === "function" && matchMedia("(max-width: 640px), (pointer: coarse) and (max-width: 900px)").matches;
+const lowMem = typeof navigator !== "undefined" && navigator.deviceMemory && navigator.deviceMemory <= 4;
+export const PROFILE = (small || lowMem || params.get("profile") === "phone") && params.get("profile") !== "desktop"
+  ? { name: "phone", cap: 2, cacheBytes: 48 * 1024 * 1024 }
+  : { name: "desktop", cap: 4, cacheBytes: 192 * 1024 * 1024 };
+const WORKER = params.get("worker") !== "0" && workersSupported();
+let netStats = { bytes: 0, requests: 0, retries: 0 };
 
 let indexMod = null, indexName = "";
 async function loadIndex() {
@@ -25,7 +35,7 @@ async function loadIndex() {
 }
 
 // ---- state ---------------------------------------------------------------------------------
-let run = null;            // {ctl, session, target, ...}
+let run = null;            // {ctl, engine, info, results, astro, target, ...}
 let current = null;        // displayed bin result
 let frameIdx = 0, timer = null, playing = true;
 let fieldStars = [];       // Gaia high-PM stars (other coordinates)
@@ -45,14 +55,15 @@ function renderProgress() {
   if (!run) return;
   const sec = ((performance.now() - t0.start) / 1000).toFixed(1);
   $("progress").textContent = `Images: ${progressInfo.done} downloaded of ${progressInfo.accepted} selected`
-    + ` (${progressInfo.checked} headers checked) · ${fmtMB(stats.bytes)} in ${stats.requests} requests`
-    + (stats.retries ? ` · ${stats.retries} retries` : "") + ` · ${sec} s`;
+    + ` (${progressInfo.checked} headers checked) · ${fmtMB(netStats.bytes)} in ${netStats.requests} requests`
+    + (netStats.retries ? ` · ${netStats.retries} retries` : "") + ` · ${sec} s`;
   const p = progressInfo.accepted ? progressInfo.done / progressInfo.accepted : 0;
   $("bar").style.width = `${Math.round(p * 100)}%`;
 }
 function queueProgress() { if (!rafPending) { rafPending = true; requestAnimationFrame(renderProgress); } }
-events.addEventListener("progress", queueProgress);
-events.addEventListener("status", (e) => { if (run && !run.finished) setStatus(e.detail.message, "warn"); });
+function onNet(st) { netStats = st; queueProgress(); }
+function onStatus(msg) { if (run && !run.finished) setStatus(msg, "warn"); }
+function busy(on) { $("cancel").hidden = !on; $("bar").parentElement.classList.toggle("busy", on); }
 
 // ---- rendering --------------------------------------------------------------------------------
 function grayImageData(norm, n) {
@@ -93,7 +104,7 @@ function drawToCanvas(canvas, imageData, n, zoom) {
 
 function drawOverlay(canvas, toCanvas, frame, zoom) {
   const ctx = canvas.getContext("2d");
-  const pxPerArcsec = canvas.width / (current.n / zoom) / CONFIG.pixArcsec;
+  const pxPerArcsec = canvas.width / (current.n / zoom) / run.info.pixArcsec;
   ctx.lineWidth = 2;
   if ($("mark").checked && frame.gaiaXY) {
     const [x, y] = toCanvas(...frame.gaiaXY);
@@ -103,7 +114,7 @@ function drawOverlay(canvas, toCanvas, frame, zoom) {
   if ($("mark").checked && fieldStars.length && run) {
     ctx.strokeStyle = "#5ad1ff";
     for (const s of fieldStars) {
-      const [gx, gy] = run.session.grid.skyToPix(...propagate(s, frame.mjdMean));
+      const [gx, gy] = run.grid.skyToPix(...propagate(s, frame.mjdMean));
       if (gx < -5 || gy < -5 || gx > current.n + 5 || gy > current.n + 5) continue;
       const [x, y] = toCanvas(gx, gy);
       const r = Math.max(8, 9 * pxPerArcsec);
@@ -134,6 +145,7 @@ function drawOverlay(canvas, toCanvas, frame, zoom) {
 
 function showFrame() {
   if (!current) return;
+  if (!window.__firstFrameMs) window.__firstFrameMs = performance.now() - t0.start;   // for the headless checks
   const fr = current.frames[frameIdx % current.frames.length];
   const zoom = Number($("zoom").value);
   const cv = $("blink");
@@ -171,9 +183,8 @@ function startBlink() {
 function fmtArc(v) { return `${v.toFixed(2)}″`; }
 function showMotion() {
   const el = $("measure");
-  const a = run.session.astrometry();
-  run.astro = a;
-  if (!a.positions.length) {
+  const a = run.astro;
+  if (!a || !a.positions.length) {
     el.innerHTML = "<p>No centroid could be fitted (no point source at the centre, or it is too faint).</p>";
     return;
   }
@@ -189,12 +200,21 @@ function showMotion() {
   html += `<table><tr><th>Season</th><th>Mean date</th><th>N</th><th>Detector angle</th>`
     + (run.target ? "<th>Measured − catalogue (E, N)</th>" : "<th>Offset from centre (E, N)</th>") + "</tr>";
   for (const p of a.positions) {
-    const ref = p.gaia || [run.session.ra0, run.session.dec0];
+    const ref = p.gaia || [run.info.ra0, run.info.dec0];
     const o = offsetArcsec(ref[0], ref[1], p.ra, p.dec);
-    html += `<tr><td>${p.season}</td><td>${p.date}</td><td>${p.n}</td><td>${p.orient.toFixed(0)}°</td>`
-      + `<td>${o[0].toFixed(2)}″, ${o[1].toFixed(2)}″</td></tr>`;
+    html += `<tr><td>${p.season}</td><td>${p.date}</td><td>${p.n}${p.calibrated ? "" : "*"}</td><td>${p.orient.toFixed(0)}°</td>`
+      + `<td>${o[0].toFixed(2)}″, ${o[1].toFixed(2)}″ <span class="small">± ${p.errEast.toFixed(2)}, ${p.errNorth.toFixed(2)}</span></td></tr>`;
   }
   html += "</table>";
+  const c = a.calibration;
+  if (c && c.nCalibratedTarget) {
+    html += `<p class="small"><b>Calibrated against ${Math.round(c.stars)} Gaia DR3 stars (rms ${c.rms.toFixed(2)}″)</b> per season and detector`
+      + `, ${c.nCalibratedTarget} of ${c.nFits} exposures`
+      + (c.saturatedTarget && c.satRefs ? `; saturated-core bias from ${c.satRefs} saturated Tycho-2 stars on the same detectors` : "")
+      + (c.nCalibratedTarget < c.nFits ? `. * = season not (fully) calibrated: ${c.reasons.join("; ")}` : "") + ".</p>";
+  } else {
+    html += `<p class="small"><b>Uncalibrated</b> (raw WCS positions): ${(c && c.reasons.join("; ")) || "no Gaia stars"}.</p>`;
+  }
   if (a.pairs.length > 1) {
     html += `<table class="pairs"><tr><th>Pair</th><th>Measured</th><th>Catalogue</th><th>Same orientation</th></tr>`;
     for (const p of a.pairs) {
@@ -205,29 +225,33 @@ function showMotion() {
   }
   html += `<p class="small">Centroid: Gaussian fit to the unsaturated wings in native 6.15″ pixels, per exposure, `
     + `converted with each exposure's SIP WCS; season = mean after clipping. ${a.nFits} of ${a.nExposures} downloaded exposures fitted `
-    + `(bins loaded so far: ${Object.keys(run.session.results).map(Number).sort((a, b) => a - b).map((u) => u.toFixed(1)).join(", ")} µm). `
-    + `SPHEREx turns ~180° between the August and March seasons; a small centroid bias fixed to the detector `
-    + `then changes sign, so pairs with the same orientation are the cleanest comparison.</p>`;
+    + `(bins loaded so far: ${Object.keys(run.results).map(Number).sort((a, b) => a - b).map((u) => u.toFixed(1)).join(", ")} µm). `
+    + `Relative astrometry (as pipeline/ASTROMETRY.md): isolated Gaia DR3 stars (10 ≤ G ≤ 17.5, RUWE ≤ 1.4, moved to each exposure's date `
+    + `with proper motion and parallax) are centroided the same way; their offsets, pooled per season and detector (shift, or shift + `
+    + `rotation + scale with ≥ 12 stars around the target, 3σ clipped), correct the target. `
+    + `A saturated target's wing-only centroid has a bias fixed to the detector (it flips when SPHEREx turns 180° between `
+    + `August and March); it is measured on saturated Tycho-2 stars in the same rows and removed.</p>`;
   el.innerHTML = html;
 }
 
 // ---- result for headless checks -----------------------------------------------------------------
 function writeResult(state, extra = {}) {
-  const s = run && run.session;
+  const s = run && run.info;
   const res = {
-    state, input: run ? run.input : null, index: indexName,
+    state, input: run ? run.input : null, index: indexName, profile: PROFILE.name, worker: run && run.engine ? run.engine.useWorker : WORKER,
+    cap: s ? s.cap : null,
     target: run && run.target ? run.target.name : null,
     ra: s ? s.ra0 : null, dec: s ? s.dec0 : null,
-    n_index_images: s ? s.images.length : 0,
+    n_index_images: s ? s.nImages : 0,
     seasons: s ? s.seasons.map((x) => x.label) : [],
     bins: s ? s.bins.map((b) => ({ um: b.um, detector: b.det, seasons_with_candidates: b.nSeasons, available: b.available })) : [],
-    loaded: s ? Object.values(s.results).sort((a, b) => a.um - b.um).map((r) => ({ um: r.um, detector: r.det,
+    loaded: s ? Object.values(run.results).sort((a, b) => a.um - b.um).map((r) => ({ um: r.um, detector: r.det,
       frames: r.frames.map((f) => ({ season: f.season, n: f.n, detectors: f.detectors, lam_um: +f.lam.toFixed(4), lams: f.lams,
                                      date_first: f.dateFirst, date_last: f.dateLast })) })) : [],
-    astrometry: run && run.astro ? { pairs: run.astro.pairs, positions: run.astro.positions.map((p) => ({ ...p, grid: undefined })) } : null,
+    astrometry: run && run.astro ? { pairs: run.astro.pairs, calibration: run.astro.calibration,
+                                     positions: run.astro.positions.map((p) => ({ ...p, grid: undefined })) } : null,
     gaia_field: run ? run.gaiaField : null,
-    header_checks: s ? s.headerChecks : 0,
-    bytes: stats.bytes, requests: stats.requests, retries: stats.retries,
+    bytes: netStats.bytes, requests: netStats.requests, retries: netStats.retries,
     seconds: +((performance.now() - t0.start) / 1000).toFixed(2),
     ...extra,
   };
@@ -262,13 +286,21 @@ function updateUrl(q) {
 }
 
 async function loadBin(um) {
-  const s = run.session;
-  const b = s.bins.find((x) => x.um === um);
+  const myRun = run;
+  const b = run.info.bins.find((x) => x.um === um);
   for (const btn of document.querySelectorAll("#bins button")) btn.classList.toggle("on", Number(btn.dataset.um) === um);
-  if (!s.results[um]) setStatus(`Downloading ${um.toFixed(1)} µm images (detector D${b.det}) from S3...`);
-  progressInfo = { checked: 0, accepted: 0, done: 0 };
-  const r = await s.loadBin(um, (p) => { progressInfo = p; queueProgress(); });
-  if (run.session !== s) return;
+  let r = run.results[um];
+  if (!r) {
+    setStatus(`Downloading ${um.toFixed(1)} µm images (detector D${b.det}) from S3...`);
+    progressInfo = { checked: 0, accepted: 0, done: 0 };
+    busy(true);
+    try {
+      const out = await run.engine.loadBin(um, (p) => { progressInfo = p; queueProgress(); });
+      if (run !== myRun) return;
+      r = run.results[um] = out.result;
+      run.astro = out.astrometry;
+    } finally { if (run === myRun) busy(false); }
+  }
   current = r; frameIdx = 0;
   $("viewer").hidden = false;
   showFrame(); showDiff(); startBlink();
@@ -276,15 +308,23 @@ async function loadBin(um) {
   renderProgress();
 }
 
+function stopRun() {
+  if (!run) return;
+  run.ctl.abort(); run.finished = true;
+  if (run.engine) run.engine.cancel();
+  busy(false);
+}
+
 async function go(text, opts = {}) {
-  if (run) { run.ctl.abort(); run.finished = true; }
+  stopRun();
   clearInterval(timer);
   current = null; fieldStars = [];
   $("viewer").hidden = true; $("bins").innerHTML = ""; $("measure").innerHTML = ""; $("fieldnote").textContent = "";
-  run = { ctl: new AbortController(), input: text, finished: false, gaiaField: null };
+  run = { ctl: new AbortController(), input: text, finished: false, gaiaField: null, results: {} };
   const myRun = run;
   t0.start = performance.now();
-  stats.bytes = 0; stats.requests = 0; stats.retries = 0;
+  netStats = { bytes: 0, requests: 0, retries: 0 };
+  busy(true);
   writeResult("running");
   try {
     const r = await resolveInput(text);
@@ -309,12 +349,14 @@ async function go(text, opts = {}) {
       const devNote = indexName === "skyindex_dev.js" ? " (development index: it only knows the 5 challenge targets)" : "";
       throw new Error(`No SPHEREx images here${devNote}.`);
     }
-    const cfg = {};
-    if (params.get("cap")) cfg.cap = Math.max(1, Math.min(12, Number(params.get("cap"))));
+    const cfg = { cap: Number($("cap").value) || PROFILE.cap };
     if (params.get("fov")) cfg.fovDeg = Math.max(0.05, Math.min(0.3, Number(params.get("fov"))));
-    if (opts.cap) cfg.cap = opts.cap;
-    const session = new SkySession({ ra, dec, target: r.target, images, config: cfg, signal: run.ctl.signal });
-    run.session = session;
+    if (params.get("calib") === "0") cfg.calibrate = false;
+    run.engine = new Engine({ useWorker: WORKER, onNet: (st) => { if (run === myRun) onNet(st); }, onStatus: (m) => { if (run === myRun) onStatus(m); } });
+    const session = await run.engine.init({ ra, dec, target: r.target, images, config: cfg, cacheBytes: PROFILE.cacheBytes });
+    if (myRun !== run) return;
+    run.info = session;
+    run.grid = new TanGrid(session.ra0, session.dec0, session.pixArcsec, session.n);
     const avail = session.bins.filter((b) => b.available);
     $("found").textContent = `${images.length} SPHEREx exposures cover this point, in ${session.seasons.length} season(s): `
       + session.seasons.map((x) => x.label).join(", ") + ".";
@@ -353,11 +395,13 @@ async function go(text, opts = {}) {
     }
     if (myRun !== run) return;
     run.finished = true;
+    busy(false);
     setStatus(`Done. ${current.frames.length} seasons at ${current.um.toFixed(1)} µm. Pick another wavelength above to download it.`, "ok");
     renderProgress();
     writeResult("done");
   } catch (e) {
-    if (myRun !== run || e.name === "AbortError") return;
+    if (myRun !== run) return;
+    if (e.name === "AbortError") { busy(false); return; }
     fail(e);
   }
 }
@@ -365,6 +409,7 @@ async function go(text, opts = {}) {
 function fail(e) {
   console.error(e);
   if (run) run.finished = true;
+  busy(false);
   const msg = /Failed to fetch|NetworkError|did not answer/.test(e.message)
     ? `Network problem: ${e.message}. S3 or your connection may be busy; try again in a minute.` : e.message;
   setStatus(msg, "err");
@@ -378,15 +423,35 @@ $("speed").oninput = () => { $("speedv").textContent = `${$("speed").value} ms`;
 $("prev").onclick = () => { if (current) { playing = false; startBlink(); frameIdx = (frameIdx - 1 + current.frames.length) % current.frames.length; showFrame(); } };
 $("next").onclick = () => { if (current) { playing = false; startBlink(); frameIdx = (frameIdx + 1) % current.frames.length; showFrame(); } };
 for (const id of ["zoom", "mark", "cent"]) $(id).onchange = () => { if (current) { showFrame(); showDiff(); } };
+$("cancel").onclick = () => {
+  if (!run || run.finished) return;
+  const loaded = Object.keys(run.results).length;
+  stopRun();
+  setStatus(loaded ? "Cancelled. The wavelengths already loaded stay available." : "Cancelled.", "warn");
+  writeResult("cancelled");
+};
+$("cap").onchange = () => { const v = $("q").value.trim(); if (v && run) go(v); };
 $("allbins").onclick = async () => {
-  if (!run || !run.session) return;
+  if (!run || !run.info || !run.engine || run.engine.closed) return;
   try {
-    for (const b of run.session.bins.filter((x) => x.available)) await loadBin(b.um);
+    for (const b of run.info.bins.filter((x) => x.available)) await loadBin(b.um);
     setStatus("All wavelength bins loaded.", "ok");
     writeResult("done");
   } catch (e) { fail(e); }
 };
 for (const a of document.querySelectorAll("[data-q]")) a.onclick = (ev) => { ev.preventDefault(); $("q").value = a.dataset.q; go(a.dataset.q); };
+
+// exposures-per-season selector: profile default, ?cap= overrides
+{
+  const want = params.get("cap") ? Math.max(1, Math.min(12, Number(params.get("cap")))) : PROFILE.cap;
+  const sel = $("cap");
+  if (![...sel.options].some((o) => Number(o.value) === want)) sel.add(new Option(String(want), String(want)));
+  sel.value = String(want);
+  $("profile").textContent = PROFILE.name === "phone"
+    ? `Phone mode: ${want} exposures per season, one wavelength at a time (choose more above).`
+    : "";
+  if (!WORKER) $("profile").textContent += " Web Workers unavailable: running on the main thread.";
+}
 
 const start = params.get("target") ? (TARGETS[params.get("target")] || {}).name || params.get("target")
   : params.get("ra") && params.get("dec") ? `${params.get("ra")} ${params.get("dec")}` : params.get("q");

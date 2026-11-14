@@ -11,6 +11,8 @@
 import { SpherexFile, flagBits } from "./fits.js";
 import { SipWcs, WaveWcs, TanGrid } from "./wcs.js";
 import { s3Source } from "./net.js";
+import { gaiaStars, tychoStars } from "./gaia.js";
+import { CALIB, prepareStars, calibrateExposure, calibrateSaturated, poolCells } from "./calib.js";
 import { propagate, offsetArcsec, mjdToDate, mjdToMonth, median, percentile, gaussCentroid, jyearToMjd } from "./astro.js";
 
 export const CONFIG = {
@@ -25,6 +27,12 @@ export const CONFIG = {
   minSeasons: 2,
   edgePx: 6,               // target this far from the detector edge
   epochCenter: 2026.0,     // grid centre = target at 2026.0 (proper motion only), as blink.py
+  calibrate: true,         // relative astrometry against Gaia DR3 field stars (calib.js)
+  brightRadius: 3.0,       // deg: Tycho-2 stars for saturated targets (the rows span the detector)
+  brightVmax: 10.5,
+  satCal: true,            // saturated target: calibrate with saturated Tycho-2 stars
+  satMaskMatch: false,
+  satMinRefs: 10,          // saturated reference stars per detector for a bias estimate
   // FLAGS: masked (set to NaN). SOURCE and OUTLIER are NOT masked (they mark real stars).
   badFlags: ["TRANSIENT", "SUR_ERROR", "NONFUNC", "HOT", "COLD", "MISSING_DATA"],
   // saturated star core: drawn white (as blink.py), excluded from the centroid fit
@@ -102,6 +110,11 @@ export class SkySession {
       const nSeasons = Object.values(bySeason).filter((a) => a.length).length;
       return { ...b, candidates: bySeason, nSeasons, available: nSeasons >= this.cfg.minSeasons };
     });
+    // Gaia DR3 field stars for the astrometric calibration (fetched once, cached in gaia.js)
+    this.calStars = !this.cfg.calibrate ? Promise.resolve(null)
+      : gaiaStars(this.ra0, this.dec0, CALIB.maxFieldRadius + 0.01, { gmax: CALIB.gmaxQuery, signal })
+        .then((stars) => ({ ok: true, nGaia: stars.length, cal: prepareStars(stars, this.ra0, this.dec0) }))
+        .catch((e) => ({ ok: false, error: e.message, cal: [] }));
     this.exposures = [];      // processed exposures (all bins)
     this.results = {};        // bin um -> result
     this.headerChecks = 0;
@@ -183,6 +196,7 @@ export class SkySession {
       ex.x_fit = fit.x; ex.y_fit = fit.y + y0;
       [ex.ra_fit, ex.dec_fit] = wcs.pixToSky(ex.x_fit, ex.y_fit);
       ex.fit = fit;
+      if (this.cfg.calibrate) await this.calibrate(ex, { data, sat, W, H, y0, wcs, sigma0, gx, gy });
     }
     // bilinear reprojection (NaN if any neighbour is NaN, like reproject_interp order=1)
     const out = new Float32Array(N), satOut = new Uint8Array(N);
@@ -206,6 +220,52 @@ export class SkySession {
     ex.coverage = fin.length / N;
     ex.f = null;   // drop the file object (headers stay cached in net.js)
     return ex;
+  }
+
+  /** Relative astrometry for one exposure (calib.js). The target's pixels that the fit could not
+   * use (saturated core) decide the method: a saturated target is calibrated with saturated
+   * catalogue stars in the same rows (same bias), an unsaturated one with Gaia field stars. */
+  async calibrate(ex, { data, sat, W, H, y0, wcs, sigma0, gx, gy }) {
+    let nmask = 0, ncore = 0;
+    const ci = Math.round(gx), cj = Math.round(gy);
+    for (let j = cj - 5; j <= cj + 5; j++) for (let i = ci - 5; i <= ci + 5; i++) {
+      if (i < 0 || j < 0 || i >= W || j >= H) continue;
+      const k = j * W + i;
+      if (sat[k] || !Number.isFinite(data[k])) nmask++;
+      if (sat[k] && Math.abs(i - ci) <= 1 && Math.abs(j - cj) <= 1) ncore++;   // saturation flags, not bad pixels
+    }
+    ex.maskPx = nmask;
+    ex.saturated = ncore > 0;
+    const target = [ex.ra_fit, ex.dec_fit];
+    let sc = null;
+    if (ex.saturated && this.cfg.satCal) {
+      if (!this.brightStars) {
+        this.brightStars = tychoStars(this.ra0, this.dec0, this.cfg.brightRadius, this.cfg.brightVmax, { signal: this.signal })
+          .catch((e) => ({ error: e.message }));
+      }
+      const bright = await this.brightStars;
+      sc = Array.isArray(bright)
+        ? calibrateSaturated({ bright, data, sat, W, H, y0, wcs, mjd: ex.mjd, sigma0, target, targetMask: this.cfg.satMaskMatch ? nmask : 0 })
+        : { ok: false, reason: bright.error };
+      ex.satRefs = (sc.pts || []).map((p) => ({ nmask: p.nmask, rE: p.rE, rN: p.rN, mag: p.mag }));
+      delete sc.pts;
+    }
+    const field = await this.calStars;
+    const fc = field && field.cal.length
+      ? calibrateExposure({ cal: field.cal, data, sat, W, H, y0, wcs, mjd: ex.mjd, target, sigma0 })
+      : { ok: false, reason: field && !field.ok ? field.error : "no Gaia stars" };
+    const cosd = Math.cos(ex.dec_fit * Math.PI / 180);
+    const apply = (c) => (c && c.ok ? [ex.ra_fit - c.corrE / 3600 / cosd, ex.dec_fit - c.corrN / 3600] : null);
+    ex.fieldPts = fc.pts || null; delete fc.pts;
+    ex.calibField = fc; ex.posField = apply(fc);
+    // local Jacobian d(east, north)/d(x, y), arcsec per native pixel, at the target
+    const [r1, d1] = wcs.pixToSky(ex.x_fit + 1, ex.y_fit), [r2, d2] = wcs.pixToSky(ex.x_fit, ex.y_fit + 1);
+    const jx = offsetArcsec(ex.ra_fit, ex.dec_fit, r1, d1), jy = offsetArcsec(ex.ra_fit, ex.dec_fit, r2, d2);
+    ex.jac = [[jx[0], jy[0]], [jx[1], jy[1]]];
+    ex.calibSat = sc; ex.posSat = apply(sc);
+    const c = sc && sc.ok ? sc : fc;
+    ex.calib = c;
+    if (c.ok) [ex.ra_cal, ex.dec_cal] = apply(c);
   }
 
   /** Select, download and stack one wavelength bin. */
@@ -305,43 +365,161 @@ export class SkySession {
     return result;
   }
 
-  /** Per-season target positions from the centroids of all processed exposures, and pairs. */
-  astrometry() {
+  /** Centroid bias of saturated stars per detector, in detector pixels: the offsets (measured
+   * minus catalogue, after the exposure's field-star WCS correction) of all saturated Tycho-2
+   * stars in all downloaded exposures of that detector, turned into detector axes with each
+   * exposure's Jacobian, 3-sigma clipped mean. Same-detector stars share the bias whatever the
+   * spacecraft orientation, so March and August exposures pool. */
+  /** Field-star correction per season x detector cell (calib.js poolCells). */
+  fieldCells() {
+    return poolCells(this.exposures.filter((e) => e.ra_fit != null && e.season));
+  }
+
+  saturatedBias(cells = this.fieldCells()) {
+    const per = {};
+    for (const e of this.exposures) {
+      if (!e.satRefs || !e.satRefs.length || !e.jac) continue;
+      const cc = cells.get(`${e.season}|${e.detector}`);
+      const f = cc && cc.ok ? [cc.corrE, cc.corrN] : [0, 0];
+      const [[a, b], [c, d]] = e.jac, det = a * d - b * c;
+      for (const r of e.satRefs) {
+        const vE = r.rE - f[0], vN = r.rN - f[1];
+        (per[e.detector] ||= []).push([(d * vE - b * vN) / det, (-c * vE + a * vN) / det]);
+      }
+    }
+    const out = {};
+    for (const [det, pts] of Object.entries(per)) {
+      let use = pts.map(() => true), mx = 0, my = 0;
+      for (let it = 0; it < 6; it++) {
+        const P = pts.filter((_, i) => use[i]);
+        mx = median(P.map((p) => p[0])); my = median(P.map((p) => p[1]));
+        const rr = pts.map((p) => Math.hypot(p[0] - mx, p[1] - my));
+        const sig = Math.max(median(rr.filter((_, i) => use[i])) / 1.1774, 0.005);
+        const next = rr.map((r) => r < 3 * sig);
+        if (next.every((v, i) => v === use[i])) break;
+        use = next;
+      }
+      const P = pts.filter((_, i) => use[i]);
+      if (P.length < this.cfg.satMinRefs) { out[det] = { ok: false, n: P.length, reason: `only ${P.length} saturated reference star(s)` }; continue; }
+      const m = (k) => P.reduce((s, p) => s + p[k], 0) / P.length;
+      const dx = m(0), dy = m(1);
+      const sx = Math.sqrt(P.reduce((s, p) => s + (p[0] - dx) ** 2, 0) / (P.length - 1));
+      const sy = Math.sqrt(P.reduce((s, p) => s + (p[1] - dy) ** 2, 0) / (P.length - 1));
+      out[det] = { ok: true, n: P.length, nAll: pts.length, dx, dy, errX: sx / Math.sqrt(P.length), errY: sy / Math.sqrt(P.length) };
+    }
+    return out;
+  }
+
+  /** Per-season target positions from the centroids of all processed exposures, and pairs.
+   * Uses the Gaia-calibrated positions (calib.js) where an exposure could be calibrated;
+   * a season with no calibrated exposure falls back to the raw centroids ("uncalibrated"). */
+  astrometry({ calibrated = true, mode = null } = {}) {
     const ex = this.exposures.filter((e) => e.ra_fit != null);
     const bySeason = new Map();
     for (const e of ex) { if (!bySeason.has(e.season)) bySeason.set(e.season, []); bySeason.get(e.season).push(e); }
     const cosd = Math.cos(this.dec0 * Math.PI / 180);
+    const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+    const cells = this.fieldCells();
+    const satBias = this.saturatedBias(cells);
+    for (const e of ex) {
+      const cc = cells.get(`${e.season}|${e.detector}`);
+      e.cell = cc || null;
+      const f = cc && cc.ok ? [cc.corrE, cc.corrN] : null;
+      e.posCell = f ? [e.ra_fit - f[0] / 3600 / Math.cos(e.dec_fit * Math.PI / 180), e.dec_fit - f[1] / 3600] : null;
+      const b = e.saturated ? satBias[e.detector] : null;
+      e.posPool = null;
+      if (e.saturated && !(b && b.ok)) continue;            // saturated, no bias estimate: uncalibrated
+      if (!f && !b) continue;
+      const fe = f || [0, 0];
+      const be = b ? [e.jac[0][0] * b.dx + e.jac[0][1] * b.dy, e.jac[1][0] * b.dx + e.jac[1][1] * b.dy] : [0, 0];
+      const c = Math.cos(e.dec_fit * Math.PI / 180);
+      e.posPool = [e.ra_fit - (fe[0] + be[0]) / 3600 / c, e.dec_fit - (fe[1] + be[1]) / 3600];
+      e.poolCorr = [fe[0] + be[0], fe[1] + be[1]];
+    }
+    const seasonPos = (list, get) => {
+      const P = list.map(get);
+      const mra = median(P.map((p) => p[0])), mdec = median(P.map((p) => p[1]));
+      const r = P.map((p) => Math.hypot((p[0] - mra) * cosd, p[1] - mdec) * 3600);
+      const lim = Math.max(3 * 1.4826 * median(r), 0.5);
+      const keep = list.filter((e, k) => r[k] <= lim), KP = P.filter((_, k) => r[k] <= lim);
+      const ra = mean(KP.map((p) => p[0])), dec = mean(KP.map((p) => p[1]));
+      const sd = (a) => Math.sqrt(mean(a.map((v) => v * v)) / Math.max(a.length - 1, 1));
+      // with < 3 exposures the scatter says little: use a single-exposure sigma of 0.35" (typical)
+      const few = KP.length < 3;
+      const errEast = few ? 0.35 / Math.sqrt(KP.length) : sd(KP.map((p) => (p[0] - ra) * cosd * 3600));
+      const errNorth = few ? 0.35 / Math.sqrt(KP.length) : sd(KP.map((p) => (p[1] - dec) * 3600));
+      return { ra, dec, keep, errEast, errNorth, nRejected: list.length - keep.length };
+    };
     const positions = [];
     for (const s of this.seasons) {
       const list = bySeason.get(s.label);
       if (!list || !list.length) continue;
-      const mra = median(list.map((e) => e.ra_fit)), mdec = median(list.map((e) => e.dec_fit));
-      const r = list.map((e) => Math.hypot((e.ra_fit - mra) * cosd, e.dec_fit - mdec) * 3600);
-      const lim = Math.max(3 * 1.4826 * median(r), 0.5);
-      const keep = list.filter((e, k) => r[k] <= lim);
-      const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
-      const ra = mean(keep.map((e) => e.ra_fit)), dec = mean(keep.map((e) => e.dec_fit));
-      const de = keep.map((e) => (e.ra_fit - ra) * cosd * 3600), dn = keep.map((e) => (e.dec_fit - dec) * 3600);
-      const sd = (a) => Math.sqrt(mean(a.map((v) => v * v)) / a.length);
+      const getCal = mode === "field" ? (e) => e.posField : mode === "sat" ? (e) => e.posSat : mode === "cells" ? (e) => e.posCell : (e) => e.posPool;
+      const cal = list.filter((e) => getCal(e));
+      const useCal = calibrated && cal.length > 0;
+      const P = useCal ? seasonPos(cal, getCal) : seasonPos(list, (e) => [e.ra_fit, e.dec_fit]);
+      const raw = seasonPos(list, (e) => [e.ra_fit, e.dec_fit]);
+      const keep = P.keep;
       const mjd = mean(keep.map((e) => e.mjd));
       const gaia = this.target ? [mean(keep.map((e) => this.posAt(e.mjd)[0])), mean(keep.map((e) => this.posAt(e.mjd)[1]))] : null;
+      const gaiaRaw = this.target ? [mean(raw.keep.map((e) => this.posAt(e.mjd)[0])), mean(raw.keep.map((e) => this.posAt(e.mjd)[1]))] : null;
       const ori = Math.atan2(mean(keep.map((e) => Math.sin(e.orient * Math.PI / 180))), mean(keep.map((e) => Math.cos(e.orient * Math.PI / 180)))) * 180 / Math.PI;
-      positions.push({ season: s.label, ra, dec, mjd, date: mjdToDate(mjd), n: keep.length, nRejected: list.length - keep.length,
-                       errEast: sd(de), errNorth: sd(dn), orient: (ori + 360) % 360, gaia,
+      const ckf = keep.filter((e) => e.cell && e.cell.ok);
+      // systematic part of the error: the saturated-star bias estimate, common to a detector
+      let sysE = 0, sysN = 0;
+      if (useCal && satBias) {
+        const dets = keep.filter((e) => e.saturated && satBias[e.detector] && satBias[e.detector].ok);
+        if (dets.length) {
+          const pe = dets.map((e) => { const b = satBias[e.detector]; return [Math.hypot(e.jac[0][0] * b.errX, e.jac[0][1] * b.errY), Math.hypot(e.jac[1][0] * b.errX, e.jac[1][1] * b.errY)]; });
+          sysE = mean(pe.map((p) => p[0])) / Math.sqrt(new Set(dets.map((e) => e.detector)).size);
+          sysN = mean(pe.map((p) => p[1])) / Math.sqrt(new Set(dets.map((e) => e.detector)).size);
+        }
+      }
+      // plus the field-star cell errors (common to the exposures of a cell)
+      const cl = [...new Map(keep.filter((e) => e.cell && e.cell.ok).map((e) => [e.detector, e.cell])).values()];
+      if (useCal && cl.length) {
+        sysE = Math.hypot(sysE, mean(cl.map((c) => c.errE)) / Math.sqrt(cl.length));
+        sysN = Math.hypot(sysN, mean(cl.map((c) => c.errN)) / Math.sqrt(cl.length));
+      }
+      P.errEast = Math.hypot(P.errEast, sysE); P.errNorth = Math.hypot(P.errNorth, sysN);
+      positions.push({ season: s.label, ra: P.ra, dec: P.dec, mjd, date: mjdToDate(mjd), n: keep.length, nRejected: P.nRejected,
+                       errEast: P.errEast, errNorth: P.errNorth, orient: (ori + 360) % 360, gaia,
+                       calibrated: useCal, nExposures: list.length, nCalibrated: cal.length,
+                       calStars: ckf.length ? median(ckf.map((e) => e.cell.nStars)) : 0,
+                       calRms: ckf.length ? median(ckf.map((e) => e.cell.rms)) : NaN,
+                       calModel: ckf.length ? ckf[0].cell.model : null,
+                       raw: { ra: raw.ra, dec: raw.dec, n: raw.keep.length, gaia: gaiaRaw,
+                              minusGaia: gaiaRaw ? offsetArcsec(gaiaRaw[0], gaiaRaw[1], raw.ra, raw.dec).slice(0, 2) : null },
+                       minusGaia: gaia ? offsetArcsec(gaia[0], gaia[1], P.ra, P.dec).slice(0, 2) : null,
                        bins: [...new Set(keep.map((e) => e.bin))].sort((a, b) => a - b),
-                       grid: this.grid.skyToPix(ra, dec) });
+                       grid: this.grid.skyToPix(P.ra, P.dec) });
     }
     const pairs = [];
     for (let a = 0; a < positions.length; a++) for (let z = a + 1; z < positions.length; z++) {
       const A = positions[a], Z = positions[z];
       const m = offsetArcsec(A.ra, A.dec, Z.ra, Z.dec);
+      const m0 = offsetArcsec(A.raw.ra, A.raw.dec, Z.raw.ra, Z.raw.dec);
       const g = A.gaia ? offsetArcsec(A.gaia[0], A.gaia[1], Z.gaia[0], Z.gaia[1]) : null;
       const sameOrient = Math.abs(((A.orient - Z.orient + 540) % 360) - 180) < 20;
       pairs.push({ from: A.season, to: Z.season, dtYears: (Z.mjd - A.mjd) / 365.25, shift: m[2], pa: m[3], east: m[0], north: m[1],
                    err: Math.hypot(A.errEast, A.errNorth, Z.errEast, Z.errNorth),
+                   rawShift: m0[2], rawPa: m0[3], calibrated: A.calibrated && Z.calibrated,
                    gaiaShift: g ? g[2] : null, gaiaPa: g ? g[3] : null, sameOrientation: sameOrient });
     }
-    return { positions, pairs, nFits: ex.length, nExposures: this.exposures.length };
+    const calEx = ex.filter((e) => e.posPool && e.cell && e.cell.ok);
+    return { positions, pairs, nFits: ex.length, nExposures: this.exposures.length,
+             calibration: { nCalibrated: calEx.length, nFits: ex.length,
+                            stars: calEx.length ? median(calEx.map((e) => e.cell.nStars)) : 0,
+                            rms: calEx.length ? median(calEx.map((e) => e.cell.rms)) : NaN,
+                            cells: [...cells.entries()].map(([k, c]) => ({ cell: k, ok: c.ok, source: c.source, model: c.model, nStars: c.nStars,
+                              nMeas: c.nMeas, corrE: c.corrE, corrN: c.corrN, errE: c.errE, errN: c.errN, rms: c.rms, reason: c.reason })),
+                            satRefs: Object.values(satBias).filter((b) => b.ok).reduce((a, b) => a + b.n, 0),
+                            nCalibratedTarget: ex.filter((e) => e.posPool).length,
+                            saturatedTarget: ex.some((e) => e.saturated),
+                            saturatedBias: satBias,
+                            reasons: [...new Set(ex.filter((e) => !e.posPool).map((e) => (e.saturated && !(satBias[e.detector] || {}).ok
+                              ? `saturated target, ${(satBias[e.detector] || {}).reason || "no saturated reference stars"}`
+                              : (e.cell ? e.cell.reason : "off"))))] } };
   }
 }
 

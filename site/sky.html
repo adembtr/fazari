@@ -28,7 +28,10 @@
   .card { background:var(--card); border-radius:8px; padding:10px 12px; margin-top:10px; }
   .status { margin: 8px 0 2px; }
   .status.ok { color: var(--ok); } .status.warn { color: var(--warn); } .status.err { color: var(--err); }
-  .barwrap { height: 4px; background:#222838; border-radius: 2px; overflow:hidden; margin: 4px 0; }
+  .progressrow { display:flex; align-items:center; gap:10px; }
+  .barwrap { flex:1; height: 6px; background:#222838; border-radius: 3px; overflow:hidden; margin: 4px 0; }
+  .barwrap.busy { background: repeating-linear-gradient(90deg, #222838 0 12px, #2b3247 12px 24px); }
+  #cancel { padding: 4px 12px; }
   #bar { height:100%; width:0; background: var(--acc); transition: width .2s; }
   .controls { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; }
   .controls label { color: var(--mut); font-size:.9rem; }
@@ -68,9 +71,18 @@
   <div class="card">
     <div id="what" class="sub"></div>
     <div id="status" class="status">Loading...</div>
-    <div class="barwrap"><div id="bar"></div></div>
+    <div class="progressrow">
+      <div class="barwrap"><div id="bar"></div></div>
+      <button id="cancel" type="button" hidden>Cancel</button>
+    </div>
     <div id="progress" class="small"></div>
     <div id="found" class="small"></div>
+    <div class="controls" style="margin-top:6px">
+      <label>Exposures per season <select id="cap">
+        <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+        <option value="6">6</option><option value="8">8</option></select></label>
+      <span id="profile" class="small"></span>
+    </div>
   </div>
 
   <section id="viewer" hidden>
@@ -79,7 +91,7 @@
       <div id="bins"></div>
       <div class="controls">
         <button id="allbins" type="button">Load all wavelengths</button>
-        <span class="small">Each bin uses one detector; about 2.5 MB per exposure.</span>
+        <span class="small">Each bin uses one detector; about 2.5 MB per exposure. Work runs in a background thread.</span>
       </div>
     </div>
 
@@ -115,7 +127,7 @@
   <footer class="small">
     <p><a id="share" href="#">Link to this view</a> · <a href="ornek.html">Precomputed example</a> · <a href="index.html">Home</a></p>
     <p>SPHEREx data: NASA/IPAC Infrared Science Archive (IRSA). Not endorsed by NASA.
-      Names: CDS Sesame / SIMBAD. Field stars: Gaia DR3 via CDS VizieR.</p>
+      Names: CDS Sesame / SIMBAD. Reference stars: Gaia DR3 and Tycho-2 via CDS VizieR.</p>
   </footer>
   <pre id="result" data-state="idle"></pre>
 </main>

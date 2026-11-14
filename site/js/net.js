@@ -8,7 +8,7 @@
 export const S3_BASE = "https://nasa-irsa-spherex.s3.us-east-1.amazonaws.com/";
 export const MAX_PARALLEL = 4;
 const MAX_TRIES = 6;
-const CACHE_LIMIT = 192 * 1024 * 1024;
+let CACHE_LIMIT = 192 * 1024 * 1024;   // lowered on phones (setCacheLimit)
 
 export const stats = { bytes: 0, requests: 0, retries: 0, cacheHits: 0, inFlight: 0, queued: 0 };
 export const events = new EventTarget();   // "status" {detail: {kind, message}}, "progress"
@@ -54,6 +54,8 @@ function cachePut(key, p) {
   }, () => cache.delete(key));
 }
 export function clearCache() { cache.clear(); sizes.clear(); cacheBytes = 0; }
+export function setCacheLimit(bytes) { CACHE_LIMIT = bytes; }
+export function resetStats() { stats.bytes = 0; stats.requests = 0; stats.retries = 0; stats.cacheHits = 0; }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

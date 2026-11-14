@@ -56,19 +56,52 @@ try {
   });
   const send = (method, params = {}) => new Promise((r) => { const k = ++id; pending.set(k, r); ws.send(JSON.stringify({ id: k, method, params })); });
   await send("Runtime.enable");
+  await send("Performance.enable");
+  await send("Page.enable");
+  if (process.env.PHONE) {   // iPhone-sized touch device
+    await send("Emulation.setDeviceMetricsOverride", { width: 375, height: 812, deviceScaleFactor: 3, mobile: true });
+    await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
+  }
+  // main-thread responsiveness probe: longest gap between animation frames, long tasks
+  await send("Page.addScriptToEvaluateOnNewDocument", { source: `
+    window.__perf = { maxGap: 0, ticks: 0, longTasks: 0, longTotal: 0, longMax: 0 };
+    (() => { let last = performance.now();
+      const tick = (t) => { const g = t - last; if (g > window.__perf.maxGap && window.__perf.ticks > 2) window.__perf.maxGap = g;
+        last = t; window.__perf.ticks++; requestAnimationFrame(tick); };
+      requestAnimationFrame(tick);
+      try { new PerformanceObserver((l) => { for (const e of l.getEntries()) { const p = window.__perf; p.longTasks++; p.longTotal += e.duration; p.longMax = Math.max(p.longMax, e.duration); } })
+        .observe({ type: "longtask", buffered: true }); } catch (_) {}
+    })();` });
   const url = `http://127.0.0.1:${httpPort}/sky.html?${query}`;
   console.error("open", url);
   const tStart = Date.now();
   await send("Page.navigate", { url });
-  let state = "", lastLog = 0;
+  let state = "", lastLog = 0, cancelled = false;
   while ((Date.now() - tStart) / 1000 < timeoutS) {
     await sleep(1000);
     const r = await send("Runtime.evaluate", { expression: "JSON.stringify([document.getElementById('result')?.dataset.state, document.getElementById('status')?.textContent, document.getElementById('progress')?.textContent])", returnByValue: true });
     const [st, status, prog] = JSON.parse(r.result.result.value || "[]");
     state = st;
     if (Date.now() - lastLog > 10000) { console.error(`[${((Date.now() - tStart) / 1000).toFixed(0)} s] ${status} | ${prog}`); lastLog = Date.now(); }
+    if (process.env.CANCEL_AT && !cancelled && (Date.now() - tStart) / 1000 >= Number(process.env.CANCEL_AT)) {
+      cancelled = true;
+      const before = await send("Runtime.evaluate", { expression: "document.getElementById('progress').textContent", returnByValue: true });
+      await send("Runtime.evaluate", { expression: "document.getElementById('cancel').click()" });
+      console.error("clicked Cancel at", process.env.CANCEL_AT, "s:", before.result.result.value);
+      await sleep(3000);
+      const after = await send("Runtime.evaluate", { expression: "JSON.stringify([document.getElementById('status').textContent, document.getElementById('progress').textContent, document.getElementById('cancel').hidden])", returnByValue: true });
+      console.error("3 s after Cancel:", after.result.result.value);
+      await sleep(3000);
+      const after2 = await send("Runtime.evaluate", { expression: "document.getElementById('progress').textContent", returnByValue: true });
+      console.error("6 s after Cancel:", after2.result.result.value);
+      break;
+    }
     if (state === "done" || state === "error") break;
   }
+  const perf = await send("Runtime.evaluate", { expression: "JSON.stringify({ ...window.__perf, firstFrameMs: window.__firstFrameMs })", returnByValue: true });
+  const metrics = await send("Performance.getMetrics");
+  const M = Object.fromEntries(metrics.result.metrics.map((m) => [m.name, m.value]));
+  console.error("perf:", perf.result.result.value, `| main-thread JS heap used ${(M.JSHeapUsedSize / 1e6).toFixed(1)} MB of ${(M.JSHeapTotalSize / 1e6).toFixed(1)} MB`);
   if (process.env.SHOT) {   // optional full-page screenshot (PNG) for a visual check
     const { writeFileSync } = await import("node:fs");
     const w = Number(process.env.SHOT_WIDTH || 800);

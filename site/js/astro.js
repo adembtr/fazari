@@ -28,6 +28,7 @@ export function earthPosition(mjd) {
  * t = {ra, dec, epoch (Julian yr), pmra (mas/yr, includes cos dec), pmdec, plx (mas)}. */
 export function propagate(t, mjd, withParallax = true) {
   const dt = mjdToJyear(mjd) - t.epoch;
+  if (t.rv != null && t.plx > 0) return propagate3d(t, mjd, dt, withParallax);
   const cosd = Math.cos(t.dec * D2R);
   let dra = (t.pmra || 0) * dt, ddec = (t.pmdec || 0) * dt;
   if (withParallax && t.plx) {
@@ -37,6 +38,32 @@ export function propagate(t, mjd, withParallax = true) {
     ddec += t.plx * (e[0] * Math.cos(a) * Math.sin(d) + e[1] * Math.sin(a) * Math.sin(d) - e[2] * Math.cos(d));
   }
   return [((t.ra + dra / 3.6e6 / cosd) % 360 + 360) % 360, t.dec + ddec / 3.6e6];
+}
+
+/** Space motion in 3D (straight line, constant velocity: includes the perspective acceleration
+ * that matters for Barnard's Star, ~0.06" in 10 years), then annual parallax. Needs rv (km/s). */
+function propagate3d(t, mjd, dt, withParallax) {
+  const AU_PER_YR = 4.740470446;                 // km/s per AU/yr
+  const a = t.ra * D2R, d = t.dec * D2R;
+  const dist = 1000 / t.plx * 206264.806;        // AU
+  const u = [Math.cos(d) * Math.cos(a), Math.cos(d) * Math.sin(a), Math.sin(d)];
+  const ea = [-Math.sin(a), Math.cos(a), 0];
+  const ed = [-Math.sin(d) * Math.cos(a), -Math.sin(d) * Math.sin(a), Math.cos(d)];
+  const mas2rad = D2R / 3.6e6;
+  const v = [0, 1, 2].map((k) => dist * (t.pmra * mas2rad * ea[k] + t.pmdec * mas2rad * ed[k]) + t.rv / AU_PER_YR * u[k]);
+  const r = [0, 1, 2].map((k) => dist * u[k] + v[k] * dt);
+  const rn = Math.hypot(...r);
+  let ra = Math.atan2(r[1], r[0]) / D2R, dec = Math.asin(r[2] / rn) / D2R;
+  ra = (ra % 360 + 360) % 360;
+  if (withParallax) {
+    const plx = 206264.806e3 / rn;               // mas at that time
+    const e = earthPosition(mjd);
+    const ar = ra * D2R, dr = dec * D2R;
+    const dra = plx * (e[0] * Math.sin(ar) - e[1] * Math.cos(ar));
+    const ddec = plx * (e[0] * Math.cos(ar) * Math.sin(dr) + e[1] * Math.sin(ar) * Math.sin(dr) - e[2] * Math.cos(dr));
+    ra = (ra + dra / 3.6e6 / Math.cos(dr) + 360) % 360; dec += ddec / 3.6e6;
+  }
+  return [ra, dec];
 }
 
 /** Small-angle offset from 1 to 2: [east, north, total] arcsec and PA (deg E of N). */
@@ -152,5 +179,5 @@ export function gaussCentroid(img, w, h, ok, x0, y0, sigma0, half = 5) {
   }
   const atBound = [1, 2].some((a) => Math.abs(p[a] - lo[a]) < 1e-6 || Math.abs(p[a] - hi[a]) < 1e-6);
   if (atBound || !Number.isFinite(p[1]) || !Number.isFinite(p[2])) return null;
-  return { x: p[1], y: p[2], sigma: p[3], npix: n, chi2: cost / Math.max(n - 5, 1) };
+  return { x: p[1], y: p[2], amp: p[0], sigma: p[3], bg: p[4], npix: n, chi2: cost / Math.max(n - 5, 1) };
 }
