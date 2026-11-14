@@ -4,10 +4,11 @@
 
 Exactly the content of [`site/data/verify/tests.json`](../site/data/verify/tests.json) (generated 2026-11-14T14:42:32Z).
 Thresholds were frozen at TEST-READY v1 16:58, before the round; the candidate finder core of this round is
-committed in 257a7c3. Result: 6 pass, 4 fail (V4, V6, V7, V11), 1 limit (V8). The failures are reported as they
+committed in 257a7c3. Result: 7 pass, 3 fail (V4, V6, V11), 1 limit (V8). The failures are reported as they
 came out. V9 and V11 were one test in the first version of the file (movers and brightness changes); they were
 split at 18:10 so that a found/not-found mix is not marked as a pass, and V3 now compares the parallax with its
-reference. No result was re-measured. "Blind" means the finder was not told where the target is.
+reference. No result was re-measured. At 21:58 V7 was re-run with the finder's own v1 decision rule (`DA.null_movers`, commit 522d3ab): 0 fake
+movers, so V7 changed from fail to pass; its v0-rule numbers stay in `tests.json`. "Blind" means the finder was not told where the target is.
 
 | Test | Result | Status | Evidence |
 |---|---|---|---|
@@ -17,7 +18,7 @@ reference. No result was re-measured. "Blind" means the finder was not told wher
 | V4 WISE 0855-0714 (coldest known brown dwarf) | Found blind as candidate (A): 8.429 ± 0.377"/yr at PA 284.2°, reference 8.152"/yr at 274.7° (0.7 sigma in speed, 3.8 sigma in direction); the direction is off by more than 3 sigma. | **fail** | [`blind.csv`](../site/data/verify/evidence/blind.csv) |
 | V5 False motion in null fields (field stars) | In 6 fields with no known mover the finder reported 0 moving candidates; 3 brightness-change candidates were reported there. | pass | [`blind.csv`](../site/data/verify/evidence/blind.csv) |
 | V6 Injection recovery (fake movers added to real images) | 473/868 injected movers and 158/287 brightness changes recovered; best bin 89/91 = 97.8 % (Epsilon Indi B, at least 0.3"/yr, AB 12-14), below the 99 % target; 88 false candidates in 20 runs. | **fail** | [`injection.csv`](../site/data/verify/evidence/injection.csv) |
-| V7 Date-shuffle null test | With exposure dates shuffled 100 times in each of 12 fields, 15 fake movers appeared in 1200 field-shuffles (v0: 26); with the real dates 0 movers appeared. The test still applies the v0 decision rule. | **fail** | [`shuffle.csv`](../site/data/verify/evidence/shuffle.csv) |
+| V7 Date-shuffle null test | With exposure dates shuffled 100 times in each of 12 fields, 0 fake movers appeared in 1200 field-shuffles with the finder's own v1 decision rule (DA.null_movers); with the earlier v0 rule there were 15 (v1 core) and 26 (v0 core). With the real dates the only mover is Luhman 16 in its own field, a known mover; it stays a mover in all 4 season permutations of that field (66 season permutations in all, no other mover). | pass | [`shuffle.csv`](../site/data/verify/evidence/shuffle.csv) |
 | V8 Known asteroids | In 24 fields: 47/53 known asteroids to V 17, 101/132 to V 18, 205/451 to V 19 found; median offset 0.111 px; 96 false detections in total; 47 tracklets linked, 1 wrong. | limit | [`asteroids.csv`](../site/data/verify/evidence/asteroids.csv) |
 | V9 Blind recovery of all known movers | 4 of 4 known movers were found without being told where they are. | pass | [`blind.csv`](../site/data/verify/evidence/blind.csv) |
 | V10 Saturated core / edge method (Barnard's Star from wrong starting tracks) | Started from the Gaia track and from 4 wrong tracks up to 1.039"/yr off, the measurement always returned 10.2963-10.3267"/yr, 1.1-1.5 sigma from Gaia's 10.3933"/yr; every wrong start ended within 0.0413"/yr of the true-start result. | pass | [`saturated.csv`](../site/data/verify/evidence/saturated.csv) |

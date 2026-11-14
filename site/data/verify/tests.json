@@ -195,25 +195,35 @@
     "tr": "Tarih karıştırma testi"
    },
    "result": {
-    "en": "With exposure dates shuffled 100 times in each of 12 fields, 15 fake movers appeared in 1200 field-shuffles (v0: 26); with the real dates 0 movers appeared. The test still applies the v0 decision rule.",
-    "tr": "Poz tarihleri 12 alanın her birinde 100 kez karıştırıldı: 1200 denemede 15 sahte hareketli cisim çıktı (v0: 26); gerçek tarihlerle 0. Test hâlâ v0 karar kuralını kullanıyor."
+    "en": "With exposure dates shuffled 100 times in each of 12 fields, 0 fake movers appeared in 1200 field-shuffles with the finder's own v1 decision rule (DA.null_movers); with the earlier v0 rule there were 15 (v1 core) and 26 (v0 core). With the real dates the only mover is Luhman 16 in its own field, a known mover; it stays a mover in all 4 season permutations of that field (66 season permutations in all, no other mover).",
+    "tr": "Poz tarihleri 12 alanın her birinde 100 kez karıştırıldı: bulucunun kendi v1 karar kuralıyla (DA.null_movers) 1200 denemede 0 sahte hareketli cisim çıktı; önceki v0 kuralıyla 15 (v1 çekirdek) ve 26 (v0 çekirdek) idi. Gerçek tarihlerle tek hareketli cisim kendi alanındaki Luhman 16 (bilinen hareketli cisim); o alanın 4 sezon permütasyonunun hepsinde de hareketli kalıyor (toplam 66 sezon permütasyonu, başka hareketli cisim yok)."
    },
    "numbers": {
     "fields": 12,
     "shuffles_per_field": 100,
     "field_shuffles": 1200,
-    "fake_movers": 15,
-    "fake_per_field_shuffle": 0.0125,
-    "real_label_movers": 0,
+    "fake_movers": 0,
+    "fake_per_field_shuffle": 0.0,
+    "real_label_movers": 1,
+    "real_label_movers_note": "Luhman 16 (known mover) in its own field",
+    "season_permutations": 66,
+    "season_permutation_movers": 4,
+    "season_permutation_movers_note": "all 4 are Luhman 16 in its own field",
     "v0_fake_movers": 26,
+    "v1_core_v0_rule_fake_movers": 15,
     "criterion_fake_movers": 0,
-    "decision_rule": "v0 (tests/shuffle.py not switched to DA.null_movers)"
+    "decision_rule": "v1 (DA.null_movers; tests/shuffle.py at 522d3ab, core v1 257a7c3)"
    },
-   "status": "fail",
+   "status": "pass",
    "evidence": "data/verify/evidence/shuffle.csv",
    "v0": {
     "fake_movers": 26,
     "fake_per_field_shuffle": 0.0217
+   },
+   "v1_core_v0_rule": {
+    "fake_movers": 15,
+    "fake_per_field_shuffle": 0.0125,
+    "real_label_movers": 0
    }
   },
   {
@@ -332,5 +342,5 @@
    "v0": null
   }
  ],
- "edited": "2026-11-14 18:10: V9 split into movers (V9) and brightness changes (V11); V3 parallax compared with Lazorenko & Sahlmann 2018. No result was re-measured."
+ "edited": "2026-11-14 18:10: V9 split into movers (V9) and brightness changes (V11); V3 parallax compared with Lazorenko & Sahlmann 2018. No result was re-measured. 2026-11-14 21:58: V7 re-run with the finder's own v1 decision rule (tests/shuffle.py uses DA.null_movers, 522d3ab): 0 fake movers in 1200 field-shuffles, status fail -> pass; the v0-rule numbers are kept (v0, v1_core_v0_rule)."
 }

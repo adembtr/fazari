@@ -15,6 +15,20 @@ Details: [Use of AI](#use-of-ai).
 Gaia DR3 prediction, the blink frame with the motion arrow, and the NASA Exoplanet Archive note for its known
 planets.*
 
+![Fazari sky explorer: a typed coordinate, the object categories and the card that fetches the SPHEREx images there](docs/img/explorer_coordinates.webp)
+
+*The sky explorer (`site/explore.html`, Turkish interface): a typed coordinate, the object categories on the left and
+the card that fetches the SPHEREx images of that point.*
+
+![Difference image (last season minus first) and the measurement details table against Gaia DR3](docs/img/viewer_difference_details.webp)
+
+*Viewer, detailed view: the difference image (last season minus first) and the measurement details per season
+against Gaia DR3, with 1σ errors.*
+
+<img src="docs/img/sky_phone.webp" alt="Blink for any point on a phone: season frame and difference image" width="300">
+
+*`site/sky.html` on a phone (English): season frame and difference image for a clicked point.*
+
 Fazari shows images of the same patch of sky, taken by NASA's SPHEREx infrared observatory in different observing seasons, as a "blink" animation. Switching between the seasons makes moving objects (nearby brown dwarfs, high proper-motion stars) and changing sources easy to spot by eye. For each season the viewer marks where the target should be according to its Gaia DR3 position, proper motion and parallax, so real motion can be told apart from noise.
 
 Challenge: [Planet X and SPHEREx](https://www.spaceappschallenge.org/2026/challenges/planet-x-and-spherex/) — NASA Space Apps Challenge 2026.
@@ -31,10 +45,10 @@ Live site: https://adembtr.github.io/fazari/ (published from `main`; the newest 
   on the static site, the local Python engine does more when it runs on the same computer (see
   [What runs where](#what-runs-where)). Field-of-view selector, FLAGS layer, English/Turkish on every page.
 - **Candidate finder v1 and known-asteroid recovery:** done, with a test round. Of 11 numbered verification tests
-  6 pass, 4 fail (V4, V6, V7, V11) and 1 reaches a limit (V8); see the summary at the top of
+  7 pass, 3 fail (V4, V6, V11) and 1 reaches a limit (V8); see the summary at the top of
   [`pipeline/ACCURACY.md`](pipeline/ACCURACY.md).
-- **Open:** in the injection test the best bin recovers 97.8 % of the fake movers, below the 99 % target (V6); the
-  date-shuffle test gives 15 fake movers in 1200 shuffles (V7); in the blind run the direction of WISE 0855-0714 is 3.8σ off (V4). Every result is a
+- **Open:** in the injection test the best bin recovers 97.8 % of the fake movers, below the 99 % target (V6); in the
+  blind run the direction of WISE 0855-0714 is 3.8σ off (V4). Every result is a
   candidate until checked.
 
 ## Challenge request → In Fazari
@@ -68,7 +82,9 @@ Beyond the list:
 | Quick decision: a preliminary "is it moving?" answer before the full result | `local/quick.py` (local engine) | Done |
 | NASA Exoplanet Archive link for stars with known planets | Explorer and viewer cards; `site/data/exoplanet_hosts.json` | Done |
 | English / Turkish on every page | `site/i18n/en.json`, `site/i18n/tr.json`, `site/js/i18n.js` | Done |
-| Numbered verification data (V1–V11) | [`site/data/verify/tests.json`](site/data/verify/tests.json), evidence in `site/data/verify/evidence/`; summary in [`pipeline/ACCURACY.md`](pipeline/ACCURACY.md) | Done (6 pass, 4 fail, 1 limit) |
+| Comets in SPHEREx: three comets (3I/ATLAS, C/2025 R2 (SWAN), C/2025 A6 (Lemmon)) and Pluto as a labelled bonus, selected over all public SPHEREx images with JPL SBDB and Horizons, then measured in the SPHEREx pixels (position, motion, coma, brightness per wavelength); known objects, not discoveries | `site/comets.html`, `site/data/comets/`, [`pipeline/COMETS.md`](pipeline/COMETS.md) | Done |
+| Fast-star sweep: proper motions of Gaia DR3 fast stars measured in SPHEREx with one pre-registered procedure and compared with Gaia DR3 | [`pipeline/FAST_SWEEP.md`](pipeline/FAST_SWEEP.md), `site/data/fast_sweep/summary.json` | Interim: 14 of 90 pre-registered stars measured, 0 failed; median difference 6.07 % (0.224″/yr), 14/14 within 3σ, 13/14 within 2σ |
+| Numbered verification data (V1–V11) | [`site/data/verify/tests.json`](site/data/verify/tests.json), evidence in `site/data/verify/evidence/`; summary in [`pipeline/ACCURACY.md`](pipeline/ACCURACY.md) | Done (7 pass, 3 fail, 1 limit) |
 
 ## What runs where
 
@@ -112,9 +128,12 @@ otherwise it uses the browser engine. It adds:
 - `site/ornek.html` — viewer page (blink, wavelength choice, zoom, Gaia marker, difference image, measured motion).
 - `site/explore.html` (+ `site/explore/`) — sky explorer; `site/sky.html` — blink for any point (browser engine, `site/js/`).
 - `site/asteroids.html` — known-asteroid recovery results; `site/verify.html` — evidence page.
+- `site/vr.html` — look around the sky (not yet linked from the site); its sky picture `site/data/vr/` (`sky_2k.jpg`, `sky_4k.jpg`, `sky.json`) is made by `pipeline/vr_sky.py` from the SPHEREx DR1 all-sky HiPS at IRSA.
+- `site/comets.html` (+ `site/comets.js`) — comets in SPHEREx (three comets and Pluto), data in `site/data/comets/`; method and results in `pipeline/COMETS.md`.
+- `pipeline/FAST_SWEEP.md` — fast-star sweep (SPHEREx vs Gaia DR3 proper motions, pre-registered rule); output in `site/data/fast_sweep/` (interim, 14 stars).
 - `pipeline/detect/` — candidate finder (see `pipeline/DETECTION.md`); `pipeline/finds.py` — finds list of the local engine.
 - `site/data/verify/tests.json` — numbered verification tests V1–V11, evidence in `site/data/verify/evidence/`.
-- `docs/img/` — screenshot used in this README.
+- `docs/img/` — screenshots used in this README.
 - `site/data/<target>/` — pipeline output: `frames/*.png`, `blink_*um.gif`, `diff_*um.png`, `images.csv` (per-exposure diagnostics), `meta.json` (read by the viewer). `gaia_field.json` — cached Gaia DR3 field stars (motion targets).
 
 ## Reproduce
@@ -145,6 +164,14 @@ Requires Python 3 and [uv](https://docs.astral.sh/uv/).
    ```
 
    then open http://127.0.0.1:8765/ornek.html
+
+4. Refresh the sky index (from the `fazari/` folder):
+
+   ```
+   uv run --no-project --with numpy --with healpy python -I pipeline/sky_index.py build
+   ```
+
+   (resumable; runs `fetch` first if the cache is incomplete), then republish `site/index/`.
 
 ## Method
 
@@ -217,14 +244,16 @@ Requires Python 3 and [uv](https://docs.astral.sh/uv/).
 | Barnard's Star | 10.361 ± 0.051 | 355.4° ± 0.3° | 10.393 at 355.6° | Gaia DR3 | V1 pass | 10.207″ ± 0.06″ (2025-08 → 2026-08) | 0.982 yr |
 | Epsilon Indi B | 4.678 ± 0.02 | 121.6° ± 0.2° | 4.684 at 121.8° | Gaia DR3 | V2 pass | 4.535″ ± 0.029″ (2025-10 → 2026-09) | 0.9647 yr |
 | WISE 0855-0714 | 8.429 ± 0.377 | 284.2° ± 2.5° | 8.152 at 274.7° | Kirkpatrick et al. 2021, ApJS 253, 7 (total proper motion) | V4 **fail** (direction 3.8σ off) | 8.419″ ± 0.558″ (2025-05 → 2026-05) | 0.9855 yr |
-| Luhman 16AB | 2.678 ± 0.059 | 274.3° ± 1.5° | 2.79 at 277.4° | SIMBAD (no Gaia DR3 proper motion) | V3 pass | 2.75″ ± 0.058″ (2025-06 → 2026-06) | 0.9945 yr |
+| Luhman 16AB | 2.678 ± 0.059 | 274.3° ± 1.5° | 2.79 at 277.4° | SIMBAD via CDS Sesame, retrieved 2026-11-14 (no Gaia DR3 proper motion) | V3 pass | 2.75″ ± 0.058″ (2025-06 → 2026-06) | 0.9945 yr |
 
 Sources:
 
 - Speed, direction, catalogue speed and test status: [`site/data/verify/tests.json`](site/data/verify/tests.json)
   V1–V4. The candidate finder measured them blind, without being told where the target is.
-- Catalogue source: `gaia.label` in `site/data/<target>/meta.json`; for Luhman 16AB, `reference` in
-  [`site/data/accuracy.json`](site/data/accuracy.json).
+- Catalogue source: `gaia.label` in `site/data/<target>/meta.json`; for Luhman 16AB, the speed reference 2.79″/yr comes from
+  `gaia.reference` in the local-engine job's `meta.json` (`cache/jobs/luhman16-162.295s53.317-c6-b63-pm8778/`):
+  "SIMBAD via CDS Sesame (NAME Luhman 16, type **), retrieved 2026-11-14" (μα* −2767.502, μδ +356.856 mas/yr,
+  epoch 2000, parallax 0); `pipeline/accuracy.py` copies it to `reference` in [`site/data/accuracy.json`](site/data/accuracy.json).
 - Shift and time span: the headline pair in `site/data/<target>/meta.json` (`measured.shift_arcsec`,
   `shift_err_arcsec`, `dt_years`); for Luhman 16AB, `shift` in `site/data/accuracy.json` (a local-engine job
   of 104 cutouts; Luhman 16AB has no `site/data/` folder).
@@ -346,6 +375,7 @@ the first season.
 
 - [SPHEREx DR1 spectral images](https://doi.org/10.26131/IRSA678) — NASA/IPAC Infrared Science Archive (IRSA), DOI: 10.26131/IRSA678
 - [SPHEREx QR3 spectral images](https://doi.org/10.26131/IRSA662) — NASA/IPAC IRSA, DOI: 10.26131/IRSA662
+- Sky picture of `site/vr.html` (made by `pipeline/vr_sky.py`, `site/data/vr/`): SPHEREx DR1 all-sky HiPS: NASA/SPHEREx, Caltech/IPAC (NASA/IPAC Infrared Science Archive). False colour from 9 of the 102 wavelength frames: blue 1.05-1.14 um, green 2.0-2.19 um, red 3.29-3.67 um. Source: https://irsa.ipac.caltech.edu/data/hips/SPHEREx/spherex_allsky_cube
 - [Gaia DR3](https://www.cosmos.esa.int/web/gaia/dr3) — European Space Agency (ESA), a Space Apps partner agency. Positions, proper motions and parallaxes of the targets are Gaia DR3 values (except WISE 0855-0714).
 
 This publication makes use of data products from the Spectro-Photometer for the History of the Universe, Epoch of Reionization and Ices Explorer (SPHEREx), which is a joint project of the Jet Propulsion Laboratory and the California Institute of Technology, and is funded by the National Aeronautics and Space Administration.
