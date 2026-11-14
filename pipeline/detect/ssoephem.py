@@ -102,22 +102,26 @@ def cone(mjd, ra, dec, radius_deg, offline=False):
     path = CACHE / f"{key}.json"
     if path.exists():
         try:
-            return json.loads(path.read_text())["objects"]
+            c = json.loads(path.read_text())
+            # an empty answer of a few bytes is a SkyBoT error message cached by an older version: ask again
+            if c["objects"] or (c.get("raw_bytes") or 0) > 1000 or c.get("note") == "empty":
+                return c["objects"]
         except (ValueError, KeyError):
             pass
     if offline:
         return None
     raw = _get(SKYBOT + "?" + urllib.parse.urlencode(q))
     objs, source = None, "skybot"
-    if raw is not None:
-        txt = raw.decode("utf-8", "replace").lstrip()
-        try:
-            data = json.loads(txt) if txt[:1] in "[{" else []
-        except ValueError:
-            data = None
-        if isinstance(data, dict):
-            data = data.get("data") or []
-        if isinstance(data, list):
+    note = None
+    data = _parse(raw)
+    if data is None and q["-objFilter"] == "111":
+        # SkyBoT fails when a planet's satellites are in the cone (seen with Saturn): retry asteroids + comets
+        q2 = dict(q, **{"-objFilter": "101"})
+        raw = _get(SKYBOT + "?" + urllib.parse.urlencode(q2))
+        data = _parse(raw)
+        note = "planets and satellites excluded (SkyBoT satellite ephemeris error)"
+    if data is not None:
+        if True:
             objs = []
             for o in data:
                 try:
@@ -138,8 +142,30 @@ def cone(mjd, ra, dec, radius_deg, offline=False):
         return None
     CACHE.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps({"query": q, "source": source, "raw_bytes": len(raw) if raw is not None else None,
+                                "note": note or ("empty" if not objs else None),
                                 "retrieved": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "objects": objs}))
     return objs
+
+
+def _parse(raw):
+    """SkyBoT JSON answer -> list of rows, [] for 'no object', None for an error answer."""
+    if raw is None:
+        return None
+    txt = raw.decode("utf-8", "replace").lstrip()
+    if txt[:1] not in "[{":
+        return None
+    try:
+        data = json.loads(txt)
+    except ValueError:
+        return None
+    if isinstance(data, dict):
+        if data.get("data"):
+            return data["data"]
+        msg = str(data.get("message", ""))
+        if data.get("flag") == 0 or "no solar system object" in msg.lower():
+            return []
+        return None
+    return data if isinstance(data, list) else None
 
 
 def sbident(mjd, ra, dec, radius_deg):

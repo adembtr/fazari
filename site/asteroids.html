@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fazari - Known asteroids in SPHEREx</title>
+<meta name="color-scheme" content="dark">
+<style>
+  :root { --bg:#0b0d12; --fg:#e8eaf0; --mut:#9aa3b2; --acc:#ffb347; --card:#151925; --line:#2a3246;
+          --eph:#ffb347; --det:#5dd3ff; color-scheme:dark; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color:var(--acc); }
+  .app { max-width:1180px; margin:0 auto; padding:12px 16px 32px; }
+  .top { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 12px; margin:0 0 10px; }
+  .brand { color:var(--mut); text-decoration:none; font-weight:700; font-size:.9rem; }
+  .brand::after { content:"/"; margin-left:10px; color:#4a5368; font-weight:400; }
+  h1 { font-size:1.35rem; margin:0; }
+  h2 { font-size:1.05rem; margin:18px 0 8px; }
+  small, .mut { color:var(--mut); }
+  .grid { display:grid; grid-template-columns:minmax(0, 1fr) 330px; gap:16px; align-items:start; }
+  @media (max-width: 900px) { .grid { grid-template-columns:1fr; } }
+  .stage { position:relative; background:#000; border-radius:10px; overflow:hidden; aspect-ratio:1; max-height:640px; }
+  .stage img, .stage svg { position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; }
+  .hud { position:absolute; left:8px; top:8px; background:rgba(5,7,13,.8); border-radius:6px; padding:4px 9px; font-size:.9rem;
+         font-variant-numeric:tabular-nums; }
+  .legend { position:absolute; right:8px; bottom:8px; background:rgba(5,7,13,.75); border-radius:6px; padding:3px 9px; font-size:.8rem; }
+  .legend span { margin-left:10px; white-space:nowrap; }
+  .lg-e { display:inline-block; width:12px; height:12px; border:2px solid var(--eph); border-radius:50%; vertical-align:-2px; }
+  .lg-d { color:var(--det); font-weight:700; }
+  .controls { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 0; align-items:center; }
+  button, select { font:inherit; background:#222838; color:var(--fg); border:1px solid #333b50; border-radius:7px; padding:4px 11px; cursor:pointer; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .stat { display:flex; justify-content:space-between; gap:10px; padding:3px 0; border-bottom:1px solid #20263a; }
+  .stat:last-child { border-bottom:0; }
+  .stat b { font-variant-numeric:tabular-nums; }
+  table { border-collapse:collapse; width:100%; font-size:.85rem; font-variant-numeric:tabular-nums; }
+  th, td { border-bottom:1px solid #20263a; padding:4px 6px; text-align:right; white-space:nowrap; }
+  th:first-child, td:first-child, th.l, td.l { text-align:left; }
+  .wrap { overflow-x:auto; }
+  .note { font-size:.85rem; color:var(--mut); margin:6px 0 0; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <a class="brand" href="explore.html">Fazari</a>
+    <h1>Known asteroids recovered in single SPHEREx exposures</h1>
+    <small id="gen"></small>
+  </header>
+  <p class="mut" style="margin:0 0 10px">Blind detection in single exposures (target minus a median of the same sky on
+    other dates), then a match to the IMCCE SkyBoT ephemeris moved to the SPHEREx position. These are recovered
+    <em>known</em> objects, not discoveries. Method and limits: <code>pipeline/ASTEROIDS.md</code>.</p>
+  <div class="grid">
+    <div>
+      <div class="stage" id="stage">
+        <img id="frame" alt="SPHEREx frame">
+        <svg id="ov" aria-hidden="true"></svg>
+        <div class="hud" id="hud"></div>
+        <div class="legend"><span><i class="lg-e"></i> ephemeris</span><span><b class="lg-d">+</b> blind detection</span></div>
+      </div>
+      <div class="controls">
+        <button id="play" type="button">Pause</button>
+        <button id="prev" type="button">&larr;</button>
+        <button id="next" type="button">&rarr;</button>
+        <label class="mut">speed <select id="speed"><option value="900">slow</option><option value="500" selected>normal</option><option value="250">fast</option></select></label>
+        <label class="mut"><input type="checkbox" id="marks" checked> markers</label>
+        <select id="pick" aria-label="Example asteroid"></select>
+      </div>
+      <p class="note" id="cap"></p>
+    </div>
+    <div class="card" id="stats"></div>
+  </div>
+  <h2>Fields</h2>
+  <div class="wrap"><table id="fields"></table></div>
+  <h2>Missed known objects (V &lt; 19)</h2>
+  <div class="wrap"><table id="missed"></table></div>
+</div>
+<script type="module" src="asteroids.js"></script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+{
+ "name": "1998 GN7",
+ "number": "11705",
+ "V": 16.7,
+ "H": 12.25,
+ "field": "F02",
+ "visit": "2025W22_1B_0187",
+ "detector": 3,
+ "grid": {
+  "size_px": 64,
+  "pixel_arcsec": 3.0,
+  "upscale": 3,
+  "ra": 336.57504261428573,
+  "dec": -8.938336842857144,
+  "north_up": true,
+  "east_left": true
+ },
+ "rate_ephem": {
+  "ra_cosd": 49.629,
+  "dec": 6.254,
+  "speed": 50.021,
+  "pa": 82.82
+ },
+ "rate_measured": {
+  "ra_cosd": 49.61,
+  "dec": 5.982,
+  "speed": 49.969,
+  "pa": 83.12
+ },
+ "frames": [
+  {
+   "file": "frame_00.png",
+   "kind": "reference",
+   "label": "reference: median of 3 other dates",
+   "mjd": null
+  },
+  {
+   "file": "frame_01.png",
+   "kind": "visit2",
+   "label": "visit 2 (-1.7 h), exposure 1",
+   "mjd": 60821.996892,
+   "utc": "2025-05-26 23:55:31",
+   "detected_xy": [
+    145.5,
+    100.9
+   ],
+   "lam_um": null,
+   "snr": 12.5,
+   "ephemeris_xy": [
+    145.2,
+    101.3
+   ]
+  },
+  {
+   "file": "frame_02.png",
+   "kind": "visit2",
+   "label": "visit 2 (-1.7 h), exposure 2",
+   "mjd": 60821.998384,
+   "utc": "2025-05-26 23:57:40",
+   "detected_xy": [
+    143.8,
+    102.1
+   ],
+   "lam_um": null,
+   "snr": 10.3,
+   "ephemeris_xy": [
+    143.3,
+    101.8
+   ]
+  },
+  {
+   "file": "frame_03.png",
+   "kind": "visit2",
+   "label": "visit 2 (-1.7 h), exposure 3",
+   "mjd": 60821.999876,
+   "utc": "2025-05-26 23:59:49",
+   "detected_xy": [
+    141.0,
+    102.6
+   ],
+   "lam_um": null,
+   "snr": 14.0,
+   "ephemeris_xy": [
+    141.5,
+    102.2
+   ]
+  },
+  {
+   "file": "frame_04.png",
+   "kind": "visit1",
+   "label": "visit 1, exposure 1",
+   "mjd": 60822.066015,
+   "utc": "2025-05-27 01:35:03",
+   "detected_xy": [
+    63.2,
+    91.0
+   ],
+   "lam_um": 1.7243,
+   "snr": 18.2,
+   "ephemeris_xy": [
+    62.9,
+    91.0
+   ]
+  },
+  {
+   "file": "frame_05.png",
+   "kind": "visit1",
+   "label": "visit 1, exposure 2",
+   "mjd": 60822.067507,
+   "utc": "2025-05-27 01:37:12",
+   "detected_xy": [
+    61.3,
+    91.4
+   ],
+   "lam_um": 1.7641,
+   "snr": 13.2,
+   "ephemeris_xy": [
+    61.0,
+    91.4
+   ]
+  },
+  {
+   "file": "frame_06.png",
+   "kind": "visit1",
+   "label": "visit 1, exposure 3",
+   "mjd": 60822.069017,
+   "utc": "2025-05-27 01:39:23",
+   "detected_xy": [
+    59.3,
+    92.0
+   ],
+   "lam_um": 1.8051,
+   "snr": 19.9,
+   "ephemeris_xy": [
+    59.1,
+    91.8
+   ]
+  },
+  {
+   "file": "frame_07.png",
+   "kind": "visit1",
+   "label": "visit 1, exposure 4",
+   "mjd": 60822.070509,
+   "utc": "2025-05-27 01:41:31",
+   "detected_xy": [
+    57.9,
+    92.0
+   ],
+   "lam_um": 1.8475,
+   "snr": 15.0,
+   "ephemeris_xy": [
+    57.3,
+    92.1
+   ]
+  }
+ ]
+}

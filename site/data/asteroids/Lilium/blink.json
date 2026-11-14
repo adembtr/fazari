@@ -1,0 +1,157 @@
+{
+ "name": "Lilium",
+ "number": "1092",
+ "V": 16.3,
+ "H": 11.01,
+ "field": "F02",
+ "visit": "2025W22_1B_0187",
+ "detector": 3,
+ "grid": {
+  "size_px": 51,
+  "pixel_arcsec": 3.0,
+  "upscale": 3,
+  "ra": 338.2833216857143,
+  "dec": -8.278093642857142,
+  "north_up": true,
+  "east_left": true
+ },
+ "rate_ephem": {
+  "ra_cosd": 30.066,
+  "dec": 15.907,
+  "speed": 34.015,
+  "pa": 62.12
+ },
+ "rate_measured": {
+  "ra_cosd": 29.934,
+  "dec": 15.638,
+  "speed": 33.772,
+  "pa": 62.42
+ },
+ "frames": [
+  {
+   "file": "frame_00.png",
+   "kind": "reference",
+   "label": "reference: median of 3 other dates",
+   "mjd": null
+  },
+  {
+   "file": "frame_01.png",
+   "kind": "visit2",
+   "label": "visit 2 (-1.7 h), exposure 1",
+   "mjd": 60821.996892,
+   "utc": "2025-05-26 23:55:31",
+   "detected_xy": [
+    107.1,
+    91.2
+   ],
+   "lam_um": null,
+   "snr": 17.5,
+   "ephemeris_xy": [
+    106.6,
+    91.8
+   ]
+  },
+  {
+   "file": "frame_02.png",
+   "kind": "visit2",
+   "label": "visit 2 (-1.7 h), exposure 2",
+   "mjd": 60821.998384,
+   "utc": "2025-05-26 23:57:40",
+   "detected_xy": [
+    104.7,
+    91.7
+   ],
+   "lam_um": null,
+   "snr": 19.3,
+   "ephemeris_xy": [
+    105.5,
+    91.7
+   ]
+  },
+  {
+   "file": "frame_03.png",
+   "kind": "visit2",
+   "label": "visit 2 (-1.7 h), exposure 3",
+   "mjd": 60821.999876,
+   "utc": "2025-05-26 23:59:49",
+   "detected_xy": [
+    104.3,
+    91.4
+   ],
+   "lam_um": null,
+   "snr": 16.4,
+   "ephemeris_xy": [
+    104.3,
+    91.7
+   ]
+  },
+  {
+   "file": "frame_04.png",
+   "kind": "visit1",
+   "label": "visit 1, exposure 1",
+   "mjd": 60822.066015,
+   "utc": "2025-05-27 01:35:03",
+   "detected_xy": [
+    56.7,
+    65.4
+   ],
+   "lam_um": 1.7034,
+   "snr": 25.5,
+   "ephemeris_xy": [
+    56.7,
+    65.4
+   ]
+  },
+  {
+   "file": "frame_05.png",
+   "kind": "visit1",
+   "label": "visit 1, exposure 2",
+   "mjd": 60822.067507,
+   "utc": "2025-05-27 01:37:12",
+   "detected_xy": [
+    55.3,
+    65.3
+   ],
+   "lam_um": 1.7432,
+   "snr": 24.2,
+   "ephemeris_xy": [
+    55.6,
+    65.3
+   ]
+  },
+  {
+   "file": "frame_06.png",
+   "kind": "visit1",
+   "label": "visit 1, exposure 3",
+   "mjd": 60822.069017,
+   "utc": "2025-05-27 01:39:23",
+   "detected_xy": [
+    53.9,
+    65.1
+   ],
+   "lam_um": 1.7831,
+   "snr": 21.4,
+   "ephemeris_xy": [
+    54.4,
+    65.2
+   ]
+  },
+  {
+   "file": "frame_07.png",
+   "kind": "visit1",
+   "label": "visit 1, exposure 4",
+   "mjd": 60822.070509,
+   "utc": "2025-05-27 01:41:31",
+   "detected_xy": [
+    53.5,
+    65.3
+   ],
+   "lam_um": 1.8255,
+   "snr": 22.9,
+   "ephemeris_xy": [
+    53.3,
+    65.1
+   ]
+  }
+ ]
+}

@@ -78,6 +78,8 @@ MATCH_PX = 2.0
 FIT_R = 3                           # EPSF fit stamp half-size (7 x 7)
 TRACK_DAYS = 1.0
 STATIC_MAX = 1.0                    # reference flux / excess above this = residual of a static source
+STATIC_MIN = -0.5                   # below this the excess comes from a hole in the reference
+FLUX_V_MAX = 3.0                    # a match whose AB magnitude is this much brighter than the object's V is not it
 CHI2_MAX = 3.0                      # EPSF fit reduced chi2 above this = not a point source ...
 CHI2_SNR = 25.0                     # ... times (1 + (S/N / CHI2_SNR)^2): the EPSF is not perfect for bright sources
 Z_STACK = 5.0                       # visit-stack detection threshold
@@ -267,7 +269,7 @@ def stack_detect(bs, exps):
                 rk, dk = exps[k].pix2world(Xk, Yk)
                 det["subs"].append(dict(k=k, x=Xk, y=Yk, ra=float(rk[0]), dec=float(dk[0]), snr=fk["snr"],
                                         flux=fk["flux"], eflux=fk["eflux"], ex=fk["ex"], ey=fk["ey"], chi2r=fk["chi2r"]))
-        why = residual_reason(sr, f["chi2r"], CHI2_MAX_STACK * (1 + (f["snr"] / CHI2_SNR) ** 2))
+        why = residual_reason(sr, f["chi2r"], CHI2_MAX_STACK * (1 + (snr_raw(f) / CHI2_SNR) ** 2))
         if not why and len(fl) >= 2:
             fv = np.array([q[0] for q in fl])
             ev = np.array([q[1] for q in fl])
@@ -491,7 +493,7 @@ def detect_box(tgt, refs, xc, yc, half=BOX // 2):
     ys, xs = np.nonzero((a == mx) & (a >= Z_DET))
     for x, y in zip(xs, ys):
         f = fit_psf(D, var * zs * zs, psf, float(x), float(y))
-        if f is None or f["at_bound"] or f["flux"] <= 0 or f["snr"] < 0.8 * Z_DET:
+        if f is None or f["at_bound"] or f["flux"] <= 0 or snr_raw(f) < 0.8 * Z_DET:
             continue
         sr = static_ratio(R, D, x, y)
         X, Y = origin[0] + f["x"], origin[1] + f["y"]
@@ -499,7 +501,7 @@ def detect_box(tgt, refs, xc, yc, half=BOX // 2):
         det = dict(x=X, y=Y, ra=float(r[0]), dec=float(d[0]), z=float(Zn[y, x]), snr=f["snr"],
                    flux=f["flux"], eflux=f["eflux"], ex=f["ex"], ey=f["ey"], chi2r=f["chi2r"],
                    static_ratio=None if sr is None else round(sr, 3))
-        why = residual_reason(sr, f["chi2r"], CHI2_MAX * (1 + (f["snr"] / CHI2_SNR) ** 2))
+        why = residual_reason(sr, f["chi2r"], CHI2_MAX * (1 + (snr_raw(f) / CHI2_SNR) ** 2))
         if why:
             out.setdefault("rej", []).append(dict(det, why=why))
         else:
@@ -518,17 +520,33 @@ def residual_reason(sr, chi2r, chi2_max=None):
     """Why a positive peak of the difference is a residual of a static source (or None).
     A new point source on empty sky has a reference/excess ratio ~0 and a PSF-shaped excess
     (chi2r ~1); the residual of an undersampled star sits on a source of the reference (ratio
-    > STATIC_MAX) and is not PSF-shaped (dipole: chi2r > CHI2_MAX). A strongly negative ratio
-    means the excess comes from a hole in the reference, not from the target."""
+    > STATIC_MAX) and is not PSF-shaped (dipole: chi2r > CHI2_MAX). A negative ratio below
+    STATIC_MIN means the excess comes from a hole in the reference, not from the target."""
     if sr is None:
         return "no excess"
     if sr > STATIC_MAX:
         return "static-source residual"
-    if sr < -STATIC_MAX:
+    if sr < STATIC_MIN:
         return "hole in the reference"
     if chi2r > (chi2_max or CHI2_MAX):
         return "not PSF-shaped"
     return None
+
+
+def flux_mismatch(flux_ujy, vmag):
+    """AB magnitude of the detection minus the known object's V when the detection is more than
+    FLUX_V_MAX mag brighter (a star residual or another source at the predicted position), else None.
+    Asteroids have AB(1-2.4 um) - V of about -2 to +0.5 (reflected sunlight, red slope)."""
+    if vmag is None or not flux_ujy or flux_ujy <= 0:
+        return None
+    dm = 23.9 - 2.5 * math.log10(flux_ujy) - vmag
+    return round(dm, 2) if dm < -FLUX_V_MAX else None
+
+
+def snr_raw(f):
+    """S/N of an EPSF fit before its errors are scaled by sqrt(chi2r). The chi2 allowance must grow
+    with this one: the scaled S/N of a bright source shrinks as its chi2 grows (EPSF model error)."""
+    return f["snr"] * math.sqrt(max(1.0, f["chi2r"]))
 
 
 def forced(box, x, y):
@@ -653,7 +671,9 @@ def process_visit(vis, objs, mjd0, wanted, log_prefix=""):
                             area_px=b["area_px"], psf=b.get("psf"), reason=b.get("reason"),
                             forced=fc, nan_near=img_nan, static_flux=static,
                             lam_um=None if lam is None else round(float(np.atleast_1d(lam)[0]), 4),
-                            dets=b["dets"], n_rej=len(b.get("rej", [])), _box=b))
+                            dets=b["dets"], n_rej=len(b.get("rej", [])), _box=b,
+                            rej_near=[d["why"] for d in b.get("rej", [])
+                                      if math.hypot(d["x"] - pix[k][0][j], d["y"] - pix[k][1][j]) <= MATCH_PX]))
         bs = [(r["k"], r["_box"]) for r in res if r.get("_box") is not None and r["_box"].get("D") is not None]
         if len(bs) >= 2:
             try:
@@ -789,6 +809,11 @@ def summarise_visit(f, exps, objs, mjd0, pred, pix, boxes, wanted, in_field):
         js = [j for j, s in offs if s <= MATCH_PX * PIX]
         j = max(set(js), key=js.count) if js else None
         rec = dict(n_exp=len(g), dets=[], match=None)
+        if j is not None:
+            dm = flux_mismatch(float(np.median([q["flux"] for q in g])) * BL.PIXEL_UJY, objs[j]["vmag"])
+            if dm is not None:
+                rec["match_rejected"] = dict(idx=j, ab_minus_v=dm)
+                j = None
         for q, (jj, s) in zip(g, offs):
             k = q["k"]
             dd = dict(sub=k + 1, mjd=round(q["mjd"], 6), x=round(q["x"], 3), y=round(q["y"], 3),
@@ -836,7 +861,9 @@ def summarise_visit(f, exps, objs, mjd0, pred, pix, boxes, wanted, in_field):
                    flux_ujy=round(d["flux"] * BL.PIXEL_UJY, 1), chi2r=round(d["chi2r"], 2),
                    static_ratio=d["static_ratio"], flux_chi2r=d.get("flux_chi2r"), n_sub=len(d["subs"]), match=None,
                    subs=[])
-        if j >= 0 and sep[j] <= MATCH_PX * PIX:
+        if j >= 0 and sep[j] <= MATCH_PX * PIX and flux_mismatch(d["flux"] * BL.PIXEL_UJY, objs[j]["vmag"]) is not None:
+            rec["match_rejected"] = dict(idx=j, ab_minus_v=flux_mismatch(d["flux"] * BL.PIXEL_UJY, objs[j]["vmag"]))
+        elif j >= 0 and sep[j] <= MATCH_PX * PIX:
             rec["match"] = j
             rec["off_px"] = round(float(sep[j]) / PIX, 3)
             rec["off_arcsec"] = round(float(sep[j]), 2)
@@ -874,6 +901,8 @@ def summarise_visit(f, exps, objs, mjd0, pred, pix, boxes, wanted, in_field):
                    else round(o["H"], 2), err_arcsec=o["err_arcsec"], dg=o["dg"], dh=o["dh"], phase=o["phase_deg"],
                    elong=o["elong_deg"], rate_cosd_h=o["dra_cosd_h"], rate_dec_h=o["ddec_h"],
                    n_boxes=len(bxs), forced_snr=None if fsnr is None else round(fsnr, 1),
+                   noise=round(float(np.median([b["noise"] for b in bxs if b.get("noise")])), 5)
+                   if any(b.get("noise") for b in bxs) else None,
                    ref_keys=next((b["ref_keys"] for b in bxs if b.get("ref_keys")), []),
                    n_ref=max([b.get("n_ref", 0) for b in bxs], default=0),
                    lam_um=next((b["lam_um"] for b in bxs if b.get("lam_um")), None),
@@ -910,6 +939,8 @@ def summarise_visit(f, exps, objs, mjd0, pred, pix, boxes, wanted, in_field):
                 psf=sorted({b.get("psf") for b in boxes if b.get("psf")}),
                 known=known, objects=objects, n_false=len(unmatched), n_single=len(singles),
                 stack_objects=sobjects, n_false_stack=sum(q["match"] is None for q in sobjects),
+                noise_median=round(float(np.median([b["noise"] for b in boxes if b.get("noise")])), 5)
+                if any(b.get("noise") for b in boxes) else None,
                 area_px_stack=sum(b.get("area_px", 0) for b in boxes if b.get("k") == "stack"),
                 n_rejected_residuals=sum(b.get("n_rej", 0) for b in boxes if b.get("k") != "stack"),
                 n_rejected_residuals_stack=sum(b.get("n_rej", 0) for b in boxes if b.get("k") == "stack"),
@@ -927,9 +958,22 @@ def miss_reason(o, bxs, fsnr, objects, j):
         return f"ephemeris uncertainty large ({o['err_arcsec']:.0f}\")"
     if sum(bool(b.get("nan_near")) for b in bxs) >= max(1, len(bxs) // 2):
         return "masked pixels at the position (saturated star core / bad pixels)"
+    bright = [r for r in objects if (r.get("match_rejected") or {}).get("idx") == j]
+    if bright:
+        return (f"a brighter source at the position ({-bright[0]['match_rejected']['ab_minus_v']:.1f} mag brighter than "
+                f"the asteroid's V): bright static source, not the asteroid")
     single = [r for r in objects if r.get("match_single") == j]
     if single:
         return "seen in one sub-exposure only, or not confirmed (needs 2, one at Z >= 5, or 3)"
+    rej = [w for b in bxs for w in (b.get("rej_near") or [])[:1]]
+    if rej:
+        why = max(set(rej), key=rej.count)
+        n = len(rej)
+        if why == "static-source residual":
+            return f"on a bright static source: its excess was rejected as a static-source residual in {n} sub-exposure(s)"
+        if why == "not PSF-shaped":
+            return f"not PSF-shaped: found but rejected by the EPSF chi2 cut in {n} sub-exposure(s)"
+        return f"bad subtraction at the position ({why} in {n} sub-exposure(s))"
     st = [b.get("static_flux") for b in bxs if b.get("static_flux") is not None]
     if fsnr is not None and fsnr >= Z_CONFIRM:
         if st and np.median(st) > 0 and any((b.get("forced") or {}).get("flux", 0) > 0 for b in bxs) and \
@@ -939,6 +983,8 @@ def miss_reason(o, bxs, fsnr, objects, j):
     if st and np.median(st) > 0 and fsnr is not None and fsnr < Z_CONFIRM and np.median(st) > 20 * max(
             [b.get("noise") or 0 for b in bxs]):
         return f"too faint next to a bright static source (forced S/N {fsnr:.1f})"
+    if fsnr is not None and fsnr <= -Z_CONFIRM:
+        return f"bad subtraction at the position (forced S/N {fsnr:.1f}: star residual or reference artefact)"
     return f"too faint (forced S/N {fsnr:.1f})" if fsnr is not None else "too faint"
 
 
@@ -1132,10 +1178,14 @@ def main(argv=None):
     r.add_argument("--max-fields", type=int, default=0)
     r.add_argument("--no-track", action="store_true")
     r.add_argument("--redo", action="store_true", help="recompute fields whose run file exists (new file name)")
+    r.add_argument("--redo-before", default="", help="with --redo: only fields whose newest run file is older than "
+                   "this local time (YYYY-mm-ddTHH:MM), so an interrupted redo resumes where it stopped")
     t = sub.add_parser("track", help="tracklets across visits for finished fields -> runs/T##.json")
     t.add_argument("--only", default="")
     rp = sub.add_parser("report")
     rp.add_argument("--site", action="store_true", help="write to site/data/asteroids/ (else cache/asteroids/report/)")
+    rp.add_argument("--replace", action="store_true", help="with --site: replace summary.json / candidates.json and the "
+                    "Results section of pipeline/ASTEROIDS.md (default: never overwrite, new timestamped names)")
     b = sub.add_parser("blink")
     b.add_argument("--field", required=True)
     b.add_argument("--name", required=True)
@@ -1156,11 +1206,17 @@ def main(argv=None):
         if a.max_fields:
             todo = todo[:a.max_fields]
         RUNS.mkdir(parents=True, exist_ok=True)
+        cutoff = time.mktime(time.strptime(a.redo_before, "%Y-%m-%dT%H:%M")) if a.redo_before else None
         for f in todo:
             path = RUNS / f"{f['id']}.json"
             if path.exists() and not a.redo:
                 log(f"{f['id']}: done ({path.name})")
                 continue
+            if path.exists() and cutoff:
+                newest = max([path] + list(RUNS.glob(f"{f['id']}_*.json")), key=lambda q: q.stat().st_mtime)
+                if newest.stat().st_mtime >= cutoff:
+                    log(f"{f['id']}: already redone ({newest.name})")
+                    continue
             if path.exists():
                 path = RUNS / f"{f['id']}_{time.strftime('%Y%m%dT%H%M%S')}.json"
             b0, q0, e0 = S3.bytes_downloaded(), S3.STATS.requests, EPH.BYTES["net"]
@@ -1188,8 +1244,12 @@ def main(argv=None):
         for f in fields:
             if only and f["id"] not in only:
                 continue
-            src, dst = RUNS / f"{f['id']}.json", RUNS / f"T{f['id'][1:]}.json"
-            if not src.exists() or dst.exists():
+            srcs = sorted(RUNS.glob(f"{f['id']}.json")) + sorted(RUNS.glob(f"{f['id']}_*.json"))
+            if not srcs:
+                continue
+            src = max(srcs, key=lambda q: q.stat().st_mtime)          # newest run of the field
+            dst = RUNS / f"T_{src.stem}.json"
+            if dst.exists():
                 continue
             res = json.loads(src.read_text())
             b0, q0, e0 = S3.bytes_downloaded(), S3.STATS.requests, EPH.BYTES["net"]
@@ -1207,7 +1267,7 @@ def main(argv=None):
             log(f"{f['id']}: {sum(t.get('status') == 'linked' for t in tr)}/{len(tr)} tracklets linked")
     elif a.cmd == "report":
         from . import asteroid_report
-        asteroid_report.main(site=a.site)
+        asteroid_report.main(site=a.site, replace=a.replace)
     elif a.cmd == "blink":
         from . import asteroid_report
         asteroid_report.blink(a.field, a.name, site=a.site)

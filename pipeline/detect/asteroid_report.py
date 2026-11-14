@@ -20,6 +20,7 @@ from . import s3box as S3
 from . import schema as SC
 
 VLIMS = (17, 18, 19, 20)
+S3_RESPONSE_HEADER = 502        # bytes of HTTP response headers of one S3 206 answer (measured with curl)
 
 
 def _newest_runs():
@@ -31,7 +32,7 @@ def _newest_runs():
     for fid in sorted(runs):
         p = max(runs[fid], key=lambda q: q.stat().st_mtime)
         r = json.loads(p.read_text())
-        tp = A.RUNS / f"T{fid[1:]}.json"
+        tp = A.RUNS / f"T_{p.stem}.json"
         if not r.get("tracklets") and tp.exists():
             r["tracklets"] = json.loads(tp.read_text()).get("tracklets", [])
         out.append(r)
@@ -43,6 +44,43 @@ def _new_path(path):
     if not path.exists():
         return path
     return path.with_name(f"{path.stem}_{time.strftime('%Y%m%dT%H%M%S')}{path.suffix}")
+
+
+REASONS = [("crowded field", "crowded field (star residuals)"), ("edge", "edge"), ("no usable references", "no references"), ("ephemeris uncertainty", "ephemeris uncertain"),
+           ("masked pixels", "masked pixels (saturated star / bad pixels)"),
+           ("one sub-exposure", "seen in 1 exposure only / not confirmed"),
+           ("bright static source", "blended with a static star"), ("not PSF-shaped", "not PSF-shaped (EPSF chi2 cut)"), ("bad subtraction", "bad subtraction (star residual)"), ("below the per-exposure", "S/N 5-15 over the visit, < 5 per exposure"),
+           ("too faint", "too faint (S/N < 5 over the visit)")]
+
+
+def reason_category(text):
+    for key, cat in REASONS:
+        if key in (text or ""):
+            return cat
+    return "other"
+
+
+def geocentric_offsets(runs):
+    """Offsets (px) of the recovered detections from the GEOCENTRIC SkyBoT positions, i.e. without
+    the move to the SPHEREx position: shows what the parallax correction is worth."""
+    from . import ssoephem as EPH
+    out = []
+    for r in runs:
+        f = r["field"]
+        if not r.get("exposures"):
+            continue
+        mjd0 = r["exposures"][0]["mjd"]
+        objs = EPH.cone(mjd0, f["ra"], f["dec"], A.R_CONE, offline=True)
+        if not objs:
+            continue
+        for k in r.get("known", []):
+            if not k.get("found"):
+                continue
+            o = objs[k["idx"]]
+            for d in k["dets"]:
+                ra, dec = EPH.at_time(o, mjd0, d["mjd"])
+                out.append(SC.sep_arcsec(d["ra"], d["dec"], ra, dec) / A.PIX)
+    return out
 
 
 def cache_bytes():
@@ -70,14 +108,51 @@ def cache_bytes():
         nsky += 1
     return dict(s3_header_bytes=hdr, s3_header_requests=nhdr, s3_box_bytes=box, s3_box_requests=rows,
                 s3_payload_bytes=hdr + box, s3_requests=nhdr + rows,
-                s3_http_overhead_estimate_bytes=(nhdr + rows) * 500, skybot_bytes=sky, skybot_queries=nsky)
+                s3_response_header_bytes=(nhdr + rows) * S3_RESPONSE_HEADER,
+                s3_wire_bytes=hdr + box + (nhdr + rows) * S3_RESPONSE_HEADER, skybot_bytes=sky, skybot_queries=nsky)
+
+
+def galactic_b(ra, dec):
+    from astropy.coordinates import SkyCoord
+    return float(SkyCoord(ra, dec, unit="deg").galactic.b.deg)
+
+
+CROWDED = 3.0       # box noise this many times the median field = crowded (star residuals dominate)
+
+
+def mark_crowded(runs):
+    """Fields whose median difference-image noise is > CROWDED x the median of all fields; their
+    faint misses get the reason category 'crowded field'."""
+    nz = [r.get("noise_median") for r in runs if r.get("noise_median")]
+    ref = float(np.median(nz)) if nz else None
+    for r in runs:
+        r["_crowding"] = (r.get("noise_median") / ref) if ref and r.get("noise_median") else None
+        if r["_crowding"] and r["_crowding"] > CROWDED:
+            for k in r.get("known", []):
+                if not k.get("found") and reason_category(k.get("reason")) in (
+                        "too faint (S/N < 5 over the visit)", "S/N 5-15 over the visit, < 5 per exposure",
+                        "seen in 1 exposure only / not confirmed", "bad subtraction (star residual)"):
+                    k["reason"] = (f"crowded field (b = {galactic_b(r['field']['ra'], r['field']['dec']):+.1f}°, noise "
+                                   f"{r['_crowding']:.1f}x the median field): " + k["reason"])
+
+
+def link_ok(t):
+    """A blind cross-visit link that the ephemeris confirms: every second-visit detection within
+    MATCH_PX of the ephemeris position. Linked tracks that fail this are wrong links."""
+    return t.get("status") == "linked" and bool(t.get("off2_px")) and max(t["off2_px"]) <= A.MATCH_PX
+
+
+def has_visit2(t):
+    return not str(t.get("status", "")).startswith(("no other visit", "error"))
 
 
 def field_row(r):
     f = r["field"]
     kn = r.get("known", [])
     row = dict(id=f["id"], visit=f["visit"], detector=f"D{f['detector']}", date=f["date"], lam=f["lam"], beta=f["beta"],
-               n_cone=r.get("n_cone"), n_on_detector=r.get("n_on_detector"), error=r.get("error"))
+               gal_b=round(galactic_b(f["ra"], f["dec"]), 1), crowding=None if r.get("_crowding") is None
+               else round(r["_crowding"], 2), n_cone=r.get("n_cone"), n_on_detector=r.get("n_on_detector"),
+               error=r.get("error"))
     for v in VLIMS:
         sel = [k for k in kn if k["V"] is not None and k["V"] < v]
         row[f"known_v{v}"] = len(sel)
@@ -105,9 +180,11 @@ def field_row(r):
         row["faintest"] = dict(name=fz["name"], V=fz["V"], H=fz["H"], flux_ujy=fz.get("flux_ujy"),
                                lam_um=next((d.get("lam_um") for d in fz["dets"] if d.get("lam_um")), fz.get("lam_um")),
                                snr=fz.get("snr"))
-    tr = [t for t in r.get("tracklets", []) if t.get("status") == "linked"]
+    tr = [t for t in r.get("tracklets", []) if link_ok(t)]
     row["n_tracklets"] = len(tr)
-    row["n_tracklet_tried"] = len(r.get("tracklets", []))
+    row["n_tracklet_wrong"] = sum(1 for t in r.get("tracklets", []) if t.get("status") == "linked" and not link_ok(t))
+    row["n_tracklet_tried"] = sum(1 for t in r.get("tracklets", []) if has_visit2(t))
+    row["n_tracklet_objects"] = len(r.get("tracklets", []))
     fr = [abs(t["rate_diff_frac"]) for t in tr if t.get("rate_diff_frac") is not None]
     pa = [abs(t["pa_diff_deg"]) for t in tr if t.get("pa_diff_deg") is not None]
     row["rate_diff_frac_median"] = round(float(np.median(fr)), 4) if fr else None
@@ -162,9 +239,9 @@ def candidates(runs):
 
 def md_tables(rows, runs):
     L = []
-    L.append("| Field | Date (UTC) | Det | λ_ecl | β | V<17 single / stack / known | V<18 | V<19 | V<20 | Offset median / worst (px) "
+    L.append("| Field | Date (UTC) | Det | λ_ecl | β | b | V<17 single / stack / known | V<18 | V<19 | V<20 | Offset median / worst (px) "
              "| ≤ 1 px | False single / stack | Faintest recovered single-exposure (V, H, µJy @ µm) | Tracklets linked / tried, rate diff |")
-    L.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+    L.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     tot = {f"{a}_v{v}": 0 for v in VLIMS for a in ("known", "found", "stack", "either")}
     for r in rows:
         if r.get("error"):
@@ -175,21 +252,85 @@ def md_tables(rows, runs):
         fz = r.get("faintest")
         fzs = (f"{fz['name']}: V {fz['V']:.1f}, H {fz['H']:.1f}, {fz['flux_ujy']:.0f} µJy @ {fz['lam_um']:.2f}"
                if fz and fz.get("lam_um") and fz.get("H") is not None else "-")
-        tr = (f"{r['n_tracklets']} / {r['n_tracklet_tried']}"
+        tr = (f"{r['n_tracklets']} / {r['n_tracklet_tried']}" + (f" (+{r['n_tracklet_wrong']} wrong)" if r.get("n_tracklet_wrong") else "")
               + (f", {100 * r['rate_diff_frac_median']:.1f} %, PA {r['pa_diff_deg_median']:.1f}°" if r.get("rate_diff_frac_median") is not None else ""))
         off = f"{r['off_px_median']:.2f} / {r['off_px_max']:.2f}" if r["off_px_median"] is not None else "-"
         w1 = f"{100 * r['frac_within_1px']:.0f} %" if r["frac_within_1px"] is not None else "-"
-        L.append(f"| {r['id']} | {r['date']} | {r['detector']} | {r['lam']:.0f}° | {r['beta']:+.1f}° | "
+        L.append(f"| {r['id']} | {r['date']} | {r['detector']} | {r['lam']:.0f}° | {r['beta']:+.1f}° | {r['gal_b']:+.0f}° | "
                  + " | ".join(f"{r[f'found_v{v}']} / {r[f'stack_v{v}']} / {r[f'known_v{v}']}" for v in VLIMS)
                  + f" | {off} | {w1} | {r['n_false']} / {r.get('n_false_stack')} | {fzs} | {tr} |")
-    L.append("| **Total** | | | | | " + " | ".join(f"**{tot[f'found_v{v}']} / {tot[f'stack_v{v}']} / {tot[f'known_v{v}']}**"
+    L.append("| **Total** | | | | | | " + " | ".join(f"**{tot[f'found_v{v}']} / {tot[f'stack_v{v}']} / {tot[f'known_v{v}']}**"
                                                 for v in VLIMS) + " | | | | | |")
     return "\n".join(L), tot
 
 
-def main(site=False):
+def results_markdown(summ, table_md, missed, tracks, found):
+    """The Results section of pipeline/ASTEROIDS.md."""
+    t, o, oa, og = summ["totals"], summ["offset_px"] or {}, summ["offset_arcsec"] or {}, summ["offset_px_without_parallax"] or {}
+    b = summ["bytes"]
+    tr = summ["tracklets"]
+    L = [f"Generated {summ['generated']} by `find_asteroids.py report` from `cache/asteroids/runs/`; the same numbers are in "
+         "`site/data/asteroids/summary.json`.", "",
+         f"- **{summ['n_fields_ok']} fields**, {summ['n_found']} different known asteroids recovered blind in single exposures "
+         f"({summ['n_detections']} single-exposure detections matched to the ephemeris).",
+         "- Recovered / known, by brightness: " + ", ".join(f"V < {v}: **{t[f'found_v{v}']} / {t[f'known_v{v}']}**" for v in VLIMS)
+         + ". Visit stack: " + ", ".join(f"V < {v}: {t[f'stack_v{v}']}" for v in VLIMS) + "; either mode: "
+         + ", ".join(f"V < {v}: {t[f'either_v{v}']}" for v in VLIMS) + ".",
+         f"- Position offset detection − ephemeris (per exposure): median **{o.get('median')} px "
+         f"({oa.get('median')}\")**, 90 % {o.get('p90')} px ({oa.get('p90')}\"), worst {o.get('max')} px ({oa.get('max')}\"); "
+         f"**{100 * (o.get('frac_within_1px') or 0):.1f} %** within 1 px.",
+         f"- Without the move from the geocentre to SPHEREx the same detections are off by median {og.get('median')} px, "
+         f"90 % {og.get('p90')} px, worst {og.get('max')} px.",
+         f"- False detections (confirmed objects matching no known object): {summ['false_per_field']['total']} in all, median "
+         f"{summ['false_per_field']['median']:.0f} per field (per field: column 'False').",
+         f"- Tracklets across visits: of {tr['objects']} recovered objects (single exposures or visit stack), {tr['tried']} had another visit of the same detector "
+         f"within 1 day; **{tr['linked']}** were linked blindly there and confirmed by the ephemeris (every second-visit "
+         f"detection ≤ {A.MATCH_PX:.0f} px from it); wrong links: {len(tr['wrong_links'])} ("
+         + ", ".join(f"{w['field']} {w['name']}: {min(w['off2_px']):.0f} px from the ephemeris" for w in tr['wrong_links'])
+         + f"). Measured rate − ephemeris rate (confirmed links): median {100 * (tr['rate_diff_frac_median'] or 0):.2f} % "
+         f"of the rate, direction median {tr['pa_diff_deg_median']}°.",
+         f"- Data read: **{b['s3_payload_bytes'] / 1e6:.1f} MB** of S3 byte ranges ({b['s3_requests']} Range requests; with the "
+         f"measured 502-byte response headers {b['s3_wire_bytes'] / 1e6:.1f} MB on the wire) and {b['skybot_bytes'] / 1e6:.1f} MB "
+         f"from SkyBoT ({b['skybot_queries']} cone searches), counting everything in `cache/asteroids/` including the "
+         f"development runs; the production runs alone (ledger) read {(b.get('ledger_s3') or 0) / 1e6:.1f} MB from S3 in "
+         f"{b.get('ledger_s3_requests') or 0} requests. No whole file was downloaded.", "",
+         "### Per field", "",
+         "single = single-exposure detections confirmed within the visit, stack = visit stack, known = SkyBoT objects of that "
+         "brightness inside the detector (≥ 8 px from the edge) in the 1.5° cone. b = Galactic latitude.", "", table_md, ""]
+    lk = [x for x in tracks if x.get("status") == "linked"]
+    if lk:
+        L += ["### Tracklets (second visit linked without the ephemeris)", "",
+              "Δt = second visit − first visit. Offsets: second-visit detections − ephemeris. A link with an offset > "
+              f"{A.MATCH_PX:.0f} px is a wrong link (marked).", "",
+              "| Field | Object | Δt (h) | det. 2nd visit | offsets 2nd visit (px) | measured rate (\"/h, PA) | ephemeris rate (\"/h, PA) | Δrate | ΔPA |",
+              "|---|---|---|---|---|---|---|---|---|"]
+        for x in sorted(lk, key=lambda x: (x["field"], x["name"])):
+            m, e = x["rate_measured"] or {}, x["rate_ephem"] or {}
+            L.append(f"| {x['field']} | {x['name']}{'' if link_ok(x) else ' (**wrong link**)'} | {x['dt_h']:+.2f} | {x['n_det2']} | "
+                     f"{', '.join(f'{v:.2f}' for v in x['off2_px'])} | {m.get('speed', 0):.2f}, {m.get('pa', 0):.1f}° | "
+                     f"{e.get('speed', 0):.2f}, {e.get('pa', 0):.1f}° | {100 * (x['rate_diff_frac'] or 0):.2f} % | {x['pa_diff_deg'] or 0:+.2f}° |")
+        L.append("")
+    fz = sorted(found, key=lambda k: -k["V"])[:8]
+    L += ["### Faintest recoveries", "", "| Field | Object | V | H | flux (µJy) | λ (µm) | fit S/N (best exposure) | exposures |",
+          "|---|---|---|---|---|---|---|---|"]
+    for k in fz:
+        L.append(f"| {k['field']} | {(k['number'] + ' ' + k['name']).strip()} | {k['V']:.1f} | {k['H']:.2f} | "
+                 f"{k.get('flux_ujy') or 0:.0f} | {k.get('lam_um') or 0:.2f} | {k.get('snr')} | {k['n_det']} |")
+    L += ["", "### Missed known objects", "",
+          "Reasons, V < 19: " + ", ".join(f"{c}: {n}" for c, n in summ["miss_reasons_v19"].items()) + ".",
+          "Reasons, V < 20: " + ", ".join(f"{c}: {n}" for c, n in summ["miss_reasons_v20"].items()) + ".", "",
+          "Every missed object with V < 18:", "", "| Field | Object | V | H | Reason |", "|---|---|---|---|---|"]
+    for k in sorted(missed, key=lambda k: k["V"]):
+        if k["V"] < 18:
+            L.append(f"| {k['field']} | {(k['number'] + ' ' + k['name']).strip()} | {k['V']:.1f} | {k['H']} | {k['reason']} |")
+    L += ["", "The full list (V ≤ 20.5) with reasons is in `site/data/asteroids/summary.json` (`missed`)."]
+    return "\n".join(L)
+
+
+def main(site=False, replace=False):
     """site=False: write to cache/asteroids/report/ (drafts); site=True: site/data/asteroids/."""
     runs = [r for r in _newest_runs()]
+    mark_crowded(runs)
     rows = [field_row(r) for r in runs]
     md, tot = md_tables(rows, runs)
     offs = [d["off_px"] for r in runs for k in r.get("known", []) if k.get("found") for d in k["dets"] if "off_px" in d]
@@ -198,7 +339,8 @@ def main(site=False):
     found = [dict(k, field=r["field"]["id"]) for r in runs for k in r.get("known", []) if k.get("found")]
     missed = [dict(k, field=r["field"]["id"]) for r in runs for k in r.get("known", []) if not k.get("found")]
     tracks = [dict(t, field=r["field"]["id"]) for r in runs for t in r.get("tracklets", [])]
-    linked = [t for t in tracks if t.get("status") == "linked"]
+    linked = [t for t in tracks if link_ok(t)]
+    wrong = [t for t in tracks if t.get("status") == "linked" and not link_ok(t)]
     led = json.loads(A.LEDGER.read_text()) if A.LEDGER.exists() else {}
     cb = cache_bytes()
     summ = dict(
@@ -208,11 +350,16 @@ def main(site=False):
         offset_px=dict(median=round(float(np.median(offs)), 3), p90=round(float(np.percentile(offs, 90)), 3),
                        max=round(float(np.max(offs)), 3), frac_within_1px=round(float(np.mean(np.array(offs) <= 1)), 4))
         if offs else None,
+        offset_px_without_parallax=(lambda g: dict(median=round(float(np.median(g)), 3), p90=round(float(np.percentile(g, 90)), 3),
+                                                   max=round(float(np.max(g)), 3),
+                                                   frac_within_1px=round(float(np.mean(np.array(g) <= 1)), 4)) if g else None)(
+            geocentric_offsets(runs)),
         offset_arcsec=dict(median=round(float(np.median(offs_as)), 2), p90=round(float(np.percentile(offs_as, 90)), 2),
                            max=round(float(np.max(offs_as)), 2)) if offs_as else None,
         false_per_field=dict(total=sum(r["n_false"] or 0 for r in rows if not r.get("error")),
                              median=float(np.median([r["n_false"] or 0 for r in rows if not r.get("error")])) if rows else None),
-        tracklets=dict(tried=len(tracks), linked=len(linked),
+        tracklets=dict(objects=len(tracks), tried=sum(1 for t in tracks if has_visit2(t)), linked=len(linked),
+                       wrong_links=[dict(field=t["field"], name=t["name"], off2_px=t.get("off2_px")) for t in wrong],
                        rate_diff_frac_median=round(float(np.median([abs(t["rate_diff_frac"]) for t in linked
                                                                       if t.get("rate_diff_frac") is not None])), 4)
                        if linked else None,
@@ -225,27 +372,53 @@ def main(site=False):
         found=[dict(field=k["field"], name=k["name"], number=k["number"], V=k["V"], H=k["H"], n_det=k["n_det"],
                     off_px_median=k["off_px_median"], off_px_max=k["off_px_max"], flux_ujy=k.get("flux_ujy"),
                     snr=k.get("snr"), lam_um=k.get("lam_um"), cls=k["cls"]) for k in found],
+        miss_reasons_v19=dict(__import__("collections").Counter(reason_category(k["reason"]) for k in missed
+                                                                 if k["V"] < 19).most_common()),
+        miss_reasons_v20=dict(__import__("collections").Counter(reason_category(k["reason"]) for k in missed
+                                                                 if k["V"] < 20).most_common()),
         missed=[dict(field=k["field"], name=k["name"], number=k["number"], V=k["V"], H=k["H"], reason=k["reason"],
+                     category=reason_category(k["reason"]),
                      forced_snr=k.get("forced_snr"), cls=k["cls"]) for k in missed],
         tracklets_list=[{k: v for k, v in t.items() if k != "dets2"} for t in tracks])
     OUT = A.OUT_SITE if site else S3.CACHE / "report"
     OUT.mkdir(parents=True, exist_ok=True)
     summ["blinks"] = sorted(q.parent.name for q in OUT.glob("*/blink.json"))
-    p = _new_path(OUT / "summary.json")
+    p = (OUT / "summary.json") if replace else _new_path(OUT / "summary.json")
     p.write_text(json.dumps(A._jsonable(summ), indent=1))
     cands = candidates(runs)
     for k, c in enumerate(cands, 1):
         c["id"] = f"A{k:03d}"
     cp = _new_path(OUT / "candidates.json")
+    final_cp = (OUT / "candidates.json") if replace else cp
+    if replace:
+        cp = OUT / f"candidates.part{time.strftime('%Y%m%dT%H%M%S')}.json"     # SC.write never overwrites
     SC.write(cp, dict(name="asteroid-fields", label=f"{len(runs)} SPHEREx ecliptic fields (known-asteroid recovery)",
                       fields=[dict(id=r["field"]["id"], visit=r["field"]["visit"], detector=r["field"]["detector"],
                                    ra=r["field"]["ra"], dec=r["field"]["dec"], date=r["field"]["date"]) for r in runs]),
              cands, {A.NAME: dict(name="known-asteroid recovery in ecliptic fields (single exposures, linked per visit)",
                                   thresholds=dict(z=A.Z_DET, link_px=A.LINK_PX, match_px=A.MATCH_PX,
                                                   model_frac=A.MODEL_C, box_px=A.BOX, v_analyse=A.V_ANALYSE))})
+    if cp != final_cp:
+        __import__("os").replace(cp, final_cp)
+        cp = final_cp
+    res_md = results_markdown(summ, md, missed, tracks, found)
+    (S3.CACHE / "report").mkdir(parents=True, exist_ok=True)
+    (S3.CACHE / "report" / "results.md").write_text(res_md)
+    if site:
+        doc = A.BL.PIPE / "ASTEROIDS.md"
+        txt = doc.read_text()
+        if "RESULTS_PLACEHOLDER" in txt:
+            doc.write_text(txt.replace("RESULTS_PLACEHOLDER", res_md))
+            print(f"filled the Results section of {doc}")
+        elif replace and "\n## Results\n" in txt and "\n## Limits\n" in txt:
+            head, rest = txt.split("\n## Results\n", 1)
+            _, tail = rest.split("\n## Limits\n", 1)
+            doc.write_text(head + "\n## Results\n\n" + res_md + "\n\n## Limits\n" + tail)
+            print(f"replaced the Results section of {doc}")
     print(md)
     print()
-    print(json.dumps({k: summ[k] for k in ("totals", "n_found", "n_detections", "offset_px", "offset_arcsec",
+    print(json.dumps({k: summ[k] for k in ("totals", "n_found", "n_detections", "offset_px", "offset_px_without_parallax",
+                                          "offset_arcsec", "miss_reasons_v19", "miss_reasons_v20",
                                           "false_per_field", "tracklets", "bytes")}, indent=1))
     print(f"\nwrote {p} and {cp}")
     # missed list (V < 19) and reason counts (V < 20)
@@ -254,8 +427,9 @@ def main(site=False):
         if k["V"] < 19:
             print(f"| {k['field']} | {(k['number'] + ' ' + k['name']).strip()} | {k['V']:.1f} | {k['H']} | {k['reason']} |")
     from collections import Counter
-    c = Counter(k["reason"].split(" (")[0].split(",")[0] for k in missed if k["V"] < 20)
-    print("\nMiss reasons V < 20:", dict(c))
+    for v in (19, 20):
+        c = Counter(reason_category(k["reason"]) for k in missed if k["V"] < v)
+        print(f"\nMiss reasons V < {v}:", dict(c.most_common()))
 
 
 # ============================================================================ blink
@@ -269,7 +443,7 @@ def blink(field_id, name, pix_arcsec=3.0, margin_arcsec=45.0, up=3, site=False):
     r = runs[field_id]
     k = next(k for k in r["known"] if k["name"] == name and (k.get("found") or k.get("found_stack")))
     dets1 = k["dets"] if k.get("found") else k["stack"]["subs"]
-    tr = next((t for t in r.get("tracklets", []) if t["name"] == name and t.get("status") == "linked"), None)
+    tr = next((t for t in r.get("tracklets", []) if t["name"] == name and link_ok(t)), None)
     pts = [(d["ra"], d["dec"]) for d in dets1] + ([(d["ra"], d["dec"]) for d in tr["dets2"]] if tr else [])
     ra0 = float(np.mean([p[0] for p in pts]))
     dec0 = float(np.mean([p[1] for p in pts]))
@@ -311,9 +485,11 @@ def blink(field_id, name, pix_arcsec=3.0, margin_arcsec=45.0, up=3, site=False):
                            mjd=d["mjd"], key=e["key"], det=d, pred=k["predicted"][d["sub"] - 1]))
     if tr:
         for d in tr["dets2"]:
-            frames.append(dict(kind="visit2", label=f"visit 2 (+{tr['dt_h']:.1f} h), exposure {d['sub']}",
+            frames.append(dict(kind="visit2", label=f"visit 2 ({tr['dt_h']:+.1f} h), exposure {d['sub']}",
                                img=onto_grid(S3.exposure(d["key"])), mjd=d["mjd"], key=d["key"], det=d,
                                pred=dict(ra=d["pred_ra"], dec=d["pred_dec"]) if "pred_ra" in d else None))
+    frames = frames[:1] + sorted(frames[1:], key=lambda f: f["mjd"]) if frames and frames[0]["kind"] == "reference" \
+        else sorted(frames, key=lambda f: f["mjd"])
     allv = np.concatenate([f["img"][np.isfinite(f["img"])] for f in frames])
     lo, hi = np.percentile(allv, 1), np.percentile(allv, 99.7)
     out = _new_path((A.OUT_SITE if site else S3.CACHE / "report") / name.replace(" ", "_"))
