@@ -307,6 +307,7 @@ async function loadFinder() {
   try { base = new URLSearchParams(location.search).get("data"); } catch (e) { /* ignore */ }
   if (!base) return;
   if (!/\/$/.test(base)) base += "/";
+  if (/^(\.\/)?data\//.test(base)) return;   // static target folders (data/<target>/) have no candidates.json: no 404
   try {
     const r = await fetch(base + "candidates.json", { cache: "no-cache" });
     if (!r.ok) return;

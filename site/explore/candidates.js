@@ -78,6 +78,7 @@ export function pickMag(pxPerYear, minPx = MIN_ARROW_PX) {
 
 /** <base>candidates.json, or null (missing file, HTTP error, bad JSON). Never throws. */
 export async function loadCandidates(base) {
+  if (/^(\.\/)?data\//.test(String(base))) return null;   // static target folders (data/<target>/) have no candidates.json: no 404
   try {
     const r = await fetch(base + "candidates.json", { cache: "no-cache" });
     if (!r.ok) return null;

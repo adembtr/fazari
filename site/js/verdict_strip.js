@@ -316,7 +316,7 @@ async function mountOrnek() {
     return S.meta;
   }
   async function loadCand(url) {
-    const c = await getJson(url + "candidates.json");
+    const c = /^(\.\/)?data\//.test(url) ? null : await getJson(url + "candidates.json");   // static target folders (data/<target>/) have no candidates.json: no 404
     S.cand = c; S.candBase = url;
   }
   function stagePost(k, m, n, complete) {

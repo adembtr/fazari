@@ -644,7 +644,7 @@ export function mountExplain(meta, base = "", where = {}) {
   let pend = 0;
   try { new MutationObserver(() => { if (!pend) pend = setTimeout(() => { pend = 0; look(); }, 300); }).observe(document.body, { childList: true, subtree: true }); } catch (_) {}
   look();
-  if (base) {
+  if (base && !/^(\.\/)?data\//.test(base)) {   // static target folders (data/<target>/) have no candidates.json: no 404
     fetch(base + "candidates.json", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d && (d.candidates || []).length) set("cands", true); }).catch(() => {});
   }

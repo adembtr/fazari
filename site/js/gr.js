@@ -265,7 +265,7 @@ export function catalogueAt(meta, base) {
 // ------------------------------------------------------------------------------------------------ limits
 const candCache = new Map();
 export function candidates(base) {
-  if (!base) return Promise.resolve(null);
+  if (!base || /^(\.\/)?data\//.test(base)) return Promise.resolve(null);   // static target folders (data/<target>/) have no candidates.json: no 404
   if (!candCache.has(base)) candCache.set(base, getJson(base + "candidates.json"));
   return candCache.get(base);
 }
