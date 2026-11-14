@@ -30,8 +30,8 @@ Live site: https://adembtr.github.io/fazari/ (published from `main`; the newest 
 - **Sky explorer (`site/explore.html`):** done. Search or click any point; the in-browser engine builds a blink there
   on the static site, the local Python engine does more when it runs on the same computer (see
   [What runs where](#what-runs-where)). Field-of-view selector, FLAGS layer, English/Turkish on every page.
-- **Candidate finder v1 and known-asteroid recovery:** done, with a test round. Of 10 numbered verification tests
-  6 pass, 3 fail (V4, V6, V7) and 1 reaches a limit (V8); see the summary at the top of
+- **Candidate finder v1 and known-asteroid recovery:** done, with a test round. Of 11 numbered verification tests
+  6 pass, 4 fail (V4, V6, V7, V11) and 1 reaches a limit (V8); see the summary at the top of
   [`pipeline/ACCURACY.md`](pipeline/ACCURACY.md).
 - **Open:** in the injection test the best bin recovers 97.8 % of the fake movers, below the 99 % target (V6); the
   date-shuffle test gives 15 fake movers in 1200 shuffles (V7); in the blind run the direction of WISE 0855-0714 is 3.8σ off (V4). Every result is a
@@ -64,11 +64,11 @@ Beyond the list:
 | Addition | Where | Status |
 |---|---|---|
 | Known-asteroid recovery: 24 ecliptic fields, matched with SkyBoT from the SPHEREx position | `site/asteroids.html`, `site/data/asteroids/summary.json`, [`pipeline/ASTEROIDS.md`](pipeline/ASTEROIDS.md) | Done (test V8: limit) |
-| Candidate finder for moving and changing sources in the whole field | `pipeline/detect/`, [`pipeline/DETECTION.md`](pipeline/DETECTION.md); local engine post-step | v1 done; tests V1–V10 |
+| Candidate finder for moving and changing sources in the whole field | `pipeline/detect/`, [`pipeline/DETECTION.md`](pipeline/DETECTION.md); local engine post-step | v1 done; tests V1–V11 |
 | Quick decision: a preliminary "is it moving?" answer before the full result | `local/quick.py` (local engine) | Done |
 | NASA Exoplanet Archive link for stars with known planets | Explorer and viewer cards; `site/data/exoplanet_hosts.json` | Done |
 | English / Turkish on every page | `site/i18n/en.json`, `site/i18n/tr.json`, `site/js/i18n.js` | Done |
-| Numbered verification data (V1–V10) | [`site/data/verify/tests.json`](site/data/verify/tests.json), evidence in `site/data/verify/evidence/`; summary in [`pipeline/ACCURACY.md`](pipeline/ACCURACY.md) | Done (6 pass, 3 fail, 1 limit) |
+| Numbered verification data (V1–V11) | [`site/data/verify/tests.json`](site/data/verify/tests.json), evidence in `site/data/verify/evidence/`; summary in [`pipeline/ACCURACY.md`](pipeline/ACCURACY.md) | Done (6 pass, 4 fail, 1 limit) |
 
 ## What runs where
 
@@ -113,7 +113,7 @@ otherwise it uses the browser engine. It adds:
 - `site/explore.html` (+ `site/explore/`) — sky explorer; `site/sky.html` — blink for any point (browser engine, `site/js/`).
 - `site/asteroids.html` — known-asteroid recovery results; `site/verify.html` — evidence page.
 - `pipeline/detect/` — candidate finder (see `pipeline/DETECTION.md`); `pipeline/finds.py` — finds list of the local engine.
-- `site/data/verify/tests.json` — numbered verification tests V1–V10, evidence in `site/data/verify/evidence/`.
+- `site/data/verify/tests.json` — numbered verification tests V1–V11, evidence in `site/data/verify/evidence/`.
 - `docs/img/` — screenshot used in this README.
 - `site/data/<target>/` — pipeline output: `frames/*.png`, `blink_*um.gif`, `diff_*um.png`, `images.csv` (per-exposure diagnostics), `meta.json` (read by the viewer). `gaia_field.json` — cached Gaia DR3 field stars (motion targets).
 

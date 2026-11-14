@@ -69,8 +69,8 @@
     "tr": "Luhman 16 (en yakın kahverengi cüceler)"
    },
    "result": {
-    "en": "Found blind as candidate (A+D): 2.678 ± 0.059\"/yr at PA 274.3°, reference 2.79\"/yr at 277.4° (-1.9 sigma in speed, -2.0 sigma in direction). Measured parallax 426.4 mas (not yet checked against a reference).",
-    "tr": "Konum verilmeden aday olarak bulundu (A+D): 2,678 ± 0,059\"/yıl, yön 274,3°; referans 2,79\"/yıl, 277,4° (hızda -1,9, yönde -2,0 sigma). Ölçülen paralaks 426,4 mas (henüz referansla karşılaştırılmadı)."
+    "en": "Found blind as candidate (A+D): 2.678 ± 0.059\"/yr at PA 274.3°, reference 2.79\"/yr at 277.4° (-1.9 sigma in speed, -2.0 sigma in direction). Measured parallax 426.4 mas vs 501.557 mas (Lazorenko & Sahlmann 2018): -15.0 %, a large difference.",
+    "tr": "Konum verilmeden aday olarak bulundu (A+D): 2,678 ± 0,059\"/yıl, yön 274,3°; referans 2,79\"/yıl, 277,4° (hızda -1,9, yönde -2,0 sigma). Ölçülen paralaks 426,4 mas, referans 501,557 mas (Lazorenko ve Sahlmann 2018): %−15,0, büyük bir fark."
    },
    "numbers": {
     "speed_arcsec_yr": 2.678,
@@ -86,7 +86,10 @@
     "detectors": "A+D",
     "criterion_sigma": 3,
     "seconds": 156.8,
-    "parallax_mas": 426.4
+    "parallax_mas": 426.4,
+    "ref_parallax_mas": 501.557,
+    "d_parallax_percent": -15.0,
+    "ref_parallax_source": "Lazorenko & Sahlmann 2018"
    },
    "status": "pass",
    "evidence": "data/verify/evidence/blind.csv",
@@ -258,16 +261,12 @@
     "tr": "Bilinen tüm hareketli cisimlerin körlemesine bulunması"
    },
    "result": {
-    "en": "4 of 4 known movers were found without being told where they are; of the 2 brightness targets R Draconis was found and RW Aurigae was not.",
-    "tr": "Bilinen 4 hareketli cismin 4 tanesi konumu verilmeden bulundu; 2 parlaklık hedefinden R Draconis bulundu, RW Aurigae bulunamadı."
+    "en": "4 of 4 known movers were found without being told where they are.",
+    "tr": "Bilinen 4 hareketli cismin 4 tanesi konumu verilmeden bulundu."
    },
    "numbers": {
     "movers_found": 4,
     "movers_known": 4,
-    "brightness_targets": 2,
-    "brightness_found": 1,
-    "rw_aur_found": false,
-    "r_dra_found": true,
     "slowest_field_seconds": 447.5
    },
    "status": "pass",
@@ -311,6 +310,27 @@
    "status": "pass",
    "evidence": "data/verify/evidence/saturated.csv",
    "v0": null
+  },
+  {
+   "id": "V11",
+   "title": {
+    "en": "Blind recovery of the known brightness changes",
+    "tr": "Bilinen parlaklık değişimlerinin körlemesine bulunması"
+   },
+   "result": {
+    "en": "Of the 2 brightness targets, R Draconis was found without being told where it is; RW Aurigae was not found.",
+    "tr": "2 parlaklık hedefinden R Draconis konumu verilmeden bulundu; RW Aurigae bulunamadı."
+   },
+   "numbers": {
+    "brightness_targets": 2,
+    "brightness_found": 1,
+    "r_dra_found": true,
+    "rw_aur_found": false
+   },
+   "status": "fail",
+   "evidence": "data/verify/evidence/blind.csv",
+   "v0": null
   }
- ]
+ ],
+ "edited": "2026-11-14 18:10: V9 split into movers (V9) and brightness changes (V11); V3 parallax compared with Lazorenko & Sahlmann 2018. No result was re-measured."
 }

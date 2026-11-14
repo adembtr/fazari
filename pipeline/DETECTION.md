@@ -17,6 +17,6 @@ Classes: `gaia-known`, `asteroid-known`, `candidate`, `variable`, `artifact`.
 Kinds: `motion`, `appearing`, `disappearing`, `variable`, `transient`.
 Language: always "candidate", never "discovery".
 
-Version v1: thresholds frozen at TEST-READY v1 16:58, code committed in 257a7c3. Test results (V1–V10:
-6 pass, 3 fail, 1 limit) are in [`site/data/verify/tests.json`](../site/data/verify/tests.json), summarised at
+Version v1: thresholds frozen at TEST-READY v1 16:58, code committed in 257a7c3. Test results (V1–V11:
+6 pass, 4 fail, 1 limit) are in [`site/data/verify/tests.json`](../site/data/verify/tests.json), summarised at
 the top of [`ACCURACY.md`](ACCURACY.md).
