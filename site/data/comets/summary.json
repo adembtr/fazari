@@ -1,0 +1,410 @@
+{
+ "generated": "2026-11-14 18:05",
+ "objects": [
+  {
+   "pdes": "2025 N1",
+   "folder": "3I_ATLAS",
+   "name": "3I/ATLAS (C/2025 N1)",
+   "kind": "interstellar comet"
+  },
+  {
+   "pdes": "2025 R2",
+   "folder": "C2025_R2_SWAN",
+   "name": "C/2025 R2 (SWAN)",
+   "kind": "comet"
+  },
+  {
+   "pdes": "2025 A6",
+   "folder": "C2025_A6_Lemmon",
+   "name": "C/2025 A6 (Lemmon)",
+   "kind": "comet"
+  },
+  {
+   "pdes": "pluto",
+   "folder": "Pluto",
+   "name": "Pluto",
+   "kind": "dwarf planet"
+  }
+ ],
+ "candidates": [
+  {
+   "pdes": "2025 R2",
+   "name": "C/2025 R2 (SWAN)",
+   "n_images": 349,
+   "T_min": 11.667301147226203,
+   "n_seasons": 3,
+   "chosen": true
+  },
+  {
+   "pdes": "2025 K1",
+   "name": "C/2025 K1 (ATLAS)",
+   "n_images": 491,
+   "T_min": 12.568370907455785,
+   "n_seasons": 5,
+   "chosen": false,
+   "reason": "read 18 images: 18 clear detections (median S/N 62); weaker or less clear than the ones shown",
+   "reason_tr": "18 g\u00f6r\u00fcnt\u00fc okundu: 18 a\u00e7\u0131k tespit (ortanca S/N 62); g\u00f6sterilenlerden daha zay\u0131f ya da daha az net"
+  },
+  {
+   "pdes": "210P",
+   "name": "210P/Christensen",
+   "n_images": 447,
+   "T_min": 13.44927820357767,
+   "n_seasons": 5,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "220P",
+   "name": "220P/McNaught",
+   "n_images": 377,
+   "T_min": 13.616279698271969,
+   "n_seasons": 2,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "2024 T5",
+   "name": "C/2024 T5 (ATLAS)",
+   "n_images": 440,
+   "T_min": 13.644643425731406,
+   "n_seasons": 3,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "2010 H2",
+   "name": "P/2010 H2 (Vales)",
+   "n_images": 401,
+   "T_min": 13.82683864226845,
+   "n_seasons": 3,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "169P",
+   "name": "169P/NEAT",
+   "n_images": 340,
+   "T_min": 13.886045828656464,
+   "n_seasons": 3,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "24P",
+   "name": "24P/Schaumasse",
+   "n_images": 931,
+   "T_min": 14.055,
+   "n_seasons": 3,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "2023 R1",
+   "name": "C/2023 R1 (PANSTARRS)",
+   "n_images": 447,
+   "T_min": 14.520610581731342,
+   "n_seasons": 4,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "2026 T1",
+   "name": "P/2026 T1 (ATLAS)",
+   "n_images": 407,
+   "T_min": 14.569284674272586,
+   "n_seasons": 3,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "2025 A6",
+   "name": "C/2025 A6 (Lemmon)",
+   "n_images": 228,
+   "T_min": 14.616234490272909,
+   "n_seasons": 2,
+   "chosen": true
+  },
+  {
+   "pdes": "10P",
+   "name": "10P/Tempel 2",
+   "n_images": 352,
+   "T_min": 14.620040057190396,
+   "n_seasons": 3,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "2023 A3",
+   "name": "C/2023 A3 (Tsuchinshan-ATLAS)",
+   "n_images": 560,
+   "T_min": 14.635401518271717,
+   "n_seasons": 5,
+   "chosen": false,
+   "reason": "read 38 images: 23 clear detections (median S/N 6); weaker or less clear than the ones shown",
+   "reason_tr": "38 g\u00f6r\u00fcnt\u00fc okundu: 23 a\u00e7\u0131k tespit (ortanca S/N 6); g\u00f6sterilenlerden daha zay\u0131f ya da daha az net"
+  },
+  {
+   "pdes": "2026 A2",
+   "name": "C/2026 A2 (Bok)",
+   "n_images": 384,
+   "T_min": 14.831624603464034,
+   "n_seasons": 3,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "235P",
+   "name": "235P/LINEAR",
+   "n_images": 325,
+   "T_min": 14.883,
+   "n_seasons": 3,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "2024 J3",
+   "name": "C/2024 J3 (ATLAS)",
+   "n_images": 286,
+   "T_min": 14.929,
+   "n_seasons": 3,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "260P",
+   "name": "260P/McNaught",
+   "n_images": 473,
+   "T_min": 15.011,
+   "n_seasons": 2,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "2022 N2",
+   "name": "C/2022 N2 (PANSTARRS)",
+   "n_images": 314,
+   "T_min": 15.216,
+   "n_seasons": 2,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "2021 G2",
+   "name": "C/2021 G2 (ATLAS)",
+   "n_images": 415,
+   "T_min": 15.2177222582737,
+   "n_seasons": 4,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "240P",
+   "name": "240P/NEAT",
+   "n_images": 331,
+   "T_min": 15.25220060454634,
+   "n_seasons": 2,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "2025 N1",
+   "name": "C/2025 N1 (ATLAS)",
+   "n_images": 364,
+   "T_min": 15.349185910813679,
+   "n_seasons": 3,
+   "chosen": true
+  },
+  {
+   "pdes": "2021 N1",
+   "name": "P/2021 N1 (ZTF)",
+   "n_images": 565,
+   "T_min": 15.378730750269225,
+   "n_seasons": 5,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "2022 E2",
+   "name": "C/2022 E2 (ATLAS)",
+   "n_images": 361,
+   "T_min": 15.55,
+   "n_seasons": 3,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "2024 G3",
+   "name": "C/2024 G3 (ATLAS)",
+   "n_images": 557,
+   "T_min": 15.65682934054324,
+   "n_seasons": 4,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "88P",
+   "name": "88P/Howell",
+   "n_images": 247,
+   "T_min": 15.672,
+   "n_seasons": 2,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "2022 QE78",
+   "name": "C/2022 QE78 (ATLAS)",
+   "n_images": 261,
+   "T_min": 15.762575801728456,
+   "n_seasons": 2,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "2024 E1",
+   "name": "C/2024 E1 (Wierzchos)",
+   "n_images": 126,
+   "T_min": 15.812473257727035,
+   "n_seasons": 2,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "2023 C2",
+   "name": "C/2023 C2 (ATLAS)",
+   "n_images": 417,
+   "T_min": 15.918,
+   "n_seasons": 3,
+   "chosen": false,
+   "reason": "not read: ranked below the comets shown (JPL magnitude, number of images)",
+   "reason_tr": "okunmad\u0131: g\u00f6sterilen kuyruklu y\u0131ld\u0131zlar\u0131n gerisinde (JPL kadiri, g\u00f6r\u00fcnt\u00fc say\u0131s\u0131)"
+  },
+  {
+   "pdes": "2024 R4",
+   "name": "C/2024 R4 (PANSTARRS)",
+   "n_images": 370,
+   "T_min": 16.00315963372962,
+   "n_seasons": 3,
+   "chosen": false,
+   "reason": "JPL magnitude 16.0 or fainter in every image: too faint for a clear example",
+   "reason_tr": "her g\u00f6r\u00fcnt\u00fcde JPL kadiri 16.0 ya da daha s\u00f6n\u00fck: a\u00e7\u0131k bir \u00f6rnek i\u00e7in \u00e7ok s\u00f6n\u00fck"
+  },
+  {
+   "pdes": "2025 L1",
+   "name": "C/2025 L1 (ATLAS)",
+   "n_images": 372,
+   "T_min": 16.027032339465272,
+   "n_seasons": 3,
+   "chosen": false,
+   "reason": "JPL magnitude 16.0 or fainter in every image: too faint for a clear example",
+   "reason_tr": "her g\u00f6r\u00fcnt\u00fcde JPL kadiri 16.0 ya da daha s\u00f6n\u00fck: a\u00e7\u0131k bir \u00f6rnek i\u00e7in \u00e7ok s\u00f6n\u00fck"
+  },
+  {
+   "pdes": "161P",
+   "name": "161P/Hartley-IRAS",
+   "n_images": 418,
+   "T_min": 16.05467614866265,
+   "n_seasons": 2,
+   "chosen": false,
+   "reason": "JPL magnitude 16.1 or fainter in every image: too faint for a clear example",
+   "reason_tr": "her g\u00f6r\u00fcnt\u00fcde JPL kadiri 16.1 ya da daha s\u00f6n\u00fck: a\u00e7\u0131k bir \u00f6rnek i\u00e7in \u00e7ok s\u00f6n\u00fck"
+  },
+  {
+   "pdes": "2025 Q3",
+   "name": "C/2025 Q3 (ATLAS)",
+   "n_images": 238,
+   "T_min": 16.078,
+   "n_seasons": 2,
+   "chosen": false,
+   "reason": "JPL magnitude 16.1 or fainter in every image: too faint for a clear example",
+   "reason_tr": "her g\u00f6r\u00fcnt\u00fcde JPL kadiri 16.1 ya da daha s\u00f6n\u00fck: a\u00e7\u0131k bir \u00f6rnek i\u00e7in \u00e7ok s\u00f6n\u00fck"
+  },
+  {
+   "pdes": "2024 L5",
+   "name": "C/2024 L5 (ATLAS)",
+   "n_images": 315,
+   "T_min": 16.08328580627205,
+   "n_seasons": 3,
+   "chosen": false,
+   "reason": "JPL magnitude 16.1 or fainter in every image: too faint for a clear example",
+   "reason_tr": "her g\u00f6r\u00fcnt\u00fcde JPL kadiri 16.1 ya da daha s\u00f6n\u00fck: a\u00e7\u0131k bir \u00f6rnek i\u00e7in \u00e7ok s\u00f6n\u00fck"
+  },
+  {
+   "pdes": "2014 UN271",
+   "name": "C/2014 UN271 (Bernardinelli-Bernstein)",
+   "n_images": 974,
+   "T_min": 16.105,
+   "n_seasons": 2,
+   "chosen": false,
+   "reason": "JPL magnitude 16.1 or fainter in every image: too faint for a clear example",
+   "reason_tr": "her g\u00f6r\u00fcnt\u00fcde JPL kadiri 16.1 ya da daha s\u00f6n\u00fck: a\u00e7\u0131k bir \u00f6rnek i\u00e7in \u00e7ok s\u00f6n\u00fck"
+  },
+  {
+   "pdes": "65P",
+   "name": "65P/Gunn",
+   "n_images": 295,
+   "T_min": 16.49725654627279,
+   "n_seasons": 2,
+   "chosen": false,
+   "reason": "JPL magnitude 16.5 or fainter in every image: too faint for a clear example",
+   "reason_tr": "her g\u00f6r\u00fcnt\u00fcde JPL kadiri 16.5 ya da daha s\u00f6n\u00fck: a\u00e7\u0131k bir \u00f6rnek i\u00e7in \u00e7ok s\u00f6n\u00fck"
+  },
+  {
+   "pdes": "320P",
+   "name": "320P/McNaught",
+   "n_images": 446,
+   "T_min": 16.9,
+   "n_seasons": 3,
+   "chosen": false,
+   "reason": "JPL magnitude 16.9 or fainter in every image: too faint for a clear example",
+   "reason_tr": "her g\u00f6r\u00fcnt\u00fcde JPL kadiri 16.9 ya da daha s\u00f6n\u00fck: a\u00e7\u0131k bir \u00f6rnek i\u00e7in \u00e7ok s\u00f6n\u00fck"
+  },
+  {
+   "pdes": "2015 D1",
+   "name": "C/2015 D1 (SOHO)",
+   "n_images": 284,
+   "T_min": 24.678,
+   "n_seasons": 2,
+   "chosen": false,
+   "reason": "JPL magnitude 24.7 or fainter in every image: too faint for a clear example",
+   "reason_tr": "her g\u00f6r\u00fcnt\u00fcde JPL kadiri 24.7 ya da daha s\u00f6n\u00fck: a\u00e7\u0131k bir \u00f6rnek i\u00e7in \u00e7ok s\u00f6n\u00fck"
+  },
+  {
+   "pdes": "168P",
+   "name": "168P/Hergenrother",
+   "n_images": 104,
+   "T_min": 30.051363341188335,
+   "n_seasons": 1,
+   "chosen": false,
+   "reason": "JPL magnitude 30.1 or fainter in every image: too faint for a clear example",
+   "reason_tr": "her g\u00f6r\u00fcnt\u00fcde JPL kadiri 30.1 ya da daha s\u00f6n\u00fck: a\u00e7\u0131k bir \u00f6rnek i\u00e7in \u00e7ok s\u00f6n\u00fck"
+  }
+ ],
+ "bytes": {
+  "s3": 38927672,
+  "s3_requests": 51811,
+  "horizons": 0
+ }
+}

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fazari - Comets in SPHEREx</title>
+<meta name="color-scheme" content="dark">
+<style>
+  :root { --bg:#0b0d12; --fg:#e8eaf0; --mut:#9aa3b2; --acc:#ffb347; --card:#151925; --line:#2a3246;
+          --eph:#ffb347; --det:#5dd3ff; --mod:#8fd18f; color-scheme:dark; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color:var(--acc); }
+  .app { max-width:1180px; margin:0 auto; padding:12px 16px 32px; }
+  .top { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 12px; margin:0 0 10px; }
+  .brand { color:var(--mut); text-decoration:none; font-weight:700; font-size:.9rem; }
+  .brand::after { content:"/"; margin-left:10px; color:#4a5368; font-weight:400; }
+  h1 { font-size:1.35rem; margin:0; }
+  h2 { font-size:1.05rem; margin:22px 0 8px; }
+  h3 { font-size:.95rem; margin:0 0 6px; }
+  small, .mut { color:var(--mut); }
+  .langslot { margin-left:auto; }
+  .tabs { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 12px; }
+  .tabs button { font:inherit; background:#1b2030; color:var(--fg); border:1px solid #333b50; border-radius:999px; padding:5px 13px; cursor:pointer; }
+  .tabs button[aria-pressed="true"] { background:var(--acc); color:#1a1205; border-color:var(--acc); font-weight:600; }
+  .tabs button .k { font-size:.75rem; opacity:.75; margin-left:4px; }
+  .obj-head { margin:0 0 10px; }
+  .obj-head .kind { display:inline-block; font-size:.78rem; color:var(--mut);
+                    border:1px solid var(--line); border-radius:5px; padding:1px 6px; margin-left:6px; vertical-align:2px; }
+  .obj-head .kind.dwarf { color:#9fd0ff; border-color:#3c5a7a; }
+  .sentence { margin:4px 0 0; font-size:1.02rem; }
+  .grid { display:grid; grid-template-columns:minmax(0, 620px) minmax(300px, 1fr); gap:16px; align-items:start; }
+  @media (max-width: 900px) { .grid { grid-template-columns:1fr; } }
+  .stage { position:relative; background:#000; border-radius:10px; overflow:hidden; aspect-ratio:1; max-height:620px; }
+  .stage img, .stage svg { position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; }
+  .hud { position:absolute; left:8px; top:8px; background:rgba(5,7,13,.8); border-radius:6px; padding:4px 9px; font-size:.85rem;
+         font-variant-numeric:tabular-nums; max-width:calc(100% - 16px); }
+  .legend { position:absolute; right:8px; bottom:8px; background:rgba(5,7,13,.75); border-radius:6px; padding:3px 9px; font-size:.78rem; }
+  .legend span { margin-left:10px; white-space:nowrap; }
+  .lg-e { display:inline-block; width:12px; height:12px; border:2px solid var(--eph); border-radius:50%; vertical-align:-2px; }
+  .lg-d { color:var(--det); font-weight:700; }
+  .controls { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 0; align-items:center; }
+  button, select { font:inherit; background:#222838; color:var(--fg); border:1px solid #333b50; border-radius:7px; padding:4px 11px; cursor:pointer; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .stat { display:flex; justify-content:space-between; gap:10px; padding:3px 0; border-bottom:1px solid #20263a; }
+  .stat:last-child { border-bottom:0; }
+  .stat span { color:var(--mut); }
+  .stat b { font-variant-numeric:tabular-nums; text-align:right; white-space:nowrap; }
+  .pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; max-width:820px; }
+  @media (max-width: 600px) { .pair { grid-template-columns:1fr; } }
+  .pair figure { margin:0; }
+  .pair img { width:100%; aspect-ratio:1; image-rendering:pixelated; border-radius:8px; background:#000; display:block; }
+  figcaption { font-size:.82rem; color:var(--mut); margin-top:4px; }
+  .chart { width:100%; height:auto; display:block; }
+  .chart text { fill:var(--mut); font-size:11px; font-family:inherit; }
+  table { border-collapse:collapse; width:100%; font-size:.84rem; font-variant-numeric:tabular-nums; }
+  th, td { border-bottom:1px solid #20263a; padding:4px 6px; text-align:right; white-space:nowrap; }
+  th:first-child, td:first-child, th.l, td.l { text-align:left; }
+  td.l { white-space:normal; }
+  .wrap { overflow-x:auto; }
+  .note { font-size:.85rem; color:var(--mut); margin:6px 0 0; }
+  .feat { margin:6px 0 0; padding-left:18px; font-size:.86rem; }
+  .yes { color:#8fd18f; font-weight:600; }
+  details { margin-top:10px; }
+  summary { cursor:pointer; color:var(--acc); }
+  footer { margin-top:28px; font-size:.82rem; color:var(--mut); border-top:1px solid var(--line); padding-top:10px; }
+  footer p { margin:4px 0; }
+</style>
+<link rel="stylesheet" href="css/ui_shell.css"><script src="js/ui_boot.js"></script><!-- ui layer (arayuz) -->
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <a class="brand" href="explore.html">Fazari</a>
+    <h1 data-i18n="cm.h1">Comets moving through real SPHEREx images</h1>
+    <span class="langslot" data-i18n-toggle></span>
+  </header>
+  <p class="mut" style="margin:0 0 6px" data-i18n-html="cm.lead">These are <b>known</b> comets. JPL Horizons tells us where each one was at the moment each SPHEREx image was taken; we found the images that caught it, cut small boxes out of them and measured the comet ourselves: where it really is, how fast it moves, how big its glowing head (coma) is, and its brightness at each image's own wavelength. Nothing here is a discovery.</p>
+  <nav class="tabs" id="tabs" aria-label="Objects"></nav>
+
+  <section id="obj" hidden>
+    <div class="obj-head">
+      <h2 style="margin:0" id="oname"></h2>
+      <p class="sentence" id="osent"></p>
+    </div>
+    <div class="grid">
+      <div>
+        <div class="stage" id="stage">
+          <img id="frame" alt="SPHEREx frame">
+          <svg id="ov" aria-hidden="true"></svg>
+          <div class="hud" id="hud"></div>
+          <div class="legend"><span><i class="lg-e"></i> <span data-i18n="cm.lgEph">where JPL predicts it</span></span><span><b class="lg-d">+</b> <span data-i18n="cm.lgMeas">where we measured it</span></span></div>
+        </div>
+        <div class="controls">
+          <button id="play" type="button">Pause</button>
+          <button id="prev" type="button" aria-label="previous frame">&larr;</button>
+          <button id="next" type="button" aria-label="next frame">&rarr;</button>
+          <label class="mut"><span data-i18n="cm.speed">speed</span> <select id="speed"><option value="1000" data-i18n="cm.slow">slow</option><option value="600" selected data-i18n="cm.normal">normal</option><option value="300" data-i18n="cm.fast">fast</option></select></label>
+          <label class="mut"><input type="checkbox" id="marks" checked> <span data-i18n="cm.markers">markers</span></label>
+        </div>
+        <p class="note" id="cap"></p>
+      </div>
+      <div class="card" id="stats"></div>
+    </div>
+
+    <h2 data-i18n="cm.stackH">Following the comet</h2>
+    <div class="pair">
+      <figure><img id="stack" alt="co-moving stack"><figcaption id="stackCap"></figcaption></figure>
+      <figure><img id="single" alt="single exposure"><figcaption id="singleCap"></figcaption></figure>
+    </div>
+    <p class="note" id="comaNote"></p>
+
+    <h2 data-i18n="cm.specH">Brightness at each image's own wavelength</h2>
+    <div class="card"><svg class="chart" id="spec" viewBox="0 0 760 320" role="img" aria-label="spectrum"></svg>
+      <p class="note" id="specNote"></p><ul class="feat" id="feats"></ul></div>
+
+    <details><summary data-i18n="cm.measH">Every exposure (table)</summary>
+      <div class="wrap"><table id="meas"></table></div></details>
+  </section>
+
+  <h2 data-i18n="cm.selH">How the comets were chosen</h2>
+  <p class="note" style="margin-top:0" data-i18n-html="cm.selText">We started from all 4088 comets in the JPL Small-Body Database, computed where each one was at the mid time of every one of the 1.3 million public SPHEREx images (DR1 + QR3), and kept the images that really contain it (JPL Horizons positions). Then we read small boxes of the brightest predicted cases and kept the comets that are clearly seen.</p>
+  <div class="wrap"><table id="cands"></table></div>
+  <p class="note" id="bytes"></p>
+
+  <footer>
+    <p data-i18n-html="cm.credits">Comet positions: JPL Horizons and the JPL Small-Body Database (NASA/JPL Solar System Dynamics). SPHEREx data: NASA/JPL-Caltech, served by the NASA/IPAC Infrared Science Archive (IRSA), DR1 (doi:10.26131/IRSA678) and QR3 (doi:10.26131/IRSA662), read from IRSA's public bucket on the Registry of Open Data on AWS. Fazari, NASA Space Apps Challenge 2026. Not endorsed by NASA.</p>
+    <p data-i18n-html="cm.ours">What is ours: the selection, the SPHEREx pixels we read, the tracking, the stacks and every measurement on this page. Method and limits: <code>pipeline/COMETS.md</code>.</p>
+    <p class="ai-note" data-i18n-html="pg.ai"><b>Use of AI</b>: the code and text of this site were written with help from Anthropic's Claude (Claude Code). Team Fazari designed the project and checked and tested the results. The sky images and measurements come from the data sources credited here, not from an AI model.</p>
+  </footer>
+</div>
+<script type="module" src="comets.js"></script>
+<script type="module" src="js/ui_shell.js"></script><!-- ui layer (arayuz) -->
+</body>
+</html>
