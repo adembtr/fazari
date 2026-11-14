@@ -1106,6 +1106,7 @@ function surpriseQuick() {
 // UI wiring
 // ---------------------------------------------------------------------------------------------
 function setStep(n) {
+  if (document.body.classList.contains("fz-demo-on")) return;   // the opening demo's flights are not the user's steps
   state.step = n;
   for (const li of document.querySelectorAll("#steps li")) {
     const k = Number(li.dataset.step);

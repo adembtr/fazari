@@ -94,3 +94,50 @@
   .fz-new .sep { display: none; }
   .fz-new ol { display: grid; gap: 4px; width: 100%; padding: 0; margin: 0; }
 }
+
+/* ---------------- opening demo (explore/demo.js) ---------------- */
+/* the selection card would cover the star during the demo; it is back as soon as the demo stops */
+body.fz-demo-on #card { visibility: hidden; }
+.fz-demo-catch { position: fixed; inset: 0; z-index: 58; cursor: pointer;
+  background: linear-gradient(to bottom, rgba(3, 5, 12, .55), rgba(3, 5, 12, 0) 34%); }
+.fz-demo-top { position: fixed; z-index: 61; top: 12px; left: 50%; transform: translateX(-50%); width: min(780px, calc(100vw - 24px));
+  display: flex; gap: 14px; align-items: flex-start; padding: 14px 14px 14px 18px; border-radius: 18px;
+  background: rgba(9, 12, 22, .92); border: 1px solid rgba(160, 180, 230, .28); box-shadow: 0 16px 50px rgba(0, 0, 0, .55);
+  color: #eef1f8; font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.fz-demo-cap { flex: 1; min-width: 0; }
+.fz-demo-cap .k { margin: 0 0 4px; display: flex; align-items: center; gap: 7px; font-size: 12px; letter-spacing: .07em; text-transform: uppercase;
+  color: #9fdcff; font-weight: 700; }
+.fz-demo-cap .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff5f5f; box-shadow: 0 0 0 0 rgba(255, 95, 95, .6); animation: fzRec 1.4s infinite; }
+@keyframes fzRec { 70% { box-shadow: 0 0 0 7px rgba(255, 95, 95, 0); } }
+.fz-demo-cap h2 { margin: 0; font-size: clamp(19px, 2.3vw, 26px); line-height: 1.18; font-weight: 800; }
+.fz-demo-cap .s { margin: 5px 0 0; font-size: 14.5px; color: #c9d2e6; }
+.fz-demo-cap h2:empty, .fz-demo-cap .s:empty { display: none; }
+.fz-demo-skip { flex: none; display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid rgba(255, 255, 255, .55);
+  background: rgba(255, 255, 255, .1); color: #fff; border-radius: 999px; padding: 10px 16px; font: inherit; font-size: 15px; font-weight: 750; cursor: pointer; }
+.fz-demo-skip:hover, .fz-demo-skip:focus-visible { background: rgba(255, 255, 255, .2); }
+.fz-demo-gap { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 59; pointer-events: none; overflow: visible; }
+.fz-demo-gap .old { fill: none; stroke: #7fd4ff; stroke-width: 2.5; stroke-dasharray: 5 4; }
+.fz-demo-gap .arr { fill: none; stroke: #ffc94d; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 2px #000); }
+.fz-demo-gap .lab { fill: #cfeeff; font: 700 14px system-ui, sans-serif; paint-order: stroke; stroke: #000; stroke-width: 3px; }
+.fz-demo-blink { position: fixed; z-index: 60; right: 24px; top: calc(50% - 40px); transform: translateY(-50%); width: min(300px, 28vw, 36vh); margin: 0; padding: 10px;
+  border-radius: 16px; background: rgba(9, 12, 22, .92); border: 1px solid rgba(160, 180, 230, .28); box-shadow: 0 16px 50px rgba(0, 0, 0, .55);
+  pointer-events: none; }
+.fz-demo-blink svg { display: block; width: 100%; height: auto; aspect-ratio: 1; border-radius: 10px; background: #000; }
+.fz-demo-blink svg .fb, .fz-demo-blink svg .lb { opacity: 0; }
+.fz-demo-blink svg.b .fb, .fz-demo-blink svg.b .lb { opacity: 1; }
+.fz-demo-blink svg.b .la { opacity: 0; }
+.fz-demo-blink svg .la, .fz-demo-blink svg .lb { font-family: system-ui, sans-serif; font-weight: 700; paint-order: stroke; stroke: #000; stroke-width: .8px; }
+.fz-demo-blink svg .la { fill: #7fd4ff; }
+.fz-demo-blink svg .lb { fill: #ffc94d; }
+.fz-demo-blink svg .ra, .fz-demo-blink svg .rb { fill: none; stroke-width: 1.1; }
+.fz-demo-blink svg .ra { stroke: #7fd4ff; stroke-dasharray: 2.5 2; }
+.fz-demo-blink svg .rb { stroke: #ffc94d; }
+.fz-demo-blink figcaption { margin-top: 6px; font: 12.5px/1.35 system-ui, sans-serif; color: #c9d2e6; }
+@media (max-width: 720px) {
+  .fz-demo-top { top: max(8px, env(safe-area-inset-top)); width: calc(100vw - 16px); padding: 11px 10px 11px 13px; gap: 8px; border-radius: 14px; }
+  .fz-demo-cap h2 { font-size: 18px; }
+  .fz-demo-cap .s { font-size: 13.5px; }
+  .fz-demo-skip { padding: 8px 11px; font-size: 13.5px; }
+  .fz-demo-blink { top: auto; transform: none; right: 8px; bottom: calc(var(--sheet-peek, 132px) + 70px); width: 44vw; padding: 7px; }
+}

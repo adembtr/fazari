@@ -3,7 +3,8 @@
 //
 // Every number is read from data/barnard/meta.json (pipeline output); nothing is hard-coded.
 // Shown once per viewer: dismissal is remembered in localStorage (if storage is blocked, it simply
-// shows again next time). Not shown for links that already say where to look (?ra=&dec=, ?p=, ?q=, layer
+// shows again next time). On a first visit the opening demo (explore/demo.js) runs first and ends on this
+// card; with prefers-reduced-motion only the card is shown. Not shown for links that already say where to look (?ra=&dec=, ?p=, ?q=, layer
 // and engine options), so shared links open straight on the sky. ?hero=1 always shows it, ?hero=0 never. The panel gets a small link to open it again.
 //
 // Hook in explore.html: <script type="module" src="explore/hero.js"></script>. Independent of main.js.
@@ -157,6 +158,7 @@ async function open() {
     dlg.className = "fz-hero";
     dlg.setAttribute("aria-labelledby", "fzHeroTitle");
     document.body.appendChild(dlg);
+    dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close("backdrop"); });
     dlg.addEventListener("close", () => { remember(); clearInterval(timer); setTimeout(() => document.getElementById("sky")?.focus?.({ preventScroll: true }), 0); });
     onLang(() => { dlg.lang = lang(); if (dlg.open) { render(meta); dlg.querySelector(".fz-lang")?.focus(); } paintReopen(); });
   }
@@ -165,6 +167,21 @@ async function open() {
   if (!dlg.open) dlg.showModal();
   setPlaying(playing);
   dlg.querySelector(".fz-go")?.focus();
+}
+
+// ---- opening demo (explore/demo.js): something moves at once; any click / key / "Skip demo" ends it all.
+let demo = null;
+async function start() {
+  if (reduceMotion || want === "card") return open();      // no automatic flight for reduced motion
+  if (demo || dlg?.open) return;
+  loadCss();
+  try {
+    const { runDemo } = await import("./demo.js");
+    demo = runDemo({ final: () => open(), onStop: () => { demo = null; remember(); } });
+  } catch (e) {
+    console.warn("demo unavailable", e);
+    open();
+  }
 }
 
 let reopenBtn = null;
@@ -176,7 +193,7 @@ function addReopen() {
   reopenBtn.type = "button";
   reopenBtn.className = "fz-reopen";
   paintReopen();
-  reopenBtn.addEventListener("click", () => { loadCss(); open(); });
+  reopenBtn.addEventListener("click", (e) => { e.stopPropagation(); setTimeout(start, 0); });
   howto.append(" · ", reopenBtn);
 }
 
@@ -185,7 +202,7 @@ const deepLink = ["ra", "dec", "p", "q", "target", "engine", "flat", "gaia", "fa
 const want = params.get("hero");
 addReopen();
 loadCss();
-if (want === "1" || (want !== "0" && !deepLink && !seen())) open();
+if (want === "1" || want === "card" || (want !== "0" && !deepLink && !seen())) start();
 
-// For tests.
-window.__fzHero = { open, close: () => dlg?.close(), seen };
+// For tests: ?hero=1 demo then card, ?hero=card the card only, ?hero=0 nothing.
+window.__fzHero = { open, start, stop: () => demo?.stop(), close: () => dlg?.close(), seen };
