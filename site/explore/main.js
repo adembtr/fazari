@@ -7,7 +7,7 @@ import {
 } from "./coords.js";
 import { SURVEYS, SPHEREX_SLICES, surveyUrl } from "./surveys.js";
 import { findLocal, sesame, plainType } from "./lookup.js";
-import { detectEngine, engineLabel, runLocalJob, stateText } from "./engine.js";
+import { detectEngine, engineLabel, runLocalJob, stateText, resultSummary, isLocalHost } from "./engine.js";
 
 // Aladin Lite v3 (CDS, GPL-3). Pinned. The npm build on jsDelivr is the same code CDS publishes;
 // the CDS host is the fallback (its /api/v3/<version>/ path returned 404 in Nov 2026).
@@ -35,7 +35,9 @@ const POINT_FOV = {
   baade: 2, gal_anticenter: 20, m8: 1.2, m17: 1, m16: 1, helix: 0.6, m1: 0.3, m57: 0.15,
   horsehead: 0.6, cen_a: 0.6, m81: 0.6, m82: 0.4, betelgeuse: 1, p9_galactic_crossing: 30,
 };
-const SPHEREX_FADE = [3.0, 0.8];   // fov (deg) where the SPHEREx layer starts / finishes fading in
+const SPHEREX_FADE = [3.0, 0.8];
+// Planetarium rule: we stand at the centre of the sphere, so the whole sky never fits on one screen.
+const MAX_FOV = 120;   // fov (deg) where the SPHEREx layer starts / finishes fading in
 
 const state = {
   A: null, al: null, cats: [], points: [], byId: new Map(), activeCat: null, selected: null,
@@ -47,10 +49,26 @@ const state = {
 // Boot
 // ---------------------------------------------------------------------------------------------
 const catsReady = loadCategories();
-detectEngine({ force: params.get("engine") }).then((e) => {
+function setEngine(e) {
   state.engine = e;
   document.body.classList.toggle("engine-local", e.kind === "local");
   $("engineTag").textContent = engineLabel(e) + (e.kind === "local" ? " (this computer does the work)" : " (your browser does the work)");
+  $("stEngine").textContent = engineLabel(e);
+  return e;
+}
+const engineReady = detectEngine({ force: params.get("engine") }).then((e) => {
+  performance.mark("fz-engine");
+  setEngine(e);
+  // On this computer but no answer yet (server starting or busy)? Keep asking for a minute.
+  if (e.kind === "browser" && isLocalHost() && !params.get("engine")) {
+    let tries = 0;
+    const again = setInterval(async () => {
+      const e2 = await detectEngine({ timeout: 8000 });
+      if (e2.kind === "local") { setEngine(e2); clearInterval(again); toast("Local Python engine found: Fetch now runs on this computer."); }
+      if (++tries >= 6) clearInterval(again);
+    }, 10000);
+  }
+  return e;
 });
 const skyReady = startSky();
 loadCoverage();
@@ -101,9 +119,11 @@ async function startFlat(reason) {
   $("intro")?.remove();
   await catsReady;
   const { startFlatMap } = await import("./flatmap.js");
+  const sv = startView();
   state.flat = startFlatMap($("sky"), {
-    points: state.points, colors: CAT_COLORS,
+    points: state.points, colors: CAT_COLORS, ra: sv.ra, dec: sv.dec, fov: sv.fov,
     onPick: (q) => select({ id: null, name: "Your spot", ra: q.ra, dec: q.dec, cat: null, manual: true }),
+    onView: (v) => { showView(v.ra, v.dec, v.fov); setCompass(0, -90); },
   });
   performance.mark("fz-sky");
   const sp = startView().point;
@@ -120,7 +140,9 @@ async function startSky() {
     const start = startView();
     const al = A.aladin("#sky", {
       survey: A.imageHiPS(baseUrl, { name: SURVEYS.visible.title, imgFormat: "jpeg" }),
-      projection: "SIN", cooFrame: "ICRS", fov: start.fov0, target: `${start.ra} ${start.dec}`,
+      // STG = the view from the centre of the sphere (conformal, like a planetarium); never the
+      // "globe seen from outside" SIN look and never an all-sky ellipse.
+      projection: "STG", cooFrame: "ICRS", fov: Math.min(start.fov0, maxWidthFov()), target: `${start.ra} ${start.dec}`,
       showReticle: false, showCooGrid: false, showCooGridControl: false, showSimbadPointerControl: false,
       showFullscreenControl: false, showLayersControl: false, showGotoControl: false, showZoomControl: false,
       showProjectionControl: false, showFrame: false, showCooLocation: false, showFov: false,
@@ -128,12 +150,17 @@ async function startSky() {
       log: false, samp: false, realFullscreen: false, backgroundColor: "rgb(4,6,12)",
     });
     state.al = al;
+    applyFovLimit();                                     // wheel / pinch can never zoom out past 120°
+    addEventListener("resize", applyFovLimit);
     state.hips.visible = al.getBaseImageLayer();
     setupOverlays();
     al.on("zoomChanged", () => onViewChange());
     al.on("positionChanged", () => onViewChange());
     al.on("objectClicked", (obj) => onObjectClicked(obj));
     al.on("click", (e) => onSkyClick(e));
+    // A two-finger pinch is never a tap, even when it ends without moving the view (e.g. at the zoom limit).
+    const noteMulti = (e) => { if (e.touches.length > 1 || (e.type === "touchend" && e.touches.length)) state.multiTouchAt = performance.now(); };
+    for (const t of ["touchstart", "touchmove", "touchend"]) $("sky").addEventListener(t, noteMulti, { capture: true, passive: true });
     onViewChange();
     performance.mark("fz-sky");
     intro.classList.add("gone");
@@ -159,11 +186,11 @@ function startView() {
   // ?p=<point id> | ?ra=&dec=[&fov=] | default: Orion, seen from far away first.
   const ra = Number(params.get("ra")), dec = Number(params.get("dec"));
   const fov = Number(params.get("fov")) || null;
-  if (params.get("p")) return { ra: 83.8, dec: -1, fov0: 180, fov: 60, point: { id: params.get("p") } };
+  if (params.get("p")) return { ra: 83.8, dec: -1, fov0: MAX_FOV, fov: 60, point: { id: params.get("p") } };
   if (Number.isFinite(ra) && Number.isFinite(dec) && params.has("ra") && params.has("dec")) {
-    return { ra, dec, fov0: 180, fov: fov || 1, point: { id: null, name: "Shared spot", ra, dec, cat: null, manual: true, fov: fov || 1 } };
+    return { ra, dec, fov0: MAX_FOV, fov: fov || 1, point: { id: null, name: "Shared spot", ra, dec, cat: null, manual: true, fov: fov || 1 } };
   }
-  return { ra: 83.8, dec: -1.0, fov0: 230, fov: 70 };
+  return { ra: 83.8, dec: -1.0, fov0: MAX_FOV, fov: 70 };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -331,10 +358,29 @@ async function toggleCoverageLayer(on) {
 // ---------------------------------------------------------------------------------------------
 function range(a, b, step) { const out = []; for (let x = a; x <= b + 1e-9; x += step) out.push(x); return out; }
 
+// Aladin's field of view is the width; on a tall (portrait) screen the height would be wider still,
+// so cap the width so that neither side ever shows more than MAX_FOV.
+function maxWidthFov() {
+  const el = $("sky");
+  const w = el.clientWidth || innerWidth, h = el.clientHeight || innerHeight;
+  return MAX_FOV * Math.min(1, w / Math.max(1, h));
+}
+function applyFovLimit() {
+  const al = state.al;
+  if (!al) return;
+  const m = maxWidthFov();
+  al.setFoVRange(undefined, m);
+  if (al.getFov()[0] > m) al.setFoV(m);
+}
+
 function zoomTo(fov, secs = 1.2) {
+  fov = Math.min(fov, state.al ? maxWidthFov() : MAX_FOV);
   return new Promise((res) => {
     const al = state.al;
-    if (!al) return res();
+    if (!al) {
+      if (state.flat) { const v = state.flat.getView(); state.flat.goTo(v.ra, v.dec, fov); }
+      return res();
+    }
     if (reduceMotion) { al.setFoV(fov); return res(); }
     let done = false; const fin = () => { if (!done) { done = true; res(); } };
     al.zoomToFoV(fov, secs, fin);
@@ -356,14 +402,15 @@ function panTo(ra, dec, secs = 1.5) {
 let flight = 0;
 async function flyTo(ra, dec, fov) {
   const al = state.al;
-  if (!al) return;
+  fov = Math.min(fov, al ? maxWidthFov() : MAX_FOV);
+  if (!al) { state.flat?.goTo(ra, dec, fov); return; }
   const id = ++flight;
   const [cra, cdec] = al.getRaDec();
   const cur = al.getFov()[0];
   const sep = separation(cra, cdec, ra, dec);
   if (reduceMotion) { al.gotoRaDec(ra, dec); al.setFoV(fov); return; }
   if (sep > cur * 0.45 && sep > 2) {
-    await zoomTo(Math.min(Math.max(cur, Math.min(sep * 1.6, 160), 50), 180), 0.8);   // pull back
+    await zoomTo(Math.min(Math.max(cur, Math.min(sep * 1.6, MAX_FOV), 50), MAX_FOV), 0.8);   // pull back
     if (id !== flight) return;
   }
   await panTo(ra, dec, Math.max(0.6, Math.min(2.2, sep / 50)));
@@ -380,11 +427,45 @@ function onViewChange() {
     if (!al) return;
     const [ra, dec] = al.getRaDec();
     const fov = al.getFov()[0];
-    $("stRa").textContent = formatRA(ra);
-    $("stDec").textContent = formatDec(dec);
-    $("stFov").textContent = formatFov(fov);
+    showView(ra, dec, fov);
+    updateCompass(ra, dec, fov);
     updateSpherexFade(fov);
   });
+}
+
+function showView(ra, dec, fov) {
+  $("stRa").textContent = formatRA(ra);
+  $("stDec").textContent = formatDec(dec);
+  $("stFov").textContent = formatFov(fov);
+}
+
+// Compass: where north and east point on the screen right now (they turn as you look around,
+// e.g. near the poles). Measured by projecting two nearby sky points with Aladin itself.
+function updateCompass(ra, dec, fov) {
+  const al = state.al;
+  try {
+    const d = Math.max(fov * 0.02, 1e-4);
+    const c = al.world2pix(ra, dec);
+    const north = dec + d <= 90 ? al.world2pix(ra, dec + d) : null;
+    const south = al.world2pix(ra, dec - d);
+    const east = al.world2pix((ra + d / Math.max(0.02, Math.cos(dec * Math.PI / 180))) % 360, dec);
+    if (!c || !east || !(north || south)) return;
+    const n = north ? [north[0] - c[0], north[1] - c[1]] : [c[0] - south[0], c[1] - south[1]];
+    const e = [east[0] - c[0], east[1] - c[1]];
+    setCompass(Math.atan2(n[0], -n[1]) * 180 / Math.PI, Math.atan2(e[0], -e[1]) * 180 / Math.PI);
+  } catch { /* view not ready */ }
+}
+
+/** Angles in degrees, clockwise from screen-up. North-up sky seen from inside: (0, -90). */
+function setCompass(nDeg, eDeg) {
+  $("cmpN").setAttribute("transform", `rotate(${nDeg.toFixed(1)})`);
+  $("cmpE").setAttribute("transform", `rotate(${eDeg.toFixed(1)})`);
+  // Letters stay upright; they just move round the dial.
+  for (const [id, deg] of [["cmpNt", nDeg], ["cmpEt", eDeg]]) {
+    const r = deg * Math.PI / 180;
+    $(id).setAttribute("x", (31 * Math.sin(r)).toFixed(1));
+    $(id).setAttribute("y", (-31 * Math.cos(r)).toFixed(1));
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -563,8 +644,8 @@ function openCategory(id, { fly = false } = {}) {
     const centre = meanPos(pts);
     const spread = Math.max(...pts.map((q) => separation(centre.ra, centre.dec, q.ra, q.dec)));
     if (id === "planet_nine") flyTo(55, 10, 110);
-    else if (spread < 60) flyTo(centre.ra, centre.dec, Math.min(180, Math.max(CAT_FOV[id] * 4, spread * 2.6)));
-    else zoomTo(180, 1.5);
+    else if (spread < 60) flyTo(centre.ra, centre.dec, Math.min(MAX_FOV, Math.max(CAT_FOV[id] * 4, spread * 2.6)));
+    else zoomTo(MAX_FOV, 1.5);
   }
 }
 
@@ -583,10 +664,11 @@ function select(p, { fly = false, fov, fill = true } = {}) {
   const pos = markerPos(p);
   state.selected = { ...p, pos };
   // Step 2 of the flow: the coordinate box fills in with the spot you picked.
-  if (fill) $("q").value = `${pos.ra.toFixed(4)} ${pos.dec >= 0 ? "+" : ""}${pos.dec.toFixed(4)}`;
+  if (fill) $("q").value = `${pos.ra.toFixed(5)} ${pos.dec >= 0 ? "+" : ""}${pos.dec.toFixed(5)}`;
   state.flat?.setSelection(pos);
   if (state.step < 3) setStep(3);
   if (isPhone()) setSheet("peek");
+  drawFootprints();
   state.selCat?.removeAll();
   if (state.A && state.selCat) state.selCat.addSources([state.A.source(pos.ra, pos.dec, { name: p.name })]);
   for (const b of document.querySelectorAll(".pt")) b.classList.toggle("on", b.dataset.pid === p.id);
@@ -626,7 +708,7 @@ function renderCard() {
     covEl.hidden = false;
     covEl.className = "cov " + (cov.seasons >= 2 ? "good" : "thin");
     covEl.textContent = cov.seasons >= 2
-      ? `SPHEREx looked here in ${cov.seasons} seasons${cov.images ? ` (${cov.images} images)` : ""}: good for a blink.`
+      ? `SPHEREx looked here in ${cov.seasons} seasons: good for a blink.`
       : cov.seasons === 1
         ? "SPHEREx has only one season here so far, so a blink may not show change yet."
         : "No SPHEREx images listed here yet.";
@@ -638,6 +720,52 @@ function renderCard() {
       if (r.ok && state.selected?.id === p.id) { g.hidden = false; g.dataset.src = `ornek.html?data=${p.gallery}`; }
     }).catch(() => {});
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// SPHEREx footprints of the selected spot, straight from the static sky index (all ICRS degrees):
+// lets the eye check that the archive's image positions sit where the sphere says they should.
+// ---------------------------------------------------------------------------------------------
+const SEASON_COLORS = ["#ffc94d", "#5cf0a0", "#7fd4ff", "#ff7ad9", "#ff8a5c", "#b9a4ff", "#e8f080"];
+let fpRun = 0;
+async function drawFootprints() {
+  const { A, al } = state;
+  const legend = $("cardFoot");
+  const run = ++fpRun;
+  if (!al) { legend.hidden = true; return; }
+  if (!state.overlays.fp) {
+    state.overlays.fp = A.graphicOverlay({ name: "SPHEREx image footprints", lineWidth: 1.2 });
+    al.addOverlay(state.overlays.fp);
+  }
+  const ov = state.overlays.fp;
+  ov.removeAll();
+  const p = state.selected;
+  if (!$("tgFoot").checked || !p) { legend.hidden = true; return; }
+  legend.hidden = false;
+  legend.textContent = "Looking up SPHEREx images of this spot…";
+  let imgs;
+  try {
+    const { findImages } = await import("../js/skyindex.js");
+    imgs = await findImages(p.pos.ra, p.pos.dec);
+  } catch (e) {
+    if (run === fpRun) legend.textContent = "The sky index is not available here, so footprints cannot be drawn.";
+    return;
+  }
+  if (run !== fpRun) return;
+  // Seasons: groups of observing dates separated by more than 30 days.
+  const seasons = [];
+  let prev = -1e9;
+  for (const im of imgs) {
+    if (im.mjd - prev > 30) seasons.push({ start: im.mjd, n: 0, color: SEASON_COLORS[seasons.length % SEASON_COLORS.length] });
+    const s = seasons[seasons.length - 1];
+    s.n++; im._color = s.color; prev = im.mjd;
+  }
+  for (const im of imgs) ov.add(A.polygon(im.corners.map((c) => [c[0], c[1]]), { color: im._color, lineWidth: 1 }));
+  const ym = (mjd) => new Date((mjd - 40587) * 86400e3).toISOString().slice(0, 7);
+  legend.innerHTML = imgs.length
+    ? `<b>${imgs.length}</b> SPHEREx images cover this spot: ` + seasons.map((s) =>
+      `<span class="sea"><i style="background:${s.color}"></i>${ym(s.start)} (${s.n})</span>`).join(" ")
+    : "No SPHEREx images in the sky index for this spot.";
 }
 
 function blinkUrl(p) {
@@ -673,6 +801,7 @@ function loadFrame(src) {
 
 function openBlink(src, title) {
   stopJob();
+  $("resultBar").hidden = true;
   showPanel(title);
   loadFrame(src);
 }
@@ -696,17 +825,27 @@ function startLocalJob(p) {
   $("jobCancel").hidden = false; $("jobBrowser").hidden = true;
   const bar = $("jobBar").parentElement;
   bar.classList.add("indet");
-  const job = runLocalJob({ ra: +p.pos.ra.toFixed(6), dec: +p.pos.dec.toFixed(6), name: p.manual ? undefined : p.name }, (j) => {
+  $("resultBar").hidden = true;
+  const t0 = performance.now();
+  const req = { ra: +p.pos.ra.toFixed(6), dec: +p.pos.dec.toFixed(6), name: p.manual && !p.pmra ? undefined : p.name };
+  if (p.manual && p.pmra != null && Math.hypot(p.pmra, p.pmdec || 0) > 0) {
+    Object.assign(req, { pmra: p.pmra, pmdec: p.pmdec || 0, epoch: +(p.moved ? nowYear() : 2000).toFixed(3) });
+  }
+  if (params.get("force") === "1") req.force = true;          // testing: ignore the engine's result cache
+  const job = runLocalJob(req, (j) => {
     if (state.job !== job) return;
     $("jobState").textContent = stateText(j.state);
     const pr = j.progress || {};
-    const pct = pr.total ? Math.round(100 * (pr.done || 0) / pr.total) : null;
+    // Only the download has a real count; the other stages show a moving bar.
+    const pct = j.state === "downloading" && pr.total ? Math.round(100 * (pr.done || 0) / pr.total) : null;
     bar.classList.toggle("indet", pct == null);
     $("jobBar").style.width = pct == null ? "" : pct + "%";
     bar.setAttribute("aria-valuenow", pct == null ? "" : String(pct));
     const bits = [];
     if (pr.total) bits.push(`${pr.done || 0} of ${pr.total} images`);
     if (pr.bytes) bits.push(`${(pr.bytes / 1048576).toFixed(1)} MB`);
+    const el = Math.round((performance.now() - t0) / 1000);
+    bits.push(`${Math.floor(el / 60)}:${String(el % 60).padStart(2, "0")} elapsed`);
     $("jobDetail").textContent = bits.join(" · ") || $("jobDetail").textContent;
     if (j.message) $("jobMsg").textContent = j.message;
   });
@@ -716,6 +855,15 @@ function startLocalJob(p) {
     state.job = null;
     if (j.state === "done" && j.result_url) {
       loadFrame(`ornek.html?data=${j.result_url}`);
+      const secs = (performance.now() - t0) / 1000;
+      performance.mark("fz-result");
+      resultSummary(j.result_url).then((r) => {
+        if (state.job || $("job").hidden === false) return;
+        const bar = $("resultBar");
+        bar.hidden = false;
+        bar.querySelector("b").textContent = r ? r.text : (j.message || "Done.");
+        bar.querySelector("small").textContent = `Local Python engine · ${secs < 2 ? "cached result" : `ready in ${secs.toFixed(0)} s`}`;
+      });
     } else if (j.state !== "cancelled") {
       jobFailed(p, j.message || "The local engine could not finish this job.");
     }
@@ -754,6 +902,7 @@ function onObjectClicked(obj) {
 function onSkyClick(e) {
   if (!e || e.isDragging || !Number.isFinite(e.ra)) return;
   if (performance.now() - state.objectClickedAt < 250) return;
+  if (performance.now() - (state.multiTouchAt || 0) < 600) return;
   select({ id: null, name: "Your spot", ra: e.ra, dec: e.dec, cat: null, manual: true });
 }
 
@@ -792,7 +941,7 @@ async function runSearch(text) {
     const shown = same ? r.name : `${t} (${r.name})`;
     const kind = plainType(r.type);
     msg.textContent = `Found ${shown}${kind ? `: ${kind}` : ""}.`;
-    select({ id: null, name: shown, ra: r.ra, dec: r.dec, cat: null, manual: true, moved: r.moved, type: kind }, { fly: true, fov: 1, fill: false });
+    select({ id: null, name: shown, ra: r.ra, dec: r.dec, cat: null, manual: true, moved: r.moved, type: kind, pmra: r.pmra, pmdec: r.pmdec }, { fly: true, fov: 1, fill: false });
   } catch (e) {
     msg.className = "msg err";
     msg.textContent = "The name service did not answer. Check your connection, or type coordinates instead.";
@@ -859,6 +1008,7 @@ function wireUi() {
   for (const id of ["tgMarkers"]) $(id).addEventListener("change", syncCatalogs);
   for (const id of ["tgEcliptic", "tgGalactic", "tgP9"]) $(id).addEventListener("change", syncLineToggles);
   $("tgCoverage").addEventListener("change", (e) => toggleCoverageLayer(e.target.checked));
+  $("tgFoot").addEventListener("change", () => drawFootprints());
   $("tgAuto").addEventListener("change", (e) => { state.autoSpx = e.target.checked; onViewChange(); });
   const sel = $("slice");
   for (const s of SPHEREX_SLICES) sel.add(new Option(s.label, s.slice, s.slice === state.slice, s.slice === state.slice));
@@ -875,14 +1025,17 @@ function wireUi() {
     for (const b of d.querySelectorAll("[data-close]")) b.addEventListener("click", () => d.close());
   }
   $("cardClose").addEventListener("click", () => {
-    state.selected = null; state.selCat?.removeAll(); renderCard();
+    state.selected = null; state.selCat?.removeAll(); renderCard(); drawFootprints();
     for (const b of document.querySelectorAll(".pt")) b.classList.remove("on");
   });
   $("btnLook").addEventListener("click", () => {
     const p = state.selected;
     if (!p) return;
-    if (state.engine.kind === "local") startLocalJob(p);
-    else openBlink(blinkUrl(p), `SPHEREx blink: ${p.name}`);
+    // Wait for the engine check (at most ~1.5 s) so an early click still goes to the right engine.
+    engineReady.then(() => {
+      if (state.engine.kind === "local") startLocalJob(p);
+      else openBlink(blinkUrl(p), `SPHEREx blink: ${p.name}`);
+    });
   });
   $("jobCancel").addEventListener("click", () => {
     stopJob();
@@ -927,7 +1080,7 @@ function wireUi() {
     const step = fov / 8;
     const k = e.key;
     if (k === "+" || k === "=") { zoomTo(Math.max(fov / 1.6, 0.02), 0.35); e.preventDefault(); }
-    else if (k === "-" || k === "_") { zoomTo(Math.min(fov * 1.6, 360), 0.35); e.preventDefault(); }
+    else if (k === "-" || k === "_") { zoomTo(Math.min(fov * 1.6, MAX_FOV), 0.35); e.preventDefault(); }
     else if (k.startsWith("Arrow")) {
       e.preventDefault();
       const cosd = Math.max(0.1, Math.cos(dec * Math.PI / 180));
@@ -955,4 +1108,4 @@ function esc(s) {
 }
 
 // For tests: window.__explore exposes state and a few actions.
-window.__explore = { state, openCategory, select, flyTo, runSearch, surprise, setBackground, openBlink, closeBlink, startLocalJob };
+window.__explore = { MAX_FOV, state, openCategory, select, flyTo, runSearch, surprise, setBackground, openBlink, closeBlink, startLocalJob };

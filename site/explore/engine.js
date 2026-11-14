@@ -12,11 +12,13 @@
 const LOCAL_HOSTS = /^(localhost|127\.0\.0\.1|\[::1\]|::1)$/;
 
 /** Ask the local server whether it is there. Only on a local host (no 404 noise on the public site). */
-export async function detectEngine({ force } = {}) {
+export const isLocalHost = () => LOCAL_HOSTS.test(location.hostname);
+
+export async function detectEngine({ force, timeout = 4000 } = {}) {
   if (force === "browser") return { kind: "browser" };
-  if (force !== "local" && !LOCAL_HOSTS.test(location.hostname)) return { kind: "browser" };
+  if (force !== "local" && !isLocalHost()) return { kind: "browser" };
   const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 1500);
+  const timer = setTimeout(() => ctl.abort(), timeout);   // a busy engine can answer slowly
   try {
     const r = await fetch("/api/health", { signal: ctl.signal, cache: "no-store" });
     if (!r.ok) return { kind: "browser" };
@@ -32,12 +34,17 @@ export const engineLabel = (e) => (e.kind === "local" ? "Local Python engine" : 
  * Run one local job. Calls onUpdate(job) after every poll; resolves with the final job
  * ({state: "done", result_url} or {state: "error"|"cancelled"}). Returns {promise, cancel}.
  */
-export function runLocalJob({ ra, dec, name }, onUpdate, { interval = 1500 } = {}) {
+export function runLocalJob({ ra, dec, name, pmra, pmdec, epoch, force }, onUpdate, { interval = 1500 } = {}) {
   let id = null, stopped = false, timer = null;
   const promise = (async () => {
     const r = await fetch("/api/jobs", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ra, dec, ...(name ? { name } : {}) }),
+      body: JSON.stringify({
+        ra, dec, ...(name ? { name } : {}),
+        // Known proper motion (e.g. a star found by name) so the engine follows the star.
+        ...(pmra != null && pmdec != null && epoch != null ? { pmra, pmdec, epoch } : {}),
+        ...(force ? { force: true } : {}),
+      }),
     });
     if (!r.ok) throw new Error(`The local engine refused the job (HTTP ${r.status}).`);
     ({ id } = await r.json());
@@ -76,3 +83,21 @@ const STATE_TEXT = {
   cancelled: "Cancelled.",
 };
 export const stateText = (s) => STATE_TEXT[s] || s || "";
+
+/** One-line summary of a finished job's meta.json (blink.py products), or null. */
+export async function resultSummary(resultUrl) {
+  try {
+    const r = await fetch(resultUrl + "meta.json", { cache: "no-store" });
+    if (!r.ok) return null;
+    const m = await r.json();
+    const ms = m.measured || {};
+    const f = (x, d = 2) => Number(x).toFixed(d);
+    if (ms.shift_arcsec != null) {
+      let t = `Moved ${f(ms.shift_arcsec)}″ ± ${f(ms.shift_err_arcsec ?? 0)}″ between ${ms.from_epoch} and ${ms.to_epoch}`;
+      if (ms.gaia_predicted_arcsec != null) t += ` (Gaia predicts ${f(ms.gaia_predicted_arcsec)}″)`;
+      return { text: t + ".", meta: m };
+    }
+    const msg = ms.message || (ms.detection && ms.detection.message);
+    return msg ? { text: msg, meta: m } : { text: `${(m.epochs || []).length} seasons ready.`, meta: m };
+  } catch { return null; }
+}
