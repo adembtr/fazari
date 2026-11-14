@@ -1,7 +1,7 @@
 {
  "target": "Barnard's Star",
- "ra": 269.4462683558175,
- "dec": 4.768204479463931,
+ "ra": 269.44626697431823,
+ "dec": 4.768222278321201,
  "epoch_center": 2026.0,
  "grid": {
   "projection": "TAN",
@@ -30,9 +30,9 @@
    "diff": "diff_1.0um.png",
    "stretch": {
     "type": "asinh",
-    "lo": -0.10109493136405945,
-    "hi": 774.0697021484375,
-    "soft": 0.2532512843608856,
+    "lo": -0.10105524957180023,
+    "hi": 778.404296875,
+    "soft": 0.25311946868896484,
     "unit": "MJy/sr (zodi subtracted)"
    },
    "frames": [
@@ -104,9 +104,9 @@
    "diff": "diff_1.5um.png",
    "stretch": {
     "type": "asinh",
-    "lo": -0.11621344089508057,
-    "hi": 883.4501953125,
-    "soft": 0.2944604754447937,
+    "lo": -0.11624003946781158,
+    "hi": 867.7639770507812,
+    "soft": 0.29461273550987244,
     "unit": "MJy/sr (zodi subtracted)"
    },
    "frames": [
@@ -179,9 +179,9 @@
    "diff": "diff_2.0um.png",
    "stretch": {
     "type": "asinh",
-    "lo": -0.0935787782073021,
-    "hi": 806.521728515625,
-    "soft": 0.23269960284233093,
+    "lo": -0.09360810369253159,
+    "hi": 822.4739990234375,
+    "soft": 0.232645183801651,
     "unit": "MJy/sr (zodi subtracted)"
    },
    "frames": [
@@ -251,9 +251,9 @@
    "diff": "diff_3.0um.png",
    "stretch": {
     "type": "asinh",
-    "lo": -0.05502687394618988,
-    "hi": 474.5106506347656,
-    "soft": 0.12752100825309753,
+    "lo": -0.05505465716123581,
+    "hi": 480.1127624511719,
+    "soft": 0.1275777965784073,
     "unit": "MJy/sr (zodi subtracted)"
    },
    "frames": [
@@ -319,9 +319,9 @@
    "diff": "diff_4.0um.png",
    "stretch": {
     "type": "asinh",
-    "lo": -0.045169729739427567,
-    "hi": 778.9505615234375,
-    "soft": 0.08982475101947784,
+    "lo": -0.04538621008396149,
+    "hi": 783.3800048828125,
+    "soft": 0.08943229913711548,
     "unit": "MJy/sr (zodi subtracted)"
    },
    "frames": [
@@ -329,12 +329,11 @@
      "file": "frames/2025-08_4.0um.png",
      "date": "2025-08-27",
      "epoch": "2025-08",
-     "n_images": 14,
+     "n_images": 13,
      "detectors": [
-      "D4",
       "D5"
      ],
-     "wavelength_um": 4.008,
+     "wavelength_um": 4.025,
      "date_first": "2025-08-21",
      "date_last": "2025-08-29",
      "files": [
@@ -350,8 +349,7 @@
       "level2_2025W35_2A_0221_1D5_spx_l2b-v27-2026-231.fits",
       "level2_2025W35_2A_0221_2D5_spx_l2b-v27-2026-231.fits",
       "level2_2025W35_2A_0221_3D5_spx_l2b-v27-2026-231.fits",
-      "level2_2025W35_2A_0221_4D5_spx_l2b-v27-2026-231.fits",
-      "level2_2025W35_2A_0233_4D4_spx_l2b-v27-2026-231.fits"
+      "level2_2025W35_2A_0221_4D5_spx_l2b-v27-2026-231.fits"
      ]
     },
     {
@@ -386,14 +384,13 @@
      "file": "frames/2026-08_4.0um.png",
      "date": "2026-08-21",
      "epoch": "2026-08",
-     "n_images": 14,
+     "n_images": 13,
      "detectors": [
-      "D4",
       "D5"
      ],
-     "wavelength_um": 3.99,
+     "wavelength_um": 4.007,
      "date_first": "2026-08-21",
-     "date_last": "2026-08-25",
+     "date_last": "2026-08-21",
      "files": [
       "level2_2026W34_2A_0178_2D5_spx_l2b-v27-2026-243.fits",
       "level2_2026W34_2A_0178_3D5_spx_l2b-v27-2026-243.fits",
@@ -407,8 +404,7 @@
       "level2_2026W34_2A_0233_3D5_spx_l2b-v27-2026-243.fits",
       "level2_2026W34_2A_0233_4D5_spx_l2b-v27-2026-243.fits",
       "level2_2026W34_2A_0249_1D5_spx_l2b-v27-2026-243.fits",
-      "level2_2026W34_2A_0249_2D5_spx_l2b-v27-2026-243.fits",
-      "level2_2026W35_1A_0375_4D4_spx_l2b-v27-2026-243.fits"
+      "level2_2026W34_2A_0249_2D5_spx_l2b-v27-2026-243.fits"
      ]
     }
    ]
@@ -419,22 +415,21 @@
    "diff": "diff_4.6um.png",
    "stretch": {
     "type": "asinh",
-    "lo": -0.041385550051927567,
-    "hi": 640.7861938476562,
-    "soft": 0.07513546943664551,
+    "lo": -0.042445119470357895,
+    "hi": 612.8150634765625,
+    "soft": 0.07760035991668701,
     "unit": "MJy/sr (zodi subtracted)"
    },
    "frames": [
     {
      "file": "frames/2025-08_4.6um.png",
-     "date": "2025-08-23",
+     "date": "2025-08-21",
      "epoch": "2025-08",
-     "n_images": 16,
+     "n_images": 13,
      "detectors": [
-      "D5",
       "D6"
      ],
-     "wavelength_um": 4.597,
+     "wavelength_um": 4.647,
      "date_first": "2025-08-16",
      "date_last": "2025-08-27",
      "files": [
@@ -450,28 +445,21 @@
       "level2_2025W35_1A_0008_2D6_spx_l2b-v27-2026-230.fits",
       "level2_2025W35_1A_0008_3D6_spx_l2b-v27-2026-230.fits",
       "level2_2025W35_1A_0008_4D6_spx_l2b-v27-2026-230.fits",
-      "level2_2025W35_1A_0146_2D5_spx_l2b-v27-2026-230.fits",
-      "level2_2025W35_1A_0146_3D5_spx_l2b-v27-2026-230.fits",
-      "level2_2025W35_1A_0146_4D5_spx_l2b-v27-2026-230.fits",
       "level2_2025W35_1A_0484_1D6_spx_l2b-v27-2026-230.fits"
      ]
     },
     {
      "file": "frames/2026-03_4.6um.png",
-     "date": "2026-03-20",
+     "date": "2026-03-22",
      "epoch": "2026-03",
-     "n_images": 22,
+     "n_images": 19,
      "detectors": [
-      "D5",
       "D6"
      ],
-     "wavelength_um": 4.602,
-     "date_first": "2026-03-15",
+     "wavelength_um": 4.652,
+     "date_first": "2026-03-19",
      "date_last": "2026-05-04",
      "files": [
-      "level2_2026W11_2A_0501_4D5_spx_l2b-v27-2026-234.fits",
-      "level2_2026W11_2A_0550_1D5_spx_l2b-v27-2026-234.fits",
-      "level2_2026W11_2A_0550_2D5_spx_l2b-v27-2026-234.fits",
       "level2_2026W12_1A_0598_1D6_spx_l2b-v27-2026-235.fits",
       "level2_2026W12_1A_0598_2D6_spx_l2b-v27-2026-235.fits",
       "level2_2026W12_1A_0598_3D6_spx_l2b-v27-2026-235.fits",
@@ -497,14 +485,13 @@
      "file": "frames/2026-08_4.6um.png",
      "date": "2026-08-18",
      "epoch": "2026-08",
-     "n_images": 20,
+     "n_images": 14,
      "detectors": [
-      "D5",
       "D6"
      ],
-     "wavelength_um": 4.547,
+     "wavelength_um": 4.647,
      "date_first": "2026-08-16",
-     "date_last": "2026-08-28",
+     "date_last": "2026-08-20",
      "files": [
       "level2_2026W33_2A_0594_4D6_spx_l2b-v27-2026-241.fits",
       "level2_2026W34_1A_0007_1D6_spx_l2b-v27-2026-243.fits",
@@ -515,17 +502,11 @@
       "level2_2026W34_1A_0308_2D6_spx_l2b-v27-2026-243.fits",
       "level2_2026W34_1A_0308_3D6_spx_l2b-v27-2026-243.fits",
       "level2_2026W34_1A_0308_4D6_spx_l2b-v27-2026-243.fits",
-      "level2_2026W34_1A_0363_2D5_spx_l2b-v27-2026-243.fits",
-      "level2_2026W34_1A_0363_3D5_spx_l2b-v27-2026-243.fits",
       "level2_2026W34_1A_0431_1D6_spx_l2b-v27-2026-243.fits",
       "level2_2026W34_1A_0431_2D6_spx_l2b-v27-2026-243.fits",
       "level2_2026W34_1A_0431_3D6_spx_l2b-v27-2026-243.fits",
       "level2_2026W34_1A_0431_4D6_spx_l2b-v27-2026-243.fits",
-      "level2_2026W34_1A_0456_1D5_spx_l2b-v27-2026-243.fits",
-      "level2_2026W34_2A_0081_1D6_spx_l2b-v27-2026-243.fits",
-      "level2_2026W35_1A_0038_1D5_spx_l2b-v27-2026-243.fits",
-      "level2_2026W35_1A_0092_1D5_spx_l2b-v27-2026-243.fits",
-      "level2_2026W35_2A_0126_1D5_spx_l2b-v27-2026-246.fits"
+      "level2_2026W34_2A_0081_1D6_spx_l2b-v27-2026-243.fits"
      ]
     }
    ]
@@ -538,17 +519,49 @@
   "ref_epoch": 2016.0,
   "pmra_mas_yr": -801.5509783684709,
   "pmdec_mas_yr": 10362.394206546573,
-  "parallax_mas": 546.976
+  "parallax_mas": 546.976,
+  "label": "Gaia DR3",
+  "reference": "Astrometry from Gaia DR3.",
+  "parallax_reference": "Gaia DR3 4472832130942575872 (546.976 +- 0.040 mas)"
  },
+ "markers": [
+  {
+   "epoch": "2025-08",
+   "ra": 269.4462055902534,
+   "dec": 4.767267165604976,
+   "png_xy": [
+    360.3,
+    414.6
+   ]
+  },
+  {
+   "epoch": "2026-03",
+   "ra": 269.4463673698614,
+   "dec": 4.768840773701297,
+   "png_xy": [
+    359.5,
+    407.0
+   ]
+  },
+  {
+   "epoch": "2026-08",
+   "ra": 269.4459915970079,
+   "dec": 4.7701030857441316,
+   "png_xy": [
+    361.3,
+    401.0
+   ]
+  }
+ ],
  "measured": {
   "positions": [
    {
     "epoch": "2025-08",
-    "ra": 269.44625677686224,
-    "dec": 4.7673240963142085,
+    "ra": 269.4462532838599,
+    "dec": 4.767328406858981,
     "bias_corrected": true,
-    "ra_raw": 269.4460394723511,
-    "dec_raw": 4.767326333519881,
+    "ra_raw": 269.4460677742212,
+    "dec_raw": 4.76734189508755,
     "mjd": 60916.1944,
     "orient_deg": 359.1,
     "date": "2025-08-29",
@@ -556,17 +569,17 @@
     "n_rejected": 0,
     "err_east_arcsec": 0.041,
     "err_north_arcsec": 0.043,
-    "gaia_ra": 269.44620687893945,
-    "gaia_dec": 4.767250562526935,
-    "gaia_ra_pm_only": 269.4463446972079,
-    "gaia_dec_pm_only": 4.767220917937243,
-    "minus_gaia_east_arcsec": 0.179,
-    "minus_gaia_north_arcsec": 0.265,
-    "raw_minus_gaia_east_arcsec": -0.601,
-    "raw_minus_gaia_north_arcsec": 0.273,
+    "gaia_ra": 269.4462055902534,
+    "gaia_dec": 4.767267165604976,
+    "gaia_ra_pm_only": 269.4463434085219,
+    "gaia_dec_pm_only": 4.76723752101528,
+    "minus_gaia_east_arcsec": 0.171,
+    "minus_gaia_north_arcsec": 0.22,
+    "raw_minus_gaia_east_arcsec": -0.494,
+    "raw_minus_gaia_north_arcsec": 0.269,
     "png_xy_measured": [
      360.1,
-     414.2
+     414.3
     ],
     "png_xy_gaia": [
      360.3,
@@ -575,11 +588,11 @@
    },
    {
     "epoch": "2026-03",
-    "ra": 269.44642393577334,
-    "dec": 4.768869598810022,
+    "ra": 269.44642201704676,
+    "dec": 4.768872418251944,
     "bias_corrected": true,
-    "ra_raw": 269.44664852637646,
-    "dec_raw": 4.768865728826746,
+    "ra_raw": 269.4466148691291,
+    "dec_raw": 4.768856499037296,
     "mjd": 61118.2892,
     "orient_deg": 178.8,
     "date": "2026-03-19",
@@ -587,17 +600,17 @@
     "n_rejected": 3,
     "err_east_arcsec": 0.038,
     "err_north_arcsec": 0.043,
-    "gaia_ra": 269.44637050644735,
-    "gaia_dec": 4.768811765484784,
-    "gaia_ra_pm_only": 269.4462210793785,
-    "gaia_dec_pm_only": 4.768813576132028,
-    "minus_gaia_east_arcsec": 0.192,
-    "minus_gaia_north_arcsec": 0.208,
-    "raw_minus_gaia_east_arcsec": 0.997,
-    "raw_minus_gaia_north_arcsec": 0.194,
+    "gaia_ra": 269.44636906583105,
+    "gaia_dec": 4.768830325989758,
+    "gaia_ra_pm_only": 269.4462196387622,
+    "gaia_dec_pm_only": 4.768832136636998,
+    "minus_gaia_east_arcsec": 0.19,
+    "minus_gaia_north_arcsec": 0.152,
+    "raw_minus_gaia_east_arcsec": 0.882,
+    "raw_minus_gaia_north_arcsec": 0.094,
     "png_xy_measured": [
      359.3,
-     406.8
+     406.9
     ],
     "png_xy_gaia": [
      359.5,
@@ -606,28 +619,28 @@
    },
    {
     "epoch": "2026-08",
-    "ra": 269.4460486499022,
-    "dec": 4.770129999842245,
+    "ra": 269.4460478726096,
+    "dec": 4.770131804425755,
     "bias_corrected": true,
-    "ra_raw": 269.4458250365326,
-    "dec_raw": 4.770133204787698,
+    "ra_raw": 269.44585608709497,
+    "dec_raw": 4.770147744551891,
     "mjd": 61274.6353,
     "orient_deg": 358.9,
     "date": "2026-08-22",
     "n_images": 118,
     "n_rejected": 1,
     "err_east_arcsec": 0.036,
-    "err_north_arcsec": 0.04,
-    "gaia_ra": 269.44599315027926,
-    "gaia_dec": 4.770082991445796,
-    "gaia_ra_pm_only": 269.44612544525285,
-    "gaia_dec_pm_only": 4.770045699965388,
-    "minus_gaia_east_arcsec": 0.199,
-    "minus_gaia_north_arcsec": 0.169,
-    "raw_minus_gaia_east_arcsec": -0.603,
-    "raw_minus_gaia_north_arcsec": 0.181,
+    "err_north_arcsec": 0.041,
+    "gaia_ra": 269.4459915863248,
+    "gaia_dec": 4.770103141005125,
+    "gaia_ra_pm_only": 269.44612388129843,
+    "gaia_dec_pm_only": 4.770065849524715,
+    "minus_gaia_east_arcsec": 0.202,
+    "minus_gaia_north_arcsec": 0.103,
+    "raw_minus_gaia_east_arcsec": -0.486,
+    "raw_minus_gaia_north_arcsec": 0.161,
     "png_xy_measured": [
-     361.1,
+     361.0,
      400.8
     ],
     "png_xy_gaia": [
@@ -637,44 +650,44 @@
    }
   ],
   "fit": {
-   "pmra_mas_yr": -788.5,
-   "pmdec_mas_yr": 10264.5,
-   "pmra_err_mas_yr": 53.1,
-   "pmdec_err_mas_yr": 53.1,
+   "pmra_mas_yr": -778.6,
+   "pmdec_mas_yr": 10255.2,
+   "pmra_err_mas_yr": 53.2,
+   "pmdec_err_mas_yr": 53.2,
    "gaia_pmra_mas_yr": -801.5509783684709,
    "gaia_pmdec_mas_yr": 10362.394206546573,
-   "pos_2026_minus_gaia_east_arcsec": 0.188,
-   "pos_2026_minus_gaia_north_arcsec": 0.231,
+   "pos_2026_minus_gaia_east_arcsec": 0.184,
+   "pos_2026_minus_gaia_north_arcsec": 0.179,
    "parallax_fixed_mas": 546.976,
    "detector_bias_arcsec_xy": {
     "D1": [
-     -0.805,
-     -0.14
+     -0.683,
+     -0.132
     ],
     "D2": [
-     -0.853,
-     -0.136
+     -0.731,
+     -0.193
     ],
     "D3": [
-     -0.453,
-     -0.037
+     -0.301,
+     -0.075
     ],
     "D4": [
-     -0.521,
-     0.232
+     -0.426,
+     0.189
     ],
     "D5": [
-     -0.912,
-     0.182
+     -0.807,
+     0.09
     ],
     "D6": [
-     -1.234,
-     -0.072
+     -1.149,
+     -0.121
     ]
    },
    "n_used": 354,
    "n_clipped": 1,
-   "rms_per_exposure_arcsec": 0.399,
+   "rms_per_exposure_arcsec": 0.401,
    "note": "Joint fit of all exposures: position + free proper motion + catalogue parallax + one detector-fixed centroid bias per detector (saturated core, wing-only fit). The March season calibrates the bias, so only the same-orientation pair is an independent check."
   },
   "pairs": [
@@ -685,12 +698,13 @@
     "independent": false,
     "headline": false,
     "dt_years": 0.5533,
-    "shift_arcsec": 5.596,
-    "pa_deg": 6.15,
-    "raw_shift_arcsec": 5.957,
-    "raw_pa_deg": 21.52,
-    "gaia_predicted_arcsec": 5.651,
-    "gaia_pa_deg": 5.96
+    "shift_arcsec": 5.591,
+    "pa_deg": 6.22,
+    "shift_err_arcsec": 0.058,
+    "raw_shift_arcsec": 5.795,
+    "raw_pa_deg": 19.8,
+    "gaia_predicted_arcsec": 5.658,
+    "gaia_pa_deg": 5.95
    },
    {
     "from": "2025-08",
@@ -699,11 +713,12 @@
     "independent": true,
     "headline": true,
     "dt_years": 0.9814,
-    "shift_arcsec": 10.129,
-    "pa_deg": 355.77,
-    "raw_shift_arcsec": 10.134,
-    "raw_pa_deg": 355.65,
-    "gaia_predicted_arcsec": 10.226,
+    "shift_arcsec": 10.119,
+    "pa_deg": 355.82,
+    "shift_err_arcsec": 0.057,
+    "raw_shift_arcsec": 10.13,
+    "raw_pa_deg": 355.7,
+    "gaia_predicted_arcsec": 10.238,
     "gaia_pa_deg": 355.7
    },
    {
@@ -713,32 +728,968 @@
     "independent": false,
     "headline": false,
     "dt_years": 0.4281,
-    "shift_arcsec": 4.733,
-    "pa_deg": 343.47,
-    "raw_shift_arcsec": 5.436,
-    "raw_pa_deg": 327.08,
-    "gaia_predicted_arcsec": 4.772,
-    "gaia_pa_deg": 343.52
+    "shift_arcsec": 4.728,
+    "pa_deg": 343.51,
+    "shift_err_arcsec": 0.056,
+    "raw_shift_arcsec": 5.387,
+    "raw_pa_deg": 329.65,
+    "gaia_predicted_arcsec": 4.778,
+    "gaia_pa_deg": 343.54
    }
   ],
   "from_epoch": "2025-08",
   "to_epoch": "2026-08",
   "dt_years": 0.9814,
   "same_orientation": true,
-  "shift_arcsec": 10.129,
-  "pa_deg": 355.77,
-  "shift_east_arcsec": -0.747,
-  "shift_north_arcsec": 10.101,
-  "raw_shift_arcsec": 10.134,
-  "raw_pa_deg": 355.65,
-  "gaia_predicted_arcsec": 10.226,
+  "shift_arcsec": 10.119,
+  "pa_deg": 355.82,
+  "shift_east_arcsec": -0.737,
+  "shift_north_arcsec": 10.092,
+  "raw_shift_arcsec": 10.13,
+  "raw_pa_deg": 355.7,
+  "gaia_predicted_arcsec": 10.238,
   "gaia_pa_deg": 355.7,
-  "gaia_predicted_pm_only_arcsec": 10.2,
+  "gaia_predicted_pm_only_arcsec": 10.212,
   "gaia_pa_pm_only_deg": 355.58,
-  "measured_pm_mas_yr": 10321.2,
-  "method": "pixel-integrated 2D Gaussian fit to the unsaturated wings in native 6.15\" pixels (saturated core excluded), converted with each exposure's SIP WCS; per-detector centroid bias removed by the joint fit (see 'fit'); season position = mean of the exposures after clipping. Gaia prediction = proper motion + annual parallax (Earth barycentric)."
+  "measured_pm_mas_yr": 10311.3,
+  "shift_err_arcsec": 0.057,
+  "method": "pixel-integrated 2D Gaussian fit to the unsaturated wings in native 6.15\" pixels (saturated core excluded), converted with each exposure's SIP WCS; per-detector centroid bias removed by the joint fit (see 'fit'); season position = mean of the exposures after clipping. Gaia prediction = proper motion + annual parallax (Earth barycentric).",
+  "astrometry_path": "bright",
+  "field_calibration": {
+   "applied": true,
+   "n_reference_stars": 278,
+   "pooling": "season x detector",
+   "n_exposures_calibrated": 358,
+   "n_uncorrected": 0,
+   "centroid": "gauss",
+   "cells": [
+    {
+     "epoch": "2025-08",
+     "detector": "D1",
+     "accepted": true,
+     "n_star_measurements": 1193,
+     "n_used": 1164,
+     "n_distinct_stars": 72,
+     "model": "shift+rotation+scale",
+     "east_arcsec": -0.119,
+     "north_arcsec": -0.004,
+     "err_east_arcsec": 0.034,
+     "err_north_arcsec": 0.035,
+     "star_rms_arcsec": [
+      0.284,
+      0.301
+     ],
+     "per_exposure_chi2r": 2.01
+    },
+    {
+     "epoch": "2025-08",
+     "detector": "D2",
+     "accepted": true,
+     "n_star_measurements": 1087,
+     "n_used": 1051,
+     "n_distinct_stars": 79,
+     "model": "shift+rotation+scale",
+     "east_arcsec": -0.092,
+     "north_arcsec": -0.069,
+     "err_east_arcsec": 0.032,
+     "err_north_arcsec": 0.037,
+     "star_rms_arcsec": [
+      0.28,
+      0.333
+     ],
+     "per_exposure_chi2r": 5.04
+    },
+    {
+     "epoch": "2025-08",
+     "detector": "D3",
+     "accepted": true,
+     "n_star_measurements": 954,
+     "n_used": 941,
+     "n_distinct_stars": 73,
+     "model": "shift+rotation+scale",
+     "east_arcsec": -0.131,
+     "north_arcsec": -0.053,
+     "err_east_arcsec": 0.036,
+     "err_north_arcsec": 0.044,
+     "star_rms_arcsec": [
+      0.305,
+      0.375
+     ],
+     "per_exposure_chi2r": 12.46
+    },
+    {
+     "epoch": "2025-08",
+     "detector": "D4",
+     "accepted": true,
+     "n_star_measurements": 740,
+     "n_used": 733,
+     "n_distinct_stars": 49,
+     "model": "shift+rotation+scale",
+     "east_arcsec": -0.085,
+     "north_arcsec": -0.062,
+     "err_east_arcsec": 0.04,
+     "err_north_arcsec": 0.039,
+     "star_rms_arcsec": [
+      0.282,
+      0.276
+     ],
+     "per_exposure_chi2r": 4.68
+    },
+    {
+     "epoch": "2025-08",
+     "detector": "D5",
+     "accepted": true,
+     "n_star_measurements": 179,
+     "n_used": 179,
+     "n_distinct_stars": 15,
+     "model": "shift+rotation+scale",
+     "east_arcsec": -0.094,
+     "north_arcsec": -0.122,
+     "err_east_arcsec": 0.039,
+     "err_north_arcsec": 0.047,
+     "star_rms_arcsec": [
+      0.153,
+      0.181
+     ],
+     "per_exposure_chi2r": 2.53
+    },
+    {
+     "epoch": "2025-08",
+     "detector": "D6",
+     "accepted": true,
+     "n_star_measurements": 155,
+     "n_used": 154,
+     "n_distinct_stars": 11,
+     "model": "shift",
+     "east_arcsec": -0.077,
+     "north_arcsec": -0.037,
+     "err_east_arcsec": 0.078,
+     "err_north_arcsec": 0.057,
+     "star_rms_arcsec": [
+      0.259,
+      0.19
+     ],
+     "per_exposure_chi2r": 3.06
+    },
+    {
+     "epoch": "2026-03",
+     "detector": "D1",
+     "accepted": true,
+     "n_star_measurements": 862,
+     "n_used": 842,
+     "n_distinct_stars": 68,
+     "model": "shift+rotation+scale",
+     "east_arcsec": 0.103,
+     "north_arcsec": -0.003,
+     "err_east_arcsec": 0.033,
+     "err_north_arcsec": 0.034,
+     "star_rms_arcsec": [
+      0.273,
+      0.28
+     ],
+     "per_exposure_chi2r": 8.17
+    },
+    {
+     "epoch": "2026-03",
+     "detector": "D2",
+     "accepted": true,
+     "n_star_measurements": 1017,
+     "n_used": 982,
+     "n_distinct_stars": 80,
+     "model": "shift+rotation+scale",
+     "east_arcsec": 0.146,
+     "north_arcsec": 0.035,
+     "err_east_arcsec": 0.029,
+     "err_north_arcsec": 0.035,
+     "star_rms_arcsec": [
+      0.257,
+      0.312
+     ],
+     "per_exposure_chi2r": 3.45
+    },
+    {
+     "epoch": "2026-03",
+     "detector": "D3",
+     "accepted": true,
+     "n_star_measurements": 1022,
+     "n_used": 1003,
+     "n_distinct_stars": 70,
+     "model": "shift+rotation+scale",
+     "east_arcsec": 0.153,
+     "north_arcsec": 0.009,
+     "err_east_arcsec": 0.035,
+     "err_north_arcsec": 0.049,
+     "star_rms_arcsec": [
+      0.293,
+      0.411
+     ],
+     "per_exposure_chi2r": 18.13
+    },
+    {
+     "epoch": "2026-03",
+     "detector": "D4",
+     "accepted": true,
+     "n_star_measurements": 555,
+     "n_used": 545,
+     "n_distinct_stars": 48,
+     "model": "shift+rotation+scale",
+     "east_arcsec": 0.08,
+     "north_arcsec": 0.028,
+     "err_east_arcsec": 0.037,
+     "err_north_arcsec": 0.037,
+     "star_rms_arcsec": [
+      0.259,
+      0.257
+     ],
+     "per_exposure_chi2r": 9.12
+    },
+    {
+     "epoch": "2026-03",
+     "detector": "D5",
+     "accepted": true,
+     "n_star_measurements": 197,
+     "n_used": 196,
+     "n_distinct_stars": 14,
+     "model": "shift+rotation+scale",
+     "east_arcsec": 0.124,
+     "north_arcsec": 0.083,
+     "err_east_arcsec": 0.052,
+     "err_north_arcsec": 0.047,
+     "star_rms_arcsec": [
+      0.194,
+      0.174
+     ],
+     "per_exposure_chi2r": 2.05
+    },
+    {
+     "epoch": "2026-03",
+     "detector": "D6",
+     "accepted": true,
+     "n_star_measurements": 202,
+     "n_used": 202,
+     "n_distinct_stars": 11,
+     "model": "shift",
+     "east_arcsec": 0.106,
+     "north_arcsec": 0.066,
+     "err_east_arcsec": 0.074,
+     "err_north_arcsec": 0.058,
+     "star_rms_arcsec": [
+      0.244,
+      0.192
+     ],
+     "per_exposure_chi2r": 3.2
+    },
+    {
+     "epoch": "2026-08",
+     "detector": "D1",
+     "accepted": true,
+     "n_star_measurements": 894,
+     "n_used": 870,
+     "n_distinct_stars": 69,
+     "model": "shift+rotation+scale",
+     "east_arcsec": -0.135,
+     "north_arcsec": -0.01,
+     "err_east_arcsec": 0.031,
+     "err_north_arcsec": 0.032,
+     "star_rms_arcsec": [
+      0.255,
+      0.266
+     ],
+     "per_exposure_chi2r": 3.96
+    },
+    {
+     "epoch": "2026-08",
+     "detector": "D2",
+     "accepted": true,
+     "n_star_measurements": 1444,
+     "n_used": 1383,
+     "n_distinct_stars": 82,
+     "model": "shift+rotation+scale",
+     "east_arcsec": -0.12,
+     "north_arcsec": -0.067,
+     "err_east_arcsec": 0.032,
+     "err_north_arcsec": 0.035,
+     "star_rms_arcsec": [
+      0.287,
+      0.314
+     ],
+     "per_exposure_chi2r": 4.66
+    },
+    {
+     "epoch": "2026-08",
+     "detector": "D3",
+     "accepted": true,
+     "n_star_measurements": 943,
+     "n_used": 924,
+     "n_distinct_stars": 76,
+     "model": "shift+rotation+scale",
+     "east_arcsec": -0.173,
+     "north_arcsec": -0.038,
+     "err_east_arcsec": 0.035,
+     "err_north_arcsec": 0.042,
+     "star_rms_arcsec": [
+      0.308,
+      0.37
+     ],
+     "per_exposure_chi2r": 13.36
+    },
+    {
+     "epoch": "2026-08",
+     "detector": "D4",
+     "accepted": true,
+     "n_star_measurements": 579,
+     "n_used": 569,
+     "n_distinct_stars": 50,
+     "model": "shift+rotation+scale",
+     "east_arcsec": -0.089,
+     "north_arcsec": -0.067,
+     "err_east_arcsec": 0.037,
+     "err_north_arcsec": 0.037,
+     "star_rms_arcsec": [
+      0.259,
+      0.263
+     ],
+     "per_exposure_chi2r": 7.27
+    },
+    {
+     "epoch": "2026-08",
+     "detector": "D5",
+     "accepted": true,
+     "n_star_measurements": 249,
+     "n_used": 249,
+     "n_distinct_stars": 15,
+     "model": "shift+rotation+scale",
+     "east_arcsec": -0.096,
+     "north_arcsec": -0.079,
+     "err_east_arcsec": 0.046,
+     "err_north_arcsec": 0.051,
+     "star_rms_arcsec": [
+      0.177,
+      0.197
+     ],
+     "per_exposure_chi2r": 3.28
+    },
+    {
+     "epoch": "2026-08",
+     "detector": "D6",
+     "accepted": true,
+     "n_star_measurements": 153,
+     "n_used": 143,
+     "n_distinct_stars": 11,
+     "model": "shift",
+     "east_arcsec": -0.058,
+     "north_arcsec": -0.034,
+     "err_east_arcsec": 0.071,
+     "err_north_arcsec": 0.055,
+     "star_rms_arcsec": [
+      0.234,
+      0.184
+     ],
+     "per_exposure_chi2r": 12.83
+    }
+   ],
+   "reference": "pipeline/ASTROMETRY.md",
+   "gaia_cache": "site/data/barnard/gaia_field.json"
+  },
+  "status": "detected",
+  "message": "Detected above 5\u03c3 in every season and wavelength bin.",
+  "detection": {
+   "status": "detected",
+   "message": "Detected above 5\u03c3 in every season and wavelength bin.",
+   "threshold_snr": 5.0,
+   "detected_detectors": [
+    "D1",
+    "D2",
+    "D3",
+    "D4",
+    "D5",
+    "D6"
+   ],
+   "detected_bins_um": [
+    1.0,
+    1.5,
+    2.0,
+    3.0,
+    4.0,
+    4.6
+   ],
+   "detected_seasons": [
+    "2025-08",
+    "2026-03",
+    "2026-08"
+   ],
+   "cells": [
+    {
+     "n": 14,
+     "flux_ujy": 2938426.7,
+     "err_ujy": 50387.6,
+     "snr": 58.3,
+     "noise_scale": 3.76,
+     "chi2r_between_exposures": 871.14,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 0.75,
+     "lam_max_um": 1.082,
+     "epoch": "2025-08",
+     "detector": "D1",
+     "detected": true
+    },
+    {
+     "n": 12,
+     "flux_ujy": 4953402.4,
+     "err_ujy": 60180.6,
+     "snr": 82.3,
+     "noise_scale": 3.98,
+     "chi2r_between_exposures": 1705.61,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 1.101,
+     "lam_max_um": 1.553,
+     "epoch": "2025-08",
+     "detector": "D2",
+     "detected": true
+    },
+    {
+     "n": 11,
+     "flux_ujy": 4828596.9,
+     "err_ujy": 81424.0,
+     "snr": 59.3,
+     "noise_scale": 5.53,
+     "chi2r_between_exposures": 935.04,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 1.67,
+     "lam_max_um": 2.411,
+     "epoch": "2025-08",
+     "detector": "D3",
+     "detected": true
+    },
+    {
+     "n": 23,
+     "flux_ujy": null,
+     "err_ujy": null,
+     "snr": null,
+     "noise_scale": null,
+     "chi2r_between_exposures": null,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 2.441,
+     "lam_max_um": 3.8,
+     "epoch": "2025-08",
+     "detector": "D4",
+     "detected": true
+    },
+    {
+     "n": 18,
+     "flux_ujy": 9808185.0,
+     "err_ujy": 18010.0,
+     "snr": 544.6,
+     "noise_scale": 1.89,
+     "chi2r_between_exposures": 2636.56,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 3.821,
+     "lam_max_um": 4.407,
+     "epoch": "2025-08",
+     "detector": "D5",
+     "detected": true
+    },
+    {
+     "n": 17,
+     "flux_ujy": 5358193.2,
+     "err_ujy": 6925.0,
+     "snr": 773.8,
+     "noise_scale": 1.48,
+     "chi2r_between_exposures": 8192.79,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 4.418,
+     "lam_max_um": 5.001,
+     "epoch": "2025-08",
+     "detector": "D6",
+     "detected": true
+    },
+    {
+     "n": 9,
+     "flux_ujy": 2984623.0,
+     "err_ujy": 39373.6,
+     "snr": 75.8,
+     "noise_scale": 3.56,
+     "chi2r_between_exposures": 568.96,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 0.745,
+     "lam_max_um": 1.092,
+     "epoch": "2026-03",
+     "detector": "D1",
+     "detected": true
+    },
+    {
+     "n": 15,
+     "flux_ujy": 4780365.5,
+     "err_ujy": 54120.2,
+     "snr": 88.3,
+     "noise_scale": 4.1,
+     "chi2r_between_exposures": 980.52,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 1.118,
+     "lam_max_um": 1.553,
+     "epoch": "2026-03",
+     "detector": "D2",
+     "detected": true
+    },
+    {
+     "n": 8,
+     "flux_ujy": 4647446.1,
+     "err_ujy": 45729.1,
+     "snr": 101.6,
+     "noise_scale": 4.15,
+     "chi2r_between_exposures": 3057.06,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 1.793,
+     "lam_max_um": 2.411,
+     "epoch": "2026-03",
+     "detector": "D3",
+     "detected": true
+    },
+    {
+     "n": 1,
+     "flux_ujy": 42607208.2,
+     "err_ujy": 367239.2,
+     "snr": 116.0,
+     "noise_scale": 1.94,
+     "chi2r_between_exposures": 1.0,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 2.43,
+     "lam_max_um": 2.43,
+     "epoch": "2026-03",
+     "detector": "D4",
+     "detected": true
+    },
+    {
+     "n": 19,
+     "flux_ujy": 10342213.8,
+     "err_ujy": 16563.6,
+     "snr": 624.4,
+     "noise_scale": 1.66,
+     "chi2r_between_exposures": 6388.01,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 3.811,
+     "lam_max_um": 4.407,
+     "epoch": "2026-03",
+     "detector": "D5",
+     "detected": true
+    },
+    {
+     "n": 24,
+     "flux_ujy": 5311157.1,
+     "err_ujy": 5505.8,
+     "snr": 964.7,
+     "noise_scale": 1.34,
+     "chi2r_between_exposures": 7720.42,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 4.412,
+     "lam_max_um": 5.002,
+     "epoch": "2026-03",
+     "detector": "D6",
+     "detected": true
+    },
+    {
+     "n": 13,
+     "flux_ujy": 3505716.6,
+     "err_ujy": 45680.0,
+     "snr": 76.7,
+     "noise_scale": 3.57,
+     "chi2r_between_exposures": 235.32,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 0.741,
+     "lam_max_um": 1.005,
+     "epoch": "2026-08",
+     "detector": "D1",
+     "detected": true
+    },
+    {
+     "n": 10,
+     "flux_ujy": 7064380.5,
+     "err_ujy": 112245.1,
+     "snr": 62.9,
+     "noise_scale": 4.14,
+     "chi2r_between_exposures": 1081.63,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 1.114,
+     "lam_max_um": 1.661,
+     "epoch": "2026-08",
+     "detector": "D2",
+     "detected": true
+    },
+    {
+     "n": 6,
+     "flux_ujy": 6892616.6,
+     "err_ujy": 143998.1,
+     "snr": 47.9,
+     "noise_scale": 4.3,
+     "chi2r_between_exposures": 690.9,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 1.65,
+     "lam_max_um": 2.379,
+     "epoch": "2026-08",
+     "detector": "D3",
+     "detected": true
+    },
+    {
+     "n": 1,
+     "flux_ujy": 38772187.6,
+     "err_ujy": 174399.6,
+     "snr": 222.3,
+     "noise_scale": 1.68,
+     "chi2r_between_exposures": 1.0,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 2.419,
+     "lam_max_um": 2.419,
+     "epoch": "2026-08",
+     "detector": "D4",
+     "detected": true
+    },
+    {
+     "n": 24,
+     "flux_ujy": 8852346.0,
+     "err_ujy": 13898.5,
+     "snr": 636.9,
+     "noise_scale": 1.75,
+     "chi2r_between_exposures": 4850.22,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 3.804,
+     "lam_max_um": 4.43,
+     "epoch": "2026-08",
+     "detector": "D5",
+     "detected": true
+    },
+    {
+     "n": 17,
+     "flux_ujy": 4657206.1,
+     "err_ujy": 6981.2,
+     "snr": 667.1,
+     "noise_scale": 1.47,
+     "chi2r_between_exposures": 6313.87,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 4.434,
+     "lam_max_um": 4.977,
+     "epoch": "2026-08",
+     "detector": "D6",
+     "detected": true
+    }
+   ],
+   "bins": [
+    {
+     "n": 8,
+     "flux_ujy": null,
+     "err_ujy": null,
+     "snr": null,
+     "noise_scale": null,
+     "chi2r_between_exposures": null,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 0.947,
+     "lam_max_um": 1.056,
+     "epoch": "2025-08",
+     "wavelength_um": 1.0,
+     "detector": "D1",
+     "detected": true
+    },
+    {
+     "n": 5,
+     "flux_ujy": null,
+     "err_ujy": null,
+     "snr": null,
+     "noise_scale": null,
+     "chi2r_between_exposures": null,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 0.948,
+     "lam_max_um": 1.042,
+     "epoch": "2026-03",
+     "wavelength_um": 1.0,
+     "detector": "D1",
+     "detected": true
+    },
+    {
+     "n": 2,
+     "flux_ujy": 5493189.3,
+     "err_ujy": 307763.1,
+     "snr": 17.8,
+     "noise_scale": 4.91,
+     "chi2r_between_exposures": 4.92,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 0.982,
+     "lam_max_um": 1.005,
+     "epoch": "2026-08",
+     "wavelength_um": 1.0,
+     "detector": "D1",
+     "detected": true
+    },
+    {
+     "n": 5,
+     "flux_ujy": 5674362.8,
+     "err_ujy": 145043.8,
+     "snr": 39.1,
+     "noise_scale": 4.91,
+     "chi2r_between_exposures": 934.35,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 1.426,
+     "lam_max_um": 1.553,
+     "epoch": "2025-08",
+     "wavelength_um": 1.5,
+     "detector": "D2",
+     "detected": true
+    },
+    {
+     "n": 5,
+     "flux_ujy": 5320486.9,
+     "err_ujy": 97737.2,
+     "snr": 54.4,
+     "noise_scale": 4.23,
+     "chi2r_between_exposures": 1469.02,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 1.412,
+     "lam_max_um": 1.553,
+     "epoch": "2026-03",
+     "wavelength_um": 1.5,
+     "detector": "D2",
+     "detected": true
+    },
+    {
+     "n": 4,
+     "flux_ujy": 6572530.7,
+     "err_ujy": 146914.2,
+     "snr": 44.7,
+     "noise_scale": 4.45,
+     "chi2r_between_exposures": 1440.21,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 1.503,
+     "lam_max_um": 1.548,
+     "epoch": "2026-08",
+     "wavelength_um": 1.5,
+     "detector": "D2",
+     "detected": true
+    },
+    {
+     "n": 3,
+     "flux_ujy": 4239732.4,
+     "err_ujy": 146294.9,
+     "snr": 29.0,
+     "noise_scale": 5.1,
+     "chi2r_between_exposures": 227.67,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 1.917,
+     "lam_max_um": 2.052,
+     "epoch": "2025-08",
+     "wavelength_um": 2.0,
+     "detector": "D3",
+     "detected": true
+    },
+    {
+     "n": 2,
+     "flux_ujy": 3957741.1,
+     "err_ujy": 113031.4,
+     "snr": 35.0,
+     "noise_scale": 6.39,
+     "chi2r_between_exposures": 5532.07,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 1.923,
+     "lam_max_um": 2.107,
+     "epoch": "2026-03",
+     "wavelength_um": 2.0,
+     "detector": "D3",
+     "detected": true
+    },
+    {
+     "n": 5,
+     "flux_ujy": null,
+     "err_ujy": null,
+     "snr": null,
+     "noise_scale": null,
+     "chi2r_between_exposures": null,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 1.894,
+     "lam_max_um": 2.076,
+     "epoch": "2026-08",
+     "wavelength_um": 2.0,
+     "detector": "D3",
+     "detected": true
+    },
+    {
+     "n": 4,
+     "flux_ujy": null,
+     "err_ujy": null,
+     "snr": null,
+     "noise_scale": null,
+     "chi2r_between_exposures": null,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 2.857,
+     "lam_max_um": 3.097,
+     "epoch": "2025-08",
+     "wavelength_um": 3.0,
+     "detector": "D4",
+     "detected": true
+    },
+    {
+     "n": 4,
+     "flux_ujy": null,
+     "err_ujy": null,
+     "snr": null,
+     "noise_scale": null,
+     "chi2r_between_exposures": null,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 2.858,
+     "lam_max_um": 3.099,
+     "epoch": "2026-03",
+     "wavelength_um": 3.0,
+     "detector": "D4",
+     "detected": true
+    },
+    {
+     "n": 4,
+     "flux_ujy": null,
+     "err_ujy": null,
+     "snr": null,
+     "noise_scale": null,
+     "chi2r_between_exposures": null,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 2.895,
+     "lam_max_um": 3.14,
+     "epoch": "2026-08",
+     "wavelength_um": 3.0,
+     "detector": "D4",
+     "detected": true
+    },
+    {
+     "n": 13,
+     "flux_ujy": 10678561.9,
+     "err_ujy": 27010.5,
+     "snr": 395.3,
+     "noise_scale": 1.91,
+     "chi2r_between_exposures": 1958.17,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 3.821,
+     "lam_max_um": 4.239,
+     "epoch": "2025-08",
+     "wavelength_um": 4.0,
+     "detector": "D5",
+     "detected": true
+    },
+    {
+     "n": 14,
+     "flux_ujy": 11493740.3,
+     "err_ujy": 24571.9,
+     "snr": 467.8,
+     "noise_scale": 1.67,
+     "chi2r_between_exposures": 3563.67,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 3.811,
+     "lam_max_um": 4.223,
+     "epoch": "2026-03",
+     "wavelength_um": 4.0,
+     "detector": "D5",
+     "detected": true
+    },
+    {
+     "n": 13,
+     "flux_ujy": 9603290.1,
+     "err_ujy": 28019.2,
+     "snr": 342.7,
+     "noise_scale": 1.86,
+     "chi2r_between_exposures": 1622.03,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 3.804,
+     "lam_max_um": 4.22,
+     "epoch": "2026-08",
+     "wavelength_um": 4.0,
+     "detector": "D5",
+     "detected": true
+    },
+    {
+     "n": 13,
+     "flux_ujy": 5681014.8,
+     "err_ujy": 8613.4,
+     "snr": 659.6,
+     "noise_scale": 1.49,
+     "chi2r_between_exposures": 8598.11,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 4.418,
+     "lam_max_um": 4.854,
+     "epoch": "2025-08",
+     "wavelength_um": 4.6,
+     "detector": "D6",
+     "detected": true
+    },
+    {
+     "n": 19,
+     "flux_ujy": 5438018.9,
+     "err_ujy": 6745.1,
+     "snr": 806.2,
+     "noise_scale": 1.32,
+     "chi2r_between_exposures": 9324.9,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 4.412,
+     "lam_max_um": 4.859,
+     "epoch": "2026-03",
+     "wavelength_um": 4.6,
+     "detector": "D6",
+     "detected": true
+    },
+    {
+     "n": 14,
+     "flux_ujy": 4873839.8,
+     "err_ujy": 8046.2,
+     "snr": 605.7,
+     "noise_scale": 1.4,
+     "chi2r_between_exposures": 7157.06,
+     "n_blended": 0,
+     "saturated_frac": 1.0,
+     "lam_min_um": 4.434,
+     "lam_max_um": 4.871,
+     "epoch": "2026-08",
+     "wavelength_um": 4.6,
+     "detector": "D6",
+     "detected": true
+    }
+   ],
+   "blend_check": [],
+   "neighbour_catalogue": null,
+   "method": "forced fit of the SPHEREx empirical PSF (EPSF extension) at the predicted position, flux free, catalogue neighbours and Gaia DR3 field stars fitted at fixed positions, constant background; 11x11 native-pixel stamp; inverse-variance mean per season; errors scaled by the robust S/N scatter of the same fit at random positions (noise_scale).",
+   "flux_unit_note": "uJy within the EPSF footprint (+-3.3 px); far wings not included",
+   "blend_note": "Gaia DR3 field stars are fitted together with the target; sources not in Gaia (e.g. very red objects) are not modelled.",
+   "astrometry_path": "bright",
+   "median_exposure_snr": 164.7
+  }
  },
  "n_cutouts": 358,
  "data_source": "NASA/IPAC IRSA SPHEREx DR1 + QR3 spectral images",
- "generated": "2026-11-14T07:23:39Z"
+ "generated": "2026-11-14T09:23:28Z"
 }

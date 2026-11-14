@@ -1,0 +1,1371 @@
+{
+ "target": "WISE 0855-0714",
+ "ra": 133.75976174865042,
+ "dec": -7.24218737789,
+ "epoch_center": 2026.0,
+ "grid": {
+  "projection": "TAN",
+  "pixel_arcsec": 3.0,
+  "size_px": [
+   180,
+   180
+  ],
+  "upscale": 4,
+  "png_px": [
+   720,
+   770
+  ],
+  "label_strip_px": 50,
+  "north_up_east_left": true
+ },
+ "epochs": [
+  "2025-05",
+  "2025-11",
+  "2026-05"
+ ],
+ "wavelength_bins": [
+  {
+   "wavelength_um": 1.0,
+   "gif": "blink_1.0um.gif",
+   "diff": "diff_1.0um.png",
+   "stretch": {
+    "type": "asinh",
+    "lo": -0.01956799253821373,
+    "hi": 12.819416999816895,
+    "soft": 0.03576085716485977,
+    "unit": "MJy/sr (zodi subtracted)"
+   },
+   "frames": [
+    {
+     "file": "frames/2025-05_1.0um.png",
+     "date": "2025-05-06",
+     "epoch": "2025-05",
+     "n_images": 3,
+     "detectors": [
+      "D1"
+     ],
+     "wavelength_um": 1.016,
+     "date_first": "2025-05-06",
+     "date_last": "2025-05-06",
+     "files": [
+      "level2_2025W19_1B_0241_1D1_spx_l2b-v27-2026-197.fits",
+      "level2_2025W19_1B_0241_2D1_spx_l2b-v27-2026-197.fits",
+      "level2_2025W19_1B_0241_3D1_spx_l2b-v27-2026-197.fits"
+     ]
+    },
+    {
+     "file": "frames/2025-11_1.0um.png",
+     "date": "2025-10-31",
+     "epoch": "2025-11",
+     "n_images": 5,
+     "detectors": [
+      "D1"
+     ],
+     "wavelength_um": 0.992,
+     "date_first": "2025-10-31",
+     "date_last": "2025-10-31",
+     "files": [
+      "level2_2025W44_2B_0321_1D1_spx_l2b-v27-2026-246.fits",
+      "level2_2025W44_2B_0321_2D1_spx_l2b-v27-2026-246.fits",
+      "level2_2025W44_2B_0322_1D1_spx_l2b-v27-2026-246.fits",
+      "level2_2025W44_2B_0322_2D1_spx_l2b-v27-2026-246.fits",
+      "level2_2025W44_2B_0322_3D1_spx_l2b-v27-2026-246.fits"
+     ]
+    },
+    {
+     "file": "frames/2026-05_1.0um.png",
+     "date": "2026-05-05",
+     "epoch": "2026-05",
+     "n_images": 2,
+     "detectors": [
+      "D1"
+     ],
+     "wavelength_um": 0.966,
+     "date_first": "2026-05-04",
+     "date_last": "2026-05-05",
+     "files": [
+      "level2_2026W19_1A_0201_1D1_spx_l2b-v27-2026-245.fits",
+      "level2_2026W19_1A_0594_2D1_spx_l2b-v27-2026-245.fits"
+     ]
+    }
+   ]
+  },
+  {
+   "wavelength_um": 1.5,
+   "gif": "blink_1.5um.gif",
+   "diff": "diff_1.5um.png",
+   "stretch": {
+    "type": "asinh",
+    "lo": -0.017398901283740997,
+    "hi": 17.808528900146484,
+    "soft": 0.03147008642554283,
+    "unit": "MJy/sr (zodi subtracted)"
+   },
+   "frames": [
+    {
+     "file": "frames/2025-05_1.5um.png",
+     "date": "2025-05-06",
+     "epoch": "2025-05",
+     "n_images": 3,
+     "detectors": [
+      "D2"
+     ],
+     "wavelength_um": 1.552,
+     "date_first": "2025-05-06",
+     "date_last": "2025-05-06",
+     "files": [
+      "level2_2025W19_1B_0181_1D2_spx_l2b-v27-2026-197.fits",
+      "level2_2025W19_1B_0181_2D2_spx_l2b-v27-2026-197.fits",
+      "level2_2025W19_1B_0181_3D2_spx_l2b-v27-2026-197.fits"
+     ]
+    },
+    {
+     "file": "frames/2025-11_1.5um.png",
+     "date": "2025-11-07",
+     "epoch": "2025-11",
+     "n_images": 7,
+     "detectors": [
+      "D2"
+     ],
+     "wavelength_um": 1.447,
+     "date_first": "2025-11-07",
+     "date_last": "2025-12-13",
+     "files": [
+      "level2_2025W45_2A_0292_2D2_spx_l2b-v27-2026-247.fits",
+      "level2_2025W45_2A_0292_3D2_spx_l2b-v27-2026-247.fits",
+      "level2_2025W45_2A_0308_1D2_spx_l2b-v27-2026-247.fits",
+      "level2_2025W45_2A_0308_2D2_spx_l2b-v27-2026-247.fits",
+      "level2_2025W45_2A_0367_1D2_spx_l2b-v27-2026-247.fits",
+      "level2_2025W50_2A_0479_1D2_spx_l2b-v27-2026-210.fits",
+      "level2_2025W50_2A_0512_1D2_spx_l2b-v27-2026-210.fits"
+     ]
+    },
+    {
+     "file": "frames/2026-05_1.5um.png",
+     "date": "2026-05-11",
+     "epoch": "2026-05",
+     "n_images": 8,
+     "detectors": [
+      "D2"
+     ],
+     "wavelength_um": 1.479,
+     "date_first": "2026-05-02",
+     "date_last": "2026-05-14",
+     "files": [
+      "level2_2026W18_2A_0519_1D2_spx_l2b-v27-2026-244.fits",
+      "level2_2026W18_2A_0519_2D2_spx_l2b-v27-2026-244.fits",
+      "level2_2026W18_2A_0663_2D2_spx_l2b-v27-2026-244.fits",
+      "level2_2026W20_1A_0214_1D2_spx_l2b-v27-2026-246.fits",
+      "level2_2026W20_1A_0455_1D2_spx_l2b-v27-2026-246.fits",
+      "level2_2026W20_1A_0728_1D2_spx_l2b-v27-2026-246.fits",
+      "level2_2026W20_1A_0939_1D2_spx_l2b-v27-2026-246.fits",
+      "level2_2026W20_1A_1166_1D2_spx_l2b-v27-2026-246.fits"
+     ]
+    }
+   ]
+  },
+  {
+   "wavelength_um": 2.0,
+   "gif": "blink_2.0um.gif",
+   "diff": "diff_2.0um.png",
+   "stretch": {
+    "type": "asinh",
+    "lo": -0.015151366591453552,
+    "hi": 11.80095100402832,
+    "soft": 0.027349527925252914,
+    "unit": "MJy/sr (zodi subtracted)"
+   },
+   "frames": [
+    {
+     "file": "frames/2025-11_2.0um.png",
+     "date": "2025-11-14",
+     "epoch": "2025-11",
+     "n_images": 8,
+     "detectors": [
+      "D3"
+     ],
+     "wavelength_um": 1.988,
+     "date_first": "2025-11-10",
+     "date_last": "2025-12-13",
+     "files": [
+      "level2_2025W46_1A_0238_1D3_spx_l2b-v27-2026-206.fits",
+      "level2_2025W46_1A_0238_2D3_spx_l2b-v27-2026-206.fits",
+      "level2_2025W46_2A_0214_1D3_spx_l2b-v27-2026-207.fits",
+      "level2_2025W46_2A_0214_2D3_spx_l2b-v27-2026-207.fits",
+      "level2_2025W46_2A_0214_3D3_spx_l2b-v27-2026-207.fits",
+      "level2_2025W50_2A_0232_1D3_spx_l2b-v27-2026-210.fits",
+      "level2_2025W50_2A_0254_1D3_spx_l2b-v27-2026-210.fits",
+      "level2_2025W50_2A_0428_1D3_spx_l2b-v27-2026-210.fits"
+     ]
+    },
+    {
+     "file": "frames/2026-05_2.0um.png",
+     "date": "2026-04-23",
+     "epoch": "2026-05",
+     "n_images": 5,
+     "detectors": [
+      "D3"
+     ],
+     "wavelength_um": 2.011,
+     "date_first": "2026-04-23",
+     "date_last": "2026-04-26",
+     "files": [
+      "level2_2026W17_1B_0634_2D3_spx_l2b-v27-2026-242.fits",
+      "level2_2026W17_1B_0634_3D3_spx_l2b-v27-2026-242.fits",
+      "level2_2026W17_1B_0634_4D3_spx_l2b-v27-2026-242.fits",
+      "level2_2026W17_2A_0609_1D3_spx_l2b-v27-2026-243.fits",
+      "level2_2026W17_2A_0609_2D3_spx_l2b-v27-2026-243.fits"
+     ]
+    }
+   ]
+  },
+  {
+   "wavelength_um": 3.0,
+   "gif": "blink_3.0um.gif",
+   "diff": "diff_3.0um.png",
+   "stretch": {
+    "type": "asinh",
+    "lo": -0.013805248774588108,
+    "hi": 6.092963218688965,
+    "soft": 0.025638103485107422,
+    "unit": "MJy/sr (zodi subtracted)"
+   },
+   "frames": [
+    {
+     "file": "frames/2025-11_3.0um.png",
+     "date": "2025-10-31",
+     "epoch": "2025-11",
+     "n_images": 5,
+     "detectors": [
+      "D4"
+     ],
+     "wavelength_um": 3.011,
+     "date_first": "2025-10-31",
+     "date_last": "2025-10-31",
+     "files": [
+      "level2_2025W44_2B_0305_1D4_spx_l2b-v27-2026-246.fits",
+      "level2_2025W44_2B_0305_2D4_spx_l2b-v27-2026-246.fits",
+      "level2_2025W44_2B_0305_3D4_spx_l2b-v27-2026-246.fits",
+      "level2_2025W44_2B_0305_4D4_spx_l2b-v27-2026-246.fits",
+      "level2_2025W44_2B_0321_1D4_spx_l2b-v27-2026-246.fits"
+     ]
+    },
+    {
+     "file": "frames/2026-05_3.0um.png",
+     "date": "2026-05-04",
+     "epoch": "2026-05",
+     "n_images": 5,
+     "detectors": [
+      "D4"
+     ],
+     "wavelength_um": 2.986,
+     "date_first": "2026-05-03",
+     "date_last": "2026-05-05",
+     "files": [
+      "level2_2026W18_2A_0684_4D4_spx_l2b-v27-2026-244.fits",
+      "level2_2026W19_1A_0227_1D4_spx_l2b-v27-2026-245.fits",
+      "level2_2026W19_1A_0227_2D4_spx_l2b-v27-2026-245.fits",
+      "level2_2026W19_1A_0493_1D4_spx_l2b-v27-2026-245.fits",
+      "level2_2026W19_1A_0594_1D4_spx_l2b-v27-2026-245.fits"
+     ]
+    }
+   ]
+  },
+  {
+   "wavelength_um": 4.0,
+   "gif": "blink_4.0um.gif",
+   "diff": "diff_4.0um.png",
+   "stretch": {
+    "type": "asinh",
+    "lo": -0.01901608519256115,
+    "hi": 3.3655920028686523,
+    "soft": 0.03518657386302948,
+    "unit": "MJy/sr (zodi subtracted)"
+   },
+   "frames": [
+    {
+     "file": "frames/2025-05_4.0um.png",
+     "date": "2025-05-06",
+     "epoch": "2025-05",
+     "n_images": 4,
+     "detectors": [
+      "D5"
+     ],
+     "wavelength_um": 4.091,
+     "date_first": "2025-05-06",
+     "date_last": "2025-05-06",
+     "files": [
+      "level2_2025W19_1B_0231_1D5_spx_l2b-v27-2026-197.fits",
+      "level2_2025W19_1B_0231_2D5_spx_l2b-v27-2026-197.fits",
+      "level2_2025W19_1B_0231_3D5_spx_l2b-v27-2026-197.fits",
+      "level2_2025W19_1B_0231_4D5_spx_l2b-v27-2026-197.fits"
+     ]
+    },
+    {
+     "file": "frames/2025-11_4.0um.png",
+     "date": "2025-11-07",
+     "epoch": "2025-11",
+     "n_images": 20,
+     "detectors": [
+      "D5"
+     ],
+     "wavelength_um": 4.065,
+     "date_first": "2025-11-07",
+     "date_last": "2025-12-13",
+     "files": [
+      "level2_2025W45_2A_0164_1D5_spx_l2b-v27-2026-247.fits",
+      "level2_2025W45_2A_0164_2D5_spx_l2b-v27-2026-247.fits",
+      "level2_2025W45_2A_0164_3D5_spx_l2b-v27-2026-247.fits",
+      "level2_2025W45_2A_0164_4D5_spx_l2b-v27-2026-247.fits",
+      "level2_2025W45_2A_0192_1D5_spx_l2b-v27-2026-247.fits",
+      "level2_2025W45_2A_0192_2D5_spx_l2b-v27-2026-247.fits",
+      "level2_2025W45_2A_0278_1D5_spx_l2b-v27-2026-247.fits",
+      "level2_2025W45_2A_0278_2D5_spx_l2b-v27-2026-247.fits",
+      "level2_2025W45_2A_0278_3D5_spx_l2b-v27-2026-247.fits",
+      "level2_2025W45_2A_0278_4D5_spx_l2b-v27-2026-247.fits",
+      "level2_2025W45_2A_0292_1D5_spx_l2b-v27-2026-247.fits",
+      "level2_2025W45_2A_0292_2D5_spx_l2b-v27-2026-247.fits",
+      "level2_2025W45_2A_0292_3D5_spx_l2b-v27-2026-247.fits",
+      "level2_2025W46_1A_0108_1D5_spx_l2b-v27-2026-206.fits",
+      "level2_2025W50_2A_0086_1D5_spx_l2b-v27-2026-210.fits",
+      "level2_2025W50_2A_0164_1D5_spx_l2b-v27-2026-210.fits",
+      "level2_2025W50_2A_0374_1D5_spx_l2b-v27-2026-210.fits",
+      "level2_2025W50_2A_0391_1D5_spx_l2b-v27-2026-210.fits",
+      "level2_2025W50_2A_0479_1D5_spx_l2b-v27-2026-210.fits",
+      "level2_2025W50_2A_0512_1D5_spx_l2b-v27-2026-210.fits"
+     ]
+    },
+    {
+     "file": "frames/2026-05_4.0um.png",
+     "date": "2026-05-02",
+     "epoch": "2026-05",
+     "n_images": 10,
+     "detectors": [
+      "D5"
+     ],
+     "wavelength_um": 3.986,
+     "date_first": "2026-05-01",
+     "date_last": "2026-05-11",
+     "files": [
+      "level2_2026W18_2A_0247_1D5_spx_l2b-v27-2026-244.fits",
+      "level2_2026W18_2A_0247_2D5_spx_l2b-v27-2026-244.fits",
+      "level2_2026W18_2A_0247_3D5_spx_l2b-v27-2026-244.fits",
+      "level2_2026W18_2A_0247_4D5_spx_l2b-v27-2026-244.fits",
+      "level2_2026W18_2A_0441_1D5_spx_l2b-v27-2026-244.fits",
+      "level2_2026W18_2A_0441_2D5_spx_l2b-v27-2026-244.fits",
+      "level2_2026W18_2A_0519_1D5_spx_l2b-v27-2026-244.fits",
+      "level2_2026W18_2A_0663_1D5_spx_l2b-v27-2026-244.fits",
+      "level2_2026W18_2A_0663_2D5_spx_l2b-v27-2026-244.fits",
+      "level2_2026W20_1A_0214_1D5_spx_l2b-v27-2026-246.fits"
+     ]
+    }
+   ]
+  },
+  {
+   "wavelength_um": 4.6,
+   "gif": "blink_4.6um.gif",
+   "diff": "diff_4.6um.png",
+   "stretch": {
+    "type": "asinh",
+    "lo": -0.028977900743484497,
+    "hi": 7.0147199630737305,
+    "soft": 0.054712437093257904,
+    "unit": "MJy/sr (zodi subtracted)"
+   },
+   "frames": [
+    {
+     "file": "frames/2025-05_4.6um.png",
+     "date": "2025-05-05",
+     "epoch": "2025-05",
+     "n_images": 1,
+     "detectors": [
+      "D6"
+     ],
+     "wavelength_um": 4.86,
+     "date_first": "2025-05-05",
+     "date_last": "2025-05-05",
+     "files": [
+      "level2_2025W19_1B_0138_1D6_spx_l2b-v27-2026-197.fits"
+     ]
+    },
+    {
+     "file": "frames/2025-11_4.6um.png",
+     "date": "2025-11-12",
+     "epoch": "2025-11",
+     "n_images": 18,
+     "detectors": [
+      "D6"
+     ],
+     "wavelength_um": 4.651,
+     "date_first": "2025-11-10",
+     "date_last": "2025-12-13",
+     "files": [
+      "level2_2025W46_1A_0075_4D6_spx_l2b-v27-2026-206.fits",
+      "level2_2025W46_1A_0076_1D6_spx_l2b-v27-2026-206.fits",
+      "level2_2025W46_1A_0076_2D6_spx_l2b-v27-2026-206.fits",
+      "level2_2025W46_1A_0076_3D6_spx_l2b-v27-2026-206.fits",
+      "level2_2025W46_1A_0090_1D6_spx_l2b_retry-v27-2026-207.fits",
+      "level2_2025W46_1A_0090_2D6_spx_l2b-v27-2026-206.fits",
+      "level2_2025W46_1A_0090_3D6_spx_l2b-v27-2026-206.fits",
+      "level2_2025W46_1A_0238_1D6_spx_l2b-v27-2026-206.fits",
+      "level2_2025W46_1A_0238_2D6_spx_l2b-v27-2026-206.fits",
+      "level2_2025W46_2A_0214_1D6_spx_l2b-v27-2026-207.fits",
+      "level2_2025W46_2A_0214_2D6_spx_l2b-v27-2026-207.fits",
+      "level2_2025W46_2A_0214_3D6_spx_l2b-v27-2026-207.fits",
+      "level2_2025W46_2A_0214_4D6_spx_l2b-v27-2026-207.fits",
+      "level2_2025W46_2A_0226_1D6_spx_l2b-v27-2026-207.fits",
+      "level2_2025W46_2A_0226_2D6_spx_l2b_retry-v27-2026-207.fits",
+      "level2_2025W50_2A_0232_1D6_spx_l2b-v27-2026-210.fits",
+      "level2_2025W50_2A_0254_1D6_spx_l2b-v27-2026-210.fits",
+      "level2_2025W50_2A_0428_1D6_spx_l2b-v27-2026-210.fits"
+     ]
+    },
+    {
+     "file": "frames/2026-05_4.6um.png",
+     "date": "2026-04-23",
+     "epoch": "2026-05",
+     "n_images": 16,
+     "detectors": [
+      "D6"
+     ],
+     "wavelength_um": 4.668,
+     "date_first": "2026-04-21",
+     "date_last": "2026-05-09",
+     "files": [
+      "level2_2026W17_1B_0227_2D6_spx_l2b-v27-2026-242.fits",
+      "level2_2026W17_1B_0227_3D6_spx_l2b-v27-2026-242.fits",
+      "level2_2026W17_1B_0227_4D6_spx_l2b-v27-2026-242.fits",
+      "level2_2026W17_1B_0507_1D6_spx_l2b-v27-2026-242.fits",
+      "level2_2026W17_1B_0507_2D6_spx_l2b-v27-2026-242.fits",
+      "level2_2026W17_1B_0507_3D6_spx_l2b-v27-2026-242.fits",
+      "level2_2026W17_1B_0634_1D6_spx_l2b-v27-2026-242.fits",
+      "level2_2026W17_1B_0634_2D6_spx_l2b-v27-2026-242.fits",
+      "level2_2026W17_1B_0634_3D6_spx_l2b-v27-2026-242.fits",
+      "level2_2026W17_1B_0634_4D6_spx_l2b-v27-2026-242.fits",
+      "level2_2026W17_2A_0591_1D6_spx_l2b-v27-2026-243.fits",
+      "level2_2026W17_2A_0609_1D6_spx_l2b-v27-2026-243.fits",
+      "level2_2026W17_2A_0609_2D6_spx_l2b-v27-2026-243.fits",
+      "level2_2026W18_2A_0065_1D6_spx_l2b-v27-2026-244.fits",
+      "level2_2026W19_2A_0568_1D6_spx_l2b-v27-2026-245.fits",
+      "level2_2026W19_2A_0651_1D6_spx_l2b-v27-2026-245.fits"
+     ]
+    }
+   ]
+  }
+ ],
+ "gaia": {
+  "source_id": null,
+  "ra_deg": 133.780984,
+  "dec_deg": -7.243932,
+  "ref_epoch": 2016.67047,
+  "pmra_mas_yr": -8123.7,
+  "pmdec_mas_yr": 673.2,
+  "parallax_mas": 439.0,
+  "label": "Kirkpatrick et al. 2021 (Spitzer)",
+  "reference": "Not in Gaia (too faint in G). Spitzer astrometry from Kirkpatrick et al. 2021, ApJS 253, 7, Table 5 (VizieR J/ApJS/253/7): RA 133.780984, Dec -7.243932 (+-2.3 mas) at MJD 57633.39 (epoch 2016.67047), pmRA*cos(Dec) = -8123.7 +- 1.3, pmDec = 673.2 +- 1.3 mas/yr; parallax in targets_extra.json.",
+  "parallax_reference": "Kirkpatrick et al. 2021, ApJS 253, 7, Table 5 (Spitzer, 439.0 +- 2.4 mas); not in Gaia"
+ },
+ "markers": [
+  {
+   "epoch": "2025-05",
+   "ra": 133.7611352479173,
+   "dec": -7.242275377518813,
+   "png_xy": [
+    353.5,
+    410.4
+   ]
+  },
+  {
+   "epoch": "2025-11",
+   "ra": 133.76018320448833,
+   "dec": -7.242248746545816,
+   "png_xy": [
+    358.0,
+    410.3
+   ]
+  },
+  {
+   "epoch": "2026-05",
+   "ra": 133.7588896132759,
+   "dec": -7.242094753427481,
+   "png_xy": [
+    364.2,
+    409.6
+   ]
+  }
+ ],
+ "measured": {
+  "positions": [
+   {
+    "epoch": "2025-05",
+    "ra": 133.76123997777873,
+    "dec": -7.242283884543062,
+    "bias_corrected": false,
+    "ra_raw": 133.76123997777873,
+    "dec_raw": -7.242283884543062,
+    "mjd": 60801.279,
+    "orient_deg": 341.1,
+    "date": "2025-05-06",
+    "n_images": 8,
+    "n_rejected": 0,
+    "detectors": [
+     "D5"
+    ],
+    "err_east_arcsec": 0.423,
+    "err_north_arcsec": 0.36,
+    "err_curvature_arcsec": [
+     0.394,
+     0.36
+    ],
+    "err_bootstrap_arcsec": [
+     0.423,
+     0.277
+    ],
+    "source_snr": 15.5,
+    "noise_scale": 1.3,
+    "flags": [],
+    "gaia_ra": 133.761134983715,
+    "gaia_dec": -7.242275319237303,
+    "gaia_ra_pm_only": 133.76125470635122,
+    "gaia_dec_pm_only": -7.242310109779808,
+    "minus_gaia_east_arcsec": 0.375,
+    "minus_gaia_north_arcsec": -0.031,
+    "raw_minus_gaia_east_arcsec": 0.375,
+    "raw_minus_gaia_north_arcsec": -0.031,
+    "png_xy_measured": [
+     353.0,
+     410.5
+    ],
+    "png_xy_gaia": [
+     353.5,
+     410.4
+    ]
+   },
+   {
+    "epoch": "2025-11",
+    "ra": 133.7600613673911,
+    "dec": -7.242200803095861,
+    "bias_corrected": false,
+    "ra_raw": 133.7600613673911,
+    "dec_raw": -7.242200803095861,
+    "mjd": 60995.4813,
+    "orient_deg": 159.7,
+    "date": "2025-11-16",
+    "n_images": 46,
+    "n_rejected": 0,
+    "detectors": [
+     "D5",
+     "D6"
+    ],
+    "err_east_arcsec": 0.204,
+    "err_north_arcsec": 0.197,
+    "err_curvature_arcsec": [
+     0.204,
+     0.197
+    ],
+    "err_bootstrap_arcsec": [
+     0.174,
+     0.179
+    ],
+    "source_snr": 28.2,
+    "noise_scale": 1.11,
+    "flags": [],
+    "gaia_ra": 133.76015560645175,
+    "gaia_dec": -7.242249693819222,
+    "gaia_ra_pm_only": 133.76004523418132,
+    "gaia_dec_pm_only": -7.24221068244506,
+    "minus_gaia_east_arcsec": -0.337,
+    "minus_gaia_north_arcsec": 0.176,
+    "raw_minus_gaia_east_arcsec": -0.337,
+    "raw_minus_gaia_north_arcsec": 0.176,
+    "png_xy_measured": [
+     358.6,
+     410.1
+    ],
+    "png_xy_gaia": [
+     358.1,
+     410.3
+    ]
+   },
+   {
+    "epoch": "2026-05",
+    "ra": 133.75890183443147,
+    "dec": -7.241985036196324,
+    "bias_corrected": false,
+    "ra_raw": 133.75890183443147,
+    "dec_raw": -7.241985036196324,
+    "mjd": 61161.2293,
+    "orient_deg": 341.5,
+    "date": "2026-05-01",
+    "n_images": 36,
+    "n_rejected": 0,
+    "detectors": [
+     "D5",
+     "D6"
+    ],
+    "err_east_arcsec": 0.331,
+    "err_north_arcsec": 0.453,
+    "err_curvature_arcsec": [
+     0.26,
+     0.314
+    ],
+    "err_bootstrap_arcsec": [
+     0.331,
+     0.453
+    ],
+    "source_snr": 20.7,
+    "noise_scale": 1.19,
+    "flags": [],
+    "gaia_ra": 133.75889423027894,
+    "gaia_dec": -7.242095784886432,
+    "gaia_ra_pm_only": 133.75901297312535,
+    "gaia_dec_pm_only": -7.242125823141876,
+    "minus_gaia_east_arcsec": 0.027,
+    "minus_gaia_north_arcsec": 0.399,
+    "raw_minus_gaia_east_arcsec": 0.027,
+    "raw_minus_gaia_north_arcsec": 0.399,
+    "png_xy_measured": [
+     364.1,
+     409.0
+    ],
+    "png_xy_gaia": [
+     364.1,
+     409.6
+    ]
+   }
+  ],
+  "astrometry_path": "faint",
+  "rejected_seasons": [],
+  "fit": {
+   "pmra_mas_yr": -8365.6,
+   "pmdec_mas_yr": 1098.8,
+   "pmra_err_mas_yr": 600.2,
+   "pmdec_err_mas_yr": 631.7,
+   "gaia_pmra_mas_yr": -8123.7,
+   "gaia_pmdec_mas_yr": 673.2,
+   "pos_2026_minus_gaia_east_arcsec": -0.171,
+   "pos_2026_minus_gaia_north_arcsec": 0.237,
+   "parallax_fixed_mas": 439.0,
+   "detector_bias_arcsec_xy": {},
+   "n_used": 90,
+   "n_clipped": 0,
+   "n_seasons": 3,
+   "chi2": 2.47,
+   "dof": 2,
+   "note": "Weighted linear fit of the season positions (season ePSF fits): position + free proper motion + catalogue parallax. No detector bias term (unsaturated source, the EPSF is built from unsaturated stars). Errors scaled by sqrt(chi2/dof)."
+  },
+  "pairs": [
+   {
+    "from": "2025-05",
+    "to": "2025-11",
+    "same_orientation": false,
+    "independent": false,
+    "headline": false,
+    "dt_years": 0.5317,
+    "shift_arcsec": 4.22,
+    "pa_deg": 274.06,
+    "shift_err_arcsec": 0.441,
+    "raw_shift_arcsec": 4.22,
+    "raw_pa_deg": 274.06,
+    "gaia_predicted_arcsec": 3.499,
+    "gaia_pa_deg": 271.51
+   },
+   {
+    "from": "2025-05",
+    "to": "2026-05",
+    "same_orientation": true,
+    "independent": true,
+    "headline": true,
+    "dt_years": 0.9855,
+    "shift_arcsec": 8.419,
+    "pa_deg": 277.34,
+    "shift_err_arcsec": 0.558,
+    "raw_shift_arcsec": 8.419,
+    "raw_pa_deg": 277.34,
+    "gaia_predicted_arcsec": 8.028,
+    "gaia_pa_deg": 274.62
+   },
+   {
+    "from": "2025-11",
+    "to": "2026-05",
+    "same_orientation": false,
+    "independent": false,
+    "headline": false,
+    "dt_years": 0.4538,
+    "shift_arcsec": 4.213,
+    "pa_deg": 280.62,
+    "shift_err_arcsec": 0.445,
+    "raw_shift_arcsec": 4.213,
+    "raw_pa_deg": 280.62,
+    "gaia_predicted_arcsec": 4.539,
+    "gaia_pa_deg": 277.01
+   }
+  ],
+  "from_epoch": "2025-05",
+  "to_epoch": "2026-05",
+  "dt_years": 0.9855,
+  "same_orientation": true,
+  "shift_arcsec": 8.419,
+  "pa_deg": 277.34,
+  "shift_east_arcsec": -8.35,
+  "shift_north_arcsec": 1.076,
+  "raw_shift_arcsec": 8.419,
+  "raw_pa_deg": 277.34,
+  "gaia_predicted_arcsec": 8.028,
+  "gaia_pa_deg": 274.62,
+  "gaia_predicted_pm_only_arcsec": 8.033,
+  "gaia_pa_pm_only_deg": 274.74,
+  "measured_pm_mas_yr": 8543.1,
+  "shift_err_arcsec": 0.558,
+  "method": "season ePSF fit: SPHEREx empirical PSF fitted at one common position to all exposures of a season from the detectors where the target is detected, with catalogue neighbours at fixed positions and free fluxes; chi2 grid search around the prediction; errors = larger of the chi2 curvature (noise-scaled) and a bootstrap over exposures. Prediction = catalogue proper motion + annual parallax (Earth barycentric).",
+  "field_calibration": {
+   "applied": true,
+   "n_reference_stars": 125,
+   "pooling": "season x detector",
+   "n_exposures_calibrated": 0,
+   "n_uncorrected": 90,
+   "centroid": "epsf",
+   "cells": [
+    {
+     "epoch": "2025-05",
+     "detector": "D5",
+     "accepted": false,
+     "n_star_measurements": 13,
+     "used": "none (no correction)"
+    },
+    {
+     "epoch": "2025-11",
+     "detector": "D5",
+     "accepted": false,
+     "n_star_measurements": 63,
+     "n_used": 63,
+     "n_distinct_stars": 5,
+     "model": "shift",
+     "east_arcsec": -0.087,
+     "north_arcsec": 0.05,
+     "err_east_arcsec": 0.097,
+     "err_north_arcsec": 0.084,
+     "star_rms_arcsec": [
+      0.218,
+      0.187
+     ],
+     "per_exposure_chi2r": null,
+     "used": "none (no correction)"
+    },
+    {
+     "epoch": "2025-11",
+     "detector": "D6",
+     "accepted": false,
+     "n_star_measurements": 21,
+     "used": "none (no correction)"
+    },
+    {
+     "epoch": "2026-05",
+     "detector": "D5",
+     "accepted": false,
+     "n_star_measurements": 33,
+     "n_used": 33,
+     "n_distinct_stars": 5,
+     "model": "shift",
+     "east_arcsec": 0.088,
+     "north_arcsec": -0.006,
+     "err_east_arcsec": 0.104,
+     "err_north_arcsec": 0.123,
+     "star_rms_arcsec": [
+      0.233,
+      0.274
+     ],
+     "per_exposure_chi2r": null,
+     "used": "none (no correction)"
+    },
+    {
+     "epoch": "2026-05",
+     "detector": "D6",
+     "accepted": false,
+     "n_star_measurements": 19,
+     "used": "none (no correction)"
+    }
+   ],
+   "reference": "pipeline/ASTROMETRY.md",
+   "gaia_cache": "site/data/wise0855/gaia_field.json"
+  },
+  "status": "partial",
+  "message": "Detected at 4.0, 4.6 \u00b5m only (\u22655\u03c3 in single-season stacks, detectors D5, D6); not detected at 1.0, 1.5, 2.0, 3.0 \u00b5m.",
+  "detection": {
+   "status": "partial",
+   "message": "Detected at 4.0, 4.6 \u00b5m only (\u22655\u03c3 in single-season stacks, detectors D5, D6); not detected at 1.0, 1.5, 2.0, 3.0 \u00b5m.",
+   "threshold_snr": 5.0,
+   "detected_detectors": [
+    "D5",
+    "D6"
+   ],
+   "detected_bins_um": [
+    4.0,
+    4.6
+   ],
+   "detected_seasons": [
+    "2025-05",
+    "2025-11",
+    "2026-05"
+   ],
+   "cells": [
+    {
+     "n": 4,
+     "flux_ujy": 18.3,
+     "err_ujy": 21.7,
+     "snr": 0.8,
+     "noise_scale": 1.35,
+     "chi2r_between_exposures": 1.24,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 0.993,
+     "lam_max_um": 1.065,
+     "epoch": "2025-05",
+     "detector": "D1",
+     "detected": false
+    },
+    {
+     "n": 8,
+     "flux_ujy": -23.5,
+     "err_ujy": 15.8,
+     "snr": -1.5,
+     "noise_scale": 1.59,
+     "chi2r_between_exposures": 1.13,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 1.28,
+     "lam_max_um": 1.628,
+     "epoch": "2025-05",
+     "detector": "D2",
+     "detected": false
+    },
+    {
+     "n": 3,
+     "flux_ujy": 6.8,
+     "err_ujy": 21.4,
+     "snr": 0.3,
+     "noise_scale": 1.48,
+     "chi2r_between_exposures": 4.44,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 2.208,
+     "lam_max_um": 2.413,
+     "epoch": "2025-05",
+     "detector": "D3",
+     "detected": false
+    },
+    {
+     "n": 4,
+     "flux_ujy": 4.1,
+     "err_ujy": 26.1,
+     "snr": 0.2,
+     "noise_scale": 2.11,
+     "chi2r_between_exposures": 0.75,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 3.358,
+     "lam_max_um": 3.638,
+     "epoch": "2025-05",
+     "detector": "D4",
+     "detected": false
+    },
+    {
+     "n": 8,
+     "flux_ujy": 372.5,
+     "err_ujy": 35.9,
+     "snr": 10.4,
+     "noise_scale": 1.3,
+     "chi2r_between_exposures": 8.1,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 4.039,
+     "lam_max_um": 4.406,
+     "epoch": "2025-05",
+     "detector": "D5",
+     "detected": true
+    },
+    {
+     "n": 3,
+     "flux_ujy": 317.3,
+     "err_ujy": 100.7,
+     "snr": 3.2,
+     "noise_scale": 1.21,
+     "chi2r_between_exposures": 0.75,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 4.86,
+     "lam_max_um": 5.003,
+     "epoch": "2025-05",
+     "detector": "D6",
+     "detected": false
+    },
+    {
+     "n": 18,
+     "flux_ujy": -33.5,
+     "err_ujy": 10.8,
+     "snr": -3.1,
+     "noise_scale": 1.29,
+     "chi2r_between_exposures": 1.75,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 0.749,
+     "lam_max_um": 1.115,
+     "epoch": "2025-11",
+     "detector": "D1",
+     "detected": false
+    },
+    {
+     "n": 25,
+     "flux_ujy": -16.4,
+     "err_ujy": 8.8,
+     "snr": -1.9,
+     "noise_scale": 1.47,
+     "chi2r_between_exposures": 1.31,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 1.101,
+     "lam_max_um": 1.63,
+     "epoch": "2025-11",
+     "detector": "D2",
+     "detected": false
+    },
+    {
+     "n": 21,
+     "flux_ujy": -7.2,
+     "err_ujy": 8.6,
+     "snr": -0.8,
+     "noise_scale": 1.45,
+     "chi2r_between_exposures": 0.97,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 1.631,
+     "lam_max_um": 2.385,
+     "epoch": "2025-11",
+     "detector": "D3",
+     "detected": false
+    },
+    {
+     "n": 18,
+     "flux_ujy": 15.5,
+     "err_ujy": 10.6,
+     "snr": 1.5,
+     "noise_scale": 1.66,
+     "chi2r_between_exposures": 1.34,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 2.439,
+     "lam_max_um": 3.831,
+     "epoch": "2025-11",
+     "detector": "D4",
+     "detected": false
+    },
+    {
+     "n": 25,
+     "flux_ujy": 269.5,
+     "err_ujy": 17.5,
+     "snr": 15.4,
+     "noise_scale": 1.14,
+     "chi2r_between_exposures": 5.35,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 3.822,
+     "lam_max_um": 4.408,
+     "epoch": "2025-11",
+     "detector": "D5",
+     "detected": true
+    },
+    {
+     "n": 21,
+     "flux_ujy": 521.0,
+     "err_ujy": 33.5,
+     "snr": 15.6,
+     "noise_scale": 1.12,
+     "chi2r_between_exposures": 2.89,
+     "n_blended": 0,
+     "saturated_frac": 0.05,
+     "lam_min_um": 4.418,
+     "lam_max_um": 4.982,
+     "epoch": "2025-11",
+     "detector": "D6",
+     "detected": true
+    },
+    {
+     "n": 14,
+     "flux_ujy": -19.7,
+     "err_ujy": 15.9,
+     "snr": -1.2,
+     "noise_scale": 1.3,
+     "chi2r_between_exposures": 1.63,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 0.744,
+     "lam_max_um": 1.091,
+     "epoch": "2026-05",
+     "detector": "D1",
+     "detected": false
+    },
+    {
+     "n": 15,
+     "flux_ujy": -21.1,
+     "err_ujy": 19.4,
+     "snr": -1.1,
+     "noise_scale": 1.66,
+     "chi2r_between_exposures": 1.83,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 1.111,
+     "lam_max_um": 1.59,
+     "epoch": "2026-05",
+     "detector": "D2",
+     "detected": false
+    },
+    {
+     "n": 21,
+     "flux_ujy": -4.3,
+     "err_ujy": 12.8,
+     "snr": -0.3,
+     "noise_scale": 1.5,
+     "chi2r_between_exposures": 1.4,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 1.638,
+     "lam_max_um": 2.363,
+     "epoch": "2026-05",
+     "detector": "D3",
+     "detected": false
+    },
+    {
+     "n": 14,
+     "flux_ujy": 9.7,
+     "err_ujy": 15.4,
+     "snr": 0.6,
+     "noise_scale": 1.58,
+     "chi2r_between_exposures": 1.26,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 2.427,
+     "lam_max_um": 3.735,
+     "epoch": "2026-05",
+     "detector": "D4",
+     "detected": false
+    },
+    {
+     "n": 15,
+     "flux_ujy": 329.0,
+     "err_ujy": 31.6,
+     "snr": 10.4,
+     "noise_scale": 1.21,
+     "chi2r_between_exposures": 4.27,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 3.835,
+     "lam_max_um": 4.369,
+     "epoch": "2026-05",
+     "detector": "D5",
+     "detected": true
+    },
+    {
+     "n": 21,
+     "flux_ujy": 527.3,
+     "err_ujy": 44.1,
+     "snr": 12.0,
+     "noise_scale": 1.16,
+     "chi2r_between_exposures": 0.69,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 4.424,
+     "lam_max_um": 4.967,
+     "epoch": "2026-05",
+     "detector": "D6",
+     "detected": true
+    }
+   ],
+   "bins": [
+    {
+     "n": 3,
+     "flux_ujy": 14.1,
+     "err_ujy": 24.6,
+     "snr": 0.6,
+     "noise_scale": 1.41,
+     "chi2r_between_exposures": 1.66,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 0.993,
+     "lam_max_um": 1.041,
+     "epoch": "2025-05",
+     "wavelength_um": 1.0,
+     "detector": "D1",
+     "detected": false
+    },
+    {
+     "n": 5,
+     "flux_ujy": -64.7,
+     "err_ujy": 20.5,
+     "snr": -3.2,
+     "noise_scale": 1.33,
+     "chi2r_between_exposures": 2.05,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 0.946,
+     "lam_max_um": 1.039,
+     "epoch": "2025-11",
+     "wavelength_um": 1.0,
+     "detector": "D1",
+     "detected": false
+    },
+    {
+     "n": 2,
+     "flux_ujy": -22.1,
+     "err_ujy": 49.0,
+     "snr": -0.5,
+     "noise_scale": 1.58,
+     "chi2r_between_exposures": 3.27,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 0.962,
+     "lam_max_um": 0.969,
+     "epoch": "2026-05",
+     "wavelength_um": 1.0,
+     "detector": "D1",
+     "detected": false
+    },
+    {
+     "n": 3,
+     "flux_ujy": -33.4,
+     "err_ujy": 28.6,
+     "snr": -1.2,
+     "noise_scale": 1.86,
+     "chi2r_between_exposures": 3.04,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 1.515,
+     "lam_max_um": 1.59,
+     "epoch": "2025-05",
+     "wavelength_um": 1.5,
+     "detector": "D2",
+     "detected": false
+    },
+    {
+     "n": 7,
+     "flux_ujy": -3.6,
+     "err_ujy": 18.1,
+     "snr": -0.2,
+     "noise_scale": 1.68,
+     "chi2r_between_exposures": 0.83,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 1.413,
+     "lam_max_um": 1.555,
+     "epoch": "2025-11",
+     "wavelength_um": 1.5,
+     "detector": "D2",
+     "detected": false
+    },
+    {
+     "n": 8,
+     "flux_ujy": -13.7,
+     "err_ujy": 25.3,
+     "snr": -0.5,
+     "noise_scale": 1.62,
+     "chi2r_between_exposures": 0.76,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 1.439,
+     "lam_max_um": 1.59,
+     "epoch": "2026-05",
+     "wavelength_um": 1.5,
+     "detector": "D2",
+     "detected": false
+    },
+    {
+     "n": 8,
+     "flux_ujy": -0.3,
+     "err_ujy": 13.3,
+     "snr": -0.0,
+     "noise_scale": 1.42,
+     "chi2r_between_exposures": 0.77,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 1.899,
+     "lam_max_um": 2.081,
+     "epoch": "2025-11",
+     "wavelength_um": 2.0,
+     "detector": "D3",
+     "detected": false
+    },
+    {
+     "n": 5,
+     "flux_ujy": 18.5,
+     "err_ujy": 27.3,
+     "snr": 0.7,
+     "noise_scale": 1.56,
+     "chi2r_between_exposures": 1.34,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 1.922,
+     "lam_max_um": 2.105,
+     "epoch": "2026-05",
+     "wavelength_um": 2.0,
+     "detector": "D3",
+     "detected": false
+    },
+    {
+     "n": 5,
+     "flux_ujy": 16.0,
+     "err_ujy": 18.1,
+     "snr": 0.9,
+     "noise_scale": 1.59,
+     "chi2r_between_exposures": 0.54,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 2.854,
+     "lam_max_um": 3.18,
+     "epoch": "2025-11",
+     "wavelength_um": 3.0,
+     "detector": "D4",
+     "detected": false
+    },
+    {
+     "n": 5,
+     "flux_ujy": 16.8,
+     "err_ujy": 18.2,
+     "snr": 0.9,
+     "noise_scale": 1.09,
+     "chi2r_between_exposures": 0.7,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 2.831,
+     "lam_max_um": 3.154,
+     "epoch": "2026-05",
+     "wavelength_um": 3.0,
+     "detector": "D4",
+     "detected": false
+    },
+    {
+     "n": 4,
+     "flux_ujy": 227.9,
+     "err_ujy": 39.9,
+     "snr": 5.7,
+     "noise_scale": 1.16,
+     "chi2r_between_exposures": 1.1,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 4.039,
+     "lam_max_um": 4.145,
+     "epoch": "2025-05",
+     "wavelength_um": 4.0,
+     "detector": "D5",
+     "detected": true
+    },
+    {
+     "n": 20,
+     "flux_ujy": 228.5,
+     "err_ujy": 19.1,
+     "snr": 12.0,
+     "noise_scale": 1.16,
+     "chi2r_between_exposures": 4.0,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 3.822,
+     "lam_max_um": 4.225,
+     "epoch": "2025-11",
+     "wavelength_um": 4.0,
+     "detector": "D5",
+     "detected": true
+    },
+    {
+     "n": 10,
+     "flux_ujy": 253.8,
+     "err_ujy": 35.9,
+     "snr": 7.1,
+     "noise_scale": 1.2,
+     "chi2r_between_exposures": 3.05,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 3.835,
+     "lam_max_um": 4.222,
+     "epoch": "2026-05",
+     "wavelength_um": 4.0,
+     "detector": "D5",
+     "detected": true
+    },
+    {
+     "n": 1,
+     "flux_ujy": 422.2,
+     "err_ujy": 143.9,
+     "snr": 2.9,
+     "noise_scale": 1.06,
+     "chi2r_between_exposures": 1.0,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 4.86,
+     "lam_max_um": 4.86,
+     "epoch": "2025-05",
+     "wavelength_um": 4.6,
+     "detector": "D6",
+     "detected": false
+    },
+    {
+     "n": 18,
+     "flux_ujy": 571.1,
+     "err_ujy": 33.9,
+     "snr": 16.9,
+     "noise_scale": 1.05,
+     "chi2r_between_exposures": 2.26,
+     "n_blended": 0,
+     "saturated_frac": 0.06,
+     "lam_min_um": 4.418,
+     "lam_max_um": 4.875,
+     "epoch": "2025-11",
+     "wavelength_um": 4.6,
+     "detector": "D6",
+     "detected": true
+    },
+    {
+     "n": 16,
+     "flux_ujy": 542.2,
+     "err_ujy": 47.7,
+     "snr": 11.4,
+     "noise_scale": 1.13,
+     "chi2r_between_exposures": 0.81,
+     "n_blended": 0,
+     "saturated_frac": 0.0,
+     "lam_min_um": 4.424,
+     "lam_max_um": 4.86,
+     "epoch": "2026-05",
+     "wavelength_um": 4.6,
+     "detector": "D6",
+     "detected": true
+    }
+   ],
+   "blend_check": [
+    {
+     "epoch": "2025-05",
+     "nearest_arcsec": 11.3,
+     "nearest": "CWISE J085501.95-071428.2",
+     "nearest_w2_mag": 15.202
+    },
+    {
+     "epoch": "2025-11",
+     "nearest_arcsec": 8.2,
+     "nearest": "CWISE J085501.95-071428.2",
+     "nearest_w2_mag": 15.202
+    },
+    {
+     "epoch": "2026-05",
+     "nearest_arcsec": 4.2,
+     "nearest": "CWISE J085501.95-071428.2",
+     "nearest_w2_mag": 15.202
+    }
+   ],
+   "neighbour_catalogue": "CatWISE2020 (Marocco et al. 2021, ApJS 253, 8) via NASA/IPAC IRSA TAP: static sources (pm < 1\"/yr, w2snr >= 3) within 50\" of the 2025-2027 track; positions at MJD 57170. WISE 0855's own older CatWISE entries excluded.",
+   "method": "forced fit of the SPHEREx empirical PSF (EPSF extension) at the predicted position, flux free, catalogue neighbours and Gaia DR3 field stars fitted at fixed positions, constant background; 11x11 native-pixel stamp; inverse-variance mean per season; errors scaled by the robust S/N scatter of the same fit at random positions (noise_scale).",
+   "flux_unit_note": "uJy within the EPSF footprint (+-3.3 px); far wings not included",
+   "astrometry_path": "faint",
+   "median_exposure_snr": 3.5
+  }
+ },
+ "n_cutouts": 258,
+ "data_source": "NASA/IPAC IRSA SPHEREx DR1 + QR3 spectral images",
+ "generated": "2026-11-14T09:21:56Z"
+}

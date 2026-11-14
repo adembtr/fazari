@@ -32,6 +32,13 @@
   .targets { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px; }
   .targets button.on { border-color: var(--acc); color: var(--acc); }
   .targets button:disabled { opacity:.45; cursor:default; }
+  .status { padding:8px 10px; border-radius:6px; margin:0 0 8px; border-left:4px solid var(--acc); background:#1d2232; }
+  .status.not_detected { border-left-color:#e05d5d; }
+  .status.partial, .status.detected_one_season { border-left-color:#e0b85d; }
+  .status.detected { border-left-color:#5dbb7a; }
+  td.det { color:#8fe0a5; font-weight:600; }
+  td.num { font-variant-numeric: tabular-nums; }
+  details summary { cursor:pointer; color:var(--mut); margin-top:8px; }
 </style>
 </head>
 <body>
@@ -47,7 +54,7 @@
     <label>Frame time <input id="speed" type="range" min="150" max="2000" step="50" value="800"></label>
     <span id="speedv" class="sub" style="margin:0">800 ms</span>
     <label>Zoom <select id="zoom"><option value="1">1×</option><option value="2">2×</option><option value="3" selected>3×</option></select></label>
-    <label><input id="mark" type="checkbox" checked> Gaia marker</label>
+    <label><input id="mark" type="checkbox" checked> <span id="marklabel">Gaia</span> marker</label>
   </div>
 
   <div class="stage" id="stage">
@@ -62,7 +69,7 @@
   </div>
 
   <div class="card">
-    <h2>Measured motion</h2>
+    <h2 id="mtitle">Measured motion</h2>
     <div id="measure"></div>
   </div>
   <div class="card diff">
@@ -99,17 +106,30 @@ function show() {
   $("detail").textContent = `${f.detectors.join("+")} · ${f.wavelength_um.toFixed(2)} µm · ${f.n_images} images stacked`;
   drawMarker(f.epoch);
 }
+// where the catalogue puts the target in each season: meta.markers (always present in new
+// products), else the measured positions (older products)
+function markerXY(epoch) {
+  const mk = (meta.markers || []).find(q => q.epoch === epoch);
+  if (mk) return mk.png_xy;
+  const p = ((meta.measured || {}).positions || []).find(q => q.epoch === epoch);
+  return p ? p.png_xy_gaia : null;
+}
+function allMarkers() {
+  if (meta.markers && meta.markers.length) return meta.markers.map(m => m.png_xy);
+  return ((meta.measured || {}).positions || []).map(p => p.png_xy_gaia);
+}
+const fx = (v, d = 2) => (v == null || !isFinite(v)) ? "–" : (+v).toFixed(d);
 function pngSize() { return (meta.grid && meta.grid.png_px) || [720, 720]; }
 function applyZoom() {
   // zoom around the target (mean predicted position over the seasons); the label strip on
   // top of each PNG is cut off when zoomed, the date is shown below the image instead
   const [W, H] = pngSize();
   const z = +$("zoom").value;
-  const ps = (meta.measured && meta.measured.positions) || [];
+  const ps = allMarkers();
   let cx = W / 2, cy = (H + ((meta.grid && meta.grid.label_strip_px) || 0)) / 2;
   if (ps.length) {
-    cx = ps.reduce((a, p) => a + p.png_xy_gaia[0], 0) / ps.length;
-    cy = ps.reduce((a, p) => a + p.png_xy_gaia[1], 0) / ps.length;
+    cx = ps.reduce((a, p) => a + p[0], 0) / ps.length;
+    cy = ps.reduce((a, p) => a + p[1], 0) / ps.length;
   }
   $("zoomer").style.transformOrigin = `${(100 * cx / W).toFixed(2)}% ${(100 * cy / H).toFixed(2)}%`;
   $("zoomer").style.transform = `scale(${z})`;
@@ -120,9 +140,9 @@ function drawMarker(epoch) {
   ov.setAttribute("viewBox", `0 0 ${W} ${H}`);
   ov.innerHTML = "";
   if (!$("mark").checked) return;
-  const p = (meta.measured.positions || []).find(q => q.epoch === epoch);
-  if (!p) return;
-  const [x, y] = p.png_xy_gaia;
+  const xy = markerXY(epoch);
+  if (!xy) return;
+  const [x, y] = xy;
   const sw = 3 / +$("zoom").value;
   // ring = where Gaia says the star is at this season; small cross = its exact centre
   ov.innerHTML = `<circle cx="${x}" cy="${y}" r="34" fill="none" stroke="#ffb347" stroke-width="${sw}"/>` +
@@ -152,27 +172,84 @@ fetch(BASE + "meta.json").then(r => r.json()).then(m => {
     $("wl").appendChild(o);
   });
   const ms = m.measured || {};
-  let rows = (ms.positions || []).map(p =>
-    `<tr><td>${p.epoch}</td><td>${p.date}</td><td>${p.n_images}</td>` +
-    `<td>${p.minus_gaia_east_arcsec.toFixed(2)}", ${p.minus_gaia_north_arcsec.toFixed(2)}"</td></tr>`).join("");
+  const ref = (m.gaia && m.gaia.label) || "Gaia DR3";
+  $("marklabel").textContent = ref.split(" (")[0];
   let html = "";
+  if (ms.message) html += `<p class="status ${ms.status || ""}">${ms.message}</p>`;
   if (ms.shift_arcsec != null) {
-    html += `<p>${ms.from_epoch} → ${ms.to_epoch}: moved <b>${ms.shift_arcsec.toFixed(2)}"</b> toward PA ${ms.pa_deg.toFixed(0)}°. ` +
-      `Gaia predicts <b>${ms.gaia_predicted_arcsec.toFixed(2)}"</b> toward PA ${ms.gaia_pa_deg.toFixed(0)}°.` +
+    html += `<p>${ms.from_epoch} → ${ms.to_epoch}: moved <b>${fx(ms.shift_arcsec)}"</b>` +
+      (ms.shift_err_arcsec ? ` ± ${fx(ms.shift_err_arcsec)}"` : "") + ` toward PA ${fx(ms.pa_deg, 0)}°. ` +
+      `${ref} predicts <b>${fx(ms.gaia_predicted_arcsec)}"</b> toward PA ${fx(ms.gaia_pa_deg, 0)}°.` +
       (ms.same_orientation === false ? ` <small>(seasons seen with the telescope turned 180°)</small>` : "") + `</p>`;
   }
   if (ms.fit) {
-    html += `<p><small>Proper motion from ${ms.fit.n_used} images: ${ms.fit.pmra_mas_yr.toFixed(0)} ± ${ms.fit.pmra_err_mas_yr.toFixed(0)}, ` +
-      `${ms.fit.pmdec_mas_yr.toFixed(0)} ± ${ms.fit.pmdec_err_mas_yr.toFixed(0)} mas/yr (Gaia ${ms.fit.gaia_pmra_mas_yr.toFixed(0)}, ${ms.fit.gaia_pmdec_mas_yr.toFixed(0)}).</small></p>`;
+    html += `<p><small>Proper motion from ${ms.fit.n_used} images: ${fx(ms.fit.pmra_mas_yr, 0)} ± ${fx(ms.fit.pmra_err_mas_yr, 0)}, ` +
+      `${fx(ms.fit.pmdec_mas_yr, 0)} ± ${fx(ms.fit.pmdec_err_mas_yr, 0)} mas/yr (${ref}: ${fx(ms.fit.gaia_pmra_mas_yr, 0)}, ${fx(ms.fit.gaia_pmdec_mas_yr, 0)}).</small></p>`;
   }
-  if (rows) html += `<table><tr><th>Season</th><th>Mean date</th><th>Images</th><th>Measured − Gaia (E, N)</th></tr>${rows}</table>`;
+  const rows = (ms.positions || []).map(p =>
+    `<tr><td>${p.epoch}</td><td>${p.date}</td><td>${p.n_images}</td>` +
+    `<td class="num">${fx(p.minus_gaia_east_arcsec)}", ${fx(p.minus_gaia_north_arcsec)}"</td>` +
+    `<td class="num">${fx(p.err_east_arcsec)}", ${fx(p.err_north_arcsec)}"</td></tr>`).join("");
+  if (rows) html += `<table><tr><th>Season</th><th>Mean date</th><th>Images</th><th>Measured − ${ref.split(" (")[0]} (E, N)</th><th>± (E, N)</th></tr>${rows}</table>`;
+  const fc = ms.field_calibration;
+  if (fc && fc.applied && fc.n_exposures_calibrated > 0)
+    html += `<small>Positions are tied to Gaia DR3 with the field stars of the same images ` +
+      `(${fc.n_exposures_calibrated} exposures calibrated).</small> `;
+  else if (fc && fc.applied)
+    html += `<small>Field-star calibration not applied: too few Gaia stars at these wavelengths; positions use the SPHEREx WCS.</small> `;
   if (rows && ms.positions.some(p => p.bias_corrected) && ms.same_orientation === true)
     html += `<small>Positions corrected for a small detector-fixed centroid bias (fitted per detector); ` +
     `the main result above uses two seasons seen in the same orientation, where that bias cancels.</small>`;
+  // detection check: S/N at the predicted position per wavelength bin and season
+  const det = ms.detection;
+  if (det && det.bins && det.bins.length) {
+    const eps = m.epochs;
+    const bl = [...new Set(det.bins.map(c => c.wavelength_um))];
+    let t = `<tr><th>Bin</th>${eps.map(e => `<th>${e}</th>`).join("")}</tr>`;
+    bl.forEach(b => {
+      t += `<tr><td>${b.toFixed(1)} µm (${det.bins.find(c => c.wavelength_um === b).detector})</td>` + eps.map(e => {
+        const c = det.bins.find(q => q.wavelength_um === b && q.epoch === e);
+        if (!c) return "<td>–</td>";
+        const v = c.saturated_frac > 0.5 ? "sat." : fx(c.snr, 1);
+        return `<td class="num ${c.detected ? "det" : ""}">${v} <small>(${c.n})</small></td>`;
+      }).join("") + "</tr>";
+    });
+    html += `<details${ms.status === "detected" ? "" : " open"}><summary>Detection check: S/N at the predicted position ` +
+      `(single-season stacks, ≥${det.threshold_snr}σ in green; number of images in brackets)</summary><table>${t}</table>` +
+      (det.blend_note ? `<small>${det.blend_note}</small>` : "") +
+      ((det.blend_check || []).length ? `<small>Nearest catalogue source to the predicted position: ` +
+        det.blend_check.map(b => `${b.epoch} ${fx(b.nearest_arcsec, 1)}"`).join(", ") + ` (fitted together with the target).</small>` : "") +
+      `</details>`;
+  }
+  // relative photometry (brightness targets)
+  const ph = ms.photometry;
+  if (ph) {
+    $("mtitle").textContent = "Brightness change (relative photometry)";
+    const eps = m.epochs;
+    let t = `<tr><th>Bin</th>${eps.map(e => `<th>${e}</th>`).join("")}<th>Note</th></tr>`;
+    ph.bins.forEach(b => {
+      t += `<tr><td>${b.wavelength_um.toFixed(1)} µm</td>` + eps.map(e => {
+        const s = (b.seasons || []).find(q => q.epoch === e);
+        if (!s) return "<td>–</td>";
+        return s.ratio_err ? `<td class="num">${fx(s.ratio_to_first)} ± ${fx(s.ratio_err)}</td>` : `<td class="num">1 (ref.)</td>`;
+      }).join("") + `<td><small>${(b.flags || []).join("; ") || (b.method === "psf" ? "PSF flux" : "")}` +
+      (b.n_comparison ? ` · ${b.n_comparison} comparison stars` : "") + `</small></td></tr>`;
+    });
+    html += `<p>Target flux relative to comparison stars in the same images, as a ratio to the first season ` +
+      `(1.20 = 20 % brighter).</p><table>${t}</table><p><small>${ph.method} ${(ph.caveats || []).join(" ")}</small></p>`;
+  }
   if (ms.note) html += `<p><small>${ms.note}</small></p>`;
   $("measure").innerHTML = html;
   $("src").textContent = "Data: " + m.data_source + ". Generated " + m.generated + ".";
-  selectBin(0);
+  // start on a wavelength where the target is detected (e.g. 4.6 um for WISE 0855)
+  const db = ((ms.detection || {}).detected_bins_um || []);
+  let start = 0;
+  if (db.length && ms.status !== "detected") {
+    const k = m.wavelength_bins.findIndex(b => b.wavelength_um === db[db.length - 1]);
+    if (k >= 0) start = k;
+  }
+  $("wl").value = start;
+  selectBin(start);
 }).catch(e => { $("subtitle").textContent = "Could not load " + BASE + "meta.json (" + e + "). Serve this folder with: python -m http.server"; });
 
 $("wl").onchange = e => selectBin(+e.target.value);
