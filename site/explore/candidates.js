@@ -7,12 +7,17 @@
 //     #candidateList   "N moving objects found here", one entry per object that is not an artifact
 //                      (class, speed ± error, PA, detectors, magnitude, brightness change), "Show rejected (N)"
 //                      with the artifacts and their flags, and the sensitivity card. The list sits in the
-//                      side column (moved there next to the image when the page has it elsewhere).
+//                      side column (moved there, before .actions, when the page has it elsewhere).
 //     <svg id="candLayer">  a ring per object (one colour per class; artifacts only when shown) and, for
-//                      movers, the 1-year displacement x M as an arrow labelled "xM", M picked so the arrow
-//                      is at least ~40 screen px long. A tick marks the object's position in the season on
-//                      screen ("fazari:frame"). Click a ring or an entry: it is highlighted and an 8x
-//                      mini-blink of a 30" crop around it cycles the seasons of the wavelength on screen.
+//                      movers, the 1-year displacement × M as an arrow labelled "×M", M picked so the arrow
+//                      reaches ~40 screen px past the ring at the zoom on screen. Ticks mark each mover's
+//                      measured position in the season on screen ("fazari:frame"; Blink and Step only).
+//                      Hidden during "Find the mover"; ring clicks pass through while "Mark something" is on.
+//     Click a ring or an entry: it is highlighted and a mini-blink opens on the image (the top or bottom
+//                      corner that covers least of it): a crop of the frames around it (38 PNG px = 29″ on a
+//                      desktop, 18 px on a phone) shown 8× with image-rendering: pixelated, cycling the seasons
+//                      of the wavelength on screen. An entry outside the zoomed view zooms the image out
+//                      (the page's own #zoom control) until it shows. Esc closes the mini-blink.
 //     -> Promise<{ doc, select(id), redraw() } | null>
 //   explore.html  showOnSky(state, src)       src = the blink panel's page; "ornek.html?data=<result>/" draws
 //     the same rings and arrows (and the field's outline) on the Aladin sphere (state.A, state.al) with a
@@ -23,7 +28,6 @@
 //
 // Language: these are candidates for follow-up, never discoveries.
 
-const NS = "http://www.w3.org/2000/svg";
 const ok = (v) => v != null && v !== "" && Number.isFinite(+v);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -121,7 +125,10 @@ const CSS = `
 .cz .cz-bar input { accent-color:#ff5ccf; width:15px; height:15px; }
 .cz .cz-bar button { font-size:.82rem; padding:3px 10px; }
 .cz .cz-bar button[aria-pressed="true"] { background:#2f3a55; border-color:#55607a; }
-.cz ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+.cz ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; max-height:80vh; overflow-y:auto; overscroll-behavior:contain; }
+.cz ul.cz-rej { max-height:60vh; }
+.cz ul[hidden] { display:none; }
+.cz li { flex:none; }
 .cz li > button { width:100%; text-align:left; display:block; padding:7px 9px; background:var(--card2, #1b2131); border:1px solid transparent;
   border-left:4px solid var(--cz); border-radius:8px; color:var(--fg, #e8eaf0); font:inherit; cursor:pointer; }
 .cz li > button:hover { border-color:#3a4560; border-left-color:var(--cz); }
@@ -168,7 +175,7 @@ const CSS = `
 .stage.fzm-on #candLayer .cz-hit, #candLayer.cz-off .cz-hit { pointer-events:none; }
 `;
 
-const MINI_X = 8;         // mini-blink: a crop of the frames shown 8x (40 PNG px = 30″ on a desktop, less on a phone)
+const MINI_X = 8;         // mini-blink: a crop of the frames shown 8x (38 PNG px = 29″ on a desktop, less on a phone)
 const MINI_MS = 700;
 
 /** ornek.html plug-in: v = startViewer() api. Resolves null (and shows nothing) without candidates.json. */
@@ -177,6 +184,7 @@ export async function mountCandidates(v) {
   const doc = await loadCandidates(v.base);
   const box = document.getElementById("candidateList"), layer = document.getElementById("candLayer");
   if (!doc || !box) return null;
+  if (box.__cz) return box.__cz;                         // once per page
   const meta = v.meta, grid = meta.grid || {};
   const [W, H] = grid.png_px || [720, 720];
   const L = +grid.label_strip_px || 0;
@@ -302,7 +310,7 @@ export async function mountCandidates(v) {
   let sumText = String((doc.summary || {}).text || "").replace(/^\s*\d+ moving object\(s\) found here:\s*/i, "");
   sumText = sumText.charAt(0).toUpperCase() + sumText.slice(1);
   const keyClasses = Object.keys(CLASSES).filter((k) => k !== "artifact" && all.some((c) => c.class === k));
-  box.innerHTML = `<div class="card cz">` +
+  box.innerHTML = `<div class="card cz" data-fz-candidates>` +
     `<h2>${esc(headingText(n))}</h2>` +
     (sumText ? `<p class="cz-sum">${esc(sumText)}</p>` : "") +
     `<p class="cz-note">${esc(doc.language_note || "Candidates for follow-up. Not discoveries.")} Arrows: 1-year motion, magnified ×M.</p>` +
@@ -510,7 +518,8 @@ export async function mountCandidates(v) {
       `aria-label="${esc(`${MINI_X}× close-up of ${c.id}, the seasons one after the other`)}"></canvas>` +
       `<small id="czMiniCap" style="max-width:${css}px"></small>`;
     if (S.mini) clearInterval(S.mini.timer);
-    S.mini = { c, C, dpr, i: 0, timer: 0, playing: !reduceMotion() };
+    S.mini = { c, C, dpr, i: 0, timer: 0, playing: !reduceMotion(), crops: [], lohi: undefined, um: null,
+      ox: Math.round(c.png_xy[0] - C / 2), oy: Math.round(c.png_xy[1] - C / 2) };
     $("czMiniClose").onclick = () => select(null);
     $("czMiniPlay").onclick = () => { if (!S.mini) return; S.mini.playing = !S.mini.playing; startMini(true); };
     startMini();
@@ -526,29 +535,72 @@ export async function mountCandidates(v) {
     if (!m) return;
     clearInterval(m.timer);
     const bf = binFrames();
+    if (m.um !== bf.um) { m.crops = []; m.lohi = undefined; }
     m.frames = bf.frames; m.um = bf.um;
     if (!keepIndex) {
       const i = S.frame ? m.frames.findIndex((f) => f.epoch === S.frame.epoch) : -1;
       m.i = i >= 0 ? i : 0;
     }
-    m.frames.forEach((f) => imgFor(f.file));             // preload
+    m.frames.forEach((f) => {                            // preload; redraw when the last season arrives (stretch)
+      const im = imgFor(f.file);
+      if (!im.complete) im.addEventListener("load", () => { if (S.mini === m) miniDraw(); }, { once: true });
+    });
     const pb = $("czMiniPlay");
     if (pb) { pb.textContent = m.playing ? "Pause" : "Play"; pb.setAttribute("aria-pressed", String(!m.playing)); pb.disabled = m.frames.length < 2; }
     miniDraw();
     if (m.playing && m.frames.length > 1) m.timer = setInterval(() => { m.i = (m.i + 1) % m.frames.length; miniDraw(); }, MINI_MS);
   }
+  /** Frame i cut to the C x C box around the object (a canvas, 1 PNG px per pixel); null until loaded. */
+  function cropOf(m, i) {
+    if (m.crops[i]) return m.crops[i];
+    const im = imgFor(m.frames[i].file);
+    if (!im.complete || !im.naturalWidth) return null;
+    const C = m.C, oc = document.createElement("canvas");
+    oc.width = C; oc.height = C;
+    const g = oc.getContext("2d");
+    g.fillStyle = "#000"; g.fillRect(0, 0, C, C);
+    const iw = im.naturalWidth, ih = im.naturalHeight;
+    const x0 = Math.max(0, m.ox), y0 = Math.max(L, m.oy), x1 = Math.min(iw, m.ox + C), y1 = Math.min(ih, m.oy + C);
+    if (x1 > x0 && y1 > y0) g.drawImage(im, x0, y0, x1 - x0, y1 - y0, x0 - m.ox, y0 - m.oy, x1 - x0, y1 - y0);
+    oc.box = [x0 - m.ox, y0 - m.oy, x1 - m.ox, y1 - m.oy];          // the part that is sky
+    m.crops[i] = oc;
+    return oc;
+  }
+  /** Contrast of the box: one linear stretch (2 % .. 99.8 % of the box's pixels in every season of the
+   *  bin) for all seasons, so faint objects show and the blink still compares like with like. */
+  function stretchMini(m) {
+    if (m.lohi !== undefined) return;
+    const crops = m.frames.map((_, i) => cropOf(m, i));
+    if (crops.some((x) => !x)) return;                   // wait for every season
+    m.lohi = null;
+    try {
+      const C = m.C, data = crops.map((oc) => oc.getContext("2d").getImageData(0, 0, C, C)), vals = [];
+      data.forEach((im, k) => {
+        const [a, b, c2, d2] = crops[k].box, p = im.data;
+        for (let y = b; y < d2; y++) for (let x = a; x < c2; x++) { const j = 4 * (y * C + x); vals.push((p[j] + p[j + 1] + p[j + 2]) / 3); }
+      });
+      if (vals.length < 20) return;
+      vals.sort((p, q) => p - q);
+      const lo = vals[Math.floor(0.02 * (vals.length - 1))], hi = vals[Math.floor(0.998 * (vals.length - 1))];
+      if (!(hi - lo >= 6)) return;
+      data.forEach((im, k) => {
+        const p = im.data;
+        for (let j = 0; j < p.length; j += 4) for (let q = 0; q < 3; q++) p[j + q] = Math.max(0, Math.min(255, Math.round((p[j + q] - lo) * 255 / (hi - lo))));
+        crops[k].getContext("2d").putImageData(im, 0, 0);
+      });
+      m.lohi = [lo, hi];
+    } catch (_) { m.lohi = null; }                       // an unreadable canvas: keep the page's own stretch
+  }
   function miniDraw() {
     const m = S.mini, cv = $("czMiniCv");
     if (!m || !cv || !m.frames.length) return;
-    const f = m.frames[m.i], im = imgFor(f.file);
-    if (!im.complete || !im.naturalWidth) { im.addEventListener("load", () => { if (S.mini === m && m.frames[m.i] === f) miniDraw(); }, { once: true }); return; }
+    const f = m.frames[m.i], oc = cropOf(m, m.i);
+    if (!oc) return;                                     // drawn again when the image arrives
+    stretchMini(m);
     const ctx = cv.getContext("2d"), C = m.C, s = cv.width / C, d = m.dpr;
-    const c = m.c, [cx, cy] = c.png_xy, sx = cx - C / 2, sy = cy - C / 2;
-    const iw = im.naturalWidth, ih = im.naturalHeight;
+    const c = m.c, [cx, cy] = c.png_xy, sx = m.ox, sy = m.oy;
     ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, cv.width, cv.height);
-    const x0 = Math.max(0, sx), y0 = Math.max(L, sy), x1 = Math.min(iw, sx + C), y1 = Math.min(ih, sy + C);
-    if (x1 > x0 && y1 > y0) ctx.drawImage(im, x0, y0, x1 - x0, y1 - y0, (x0 - sx) * s, (y0 - sy) * s, (x1 - x0) * s, (y1 - y0) * s);
+    ctx.drawImage(oc, 0, 0, C, C, 0, 0, cv.width, cv.height);
     const col = cls(c).color, px = (x) => (x - sx) * s, py = (y) => (y - sy) * s;
     const line = (w, st, fn) => { ctx.lineWidth = w * d; ctx.strokeStyle = st; ctx.beginPath(); fn(); ctx.stroke(); };
     // the ring at the 2026.0 position, as on the big image (10 PNG px, smaller in a small crop)
@@ -573,11 +625,13 @@ export async function mountCandidates(v) {
     ctx.fillStyle = "#ffffff"; ctx.fillText(label, fs * 0.5, fs * 0.45);
     const cap = $("czMiniCap");
     if (cap) cap.textContent = `${MINI_X}× close-up, ${pngArcsec ? Math.round(C * pngArcsec) + "″ box" : C + " px box"}` +
-      `${ok(m.um) ? `, ${(+m.um).toFixed(1)} µm` : ""}, season ${m.i + 1} of ${m.frames.length}` + (p ? "; ticks: measured position." : ".");
+      `${ok(m.um) ? `, ${(+m.um).toFixed(1)} µm` : ""}, season ${m.i + 1} of ${m.frames.length}` +
+      `${m.lohi ? ", contrast set for this box" : ""}` + (p ? "; ticks: measured position." : ".");
   }
 
   draw();
-  return { doc, select, redraw: draw };
+  box.__cz = { doc, select, redraw: draw };
+  return box.__cz;
 }
 
 // =====================================================================================================
