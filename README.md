@@ -19,6 +19,7 @@ Live site: https://adembtr.github.io/fazari/
 - `pipeline/targets_extra.json` — parallaxes used for the Gaia prediction.
 - `pipeline/download.py` — lists and downloads SPHEREx image cutouts from IRSA (Python standard library only).
 - `pipeline/blink.py` — builds the blink frames and runs the detection check, measures the motion (motion targets) or the relative brightness (brightness targets).
+- `pipeline/spectrum.py` — on-the-fly spectrum: forced PSF photometry of the target in every exposure, each at its own wavelength (`spectrum.csv`, `spectrum.json`). The browser engine does the same in `site/js/spectrum.js`; the chart is `site/js/spectrum_chart.js`.
 - `pipeline/ASTROMETRY.md` — the Gaia DR3 field-star calibration, step by step.
 - `pipeline/sky_index.py` — builds the static index of all SPHEREx DR1 and QR3 images (`site/index/`, format in `site/index/FORMAT.md`).
 - `site/js/skyindex.js` — browser lookup in that index: which images cover a given RA/Dec.
