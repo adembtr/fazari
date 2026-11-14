@@ -1,0 +1,19 @@
+# Large astronomy data
+*.fits
+*.fits.part
+*.fz
+cache/
+data_cache/
+raw/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Secrets
+.env
+
+# OS / tools
+.DS_Store
+node_modules/
