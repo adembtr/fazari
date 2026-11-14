@@ -35,6 +35,8 @@ function style() {
 #tests .vf-id { font-weight: 800; color: var(--blue); font-variant-numeric: tabular-nums; min-width: 2.4em; }
 #tests .vf-title { font-weight: 700; flex: 1 1 14em; min-width: 0; }
 #tests .vf-res { margin: 6px 0 0; color: var(--soft); overflow-wrap: anywhere; }
+#tests .vfb-bands { color: var(--fg); font-size: 14.5px; }
+#tests .vfb-bands b { color: var(--good); font-weight: 700; }
 #tests .vf-mean { margin: 6px 0 0; font-size: 14.5px; color: var(--fg); }
 #tests .vf-mean b { color: var(--bad); }
 #tests .vf-foot { margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; font-size: 13.5px; }
@@ -137,6 +139,45 @@ function shortfall(x) {
   return null;
 }
 
+// ------------------------------------------------------------------------------------------------ Barnard per wavelength
+// data/verify/evidence/barnard_bands.csv: pipeline/blink.py's own astrometry run on one wavelength box at a
+// time (the command and code commit are in the file's "#" line). Shown under the first Barnard's Star test.
+// Labels "vfb.*". A missing file shows nothing.
+const BANDS = "data/verify/evidence/barnard_bands.csv";
+let BROWS = null;
+async function loadBands() {
+  try {
+    const r = await fetch(BANDS, { cache: "no-cache" });
+    if (!r.ok) return null;
+    const rows = parseCsv((await r.text()).split(/\r?\n/).filter((l) => !l.startsWith("#")).join("\n"));
+    if (rows.length < 2) return null;
+    const h = rows[0];
+    return rows.slice(1).map((c) => Object.fromEntries(h.map((k, i) => [k, c[i]])));
+  } catch (e) { return null; }
+}
+function bandsLine() {
+  if (!BROWS || !BROWS.length) return "";
+  const f = (v, d) => num(+v, d);
+  const list = BROWS.map((r) => t("vfb.one", { um: f(r.um, 1), s: f(r.shift_arcsec, 2), e: f(r.err_arcsec, 2),
+    v: f(r.speed_arcsec_yr, 2), ev: f(r.err_speed, 2), yr: t("gr.yr") })).join(" · ");
+  const dts = BROWS.map((r) => +r.dt_yr), lo = f(Math.min(...dts), 2), hi = f(Math.max(...dts), 2);
+  const dt = lo === hi ? lo : `${lo}–${hi}`;
+  // largest distance from Gaia's prediction for the band's own season dates, in sigma (from the file)
+  const sig = BROWS.map((r) => Math.abs(r.shift_arcsec - r.gaia_pred_arcsec) / r.err_arcsec).filter(Number.isFinite);
+  const gaia = sig.length === BROWS.length ? " " + t("vfb.gaia", { s: f(Math.max(...sig), 1) }) : "";
+  return `<p class="vf-res vfb-bands"><b>${esc(t("vfb.bands"))}</b> ${esc(t("vfb.span", { dt, yr: t("gr.yr") }))} ${esc(list)}.${esc(gaia)}
+    <a href="${BANDS}" download="barnard_bands.csv">barnard_bands.csv ↓</a></p>`;
+}
+/** Top line from the date-shuffle test (the test whose numbers hold fake_movers and field_shuffles). */
+function shuffleLine() {
+  const p = document.getElementById("vfbShuffle");
+  if (!p) return;
+  const x = (DATA?.tests || []).find((y) => y?.numbers?.fake_movers != null && y?.numbers?.field_shuffles != null);
+  if (!x) { p.hidden = true; return; }
+  p.textContent = t("vfb.shuffle", { f: num(x.numbers.fake_movers), n: num(x.numbers.field_shuffles) });
+  p.hidden = false;
+}
+
 // ------------------------------------------------------------------------------------------------ one test
 function item(x) {
   const k = stKey(x.status);
@@ -181,6 +222,7 @@ function item(x) {
     <div class="vf-head"><span class="vf-id">${esc(x.id)}</span><span class="vf-title">${esc(title)}</span>${badge(x.status)}</div>
     ${sf ? `<p class="vf-short">${esc(t("gr.vf.tested"))} ${esc(sf.what)} · <b>${esc(t("gr.vf.short"))}</b> ${esc(sf.short)}</p>` : ""}
     ${res ? `<p class="vf-res">${esc(res)}</p>` : ""}
+    ${x === (DATA?.tests || []).find((y) => /barnard/i.test(y?.title?.en || "")) ? bandsLine() : ""}
     ${mean}
     ${ev || more ? `<p class="vf-foot">${ev ? `<a href="${esc(ev)}" download="${esc(evName)}">${esc(t("vf.evidence"))}: ${esc(evName)} ↓</a>` : ""}${more ? `<button type="button" class="vf-mt" aria-controls="vfm-${esc(x.id)}" aria-expanded="${isDetailed()}">${esc(t("vf.more"))}</button>` : ""}</p>` : ""}
     ${more}
@@ -242,6 +284,7 @@ function fmtTime(iso) {
 function render() {
   const box = document.getElementById(BOX_ID);
   if (!box) return;
+  shuffleLine();
   if (!DATA || !Array.isArray(DATA.tests) || !DATA.tests.length) {
     box.innerHTML = `<p class="fine">${esc(t("vf.missing"))}</p>`;
     return;
@@ -278,6 +321,7 @@ async function main() {
     const r = await fetch(SRC, { cache: "no-cache" });
     DATA = r.ok ? await r.json() : null;
   } catch (e) { DATA = null; }
+  BROWS = await loadBands();
   render();
   onLang(() => render());
   document.addEventListener("fazari:ui-mode", () => {

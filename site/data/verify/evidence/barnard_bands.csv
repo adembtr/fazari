@@ -1,0 +1,8 @@
+# Barnard's Star per wavelength box, code f43d533: FAZARI_OUT=<scratch> FAZARI_FIELD_STARS=0 FAZARI_NO_GAIA_FETCH=1 uv run --no-project --with astropy --with reproject --with numpy --with scipy --with matplotlib --with pillow python -I run_bands.py <repo>  (= pipeline/blink.py main('barnard') unchanged; its astrometry() also run on the exposures of one wavelength box at a time: bin_um from which_bin = detector + lambda within 6%; shift = same-orientation season pair)
+um,n_exposures,seasons,shift_arcsec,err_arcsec,dt_yr,speed_arcsec_yr,err_speed,pa_deg,gaia_pred_arcsec
+1.0,16,2025-08→2026-08,9.838,0.178,0.978,10.059,0.182,357.95,10.209
+1.5,17,2025-08→2026-08,9.953,0.415,0.9926,10.027,0.418,358.5,10.337
+2.0,13,2025-08→2026-08,10.271,0.238,0.9858,10.419,0.241,357.04,10.276
+3.0,11,2025-08→2026-08,10.242,0.111,0.9802,10.449,0.113,354.95,10.228
+4.0,40,2025-08→2026-08,10.221,0.073,0.9851,10.376,0.074,354.83,10.271
+4.6,43,2025-08→2026-08,10.4,0.09,0.9895,10.51,0.091,354.86,10.31
