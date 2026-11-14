@@ -72,7 +72,7 @@ let worst = 0;
 
 // ---- 3D sky (Aladin) ---------------------------------------------------------------------------
 {
-  const b = await browser(url + (url.includes("?") ? "&" : "?") + "engine=browser");
+  const b = await browser(url + (url.includes("?") ? "&" : "?") + "engine=browser&hero=0");   // hero=0: no opening overlay
   for (let i = 0; i < 100; i++) { if (await b.ev("!!(window.__explore && __explore.state.al && __explore.state.cats.length)")) break; await sleep(200); }
   await sleep(4000);                                            // let the opening animation finish
   await b.ev(`window.__sep = ${SEP}; document.querySelector('.panel').style.display='none'; 1`);
@@ -145,7 +145,7 @@ let worst = 0;
 
 // ---- 2D fallback (?flat) ----------------------------------------------------------------------
 {
-  const b = await browser(url + (url.includes("?") ? "&" : "?") + "flat&engine=browser");
+  const b = await browser(url + (url.includes("?") ? "&" : "?") + "flat&engine=browser&hero=0");
   for (let i = 0; i < 100; i++) { if (await b.ev("!!(window.__explore && __explore.state.flat)")) break; await sleep(200); }
   await b.ev(`window.__sep = ${SEP}; 1`);
   const flat = {};

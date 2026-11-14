@@ -1,0 +1,1574 @@
+{
+ "generated": "2026-11-14T12:02:07Z",
+ "generator": "pipeline/verify_table.py",
+ "criterion": {
+  "n_sigma": 3.0,
+  "text": "Pass: the measured shift between two seasons seen with the same telescope orientation agrees with the reference prediction within 3 sigma. Sigma is our 1-sigma error of the shift; the catalogue errors are much smaller and are left out. The difference is the full 2-D difference (length and direction)."
+ },
+ "rows": [
+  {
+   "id": "barnard",
+   "name": "Barnard's Star",
+   "challenge": true,
+   "kind": "motion",
+   "status": "pass",
+   "detection": "detected",
+   "detection_message": "Detected above 5σ in every season and wavelength bin.",
+   "detected_bins_um": [
+    1.0,
+    1.5,
+    2.0,
+    3.0,
+    4.0,
+    4.6
+   ],
+   "n_images": 358,
+   "seasons": [
+    "2025-08",
+    "2026-03",
+    "2026-08"
+   ],
+   "astrometry_path": "bright",
+   "measured": {
+    "shift_arcsec": 10.207,
+    "err_arcsec": 0.06,
+    "pa_deg": 355.69,
+    "from": "2025-08",
+    "to": "2026-08",
+    "dt_years": 0.982,
+    "same_orientation": true
+   },
+   "reference": {
+    "shift_arcsec": 10.244,
+    "pa_deg": 355.7,
+    "label": "Gaia DR3",
+    "detail": "Gaia DR3 4472832130942575872: proper motion, parallax and radial velocity (reference epoch 2016.0)",
+    "parallax_mas": 546.976,
+    "pm_total_mas_yr": 10393.3
+   },
+   "diff": {
+    "shift_arcsec": -0.037,
+    "percent": -0.36,
+    "vector_arcsec": 0.037,
+    "sigma": 0.62,
+    "pa_deg": -0.01
+   },
+   "proper_motion": {
+    "measured_mas_yr": [
+     -810.2,
+     10336.2
+    ],
+    "err_mas_yr": [
+     55.6,
+     55.6
+    ],
+    "reference_mas_yr": [
+     -801.6,
+     10362.4
+    ],
+    "n_used": 335,
+    "diff_sigma": [
+     0.2,
+     0.5
+    ]
+   },
+   "position_minus_reference_2026_arcsec": [
+    -0.052,
+    0.139
+   ],
+   "season_minus_reference_arcsec": [
+    {
+     "epoch": "2025-08",
+     "east": -0.054,
+     "north": 0.152,
+     "err_east": 0.046,
+     "err_north": 0.044
+    },
+    {
+     "epoch": "2026-03",
+     "east": -0.053,
+     "north": 0.129,
+     "err_east": 0.038,
+     "err_north": 0.045
+    },
+    {
+     "epoch": "2026-08",
+     "east": -0.053,
+     "north": 0.114,
+     "err_east": 0.038,
+     "err_north": 0.042
+    }
+   ],
+   "source": "site/data/barnard/meta.json",
+   "viewer": "ornek.html?data=data/barnard/"
+  },
+  {
+   "id": "eps_indi_b",
+   "name": "Epsilon Indi B",
+   "challenge": true,
+   "kind": "motion",
+   "status": "pass",
+   "detection": "detected",
+   "detection_message": "Detected above 5σ in every season and wavelength bin.",
+   "detected_bins_um": [
+    1.0,
+    1.5,
+    2.0,
+    3.0,
+    4.0,
+    4.6
+   ],
+   "n_images": 458,
+   "seasons": [
+    "2025-04",
+    "2025-10",
+    "2026-04",
+    "2026-09"
+   ],
+   "astrometry_path": "bright",
+   "measured": {
+    "shift_arcsec": 4.535,
+    "err_arcsec": 0.029,
+    "pa_deg": 121.98,
+    "from": "2025-10",
+    "to": "2026-09",
+    "dt_years": 0.9647,
+    "same_orientation": true
+   },
+   "reference": {
+    "shift_arcsec": 4.56,
+    "pa_deg": 121.78,
+    "label": "Gaia DR3",
+    "detail": "Gaia DR3 6412596012146801152: proper motion, parallax (reference epoch 2016.0)",
+    "parallax_mas": 270.658,
+    "pm_total_mas_yr": 4684.2
+   },
+   "diff": {
+    "shift_arcsec": -0.025,
+    "percent": -0.55,
+    "vector_arcsec": 0.03,
+    "sigma": 1.02,
+    "pa_deg": 0.2
+   },
+   "proper_motion": {
+    "measured_mas_yr": [
+     3944.7,
+     -2418.9
+    ],
+    "err_mas_yr": [
+     25.3,
+     25.2
+    ],
+    "reference_mas_yr": [
+     3982.0,
+     -2466.8
+    ],
+    "n_used": 439,
+    "diff_sigma": [
+     1.5,
+     1.9
+    ]
+   },
+   "position_minus_reference_2026_arcsec": [
+    0.283,
+    -0.532
+   ],
+   "season_minus_reference_arcsec": [
+    {
+     "epoch": "2025-04",
+     "east": 0.31,
+     "north": -0.588,
+     "err_east": 0.024,
+     "err_north": 0.027
+    },
+    {
+     "epoch": "2025-10",
+     "east": 0.29,
+     "north": -0.522,
+     "err_east": 0.023,
+     "err_north": 0.021
+    },
+    {
+     "epoch": "2026-04",
+     "east": 0.261,
+     "north": -0.477,
+     "err_east": 0.029,
+     "err_north": 0.031
+    },
+    {
+     "epoch": "2026-09",
+     "east": 0.26,
+     "north": -0.522,
+     "err_east": 0.02,
+     "err_north": 0.019
+    }
+   ],
+   "source": "site/data/eps_indi_b/meta.json",
+   "viewer": "ornek.html?data=data/eps_indi_b/"
+  },
+  {
+   "id": "wise0855",
+   "name": "WISE 0855−0714",
+   "challenge": true,
+   "kind": "motion",
+   "status": "pass",
+   "detection": "partial",
+   "detection_message": "Detected at 4.0, 4.6 µm only (≥5σ in single-season stacks, detectors D5, D6); not detected at 1.0, 1.5, 2.0, 3.0 µm.",
+   "detected_bins_um": [
+    4.0,
+    4.6
+   ],
+   "n_images": 258,
+   "seasons": [
+    "2025-05",
+    "2025-11",
+    "2026-05"
+   ],
+   "astrometry_path": "faint",
+   "measured": {
+    "shift_arcsec": 8.419,
+    "err_arcsec": 0.558,
+    "pa_deg": 277.34,
+    "from": "2025-05",
+    "to": "2026-05",
+    "dt_years": 0.9855,
+    "same_orientation": true
+   },
+   "reference": {
+    "shift_arcsec": 8.028,
+    "pa_deg": 274.62,
+    "label": "Kirkpatrick et al. 2021 (Spitzer)",
+    "detail": "Kirkpatrick et al. 2021, ApJS 253, 7, Table 5 (Spitzer, 439.0 +- 2.4 mas); not in Gaia",
+    "parallax_mas": 439.0,
+    "pm_total_mas_yr": 8151.5
+   },
+   "diff": {
+    "shift_arcsec": 0.391,
+    "percent": 4.87,
+    "vector_arcsec": 0.552,
+    "sigma": 0.99,
+    "pa_deg": 2.72
+   },
+   "proper_motion": {
+    "measured_mas_yr": [
+     -8365.6,
+     1098.8
+    ],
+    "err_mas_yr": [
+     600.2,
+     631.7
+    ],
+    "reference_mas_yr": [
+     -8123.7,
+     673.2
+    ],
+    "n_used": 90,
+    "diff_sigma": [
+     0.4,
+     0.7
+    ]
+   },
+   "position_minus_reference_2026_arcsec": [
+    -0.171,
+    0.237
+   ],
+   "season_minus_reference_arcsec": [
+    {
+     "epoch": "2025-05",
+     "east": 0.375,
+     "north": -0.031,
+     "err_east": 0.423,
+     "err_north": 0.36
+    },
+    {
+     "epoch": "2025-11",
+     "east": -0.337,
+     "north": 0.176,
+     "err_east": 0.204,
+     "err_north": 0.197
+    },
+    {
+     "epoch": "2026-05",
+     "east": 0.027,
+     "north": 0.399,
+     "err_east": 0.331,
+     "err_north": 0.453
+    }
+   ],
+   "source": "site/data/wise0855/meta.json",
+   "viewer": "ornek.html?data=data/wise0855/"
+  },
+  {
+   "id": "luhman16",
+   "name": "Luhman 16AB",
+   "challenge": false,
+   "kind": "motion",
+   "status": "pass",
+   "detection": "detected",
+   "detection_message": "Detected above 5σ in every season and wavelength bin.",
+   "detected_bins_um": [
+    1.0,
+    1.5,
+    2.0,
+    3.0,
+    4.0,
+    4.6
+   ],
+   "n_images": 104,
+   "seasons": [
+    "2025-06",
+    "2025-12",
+    "2026-06"
+   ],
+   "astrometry_path": "bright",
+   "measured": {
+    "shift_arcsec": 2.75,
+    "err_arcsec": 0.058,
+    "pa_deg": 277.51,
+    "from": "2025-06",
+    "to": "2026-06",
+    "dt_years": 0.9945,
+    "same_orientation": true
+   },
+   "reference": {
+    "shift_arcsec": 2.775,
+    "pa_deg": 277.35,
+    "label": "SIMBAD proper motion",
+    "detail": "SIMBAD via CDS Sesame (site/data/categories.json), epoch 2000. The prediction has no parallax; between two seasons ~1 year apart the parallax shift nearly cancels.",
+    "parallax_mas": null,
+    "pm_total_mas_yr": 2790.4,
+    "parallax_residual_max_arcsec": 0.017
+   },
+   "diff": {
+    "shift_arcsec": -0.025,
+    "percent": -0.9,
+    "vector_arcsec": 0.026,
+    "sigma": 0.45,
+    "pa_deg": 0.16
+   },
+   "proper_motion": {
+    "measured_mas_yr": [
+     -2747.2,
+     367.3
+    ],
+    "err_mas_yr": [
+     61.2,
+     61.2
+    ],
+    "reference_mas_yr": [
+     -2767.5,
+     356.9
+    ],
+    "n_used": 102,
+    "diff_sigma": [
+     0.3,
+     0.2
+    ]
+   },
+   "position_minus_reference_2026_arcsec": [
+    -1.245,
+    0.053
+   ],
+   "season_minus_reference_arcsec": [
+    {
+     "epoch": "2025-06",
+     "east": -1.261,
+     "north": 0.049,
+     "err_east": 0.046,
+     "err_north": 0.039
+    },
+    {
+     "epoch": "2025-12",
+     "east": -1.241,
+     "north": 0.055,
+     "err_east": 0.057,
+     "err_north": 0.037
+    },
+    {
+     "epoch": "2026-06",
+     "east": -1.235,
+     "north": 0.053,
+     "err_east": 0.04,
+     "err_north": 0.038
+    }
+   ],
+   "source": "cache/jobs/luhman16-162.295s53.317-c6-b63-pm8778/meta.json (local engine job luhman16-162.295s53.317-c6-b63-pm8778)",
+   "viewer": "ornek.html?data=/jobs/luhman16-162.295s53.317-c6-b63-pm8778/",
+   "local_job": "luhman16-162.295s53.317-c6-b63-pm8778"
+  },
+  {
+   "id": "rw_aur",
+   "name": "RW Aurigae",
+   "challenge": true,
+   "kind": "brightness",
+   "status": "not_measurable",
+   "n_images": 335,
+   "seasons": [
+    "2025-09",
+    "2026-03",
+    "2026-09"
+   ],
+   "expected_motion_arcsec_yr": 0.0251,
+   "reference": {
+    "label": "Gaia DR3 proper motion",
+    "detail": "Gaia DR3 156430817820015232",
+    "parallax_mas": 5.454
+   },
+   "brightness_bins": [
+    {
+     "wavelength_um": 1.0,
+     "detector": "D1",
+     "seasons": [
+      "2025-09",
+      "2026-03",
+      "2026-09"
+     ],
+     "ratio": [
+      1.0,
+      1.133,
+      1.373
+     ],
+     "err": [
+      0.0,
+      0.134,
+      0.126
+     ],
+     "flags": [
+      "saturated core: wing (annulus) estimate"
+     ]
+    },
+    {
+     "wavelength_um": 1.5,
+     "detector": "D2",
+     "seasons": [
+      "2025-09",
+      "2026-03",
+      "2026-09"
+     ],
+     "ratio": [
+      1.0,
+      1.375,
+      1.179
+     ],
+     "err": [
+      0.0,
+      0.093,
+      0.128
+     ],
+     "flags": [
+      "saturated core: wing (annulus) estimate"
+     ]
+    },
+    {
+     "wavelength_um": 2.0,
+     "detector": "D3",
+     "seasons": [
+      "2025-09",
+      "2026-03",
+      "2026-09"
+     ],
+     "ratio": [
+      1.0,
+      1.092,
+      1.046
+     ],
+     "err": [
+      0.0,
+      0.09,
+      0.048
+     ],
+     "flags": [
+      "saturated core: wing (annulus) estimate"
+     ]
+    },
+    {
+     "wavelength_um": 3.0,
+     "detector": "D4",
+     "seasons": [
+      "2025-09",
+      "2026-03",
+      "2026-09"
+     ],
+     "ratio": [
+      1.0,
+      0.898,
+      0.733
+     ],
+     "err": [
+      0.0,
+      0.121,
+      0.083
+     ],
+     "flags": [
+      "saturated core: wing (annulus) estimate"
+     ]
+    },
+    {
+     "wavelength_um": 4.0,
+     "detector": "D5",
+     "seasons": [
+      "2025-09",
+      "2026-03",
+      "2026-09"
+     ],
+     "ratio": [
+      1.0,
+      0.824,
+      0.504
+     ],
+     "err": [
+      0.0,
+      0.038,
+      0.035
+     ],
+     "flags": [
+      "saturated core: wing (annulus) estimate"
+     ]
+    },
+    {
+     "wavelength_um": 4.6,
+     "detector": "D6",
+     "seasons": [
+      "2025-09",
+      "2026-03",
+      "2026-09"
+     ],
+     "ratio": [
+      1.0,
+      0.688,
+      0.49
+     ],
+     "err": [
+      0.0,
+      0.041,
+      0.039
+     ],
+     "flags": [
+      "saturated core: wing (annulus) estimate"
+     ]
+    }
+   ],
+   "brightness_caveats": [
+    "Static field stars inside the annulus dilute the measured change.",
+    "A bin spans +-6 % in wavelength; molecular bands can make the ratio depend on where in the bin each season was observed."
+   ],
+   "source": "site/data/rw_aur/meta.json",
+   "viewer": "ornek.html?data=data/rw_aur/"
+  },
+  {
+   "id": "r_dra",
+   "name": "R Draconis",
+   "challenge": true,
+   "kind": "brightness",
+   "status": "not_measurable",
+   "n_images": 539,
+   "seasons": [
+    "2025-06",
+    "2025-11",
+    "2026-06"
+   ],
+   "expected_motion_arcsec_yr": 0.0215,
+   "reference": {
+    "label": "Gaia DR3 proper motion",
+    "detail": "Gaia DR3 1648328016354496384",
+    "parallax_mas": 1.251
+   },
+   "brightness_bins": [
+    {
+     "wavelength_um": 1.0,
+     "detector": "D1",
+     "seasons": [
+      "2025-06",
+      "2025-11",
+      "2026-06"
+     ],
+     "ratio": [
+      1.0,
+      0.653,
+      0.575
+     ],
+     "err": [
+      0.0,
+      0.102,
+      0.082
+     ],
+     "flags": [
+      "saturated core: wing (annulus) estimate",
+      "seasons sample different wavelengths within the bin (0.97-1.00 um)"
+     ]
+    },
+    {
+     "wavelength_um": 1.5,
+     "detector": "D2",
+     "seasons": [
+      "2025-06",
+      "2025-11",
+      "2026-06"
+     ],
+     "ratio": [
+      1.0,
+      1.132,
+      0.44
+     ],
+     "err": [
+      0.0,
+      0.258,
+      0.101
+     ],
+     "flags": [
+      "saturated core: wing (annulus) estimate"
+     ]
+    },
+    {
+     "wavelength_um": 2.0,
+     "detector": "D3",
+     "seasons": [
+      "2025-06",
+      "2025-11",
+      "2026-06"
+     ],
+     "ratio": [
+      1.0,
+      0.94,
+      0.535
+     ],
+     "err": [
+      0.0,
+      0.19,
+      0.119
+     ],
+     "flags": [
+      "saturated core: wing (annulus) estimate"
+     ]
+    },
+    {
+     "wavelength_um": 3.0,
+     "detector": "D4",
+     "seasons": [
+      "2025-06",
+      "2025-11",
+      "2026-06"
+     ],
+     "ratio": [
+      1.0,
+      0.692,
+      0.519
+     ],
+     "err": [
+      0.0,
+      0.102,
+      0.078
+     ],
+     "flags": [
+      "saturated core: wing (annulus) estimate"
+     ]
+    },
+    {
+     "wavelength_um": 4.6,
+     "detector": "D6",
+     "seasons": [
+      "2025-06",
+      "2025-11",
+      "2026-06"
+     ],
+     "ratio": [
+      1.0,
+      0.785,
+      0.516
+     ],
+     "err": [
+      0.0,
+      0.051,
+      0.028
+     ],
+     "flags": [
+      "saturated core: wing (annulus) estimate"
+     ]
+    }
+   ],
+   "brightness_caveats": [
+    "Static field stars inside the annulus dilute the measured change.",
+    "A bin spans +-6 % in wavelength; molecular bands can make the ratio depend on where in the bin each season was observed."
+   ],
+   "source": "site/data/r_dra/meta.json",
+   "viewer": "ornek.html?data=data/r_dra/"
+  }
+ ],
+ "accuracy": {
+  "generated": "2026-11-14T12:02:07Z",
+  "generator": "pipeline/accuracy.py",
+  "markdown": "pipeline/ACCURACY.md",
+  "targets": [
+   {
+    "key": "barnard",
+    "label": "Barnard's Star",
+    "reference": "Gaia DR3",
+    "seasons": [
+     {
+      "epoch": "2025-08",
+      "dE": -0.054,
+      "dN": 0.152,
+      "sE_stat": 0.046,
+      "sN_stat": 0.044,
+      "sE_cal": 0.01801,
+      "sN_cal": 0.01744,
+      "sE": 0.0494,
+      "sN": 0.04733,
+      "n": 112,
+      "orient": 359.0,
+      "sig_E": 1.09314,
+      "sig_N": 3.21144
+     },
+     {
+      "epoch": "2026-03",
+      "dE": -0.053,
+      "dN": 0.129,
+      "sE_stat": 0.038,
+      "sN_stat": 0.045,
+      "sE_cal": 0.02008,
+      "sN_cal": 0.01909,
+      "sE": 0.04298,
+      "sN": 0.04888,
+      "n": 113,
+      "orient": 178.8,
+      "sig_E": 1.23312,
+      "sig_N": 2.63911
+     },
+     {
+      "epoch": "2026-08",
+      "dE": -0.053,
+      "dN": 0.114,
+      "sE_stat": 0.038,
+      "sN_stat": 0.042,
+      "sE_cal": 0.01768,
+      "sN_cal": 0.01767,
+      "sE": 0.04191,
+      "sN": 0.04557,
+      "n": 110,
+      "orient": 358.8,
+      "sig_E": 1.26461,
+      "sig_N": 2.50181
+     }
+    ],
+    "pm": {
+     "meas": [
+      -810.2,
+      10336.2
+     ],
+     "err": [
+      55.6,
+      55.6
+     ],
+     "ref": [
+      -801.55098,
+      10362.39421
+     ],
+     "d": [
+      -8.64902,
+      -26.19421
+     ]
+    },
+    "shift": {
+     "frm": "2025-08",
+     "to": "2026-08",
+     "dt": 0.982,
+     "meas": 10.207,
+     "ref": 10.244,
+     "err": 0.06,
+     "pa": 355.69,
+     "ref_pa": 355.7,
+     "dpa": -0.01,
+     "dE": 0.00166,
+     "dN": -0.03765,
+     "same": true,
+     "d": -0.037,
+     "sigma": 0.61667
+    },
+    "note": "",
+    "path": "bright",
+    "status": "detected",
+    "n": 358,
+    "calibrated": true,
+    "absolute_position": "tested"
+   },
+   {
+    "key": "eps_indi_b",
+    "label": "Epsilon Indi B",
+    "reference": "Gaia DR3",
+    "seasons": [
+     {
+      "epoch": "2025-04",
+      "dE": 0.31,
+      "dN": -0.588,
+      "sE_stat": 0.024,
+      "sN_stat": 0.027,
+      "sE_cal": 0.02065,
+      "sN_cal": 0.02527,
+      "sE": 0.03166,
+      "sN": 0.03698,
+      "n": 115,
+      "orient": 204.9,
+      "sig_E": 9.79028,
+      "sig_N": 15.90066
+     },
+     {
+      "epoch": "2025-10",
+      "dE": 0.29,
+      "dN": -0.522,
+      "sE_stat": 0.023,
+      "sN_stat": 0.021,
+      "sE_cal": 0.01788,
+      "sN_cal": 0.02091,
+      "sE": 0.02913,
+      "sN": 0.02964,
+      "n": 137,
+      "orient": 27.0,
+      "sig_E": 9.95538,
+      "sig_N": 17.61362
+     },
+     {
+      "epoch": "2026-04",
+      "dE": 0.261,
+      "dN": -0.477,
+      "sE_stat": 0.029,
+      "sN_stat": 0.031,
+      "sE_cal": 0.02347,
+      "sN_cal": 0.02621,
+      "sE": 0.03731,
+      "sN": 0.0406,
+      "n": 71,
+      "orient": 207.6,
+      "sig_E": 6.99546,
+      "sig_N": 11.75003
+     },
+     {
+      "epoch": "2026-09",
+      "dE": 0.26,
+      "dN": -0.522,
+      "sE_stat": 0.02,
+      "sN_stat": 0.019,
+      "sE_cal": 0.02242,
+      "sN_cal": 0.02761,
+      "sE": 0.03004,
+      "sN": 0.03351,
+      "n": 116,
+      "orient": 27.9,
+      "sig_E": 8.65466,
+      "sig_N": 15.57544
+     }
+    ],
+    "pm": {
+     "meas": [
+      3944.7,
+      -2418.9
+     ],
+     "err": [
+      25.3,
+      25.2
+     ],
+     "ref": [
+      3981.97666,
+      -2466.83181
+     ],
+     "d": [
+      -37.27666,
+      47.93181
+     ]
+    },
+    "shift": {
+     "frm": "2025-10",
+     "to": "2026-09",
+     "dt": 0.9647,
+     "meas": 4.535,
+     "ref": 4.56,
+     "err": 0.029,
+     "pa": 121.98,
+     "ref_pa": 121.78,
+     "dpa": 0.2,
+     "dE": -0.02955,
+     "dN": -0.00035,
+     "same": true,
+     "d": -0.025,
+     "sigma": 0.86207
+    },
+    "note": "",
+    "path": "bright",
+    "status": "detected",
+    "n": 458,
+    "calibrated": true,
+    "absolute_position": "tested"
+   },
+   {
+    "key": "wise0855",
+    "label": "WISE 0855−0714",
+    "reference": "Kirkpatrick et al. 2021 (Spitzer)",
+    "seasons": [
+     {
+      "epoch": "2025-05",
+      "dE": 0.375,
+      "dN": -0.031,
+      "sE_stat": 0.423,
+      "sN_stat": 0.36,
+      "sE_cal": 0.0,
+      "sN_cal": 0.0,
+      "sE": 0.423,
+      "sN": 0.36,
+      "n": 8,
+      "orient": 341.1,
+      "sig_E": 0.88652,
+      "sig_N": 0.08611
+     },
+     {
+      "epoch": "2025-11",
+      "dE": -0.337,
+      "dN": 0.176,
+      "sE_stat": 0.204,
+      "sN_stat": 0.197,
+      "sE_cal": 0.0,
+      "sN_cal": 0.0,
+      "sE": 0.204,
+      "sN": 0.197,
+      "n": 46,
+      "orient": 159.7,
+      "sig_E": 1.65196,
+      "sig_N": 0.8934
+     },
+     {
+      "epoch": "2026-05",
+      "dE": 0.027,
+      "dN": 0.399,
+      "sE_stat": 0.331,
+      "sN_stat": 0.453,
+      "sE_cal": 0.0,
+      "sN_cal": 0.0,
+      "sE": 0.331,
+      "sN": 0.453,
+      "n": 36,
+      "orient": 341.5,
+      "sig_E": 0.08157,
+      "sig_N": 0.88079
+     }
+    ],
+    "pm": {
+     "meas": [
+      -8365.6,
+      1098.8
+     ],
+     "err": [
+      600.2,
+      631.7
+     ],
+     "ref": [
+      -8123.7,
+      673.2
+     ],
+     "d": [
+      -241.9,
+      425.6
+     ]
+    },
+    "shift": {
+     "frm": "2025-05",
+     "to": "2026-05",
+     "dt": 0.9855,
+     "meas": 8.419,
+     "ref": 8.028,
+     "err": 0.558,
+     "pa": 277.34,
+     "ref_pa": 274.62,
+     "dpa": 2.72,
+     "dE": -0.34781,
+     "dN": 0.42953,
+     "same": true,
+     "d": 0.391,
+     "sigma": 0.70072
+    },
+    "note": "",
+    "path": "faint",
+    "status": "partial",
+    "n": 258,
+    "calibrated": false,
+    "absolute_position": "tested"
+   },
+   {
+    "key": "luhman16",
+    "label": "Luhman 16AB (local engine job, 104 cutouts)",
+    "reference": "SIMBAD, no parallax (see notes)",
+    "seasons": [
+     {
+      "epoch": "2025-06",
+      "dE": -1.261,
+      "dN": 0.049,
+      "sE_stat": 0.046,
+      "sN_stat": 0.039,
+      "sE_cal": 0.01947,
+      "sN_cal": 0.02124,
+      "sE": 0.04995,
+      "sN": 0.04441,
+      "n": 32,
+      "orient": 319.1,
+      "sig_E": 25.24571,
+      "sig_N": 1.10336
+     },
+     {
+      "epoch": "2025-12",
+      "dE": -1.241,
+      "dN": 0.055,
+      "sE_stat": 0.057,
+      "sN_stat": 0.037,
+      "sE_cal": 0.02008,
+      "sN_cal": 0.02096,
+      "sE": 0.06043,
+      "sN": 0.04252,
+      "n": 36,
+      "orient": 139.0,
+      "sig_E": 20.53501,
+      "sig_N": 1.29339
+     },
+     {
+      "epoch": "2026-06",
+      "dE": -1.235,
+      "dN": 0.053,
+      "sE_stat": 0.04,
+      "sN_stat": 0.038,
+      "sE_cal": 0.01965,
+      "sN_cal": 0.01786,
+      "sE": 0.04457,
+      "sN": 0.04199,
+      "n": 34,
+      "orient": 319.1,
+      "sig_E": 27.7108,
+      "sig_N": 1.26232
+     }
+    ],
+    "pm": {
+     "meas": [
+      -2747.2,
+      367.3
+     ],
+     "err": [
+      61.2,
+      61.2
+     ],
+     "ref": [
+      -2767.502,
+      356.856
+     ],
+     "d": [
+      20.302,
+      10.444
+     ]
+    },
+    "shift": {
+     "frm": "2025-06",
+     "to": "2026-06",
+     "dt": 0.9945,
+     "meas": 2.75,
+     "ref": 2.775,
+     "err": 0.058,
+     "pa": 277.51,
+     "ref_pa": 277.35,
+     "dpa": 0.16,
+     "dE": 0.02568,
+     "dN": 0.00464,
+     "same": true,
+     "d": -0.025,
+     "sigma": 0.43103
+    },
+    "note": "",
+    "path": "bright",
+    "status": "detected",
+    "n": 104,
+    "calibrated": true,
+    "absolute_position": "reference_not_suitable",
+    "parallax_effect_arcsec": {
+     "2025-06": [
+      -0.44903,
+      0.22914
+     ],
+     "2025-12": [
+      0.36553,
+      -0.32538
+     ],
+     "2026-06": [
+      -0.45334,
+      0.21681
+     ],
+     "_shift": [
+      -0.00431,
+      -0.01234
+     ]
+    }
+   }
+  ],
+  "field_stars": {
+   "barnard": {
+    "n_rows": 52369,
+    "n_used": 12425,
+    "n_kept": 12130,
+    "n_stars": 86,
+    "n_exposures": 358,
+    "edge_frac": 0.22694,
+    "clipped_frac": 0.02374,
+    "E": [
+     0.1548,
+     0.2409,
+     0.59141
+    ],
+    "N": [
+     0.1826,
+     0.2778,
+     0.67151
+    ],
+    "E_all": [
+     0.1586,
+     0.2491,
+     0.6428
+    ],
+    "N_all": [
+     0.1872,
+     0.2874,
+     0.76557
+    ],
+    "z68": [
+     0.453,
+     0.57347
+    ],
+    "by_g": [
+     {
+      "bin": "10–12",
+      "n": 308,
+      "E": [
+       0.16355,
+       0.27221,
+       0.53296
+      ],
+      "N": [
+       0.1716,
+       0.27174,
+       0.52781
+      ],
+      "err": [
+       0.1839,
+       0.17515
+      ]
+     },
+     {
+      "bin": "12–14",
+      "n": 2418,
+      "E": [
+       0.14615,
+       0.2293,
+       0.58581
+      ],
+      "N": [
+       0.14925,
+       0.22791,
+       0.54391
+      ],
+      "err": [
+       0.2429,
+       0.2351
+      ]
+     },
+     {
+      "bin": "14–15",
+      "n": 1826,
+      "E": [
+       0.1166,
+       0.1787,
+       0.41657
+      ],
+      "N": [
+       0.1507,
+       0.22136,
+       0.45747
+      ],
+      "err": [
+       0.39475,
+       0.37645
+      ]
+     },
+     {
+      "bin": "15–16",
+      "n": 4198,
+      "E": [
+       0.14575,
+       0.21739,
+       0.53401
+      ],
+      "N": [
+       0.1898,
+       0.28079,
+       0.64175
+      ],
+      "err": [
+       0.50485,
+       0.51365
+      ]
+     },
+     {
+      "bin": "16–17",
+      "n": 3187,
+      "E": [
+       0.2073,
+       0.3164,
+       0.69322
+      ],
+      "N": [
+       0.2389,
+       0.37142,
+       0.82023
+      ],
+      "err": [
+       0.9488,
+       1.0355
+      ]
+     },
+     {
+      "bin": "17–17.5",
+      "n": 193,
+      "E": [
+       0.2857,
+       0.42432,
+       0.86787
+      ],
+      "N": [
+       0.244,
+       0.37129,
+       0.9368
+      ],
+      "err": [
+       1.0956,
+       1.3148
+      ]
+     }
+    ],
+    "by_r": [
+     {
+      "bin": "0.00–0.05",
+      "n": 1777,
+      "E": [
+       0.1677,
+       0.27615,
+       0.65849
+      ],
+      "N": [
+       0.1914,
+       0.31085,
+       0.826
+      ]
+     },
+     {
+      "bin": "0.05–0.10",
+      "n": 9252,
+      "E": [
+       0.1584,
+       0.24287,
+       0.58826
+      ],
+      "N": [
+       0.1817,
+       0.27427,
+       0.64493
+      ]
+     },
+     {
+      "bin": "0.10–0.15",
+      "n": 1101,
+      "E": [
+       0.116,
+       0.18088,
+       0.44357
+      ],
+      "N": [
+       0.1772,
+       0.26359,
+       0.60089
+      ]
+     }
+    ],
+    "ratio": {
+     "lo": {
+      "n": 52,
+      "E": [
+       0.57326,
+       0.82295,
+       1.05345
+      ],
+      "N": [
+       0.66459,
+       0.82973,
+       1.0647
+      ]
+     },
+     "hi": {
+      "n": 693,
+      "E": [
+       0.22857,
+       0.3521,
+       0.59916
+      ],
+      "N": [
+       0.23672,
+       0.43295,
+       0.84929
+      ]
+     }
+    },
+    "exposure_jitter": {
+     "n_exp": 355,
+     "rms": [
+      0.08649,
+      0.12218
+     ],
+     "noise": [
+      0.04998,
+      0.04869
+     ],
+     "excess": [
+      0.07059,
+      0.11206
+     ]
+    },
+    "stars_per_exposure": 38.0
+   },
+   "eps_indi_b": {
+    "n_rows": 21120,
+    "n_used": 6183,
+    "n_kept": 6019,
+    "n_stars": 38,
+    "n_exposures": 458,
+    "edge_frac": 0.17595,
+    "clipped_frac": 0.02652,
+    "E": [
+     0.1641,
+     0.2466,
+     0.56332
+    ],
+    "N": [
+     0.1992,
+     0.30235,
+     0.67049
+    ],
+    "E_all": [
+     0.1687,
+     0.2541,
+     0.61479
+    ],
+    "N_all": [
+     0.2048,
+     0.31404,
+     0.75874
+    ],
+    "z68": [
+     0.88182,
+     1.1052
+    ],
+    "by_g": [
+     {
+      "bin": "12–14",
+      "n": 824,
+      "E": [
+       0.14195,
+       0.22131,
+       0.50159
+      ],
+      "N": [
+       0.14225,
+       0.21199,
+       0.4486
+      ],
+      "err": [
+       0.13925,
+       0.1336
+      ]
+     },
+     {
+      "bin": "14–15",
+      "n": 1149,
+      "E": [
+       0.1486,
+       0.2294,
+       0.57739
+      ],
+      "N": [
+       0.2121,
+       0.34182,
+       0.86878
+      ],
+      "err": [
+       0.2704,
+       0.2823
+      ]
+     },
+     {
+      "bin": "15–16",
+      "n": 2496,
+      "E": [
+       0.1599,
+       0.2361,
+       0.52041
+      ],
+      "N": [
+       0.19565,
+       0.2918,
+       0.60359
+      ],
+      "err": [
+       0.2678,
+       0.2697
+      ]
+     },
+     {
+      "bin": "16–17",
+      "n": 1363,
+      "E": [
+       0.2,
+       0.2987,
+       0.59443
+      ],
+      "N": [
+       0.2326,
+       0.35338,
+       0.71083
+      ],
+      "err": [
+       0.3656,
+       0.3753
+      ]
+     },
+     {
+      "bin": "17–17.5",
+      "n": 187,
+      "E": [
+       0.2193,
+       0.33693,
+       0.79132
+      ],
+      "N": [
+       0.2702,
+       0.37961,
+       0.72811
+      ],
+      "err": [
+       0.9677,
+       0.97
+      ]
+     }
+    ],
+    "by_r": [
+     {
+      "bin": "0.00–0.05",
+      "n": 1361,
+      "E": [
+       0.1508,
+       0.22559,
+       0.48692
+      ],
+      "N": [
+       0.179,
+       0.26919,
+       0.57121
+      ]
+     },
+     {
+      "bin": "0.05–0.10",
+      "n": 4465,
+      "E": [
+       0.1674,
+       0.25267,
+       0.58161
+      ],
+      "N": [
+       0.2073,
+       0.31526,
+       0.71187
+      ]
+     },
+     {
+      "bin": "0.10–0.15",
+      "n": 193,
+      "E": [
+       0.1793,
+       0.24622,
+       0.56395
+      ],
+      "N": [
+       0.1973,
+       0.32101,
+       0.57651
+      ]
+     }
+    ],
+    "ratio": {
+     "lo": {
+      "n": 175,
+      "E": [
+       0.76061,
+       1.06046,
+       1.55123
+      ],
+      "N": [
+       0.91832,
+       1.32489,
+       1.85896
+      ]
+     },
+     "hi": {
+      "n": 164,
+      "E": [
+       0.32877,
+       0.55665,
+       0.8561
+      ],
+      "N": [
+       0.37255,
+       0.66038,
+       0.94437
+      ]
+     }
+    },
+    "exposure_jitter": {
+     "n_exp": 307,
+     "rms": [
+      0.1086,
+      0.14202
+     ],
+     "noise": [
+      0.0652,
+      0.07983
+     ],
+     "excess": [
+      0.08685,
+      0.11746
+     ]
+    },
+    "stars_per_exposure": 19.0
+   }
+  },
+  "cells": {
+   "barnard": {
+    "accepted": 18,
+    "total": 18,
+    "median_err_east": 0.0365,
+    "median_err_north": 0.0405,
+    "median_distinct_stars": 59.0,
+    "median_chi2r": 4.67
+   },
+   "eps_indi_b": {
+    "accepted": 13,
+    "total": 22,
+    "median_err_east": 0.05,
+    "median_err_north": 0.059,
+    "median_distinct_stars": 31.0,
+    "median_chi2r": 3.92
+   }
+  },
+  "field_stars_reproduce_site": {
+   "barnard": true,
+   "eps_indi_b": true
+  }
+ },
+ "accuracy_source": "site/data/accuracy.json"
+}

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fazari Evidence</title>
+<meta name="description" content="How well Fazari's SPHEREx measurements agree with Gaia and published astrometry, target by target, with the tests behind them.">
+<meta name="theme-color" content="#05070d">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22 fill=%22%2305070d%22 stroke=%22%237fd4ff%22 stroke-width=%221.6%22/%3E%3Ccircle cx=%2216.5%22 cy=%228%22 r=%222%22 fill=%22%23ffc94d%22/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/fz_pages.css">
+</head>
+<body>
+<header class="pg-top">
+  <div class="wrap">
+    <a class="pg-brand" href="explore.html?hero=0">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.6"/><ellipse cx="12" cy="12" rx="10" ry="4" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".7"/><circle cx="16.5" cy="8" r="1.6" fill="#ffc94d"/></svg>
+      <span><b>Fazari</b> <span data-i18n="pg.brand">Sky Explorer</span></span></a>
+    <nav class="pg-nav" aria-label="Pages">
+      <a href="explore.html?hero=0" data-i18n="pg.nav.sky">Sky</a>
+      <a href="ornek.html?data=data/barnard/" data-i18n="pg.nav.result">Barnard's Star result</a>
+      <a href="verify.html" aria-current="page" data-i18n="pg.nav.evidence">Evidence</a>
+      <a href="story.html" data-i18n="pg.nav.story">Targets &amp; SPHEREx</a>
+    </nav>
+    <span id="langSlot"></span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="pg-head">
+    <p class="kicker" data-i18n="v.kicker">Evidence</p>
+    <h1 data-i18n="v.h1">Is it right? Check our numbers.</h1>
+    <p class="lead" data-i18n="v.lead">We measured how far each target moved between two SPHEREx observing seasons, from the images alone. Then we compared that with the best independent prediction: Gaia DR3, or published astrometry where Gaia has none. Here is every target, including the ones we could not measure.</p>
+  </div>
+
+  <section class="blk" id="table" aria-labelledby="tableTitle">
+    <h2 id="tableTitle" data-i18n="v.table.h">Measured motion against the catalogue</h2>
+    <p class="sub" data-i18n="v.table.sub">One row per target. The shift is between two seasons seen with the same telescope orientation, about a year apart.</p>
+    <div id="vtBox"><p class="fine" data-i18n="v.loading">Loading the measurements…</p></div>
+    <p class="crit" id="crit"></p>
+    <p class="fine" id="tableSrc"></p>
+  </section>
+
+  <section class="blk" id="trust" aria-labelledby="trustTitle" hidden>
+    <h2 id="trustTitle" data-i18n="v.trust.h">Why you can trust this</h2>
+    <div id="trustBox"></div>
+  </section>
+
+  <section class="blk" id="control" aria-labelledby="controlTitle" hidden>
+    <h2 id="controlTitle" data-i18n="v.ctrl.h">Control: stars that should not move</h2>
+    <div id="controlBox"></div>
+  </section>
+
+  <section class="blk" id="open" aria-labelledby="openTitle">
+    <h2 id="openTitle" data-i18n="v.open.h">What we cannot explain yet</h2>
+    <p class="sub" data-i18n="v.open.sub">These are open questions, not results. We list them so you can judge the numbers above.</p>
+    <ul class="open" id="openList"></ul>
+  </section>
+</main>
+
+<footer class="pg-foot">
+  <div class="wrap">
+    <p data-i18n-html="pg.credits">SPHEREx data: NASA/JPL-Caltech, served by the NASA/IPAC Infrared Science Archive (IRSA), DR1 (doi:10.26131/IRSA678) and QR3 (doi:10.26131/IRSA662). Gaia DR3: ESA/Gaia/DPAC. WISE 0855−0714 reference: Kirkpatrick et al. 2021, ApJS 253, 7. Fazari, NASA Space Apps Challenge 2026. Not endorsed by NASA or ESA. <a href="https://github.com/adembtr/fazari">Source code</a>.</p>
+  </div>
+</footer>
+<script type="module" src="js/verify.js"></script>
+</body>
+</html>

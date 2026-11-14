@@ -12,7 +12,7 @@ Reads:
 
 Usage (from the fazari/ folder):
   uv run --no-project --with astropy --with reproject --with numpy --with scipy --with matplotlib \\
-      --with pillow python -I pipeline/accuracy.py [--field-stars DIR] [--wide DIR] [--out FILE]
+      --with pillow python -I pipeline/accuracy.py [--field-stars DIR] [--wide DIR] [--out FILE] [--json FILE]
 """
 import argparse
 import csv
@@ -580,6 +580,8 @@ def main():
                     help="folder with lu16_plx0/ and lu16_plx500/ (blink.py re-runs of the Luhman 16AB job with "
                          "parallax 0 and ~500 mas; optional)")
     ap.add_argument("--out", default=str(PIPE / "ACCURACY.md"))
+    ap.add_argument("--json", help="also write the numbers as JSON (e.g. site/data/accuracy.json, read by verify.html "
+                                   "through pipeline/verify_table.py); the Markdown output is unchanged")
     a = ap.parse_args()
 
     # 1. targets
@@ -779,6 +781,52 @@ def main():
           "detector (`blink.detection_check` builds its detector list from exposures with a forced-photometry fit).", ""]
     Path(a.out).write_text("\n".join(L))
     print(f"wrote {a.out}")
+    if a.json:
+        write_json(a.json, a.out, T, FS, cellerr, repro, lplx)
+
+
+def _js(o):
+    """JSON-safe copy: numpy scalars -> float/int, tuples -> lists, NaN/inf -> None."""
+    if isinstance(o, dict):
+        return {str(k): _js(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_js(v) for v in o]
+    if isinstance(o, (np.floating, float)):
+        v = float(o)
+        return round(v, 5) if math.isfinite(v) else None
+    if isinstance(o, np.integer):
+        return int(o)
+    if isinstance(o, np.bool_):
+        return bool(o)
+    return o
+
+
+def write_json(path, md, T, FS, cellerr, repro, lplx):
+    """The numbers of ACCURACY.md for web pages. Per target: shift (d, err, sigma), proper motion,
+    season positions minus the reference with stat (+) calibration errors, and whether the absolute
+    position can be tested against the reference at all (Luhman 16AB: no Gaia 5-parameter solution)."""
+    from datetime import datetime, timezone
+    targets = []
+    for t in T:
+        d = dict(t)
+        if d.get("shift"):
+            sh = d["shift"]
+            sh["sigma"] = abs(sh["d"]) / sh["err"] if sh.get("err") else None
+        for se in d.get("seasons", []):
+            se["sig_E"] = abs(se["dE"]) / se["sE"] if se.get("sE") else None
+            se["sig_N"] = abs(se["dN"]) / se["sN"] if se.get("sN") else None
+        d["absolute_position"] = ("reference_not_suitable" if t["key"] == "luhman16" else "tested")
+        if t["key"] == "luhman16" and lplx:
+            d["parallax_effect_arcsec"] = {k: v for k, v in lplx[2].items()}
+        targets.append(d)
+    doc = {"generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "generator": "pipeline/accuracy.py",
+           "markdown": rel(md), "targets": targets, "field_stars": FS,
+           "cells": {n: dict(zip(("accepted", "total", "median_err_east", "median_err_north", "median_distinct_stars",
+                                  "median_chi2r"), v)) for n, v in cellerr.items()},
+           "field_stars_reproduce_site": repro}
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    Path(path).write_text(json.dumps(_js(doc), indent=1, ensure_ascii=False))
+    print(f"wrote {path}")
 
 
 if __name__ == "__main__":
