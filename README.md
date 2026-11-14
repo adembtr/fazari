@@ -8,6 +8,8 @@ Challenge: [Planet X and SPHEREx](https://www.spaceappschallenge.org/2026/challe
 
 Work in progress during the hackathon (14–15 November 2026).
 
+Live site: https://adembtr.github.io/fazari/
+
 - **Works now:** the data pipeline and a local viewer, demonstrated on Barnard's Star (three seasons, six wavelength bins, motion measured and compared with Gaia).
 - **Planned:** the other four challenge targets (Epsilon Indi B, WISE 0855-0714, RW Aurigae, R Draconis), search by any user-entered coordinate, and a public site on GitHub Pages.
 
