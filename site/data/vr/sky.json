@@ -1,0 +1,61 @@
+{
+ "_note": "Sky background of site/vr.html, built by pipeline/vr_sky.py. Display image only.",
+ "source": "https://irsa.ipac.caltech.edu/data/hips/SPHEREx/spherex_allsky_cube",
+ "hips_order": 1,
+ "frames": {
+  "blue": [
+   {
+    "frame": 14,
+    "um": 1.05
+   },
+   {
+    "frame": 16,
+    "um": 1.102
+   },
+   {
+    "frame": 18,
+    "um": 1.139
+   }
+  ],
+  "green": [
+   {
+    "frame": 42,
+    "um": 1.995
+   },
+   {
+    "frame": 44,
+    "um": 2.089
+   },
+   {
+    "frame": 46,
+    "um": 2.189
+   }
+  ],
+  "red": [
+   {
+    "frame": 62,
+    "um": 3.293
+   },
+   {
+    "frame": 64,
+    "um": 3.476
+   },
+   {
+    "frame": 66,
+    "um": 3.667
+   }
+  ]
+ },
+ "projection": "equirectangular ICRS; x=0 is RA 180 deg, RA increases to the left, middle column RA 0; top row Dec +90",
+ "tile_orientation_mode": 4,
+ "credit": "SPHEREx DR1 all-sky HiPS: NASA/SPHEREx, Caltech/IPAC (NASA/IPAC Infrared Science Archive). False colour from 9 of the 102 wavelength frames: blue 1.05-1.14 um, green 2.0-2.19 um, red 3.29-3.67 um.",
+ "stretch": {
+  "blur_sigma_px": 0.8,
+  "black_percentile": 65.0,
+  "white_percentile": 99.98,
+  "asinh_soft": 5.0,
+  "keep": 1.0
+ },
+ "no_data": "Two small patches at the ecliptic poles (RA 270 Dec +66.6 and RA 90 Dec -66.6, the SPHEREx deep fields) have no pixels in this HiPS; they are filled with the mean of the sky around them.",
+ "built": "2026-11-14T18:44:11Z"
+}
