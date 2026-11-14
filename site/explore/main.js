@@ -10,7 +10,7 @@ import { createCloseup } from "./closeup.js";
 import { installTileQueue } from "./tilequeue.js";
 import { createPrefetch } from "./prefetch.js";
 import { findLocal, sesame, plainType, typeName } from "./lookup.js";
-import { detectEngine, engineLabel, runLocalPreviewJob, jobLine, stateText, resultSummary, isLocalHost, quickLines, quickProgress, quickBlink, sureFor } from "./engine.js";
+import { detectEngine, engineLabel, runLocalPreviewJob, jobLine, stateText, resultSummary, isLocalHost, quickLines, quickProgress, quickBlink, sureFor, fmtWait } from "./engine.js";
 import { t as T, num as iNum, loc as iLoc, field as iField, tname as iName, onLang, ptext as iPtext } from "../js/i18n.js";
 
 // Aladin Lite v3 (CDS, GPL-3). Pinned. The npm build on jsDelivr is the same code CDS publishes;
@@ -159,12 +159,13 @@ async function startFlat(reason) {
 async function startSky() {
   const intro = $("intro");
   if (params.has("flat") || !hasWebGL2()) return startFlat(params.has("flat") ? "?flat" : "no WebGL2");
-  // Map tiles: a few per server at a time, newest view first, spread over mirrors that hold the same map
-  // (not CDS alasky: 404 in Nov 2026). IRSA answered 2-6x slower than ESA per tile, so it only gets tiles
-  // when ESA is backed up. ?tq=0 turns this off (timing comparisons).
+  // Map tiles (tilequeue.js): the view a zoom ends on first, nearest the cursor first; in-between zoom levels and
+  // hidden maps wait; spread over mirrors that hold the same map (not CDS alasky: 404 in Nov 2026). IRSA answered
+  // 2-6x slower than ESA per tile, so it only serves the SPHEREx map, or a map whose other servers fail.
+  // ?tq=0 turns this off (timing comparisons).
   if (params.get("tq") !== "0") {
     installTileQueue({
-      mirrors: [...Object.values(SURVEYS), ...Object.values(CLOSEUP_SURVEYS)].map((s) => s.mirrors.filter((m) => !m.includes("alasky"))),
+      maps: [...Object.values(SURVEYS), ...Object.values(CLOSEUP_SURVEYS)].map((s) => ({ key: s.key, mirrors: s.mirrors.filter((m) => !m.includes("alasky")) })),
       priorMs: { "irsa.ipac.caltech.edu": 2500 },
     });
   }
@@ -194,7 +195,7 @@ async function startSky() {
     });
     // Map tiles of the view a zoom or flight ends on are fetched as soon as it starts (prefetch.js).
     if (params.get("tq") !== "0") {                     // ?tq=0: old behaviour (for timing comparisons)
-      state.prefetch = createPrefetch({ al, size: skySize, layers: prefetchLayers });
+      state.prefetch = createPrefetch({ al, size: skySize, weights: layerWeightsAt, base: () => state.bg, frame: () => state.slice, minFov: minWidthFov });
       state.closeup.setPrefetch(state.prefetch);
     }
     setupOverlays();
@@ -417,14 +418,18 @@ function maxWidthFov() {
 function minWidthFov() {
   return state.closeup ? state.closeup.minFov() : minFov($("sky").clientWidth || innerWidth);
 }
-// Maps on screen at field fov near dec (for prefetching): the background, and the close-up map below
-// 0.5 deg (when it fully covers the view, only the close-up map).
-function prefetchLayers(fov, dec) {
-  const ck = state.closeup?.keyFor(fov, dec);
-  const keys = [];
-  if (state.bg !== "spherex" && !(ck && state.bg === "visible" && fov <= CLOSEUP_FOV[1])) keys.push(state.bg);
-  if (ck && !keys.includes(ck)) keys.push(ck);
-  return keys;
+// Visible share (0-1) of each map at field fov near dec, by the same rules as the fades (background, SPHEREx
+// layer, close-up map). The tile queue loads (nearly) hidden maps last and prefetch.js skips them.
+function layerWeightsAt(fov, dec) {
+  const cu = state.closeup?.weightFor(fov, dec) || { key: null, op: 0 };
+  const auto = state.spxReady && state.autoSpx && state.bg !== "spherex";
+  const [a, b] = SPHEREX_FADE;
+  const t = Math.max(0, Math.min(1, (a - fov) / (a - b)));
+  const spx = auto ? t * t * (3 - 2 * t) * (state.closeup ? state.closeup.spherexFactor(fov) : 1) : 0;
+  const out = { [state.bg]: (1 - spx) * (1 - cu.op) };
+  if (spx > 0) out.spherex = (out.spherex || 0) + spx * (1 - cu.op);
+  if (cu.key) out[cu.key] = (out[cu.key] || 0) + cu.op;
+  return out;
 }
 function skySize() {
   const el = $("sky");
@@ -439,9 +444,9 @@ function applyFovLimit() {
   else if (al.getFov()[0] < lo) al.setFoV(lo);
 }
 
-function zoomTo(fov, secs = 1.2) {
+function zoomTo(fov, secs = 1.2, { prefetch = true } = {}) {
   fov = Math.max(minWidthFov(), Math.min(fov, state.al ? maxWidthFov() : MAX_FOV));
-  if (state.al && state.prefetch) state.prefetch.view(...state.al.getRaDec(), fov);   // start that view's tiles now
+  if (prefetch && state.al && state.prefetch) state.prefetch.view(...state.al.getRaDec(), fov, secs * 1000);   // start that view's tiles now
   return new Promise((res) => {
     const al = state.al;
     if (!al) {
@@ -471,19 +476,21 @@ async function flyTo(ra, dec, fov) {
   const al = state.al;
   fov = Math.min(fov, al ? maxWidthFov() : MAX_FOV);
   if (!al) { state.flat?.goTo(ra, dec, fov); return; }
-  state.prefetch?.view(ra, dec, Math.max(minWidthFov(), fov));   // the tiles where the flight ends, while it flies
   const id = ++flight;
   const [cra, cdec] = al.getRaDec();
   const cur = al.getFov()[0];
   const sep = separation(cra, cdec, ra, dec);
+  const far = sep > cur * 0.45 && sep > 2, panS = Math.max(0.6, Math.min(2.2, sep / 50)), zoomS = fov < 2 ? 2.2 : 1.4;
+  // The tiles where the flight ends, while it flies (the steps below do not replace them).
+  state.prefetch?.view(ra, dec, Math.max(minWidthFov(), fov), ((far ? 0.8 : 0) + panS + zoomS) * 1000);
   if (reduceMotion) { al.gotoRaDec(ra, dec); al.setFoV(fov); return; }
-  if (sep > cur * 0.45 && sep > 2) {
-    await zoomTo(Math.min(Math.max(cur, Math.min(sep * 1.6, MAX_FOV), 50), MAX_FOV), 0.8);   // pull back
+  if (far) {
+    await zoomTo(Math.min(Math.max(cur, Math.min(sep * 1.6, MAX_FOV), 50), MAX_FOV), 0.8, { prefetch: false });   // pull back
     if (id !== flight) return;
   }
-  await panTo(ra, dec, Math.max(0.6, Math.min(2.2, sep / 50)));
+  await panTo(ra, dec, panS);
   if (id !== flight) return;
-  await zoomTo(fov, fov < 2 ? 2.2 : 1.4);
+  await zoomTo(fov, zoomS, { prefetch: false });
 }
 
 let viewRaf = 0;
@@ -499,6 +506,7 @@ function onViewChange() {
     updateCompass(ra, dec, fov);
     state.closeup?.update(ra, dec, fov);
     updateSpherexFade(fov);
+    state.prefetch?.viewChanged(ra, dec, fov);           // tile queue: which maps show now; pre-warm when still
     for (const f of hooks.view) f(ra, dec, fov);
   });
 }
@@ -936,6 +944,57 @@ function stopJob() {
   return done;                                   // resolves when the engine has the cancel
 }
 
+// Progress of a local job as one bar (u3): count-based (images) and time-based (the engine's eta_s), never
+// backwards, creeping while the engine works on a step without counts. f = null while it is honestly unknown
+// (waiting in line, looking for images): the bar is then indeterminate. line: one short sentence.
+function jobProgress(j, mem) {
+  const pr = j.progress || {}, now = performance.now(), st = j.state;
+  if (st !== "queued" && mem.tStart == null) mem.tStart = now;
+  const tot = pr.total || 0, done = Math.min(pr.done || 0, tot);
+  let f = null, line;
+  if (st === "queued") line = j.queue && j.queue.ahead ? T("u3.pg.queue", { n: j.queue.ahead }) : T("u3.pg.start");
+  else if (st === "finding") line = T("u3.pg.finding");
+  else if (st === "downloading") { mem.dl = true; if (tot) f = 0.8 * done / tot; line = tot ? T("u3.pg.dl", { done, total: tot }) : T("u3.pg.dl0"); }
+  else if (st === "processing") { const b = mem.dl ? 0.8 : 0; f = tot ? b + (0.9 - b) * done / tot : mem.dl ? 0.8 : null; line = T("u3.pg.meas"); }
+  else line = stateText(st);
+  if (j.eta_s != null && mem.tStart != null && (st === "downloading" || st === "processing")) {
+    const el = (now - mem.tStart) / 1000;
+    f = Math.max(f ?? 0, Math.min(0.97, el / (el + Math.max(1, j.eta_s))));
+  }
+  if (f != null || mem.f != null) {
+    // never backwards; while the engine works without new counts, creep slowly (0.2 %/s), at most 4 % ahead
+    const prev = mem.f ?? 0, est = f ?? 0, dt = mem.tLast != null ? (now - mem.tLast) / 1000 : 0;
+    f = Math.max(est, prev);
+    if (f <= prev && (st === "downloading" || st === "processing")) f = Math.min(Math.max(prev, est + 0.04), prev + 0.002 * dt);
+    mem.f = f = Math.min(0.99, f);
+  }
+  mem.tLast = now;
+  if (j.eta_s != null && (st === "downloading" || st === "processing")) {
+    // the engine's last estimate can stay at "about 10 s" for a minute or more: then say "almost done", not a wrong time
+    if (j.eta_s > 15) mem.lowSince = null; else mem.lowSince ??= now;
+    line += " · " + (mem.lowSince != null && now - mem.lowSince > 20000 ? T("u3.pg.almost") : fmtWait(j.eta_s));
+  }
+  return { f, line };
+}
+function paintBar(bar, f) {
+  const fill = bar.querySelector("i");
+  bar.classList.toggle("indet", f == null);
+  if (fill) fill.style.width = f == null ? "" : (100 * f).toFixed(1) + "%";
+  if (f == null) bar.removeAttribute("aria-valuenow"); else bar.setAttribute("aria-valuenow", String(Math.round(100 * f)));
+}
+/** The result bar's progress row (made once): <span class="u3-bar" role="progressbar"><i></i></span> after the <b>. */
+function rbarBar(rbar) {
+  let bar = rbar.querySelector(".u3-bar");
+  if (!bar) {
+    bar = document.createElement("span");
+    bar.className = "u3-bar indet";
+    bar.setAttribute("role", "progressbar"); bar.setAttribute("aria-valuemin", "0"); bar.setAttribute("aria-valuemax", "100");
+    bar.innerHTML = "<i></i>";
+    rbar.querySelector("b").after(bar);
+  }
+  return bar;
+}
+
 function startLocalJob(p) {
   // Fetch again on the spot whose jobs are still running: keep them (no cancel and restart)
   const key = `${p.pos.ra.toFixed(6)},${p.pos.dec.toFixed(6)},${p.name},${window.__fzFov ? window.__fzFov() : ""}`;
@@ -956,7 +1015,9 @@ function startLocalJob(p) {
   const bar = $("jobBar").parentElement;
   bar.classList.add("indet");
   const rbar = $("resultBar");
-  rbar.hidden = true; rbar.classList.remove("pending");
+  rbar.hidden = true; rbar.classList.remove("pending", "u3-done", "u3-fail");
+  rbar.querySelector("b").hidden = false;
+  const memFull = {}, memPv = {};                                 // progress bars: never backwards (jobProgress)
   const t0 = performance.now();
   const elapsed = () => { const el = Math.round((performance.now() - t0) / 1000); return T("ex.job.elapsed", { t: `${Math.floor(el / 60)}:${String(el % 60).padStart(2, "0")}` }); };
   const req = { ra: +p.pos.ra.toFixed(6), dec: +p.pos.dec.toFixed(6), name: p.manual && !p.pmra ? undefined : p.name };
@@ -968,6 +1029,18 @@ function startLocalJob(p) {
   const shown = { url: null, n: 0 };
   const tick = ({ full: j, preview: pv, quick: qd }) => {
     if (state.job !== job) return;
+    // wavelength by wavelength (js/bins_bar.js): from the first stage on, the panel shows the stages (ornek.html
+    // follows the job itself and swaps each stage in place); the result strip keeps only the engine's time line
+    const pgs = j.progressive, pgOn = !!(shown.pg || (pgs && pgs.latest != null && pgs.stages && pgs.stages[pgs.latest] && j.state !== "done"));   // shown.pg: never back to the preview
+    rbarBar(rbar).hidden = pgOn;
+    if (pgOn) {
+      if (!shown.pg) { shown.pg = true; shown.url = pgs.stages[pgs.latest].url; loadFrame(`ornek.html?data=${shown.url}&job=${encodeURIComponent(j.id)}`); }
+      rbar.hidden = false; rbar.classList.add("pending");
+      const pgLine = PG && pgs ? PG.etaText(PG.fromLocal(j)) : "";
+      if (pgLine || j.state !== "done") rbar.querySelector("b").textContent = pgLine;
+      rbar.querySelector("small").textContent = elapsed();
+      return;
+    }
     const pvDone = pv && pv.state === "done";
     const pvUrl = pvDone ? pv.result_url : pv && pv.partial ? pv.partial.url : null;
     const pvN = pvDone ? ((pv.result || {}).n_images || (pv.images || {}).selected) : pv && pv.partial ? pv.partial.n_images : 0;
@@ -984,12 +1057,16 @@ function startLocalJob(p) {
       setStage("preview", qb.n, T("ex.job.pvNote"));
     }
     if (shown.url) {
-      const im = (pv && pv.images) || {};
       const q = quickLines(qd, T, iNum);                                  // quick decision (local/quick.py)
       rbar.hidden = false; rbar.classList.add("pending");
-      rbar.querySelector("b").textContent = q ? q.text : T("ex.rb.preview", { n: shown.n, at: im.bin_um ? T("ex.rb.at", { um: iNum(im.bin_um, 1) }) : "" });
-      rbar.querySelector("small").textContent = (q ? q.line2 + (q.sure ? " " + q.sure : "") + " · " : quickProgress(qd, T))
+      // one short line + a bar that fills; the quick decision's sentence goes to the answer card in the panel
+      // (postMessage below), the numbers (MB, exposures, time) to the small line (Detailed mode)
+      const pg = jobProgress({ ...j, paused_for_preview: false }, memFull);
+      rbar.querySelector("b").textContent = T("u3.pg.full", { line: pg.line });
+      paintBar(rbarBar(rbar), pg.f);
+      rbar.querySelector("small").textContent = (q ? q.line2 + " · " : quickProgress(qd, T))
         + T("ex.rb.bg", { line: jobLine({ ...j, paused_for_preview: false }) || stateText(j.state), elapsed: elapsed() });   // our preview is on screen: "paused for the preview" would be stale
+      if (!q) try { $("blinkFrame").contentWindow.postMessage({ type: "fazari-quick", text: "" }, location.origin); } catch { /* not loaded */ }
       if (q) try { $("blinkFrame").contentWindow.postMessage({ type: "fazari-quick", ...q }, location.origin); } catch { /* not loaded */ }
       return;
     }
@@ -999,19 +1076,17 @@ function startLocalJob(p) {
       ? (pv.state === "queued" ? T("ex.job.pvWait") : T("ex.job.pvBuild"))
       : stateText(j.state);
     const pr = cur.progress || {};
-    const pct = cur.state === "downloading" && pr.total ? Math.round(100 * (pr.done || 0) / pr.total) : null;
-    bar.classList.toggle("indet", pct == null);
-    $("jobBar").style.width = pct == null ? "" : pct + "%";
-    bar.setAttribute("aria-valuenow", pct == null ? "" : String(pct));
+    const pg = jobProgress(cur, cur === j ? memFull : memPv);
+    paintBar(bar, pg.f);
+    $("jobDetail").textContent = pg.line;                              // one short line; the numbers below (Detailed mode)
     const bits = [];
-    if (pr.total) bits.push(T("ex.job.nOf", { done: pr.done || 0, total: pr.total }));
     if (pr.bytes) bits.push(iLoc(`${(pr.bytes / 1048576).toFixed(1)} MB`));
     bits.push(elapsed());
-    $("jobDetail").textContent = bits.join(" · ");
-    $("jobMsg").textContent = cur !== j ? T("ex.job.after", { line: jobLine(j) || stateText(j.state) })
+    $("jobMsg").textContent = (cur !== j ? T("ex.job.after", { line: jobLine(j) || stateText(j.state) })
       : j.state === "queued" && j.queue ? T("ex.job.full", { line: jobLine(j) })
       : /^paused: a quick preview/.test(j.message || "") && !j.paused_for_preview ? stateText(j.state)   // the worker's message outlives the pause
-      : iPtext(j.message || "");
+      : iPtext(j.message || "")) + " · " + bits.join(" · ");
+    $("jobMsg").classList.add("u3-tech");
   };
   // state.jobTick: the progress text is drawn again on a language switch (relang)
   const job = runLocalPreviewJob(req, (d) => { state.jobTick = () => tick(d); tick(d); }, { after: prevCancel });
@@ -1021,13 +1096,15 @@ function startLocalJob(p) {
     if (state.job !== job) return;
     state.job = null;
     if (j.state === "done" && j.result_url) {
-      loadFrame(`ornek.html?data=${j.result_url}` + (shown.bin ? `&bin=${shown.bin.toFixed(1)}` : ""));   // stay at the preview's wavelength
+      const pgUm = shown.pg ? (() => { try { return $("blinkFrame").contentWindow.__fzPgShown; } catch { return null; } })() : null;   // bins_bar.js: the wavelength on screen
+      loadFrame(`ornek.html?data=${j.result_url}` + (shown.pg ? `&job=${encodeURIComponent(j.id)}` + (Number.isFinite(pgUm) ? `&um=${pgUm.toFixed(1)}` : "") : shown.bin ? `&bin=${shown.bin.toFixed(1)}` : ""));   // stay at the preview's wavelength
       const secs = (performance.now() - t0) / 1000;
       performance.mark("fz-result");
       resultSummary(j.result_url).then((r) => {
         if (state.job || $("job").hidden === false) return;
-        rbar.hidden = false; rbar.classList.remove("pending");
-        rbar.querySelector("b").textContent = r ? r.text : (iPtext(j.message) || T("ex.job.done"));
+        rbar.hidden = false; rbar.classList.remove("pending"); rbar.classList.add("u3-done");
+        // the sentence is the answer card's (in the panel): not repeated here; only the engine line (Detailed mode)
+        rbar.querySelector("b").textContent = ""; rbar.querySelector("b").hidden = true;
         const post = { left: j.post_pending ? j.post_pending.steps.slice() : [], sure: "" };   // post-steps still running
         const small = () => T("ex.rb.engine", { when: secs < 2 ? T("ex.rb.cached") : T("ex.rb.ready", { s: secs.toFixed(0) }) })
           + (post.left.length ? T("ex.rb.adding", { steps: post.left.join(", ") }) : "") + (post.sure ? " · " + post.sure : "");
@@ -1038,6 +1115,8 @@ function startLocalJob(p) {
       });
     } else if (j.state !== "cancelled") {
       if (shown.url) {                                             // keep the preview on screen
+        rbar.classList.remove("pending"); rbar.classList.add("u3-fail");
+        rbar.querySelector("b").textContent = T("u3.pg.failed");
         rbar.querySelector("small").textContent = T("ex.rb.failed", { msg: iPtext(j.message) || T("ex.err.unknown") });
       } else {
         jobFailed(p, iPtext(j.message) || T("ex.job.failed"));
@@ -1223,7 +1302,7 @@ function wireUi() {
     // Wait for the engine check (at most ~1.5 s) so an early click still goes to the right engine.
     engineReady.then(() => {
       if (state.engine.kind === "local") startLocalJob(p);
-      else openBlink(blinkUrl(p), `SPHEREx blink: ${p.name}`);
+      else openBlink(blinkUrl(p), () => T("ex.blink.title", { name: pname(p) }));
     });
   });
   $("jobCancel").addEventListener("click", () => {
@@ -1312,7 +1391,7 @@ function relang() {
   const rb = $("resultBar");
   if (!rb.hidden && rb._fz && !rb.classList.contains("pending")) {
     const fz = rb._fz;
-    resultSummary(fz.url).then((r) => { if (r && rb._fz === fz) { rb.querySelector("b").textContent = r.text; rb.querySelector("small").textContent = fz.small(); } });
+    rb.querySelector("small").textContent = fz.small();
   }
   onViewChange();
 }
@@ -1329,4 +1408,6 @@ function esc(s) {
 // For tests: window.__explore exposes state and a few actions.
 window.__explore = { MAX_FOV, state, openCategory, select, flyTo, runSearch, surprise, setBackground, openBlink, closeBlink, startLocalJob,
   stopFlight: () => { flight++; state.al?.stopAnimation?.(); } };   // stopFlight: the opening demo (demo.js) ends a flight where it is
+let PG = null;                                                    // js/bins_bar.js: time line of a wavelength-by-wavelength run
+import("../js/bins_bar.js").then((m) => { PG = m; }).catch((e) => console.warn("bins_bar.js", e));
 import("./finds.js").then((m) => m.initFinds({ state, select, openBlink, toast })).catch((e) => console.warn("Finds list unavailable", e));   // confirmed results of the local engine (finds.js)

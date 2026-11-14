@@ -376,6 +376,7 @@ if (v) {
   // #candidateList, <svg id="candLayer"> (PNG pixels, inside #zoomer). Frame changes: event "fazari:frame".
   // plain-language sentence + "What you are seeing" (js/explain.js); "Mark something" (js/marking.js)
   import("./js/explain.js").then(x => x.mountExplain(v.meta, v.base)).catch(e => { console.warn("explain.js", e); v.fallbackSentence(); });
+  import("./js/bins_bar.js").then(x => x.mountViewer(v)).catch(e => console.warn("bins_bar.js", e));   // wavelength buttons above the answer (dalga_boyu_dugmeleri)
   import("./js/marking.js").then(x => v.setMarking(x.mountMarking({ meta: v.meta, base: v.base, current: v.current })))
     .catch(e => console.warn("marking.js", e));
   import("./explore/candidates.js").then(x => x.mountCandidates(v)).catch(e => console.warn("candidates.js", e));   // candidate finder: list + rings

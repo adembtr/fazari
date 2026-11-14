@@ -375,7 +375,7 @@ function drawOverlay() {
     ((S.meta.measured || {}).positions || []).map((p) => p.png_xy_measured).filter(Boolean),
     { tx: S.tx, ty: S.ty, k: S.k, Sw: $("stage").clientWidth, Sh: $("stage").clientHeight }) : [];
   S.nbBoxes = nbItems.map((it) => it.box);
-  if (!hide && $("arrowOn").checked) s += motionSvg(u, legend);
+  if (!hide && $("arrowOn").checked && !S.noArrow) s += motionSvg(u, legend);   // S.noArrow: bins_bar.js, an answer that is too uncertain
   if (!hide && $("mark").checked) s += ringSvg(u, legend);
   if (nbItems.length) s += neighbourSvg(nbItems, u, legend);
   s += arrowLabel; arrowLabel = "";
@@ -1413,6 +1413,7 @@ export async function startViewer() {
       box.innerHTML = t ? `<p>${esc(t)}</p>` : "";
     },
     on(fn) { if (typeof fn === "function") S.listeners.push(fn); },
+    setArrow(on) { if (S.noArrow === !on) return; S.noArrow = !on; drawOverlay(); },   // bins_bar.js: no motion arrow while the answer is too uncertain
     // wavelength-by-wavelength run (js/bins_bar.js): the next stage folder in place, at wavelength um (else the same one)
     async swapData(base, { meta, um } = {}) {
       const nm = meta || await fetch(base + "meta.json", { cache: "no-store" }).then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });

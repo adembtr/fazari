@@ -1,218 +1,414 @@
-// Tile request queue for the sky maps (HiPS): a few tile downloads per server at a time, the view you
-// are looking at first, spread over the servers that hold the same map. Tiles are never changed or
-// dropped; they only arrive in a better order and from the server that can deliver them first.
+// Tile scheduler for the sky maps (HiPS tiles that Aladin Lite downloads): which tile goes first, and from
+// which server. Tiles are never changed; a request is only answered sooner or later.
 //
-// Why: Aladin Lite asks for every tile of a new view at once (40-50 requests during one wheel zoom).
-// The ESA ESASky server, which serves our DSS2, 2MASS and AllWISE maps, gets much slower under such a
-// burst: measured Nov 2026 from Chrome, 6 requests at a time gave 14-18 tiles/s, 48 at a time gave
-// 6 tiles/s (median wait 6.7 s) or failed outright. So after a zoom the sky took seconds to sharpen.
-//
-// How: Aladin 3.8 downloads tiles with fetch() (and a few files, like Allsky, through <img>). We hold back
-// tile requests beyond PER_HOST running per server and start them as earlier ones finish; a slot is free
-// once the whole tile has arrived. Requests that arrive together form a batch; the newest batch goes
-// first (older batches belong to views you zoomed past), and inside a batch Aladin's own order is kept.
-// Our prefetches (prefetch.js: the tiles of the view a zoom will end on) go ahead of the in-between
-// views Aladin asks for while the zoom is still running.
-// Mirrors (setMirrorGroups): the same HiPS on several servers has byte-identical tiles (checked with
-// md5 on ESA, MAST S3 and IRSA copies). Each tile goes to the server expected to deliver it first
-// (rounds of PER_HOST tiles ahead of it there x its recent time per tile); a tile fetched once stays
-// with that server so the browser cache is reused. A failed tile is fetched again from the address
-// Aladin asked for. The MAST S3 bucket also answers under a second hostname: S3 speaks HTTP/1.1, where
-// Chrome opens at most 6 connections per hostname, so two names double the parallel downloads
-// (measured Nov 2026: 1.4-2x tiles/s for Pan-STARRS and DSS2 tiles).
+// Why (measured from headless Chrome on a ~25 Mbit/s line, Nov 2026, zoom_harness/zoomspeed.mjs):
+//  - During a zoom Aladin asks for the tiles of every view it passes (5 -> 1 deg: 47 tiles of the in-between
+//    orders 6 and 7 next to the 46 of order 8 it ends on), all at once. They filled every connection and
+//    shared the line, so the tiles of the view the zoom ends on started 1-2 s late: 2-5 s to sharp.
+//  - It also loads maps that are (nearly) hidden at that field: DSS2 under the SPHEREx layer at 1 deg
+//    (SPHEREx 96 %), DSS2 and SPHEREx under Pan-STARRS below 0.3 deg, and the 1-5 MB Allsky file of the
+//    close-up map, which also shows as a blurry placeholder.
+//  - Tiles spread to IRSA took 1.5-6 s each, and the SPHEREx map (only on IRSA) waited behind them.
+// How:
+//  - One queue for all servers, best first: tiles of the view a zoom or flight ends on (prefetch.js names
+//    them, nearest the cursor first); then the tiles Aladin asks for on screen; then pre-warm tiles (the next
+//    zoom level, prefetch.js). Tiles of in-between zoom orders and of hidden maps wait until nothing else is
+//    loading, and stop (to be fetched again later) when a new zoom starts. The close-up map's Allsky file
+//    is held back (at close zoom it is only a blurry placeholder).
+//  - At most MAX_ACTIVE downloads of tiles needed now (plus a few pre-warm or waiting ones, which give way
+//    when such a tile finds its server full) and PER_HOST per server: enough to keep a normal line busy, few
+//    enough that the first tiles (the middle of the view) do not share it with all the others.
+//  - A tile downloaded ahead is kept in memory and handed to Aladin at once when it asks.
+//  - Mirrors (setMaps): the same map on several servers has byte-identical tiles (md5 checked: ESA, MAST S3,
+//    IRSA). Each tile goes to the server expected to deliver it first (recent time per tile x its load); a
+//    server more than SLOW_X times slower than the best one gets tiles only when the others fail. A tile keeps
+//    the server it came from (browser cache). The MAST S3 bucket also answers under a second hostname (S3 is
+//    HTTP/1.1: 6 connections per hostname).
+// ?tq=0 turns all of this off (main.js), for timing comparisons.
 
-const TILE = /\/Norder\d+\/(?:Dir\d+\/Npix\d+[^/]*|Allsky)\.(?:jpe?g|png)(?:[?#]|$)/i;
+const TILE = /\/Norder(\d+)\/(?:Dir\d+\/Npix(\d+)[^/]*|Allsky)\.(?:jpe?g|png)(?:[?#]|$)/i;
 const PER_HOST = 6;
-const BATCH_GAP_MS = 80;      // requests closer together than this belong to the same batch
-const STUCK_MS = 15000;       // a download that has not finished by then no longer holds a slot
+const MAX_ACTIVE = 10;
+const LATER_ACTIVE = 4;        // waiting tiles (in-between orders, hidden maps) run only with this little else going on
+const SOON_ACTIVE = 4;         // pre-warm downloads at once (they give way to tiles needed now)
+const STUCK_MS = 15000;        // a download that has not finished by then no longer holds a slot
+const SLOW_X = 2.5;
+const HEDGE_MS = 1000;           // a tile needed now this late (and 4x its server's usual time): ask a second server too
+const HIDDEN = 0.03;           // a map showing with less weight than this is hidden (DSS2 under 96 % SPHEREx still shows its stars)
+const ALLSKY_FOV = 20;         // below this field (deg) an Allsky file is only a blurry placeholder
+const KEEP = 400;              // tiles downloaded ahead, kept in memory until Aladin asks
+const BATCH_GAP_MS = 80;       // asks closer together than this belong to the same batch
+const HOLD_MS = 90;            // during a wheel burst, tiles of the field one notch ahead wait this long (the burst may go on)
+export const NOW = 0, SOON = 1, LATER = 2, HOLD = 3;
 
-const hosts = new Map();      // host -> { active, queue: job[] }
-const groups = [];            // [[base url, ...]]: the same map on several servers
-const routed = new Map();     // group + tile path -> base used (keeps the browser cache useful)
-const msPerTile = new Map();  // host -> recent download time per tile (moving average)
+const maps = [];               // { key, bases: [url without trailing /] }
+const hosts = new Map();       // host -> { active }
+const msPerTile = new Map();   // host -> { ms: recent download time per tile (moving average), t: when last heard of }
+const prior = new Map();       // host -> expected ms per tile before any download from it
+const FORGET_MS = 10000;       // a server's extra slowness (failure, stuck tile) halves every 10 s: it gets tried again
+const routed = new Map();      // tile id -> base that delivered it
+const jobs = new Map();        // tile id -> job (waiting, loading, or done and kept)
+const queue = [];              // jobs waiting for a slot
+const kept = [];               // ids of done jobs that keep their tile in memory, oldest first
+const loading = new Set();     // jobs downloading now
 const ALIAS = [[/^https:\/\/stpubdata\.s3\.us-east-1\.amazonaws\.com\//, "https://stpubdata.s3.amazonaws.com/"]];
-let gen = 0, lastAt = -1e9;
+let active = 0, activeNow = 0, gen = 0, lastAt = -1e9, wakeTimer = 0;   // activeNow: started as needed now
+let target = null;             // zoom or flight in progress: { fov, orders: {key: order}, weights: {key: w}, base, until }
+let view = { fov: 180, weights: {}, base: null };
 let installed = false;
-const stats = { queued: 0, direct: 0, maxQueue: 0, rerouted: 0, retried: 0 };
+let realFetch = (...a) => window.fetch(...a);
+const stats = { asks: 0, memory: 0, joined: 0, later: 0, held: 0, prefetch: 0, stale: 0, rerouted: 0, retried: 0, hedged: 0, failed: 0, direct: 0 };
 
 function hostOf(url) { try { return new URL(url, location.href).host; } catch { return null; } }
-function slot(host) {
-  let h = hosts.get(host);
-  if (!h) hosts.set(host, h = { active: 0, queue: [] });
-  return h;
+function slot(host) { let h = hosts.get(host); if (!h) hosts.set(host, (h = { active: 0 })); return h; }
+function msOf(host) {
+  const p = prior.get(host) ?? 800, m = msPerTile.get(host);
+  if (!m) return p;
+  return m.ms <= p ? m.ms : p + (m.ms - p) * Math.pow(0.5, (performance.now() - m.t) / FORGET_MS);
 }
+function note(host, ms) { msPerTile.set(host, { ms: 0.8 * msOf(host) + 0.2 * ms, t: performance.now() }); }
+function penalize(host) { msPerTile.set(host, { ms: Math.max(msOf(host), STUCK_MS / 2), t: performance.now() }); }
 
 /**
- * Same map on several servers, best first (e.g. the mirror lists in surveys.js).
- * priorMs: { host: expected ms per tile } until we have measured it (default 500 for the first mirror, 700 after).
+ * The maps and their servers: [{ key, mirrors: [base url, best first] }]. priorMs: { host: expected ms per
+ * tile } until measured (default 500 for the first server of a map, 700 for the others).
  */
-export function setMirrorGroups(list, priorMs = {}) {
-  for (const bases of list) {
-    const g = [];
-    for (const b of bases.filter(Boolean).map((x) => x.replace(/\/+$/, ""))) {
-      g.push(b);
-      for (const [re, to] of ALIAS) if (re.test(b + "/")) g.push((b + "/").replace(re, to).replace(/\/$/, ""));
+export function setMaps(list, priorMs = {}) {
+  for (const { key, mirrors } of list) {
+    const bases = [];
+    for (const b of (mirrors || []).filter(Boolean).map((x) => x.replace(/\/+$/, ""))) {
+      bases.push(b);
+      for (const [re, to] of ALIAS) if (re.test(b + "/")) bases.push((b + "/").replace(re, to).replace(/\/$/, ""));
     }
-    if (g.length < 2) continue;
-    groups.push(g);
-    g.forEach((b, i) => { const h = hostOf(b); if (h && !msPerTile.has(h)) msPerTile.set(h, priorMs[h] ?? (i ? 700 : 500)); });
+    if (!bases.length) continue;
+    maps.push({ key, bases });
+    bases.forEach((b, i) => { const h = hostOf(b); if (h && !prior.has(h)) prior.set(h, priorMs[h] ?? (i ? 700 : 500)); });
   }
 }
 
 function split(url) {
-  for (let g = 0; g < groups.length; g++) for (const b of groups[g]) if (url.startsWith(b + "/")) return { g, path: url.slice(b.length) };
+  for (let m = 0; m < maps.length; m++) for (const b of maps[m].bases) if (url.startsWith(b + "/")) return { m, path: url.slice(b.length) };
   return null;
 }
 
-// Expected time until one more tile from this server has arrived: the rounds of PER_HOST downloads
-// ahead of it, plus its own.
-function cost(host) {
-  const h = slot(host);
-  return (Math.floor((h.active + h.queue.length) / PER_HOST) + 1) * (msPerTile.get(host) ?? 800);
-}
-
-/** The address to download a tile from: the server already used for it, else the quickest one now. */
-function route(url) {
-  const s = split(url);
-  if (!s) return url;
-  const key = s.g + s.path;
-  let base = routed.get(key);
-  if (!base) {
-    let best = Infinity;
-    for (const b of groups[s.g]) { const c = cost(hostOf(b)); if (c < best) { best = c; base = b; } }
-    routed.set(key, base);
-    if (routed.size > 20000) routed.delete(routed.keys().next().value);
-  }
-  const out = base + s.path;
-  if (out !== url) stats.rerouted++;
-  return out;
-}
-
-function forget(url) {
-  const s = split(url);
-  if (s) routed.delete(s.g + s.path);
-}
-
-function pump(host) {
-  const h = slot(host);
-  while (h.active < PER_HOST && h.queue.length) {
-    let best = 0;                                         // prefetch first, then newest batch, first-come inside it
-    for (let i = 1; i < h.queue.length; i++) {
-      const a = h.queue[i], b = h.queue[best];
-      if (a.prio > b.prio || (a.prio === b.prio && a.gen > b.gen)) best = i;
-    }
-    const job = h.queue.splice(best, 1)[0];
-    run(host, h, job);
-  }
-}
-
-function run(host, h, job) {
-  h.active++;
-  job.t1 = performance.now();
-  let freed = false;
-  const free = (network = true) => {
-    if (freed) return;
-    freed = true; clearTimeout(timer); h.active--;
-    job.t2 = performance.now();
-    const ms = job.t2 - job.t1;
-    if (network && ms > 40 && ms < STUCK_MS) msPerTile.set(host, 0.8 * (msPerTile.get(host) ?? ms) + 0.2 * ms);   // not cache hits
-    pump(host);
-  };
-  const timer = setTimeout(() => { msPerTile.set(host, Math.max(msPerTile.get(host) ?? 0, STUCK_MS / 2)); free(false); }, STUCK_MS);
-  job.start(free);
-}
-
-/** Put a download in its server's queue. start(free, url) runs when its turn comes. */
-function enqueue(url, start, prio = 0) {
-  const to = route(url);
-  const host = hostOf(to);
-  if (!host) return null;
+/**
+ * A zoom or flight is under way and will end at field fov: { fov, orders: {key: tile order}, weights: {key: share},
+ * base, ms, burst }. burst: a wheel notch (more may follow quickly): Aladin's tiles for the field it reaches wait
+ * HOLD_MS after each notch, and those of a field the next notch passes by wait until nothing else is loading.
+ */
+export function setTarget(t) {
   const now = performance.now();
-  if (now - lastAt > BATCH_GAP_MS) gen++;
-  lastAt = now;
-  const h = slot(host);
-  const job = { gen, prio, host, t0: now, url: to };
-  job.start = (free) => start(free, to);
-  h.queue.push(job);
-  if (window.__fzTileTrace) window.__fzTileTrace.push(job);                // tests only
-  stats.queued++; stats.maxQueue = Math.max(stats.maxQueue, h.queue.length);
-  pump(host);
+  target = t ? { ...t, at: now, until: now + (t.ms ?? 1500) } : null;
+  if (target) {
+    for (const j of loading) if (j.cls === LATER) stop(j);                // a new view: waiting tiles give the line back
+    for (const j of queue) {
+      if (!j.asked || j.prefetch || j.cls !== NOW) continue;
+      const c = classify(j.url, j.m, j.order, j.allsky);
+      if (c > j.cls) j.cls = c;
+      else if (target.burst && j.notBefore) j.notBefore = now + HOLD_MS;
+    }
+  }
+  pump();
+}
+/** The view on screen: { fov, weights: {key: share 0-1}, base: key of the background map }. */
+export function setView(v) {
+  const wasHidden = new Set(Object.keys(view.weights).filter((k) => view.weights[k] < HIDDEN));
+  view = v;
+  // A map that shows again: its waiting tiles are wanted now.
+  let woke = false;
+  for (const j of queue) {
+    if (j.cls !== LATER || j.m == null) continue;
+    const k = maps[j.m].key;
+    if (wasHidden.has(k) && (v.weights[k] ?? 1) >= HIDDEN && classify(j.url, j.m, j.order, j.allsky) === NOW) { j.cls = NOW; woke = true; }
+  }
+  if (woke) pump();
+}
+const zooming = () => (target && performance.now() < target.until ? target : null);
+
+// How urgent a tile Aladin asks for is (no ranking: prefetch.js ranks the ones it knows).
+function classify(url, m, order, allsky) {
+  const key = m == null ? null : maps[m].key;
+  const z = zooming();
+  const at = z || view;
+  const w = key == null ? 1 : at.weights[key] ?? 1;
+  const base = key != null && key === (at.base ?? view.base);
+  if (w < HIDDEN) return LATER;
+  if (allsky) return at.fov >= ALLSKY_FOV ? NOW : base ? LATER : HOLD;
+  if (!base && order <= 3 && at.fov < ALLSKY_FOV) return LATER;          // coarse placeholder of an overlay
+  if (z && key != null && z.orders[key] != null && order > 3 && order !== z.orders[key]) return LATER;   // in-between view
+  return NOW;
+}
+
+function newJob(url, cls, rank, ownId = null) {
+  const s = split(url);
+  const id = ownId || (s ? s.m + "|" + s.path : url);
+  const om = url.match(/\/Norder(\d+)\//);
+  const now = performance.now();
+  const job = {
+    id, url, m: s ? s.m : null, path: s ? s.path : null, order: om ? +om[1] : -1, allsky: /\/Allsky\./i.test(url),
+    cls, rank, gen, t0: now, state: "queued", waiters: [], done: [], prefetch: false, asked: false, stale: null,
+  };
+  jobs.set(id, job);
+  queue.push(job);
+  if (window.__fzTileTrace) window.__fzTileTrace.push(job);               // tests only
   return job;
 }
 
-/** Take a job that has not started yet out of its queue (true if it was still waiting). */
-function cancel(job) {
-  const h = hosts.get(job.host);
-  const i = h ? h.queue.indexOf(job) : -1;
-  if (i < 0) return false;
-  h.queue.splice(i, 1);
+function idOf(url) { const s = split(url); return s ? s.m + "|" + s.path : url; }
+
+function cmp(a, b) {
+  return a.cls - b.cls || a.rank - b.rank || b.gen - a.gen || a.t0 - b.t0;
+}
+
+// Servers a job may use: [[base (null = the address as it is), host]]. A slow server only for waiting tiles.
+function usable(job) {
+  if (job.m == null) return [[null, hostOf(job.url)]];
+  const sticky = routed.get(job.id);
+  if (sticky) return [[sticky, hostOf(sticky)]];
+  const bases = maps[job.m].bases;
+  let fastest = Infinity;
+  for (const b of bases) fastest = Math.min(fastest, msOf(hostOf(b)));
+  return bases.map((b) => [b, hostOf(b)]).filter(([, h]) => job.cls >= LATER || !(msOf(h) > SLOW_X * fastest));
+}
+
+// Server to download a job from: undefined when all its servers are busy (null = the address as it is).
+function pickBase(job) {
+  let best, bestCost = Infinity;
+  for (const [b, h] of usable(job)) {
+    if (!h || slot(h).active >= PER_HOST) continue;
+    const c = msOf(h) * (1 + slot(h).active / PER_HOST);
+    if (c < bestCost) { bestCost = c; best = b; }
+  }
+  return best;
+}
+
+function pump() {
+  if (!queue.length) return;
+  const calm = !zooming() && !queue.some((j) => j.cls < LATER);
+  let soon = 0, wake = Infinity;
+  for (const j of loading) if (j.cls === SOON) soon++;
+  const now = performance.now();
+  queue.sort(cmp);
+  for (let i = 0; i < queue.length; i++) {
+    const job = queue[i];
+    if (job.cls === HOLD) break;                                          // sorted: only held ones follow
+    if (job.cls === LATER && !(calm && active < LATER_ACTIVE)) break;
+    if (job.cls === SOON && soon >= SOON_ACTIVE) continue;
+    if (job.notBefore > now) { wake = Math.min(wake, job.notBefore); continue; }
+    if (job.prefetch && !job.asked && job.stale?.()) { queue.splice(i--, 1); finish(job, null); stats.stale++; continue; }
+    // Tiles needed now have MAX_ACTIVE downloads of their own: pre-warm and waiting ones never hold them up.
+    const room = job.cls === NOW ? activeNow < MAX_ACTIVE : active < MAX_ACTIVE;
+    let base = room ? pickBase(job) : undefined;
+    if (base === undefined && room && job.cls === NOW && preempt(job)) base = pickBase(job);
+    if (base === undefined) continue;
+    queue.splice(i--, 1);
+    if (job.cls === SOON) soon++;
+    start(job, base);
+  }
+  // Waiting tiles held back only by a zoom still under way: look again when it is over.
+  const z = zooming();
+  if (z && queue.some((j) => j.cls === LATER)) wake = Math.min(wake, z.until + 5);
+  if (wake < Infinity) { clearTimeout(wakeTimer); wakeTimer = setTimeout(pump, Math.max(1, wake - performance.now() + 1)); }
+}
+
+// A tile needed now finds all its servers full: stop the youngest pre-warm or waiting download on one of them
+// (it goes back in the queue), so the tile can start there. True if one was stopped.
+function preempt(job) {
+  const could = usable(job).map(([, h]) => h);
+  let victim = null;
+  for (const j of loading) {
+    if (j.cls === NOW || !j.ctl || j.preempted || !could.includes(j.host)) continue;
+    if (!victim || j.t1 > victim.t1) victim = j;
+  }
+  if (!victim) return false;
+  stop(victim);
   return true;
 }
 
-let realFetch = (...a) => window.fetch(...a);
+// Stop a pre-warm or waiting download; it goes back in the queue (start(): catch).
+function stop(job) {
+  if (!job.ctl || job.preempted) return;
+  job.preempted = true;
+  stats.preempted = (stats.preempted || 0) + 1;
+  job.free(false);
+  job.ctl.abort();
+}
+
+function start(job, base) {
+  job.state = "loading"; job.t1 = performance.now();
+  if (base != null && base + job.path !== job.url) stats.rerouted++;
+  if (job.img) startImg(job, base);
+  else attempt(job, base);
+}
+
+// A download slot on host for job; returns free(measure): gives it back once (measure: note the time taken).
+function hold(job, host, isNow) {
+  const h = slot(host), t1 = performance.now();
+  h.active++; active++; if (isNow) activeNow++;
+  loading.add(job); job.host = host;
+  let freed = false;
+  const free = (measure) => {
+    if (freed) return;
+    freed = true; clearTimeout(timer); h.active--; active--; if (isNow) activeNow--; loading.delete(job);
+    const ms = performance.now() - t1;
+    if (measure && ms > 40 && ms < STUCK_MS) note(host, ms);              // not cache hits
+    queueMicrotask(pump);
+  };
+  const timer = setTimeout(() => { penalize(host); free(false); }, STUCK_MS);
+  return free;
+}
+
+function retry(job, host) {                                               // that server failed: another one (once)
+  penalize(host);
+  routed.delete(job.id);
+  job.retried = true; job.state = "queued"; stats.retried++;
+  queue.push(job);
+  pump();
+}
+
+// An <img> load (see installTileQueue).
+function startImg(job, base) {
+  const url = base == null ? job.url : base + job.path, host = hostOf(url);
+  const free = hold(job, host, job.cls === NOW);
+  const img = job.img;
+  img.addEventListener("load", () => { free(true); if (base != null) routed.set(job.id, base); finish(job, { ok: true }); }, { once: true });
+  img.addEventListener("error", () => { free(false); if (base != null && !job.retried && job.m != null && maps[job.m].bases.length > 1) retry(job, host); else finish(job, { ok: false }); }, { once: true });
+  job.setSrc(url);
+}
+
+// One download of a job's tile from one server. A tile needed now that is late (a stalled server: seen
+// 6 s once) is asked from a second server too (hedge); the first answer wins and the other one is stopped.
+function attempt(job, base) {
+  const url = base == null ? job.url : base + job.path, host = hostOf(url), isNow = job.cls === NOW;
+  const free = hold(job, host, isNow);
+  const ctl = new AbortController();
+  if (isNow) job.ctl = null;                                              // never stopped for another tile
+  else { job.ctl = ctl; job.free = free; }                               // may be preempted (stop())
+  (job.ctls ||= new Set()).add(ctl);
+  job.live = (job.live || 0) + 1;
+  const init = { mode: "cors", signal: ctl.signal };
+  if (isNow && (job.rank < 1e6 || job.hedged)) init.priority = "high";
+  else if (job.cls >= SOON) init.priority = "low";
+  const late = isNow && job.m != null && !job.hedged && maps[job.m].bases.length > 1
+    ? setTimeout(() => {
+      // That server is stalled for now: its slot is given back (the download may still win), it is
+      // marked slow (twice this wait), and a second server is asked.
+      msPerTile.set(host, { ms: Math.max(msOf(host), 2 * (performance.now() - job.t1)), t: performance.now() });
+      free(false);
+      hedge(job, host);
+    }, Math.min(STUCK_MS, Math.max(HEDGE_MS, 4 * msOf(host)))) : 0;
+  const settle = () => { clearTimeout(late); job.live--; job.ctls.delete(ctl); };
+  realFetch(url, init)
+    .then((r) => {
+      if (!r.ok && r.status !== 404 && base != null && !job.retried) throw new Error(`HTTP ${r.status}`);
+      return r.blob().then((blob) => {
+        free(true); settle();
+        if (job.state === "done") return;                                 // the other server answered first
+        if (base != null && r.ok) routed.set(job.id, base);
+        if (routed.size > 20000) routed.delete(routed.keys().next().value);
+        for (const c of job.ctls) c.abort();                              // its second download: not needed now
+        finish(job, { ok: r.ok, status: r.status, statusText: r.statusText, headers: r.headers, blob });
+      });
+    })
+    .catch((e) => {
+      free(false); settle();
+      if (job.state === "done") return;
+      if (job.preempted) {                                                // stopped for a tile needed now: queue again
+        job.preempted = false; job.ctl = null; job.state = "queued";
+        queue.push(job);
+        queueMicrotask(pump);
+        return;
+      }
+      if (job.live > 0) return;                                           // the other server may still answer
+      if (base != null && !job.retried && maps[job.m].bases.length > 1) { retry(job, host); return; }
+      stats.failed++;
+      finish(job, { error: e });
+    });
+}
+
+// The tile is late: ask the best other server that has a free slot as well (a slow one too: better than none).
+function hedge(job, firstHost) {
+  if (job.state !== "loading" || job.hedged || job.m == null) return;
+  let best, bestCost = Infinity;
+  for (const b of maps[job.m].bases) {
+    const h = hostOf(b);
+    if (!h || h === firstHost || slot(h).active >= PER_HOST) continue;
+    const c = msOf(h) * (1 + slot(h).active / PER_HOST);
+    if (c < bestCost) { bestCost = c; best = b; }
+  }
+  if (best === undefined) { setTimeout(() => hedge(job, firstHost), 500); return; }   // all busy: look again
+  job.hedged = true; stats.hedged++;
+  attempt(job, best);
+}
+
+// A job is over (res null = skipped): answer everyone waiting; keep a downloaded-ahead tile for Aladin.
+function finish(job, res) {
+  job.state = "done";
+  job.res = res;
+  for (const cb of job.done) cb(res ? !!res.ok : null);
+  job.done = [];
+  const waiters = job.waiters;
+  job.waiters = [];
+  for (const w of waiters) deliver(job, w);
+  if (!waiters.length && res && res.ok && res.blob && !job.asked) {
+    kept.push(job.id);
+    while (kept.length > KEEP) { const id = kept.shift(); const j = jobs.get(id); if (j && j.state === "done") jobs.delete(id); }
+  } else if (jobs.get(job.id) === job) jobs.delete(job.id);
+}
+
+function deliver(job, w) {
+  const r = job.res;
+  if (!r) { w.retry(); return; }                                          // skipped prefetch: fetch it for this ask
+  if (r.error || !r.blob) { w.reject(r.error || new TypeError("Failed to fetch")); return; }
+  w.resolve(new Response(r.blob, { status: r.status, statusText: r.statusText, headers: r.headers }));
+}
 
 /** Queue (and spread over mirrors) HiPS tile downloads. Call before the sky starts. */
-export function installTileQueue({ mirrors = [], priorMs = {} } = {}) {
+export function installTileQueue({ maps: list = [], priorMs = {} } = {}) {
   if (installed) return true;
   const desc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src");
   if (!desc || !desc.set || !desc.get || typeof window.fetch !== "function") return false;
-  setMirrorGroups(mirrors, priorMs);
+  setMaps(list, priorMs);
   const nativeFetch = window.fetch.bind(window);
   realFetch = nativeFetch;
-  const abortErr = (signal) => signal.reason ?? new DOMException("Aborted", "AbortError");
 
-  // fetch(): Aladin's tile downloads. The caller gets the full tile once our turn has come and it arrived.
+  // fetch(): Aladin's tile downloads (it passes no abort signal).
   window.fetch = function (input, init) {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input?.url;
-    if (!url || !TILE.test(url)) { stats.direct++; return nativeFetch(input, init); }
-    const signal = init?.signal || (input instanceof Request ? input.signal : undefined);
-    const call = (to) => (to === url ? nativeFetch(input, init)
-      : input instanceof Request ? nativeFetch(new Request(to, input), init) : nativeFetch(to, init));
+    if (!url || !TILE.test(url) || (init?.method && init.method !== "GET") || init?.signal || (input instanceof Request && input.signal?.aborted)) {
+      stats.direct++;
+      return nativeFetch(input, init);
+    }
+    stats.asks++;
     return new Promise((resolve, reject) => {
-      const job = enqueue(url, (free, to) => {
-        if (signal?.aborted) { free(false); reject(abortErr(signal)); return; }
-        call(to)
-          .then((r) => {
-            if (!r.ok && to !== url && r.status !== 404) throw new Error(`HTTP ${r.status}`);
-            return r.blob().then((body) => {
-              free();
-              resolve(new Response(body, { status: r.status, statusText: r.statusText, headers: r.headers }));
-            });
-          })
-          .catch((e) => {
-            free();
-            if (to === url || signal?.aborted) { reject(e); return; }
-            stats.retried++; forget(url);                     // that mirror failed: ask the original address
-            nativeFetch(input, init).then(resolve, reject);
-          });
-      });
-      if (!job) { nativeFetch(input, init).then(resolve, reject); return; }
-      signal?.addEventListener("abort", () => { if (cancel(job)) reject(abortErr(signal)); }, { once: true });
+      const w = { resolve, reject, retry: () => nativeFetch(input, init).then(resolve, reject) };
+      const job = ask(url);
+      if (job.state === "done") { stats.memory++; deliver(job, w); if (jobs.get(job.id) === job) jobs.delete(job.id); return; }
+      job.waiters.push(w);
+      pump();
     });
   };
 
-  // <img src>: tiles or Allsky files Aladin loads as images.
-  const waiting = new WeakMap();                          // img -> job not started yet (a second src replaces it)
+  // <img src>: tile or Allsky files Aladin loads as images.
+  const waiting = new WeakMap();                                          // img -> its job while waiting
   Object.defineProperty(HTMLImageElement.prototype, "src", {
     configurable: true, enumerable: desc.enumerable, get: desc.get,
     set(value) {
       const url = String(value);
       if (!TILE.test(url)) { stats.direct++; return desc.set.call(this, value); }
-      const img = this, w = waiting.get(img);
-      if (w) { w.url = url; return undefined; }           // still queued: load the newer address when its turn comes
-      const pending = { url };
-      waiting.set(img, pending);
-      const ok = enqueue(url, (free, to) => {
-        waiting.delete(img);
-        const target = pending.url === url ? to : pending.url;
-        img.addEventListener("load", () => free(), { once: true });
-        img.addEventListener("error", () => {
-          free();
-          if (target !== pending.url) { stats.retried++; forget(pending.url); desc.set.call(img, pending.url); }
-        }, { once: true });
-        desc.set.call(img, target);
-      });
-      if (!ok) { waiting.delete(img); desc.set.call(img, value); }
+      const img = this, old = waiting.get(img);
+      if (old && old.state === "queued") { const i = queue.indexOf(old); if (i >= 0) queue.splice(i, 1); jobs.delete(old.id); }
+      const now = performance.now();
+      if (now - lastAt > BATCH_GAP_MS) gen++;
+      lastAt = now;
+      const s = split(url);
+      const om = url.match(/\/Norder(\d+)\//);
+      const own = (s ? s.m + "|" + s.path : url) + "#img" + gen;          // not shared: it belongs to this <img>
+      const job = newJob(url, classify(url, s ? s.m : null, om ? +om[1] : -1, /\/Allsky\./i.test(url)), Infinity, own);
+      job.img = img; job.asked = true;
+      job.setSrc = (u) => { waiting.delete(img); desc.set.call(img, u); };
+      waiting.set(img, job);
+      pump();
       return undefined;
     },
   });
@@ -220,26 +416,80 @@ export function installTileQueue({ mirrors = [], priorMs = {} } = {}) {
   return true;
 }
 
+// Aladin asks for a tile: join the download that is already there, or queue a new one.
+function ask(url) {
+  const now = performance.now();
+  if (now - lastAt > BATCH_GAP_MS) gen++;
+  lastAt = now;
+  const job = jobs.get(idOf(url));
+  if (job) {
+    stats.joined++;
+    if (job.state !== "done") {                                           // (a loading one is then not stopped)
+      const c = classify(url, job.m, job.order, job.allsky);
+      if (c < job.cls) job.cls = c;
+      job.stale = null;
+    }
+    job.asked = true;
+    return job;
+  }
+  const s = split(url);
+  const om = url.match(/\/Norder(\d+)\//);
+  const cls = classify(url, s ? s.m : null, om ? +om[1] : -1, /\/Allsky\./i.test(url));
+  if (cls === LATER) stats.later++;
+  if (cls === HOLD) stats.held++;
+  const j = newJob(url, cls, Infinity);
+  j.asked = true;
+  const z = zooming();
+  if (cls === NOW && z && z.burst && now - z.at < HOLD_MS) j.notBefore = z.at + HOLD_MS;
+  return j;
+}
+
 /**
- * Download a tile through the same queue, ahead of Aladin's own requests (for prefetching).
- * Resolves true / false when done, or null when skipped because stale() said it is no longer needed.
+ * Download a tile ahead of Aladin (prefetch.js). rank: smaller first (distance from the cursor in px);
+ * cls: NOW for the view a zoom ends on, SOON for pre-warming. stale() -> true when no longer wanted.
+ * Resolves true / false when done, or null when skipped as stale.
  */
-export function queueFetch(url, { stale } = {}) {
+export function queueFetch(url, { rank = 1e6, cls = NOW, stale = null } = {}) {
   return new Promise((resolve) => {
-    const ok = enqueue(url, (free, to) => {
-      if (stale?.()) { free(false); resolve(null); return; }
-      realFetch(to, { mode: "cors" })
-        .then((r) => r.arrayBuffer().then(() => r.ok))
-        .catch(() => false)
-        .then((r) => { free(); if (!r) forget(url); resolve(r); });
-    }, 1);
-    if (!ok) resolve(false);
+    if (!TILE.test(url)) { resolve(false); return; }
+    let job = jobs.get(idOf(url));
+    if (job && job.state === "done") { resolve(job.res ? !!job.res.ok : null); return; }
+    if (job) {
+      if (cls < job.cls) job.cls = cls;                                   // (a loading one is then not stopped)
+      if (job.state === "queued") {
+        if (rank < job.rank) job.rank = rank;
+        if (!job.asked) job.stale = stale;
+        job.gen = Math.max(job.gen, gen);
+      }
+      job.done.push(resolve);
+      pump();
+      return;
+    }
+    stats.prefetch++;
+    job = newJob(url, cls, rank);
+    job.prefetch = true;
+    job.stale = stale;
+    job.done.push(resolve);
+    pump();
   });
 }
 
-/** For tests: queue state per server. */
+/** A new set of prefetches begins (they go ahead of older ones with the same rank). */
+export function nextGeneration() { return ++gen; }
+
+/** True while tiles that matter now (not pre-warm or waiting ones) are still loading or queued. */
+export function busy() {
+  if (queue.some((j) => j.cls === NOW)) return true;
+  for (const j of jobs.values()) if (j.state === "loading" && j.cls === NOW) return true;
+  return false;
+}
+
+/** For tests: queue state. */
 export function tileQueueInfo() {
-  const out = { installed, ...stats, hosts: {} };
-  for (const [k, h] of hosts) out.hosts[k] = { active: h.active, queued: h.queue.length, ms_per_tile: Math.round(msPerTile.get(k) ?? 0) };
+  const byCls = [0, 0, 0, 0];
+  for (const j of queue) byCls[j.cls]++;
+  const out = { installed, active, queued: queue.length, waiting: { now: byCls[0], soon: byCls[1], later: byCls[2], held: byCls[3] },
+    pending: active + byCls[0] + byCls[1] + byCls[2], kept: kept.length, ...stats, zooming: !!zooming(), hosts: {} };
+  for (const [k, h] of hosts) out.hosts[k] = { active: h.active, queued: 0, ms_per_tile: Math.round(msOf(k)) };
   return out;
 }

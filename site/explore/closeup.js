@@ -52,7 +52,7 @@ export function createCloseup({ A = null, al = null, state, pix2sky, size, onCha
   const failed = new Set();    // close-up maps whose servers did not answer
   let prefetch = null;         // prefetch.js: says when the close-up tiles of the view are in the cache
   let lastT = 0, heldSince = 0, tick = 0;
-  const FADE_MS = 250;         // fastest fade in or out of the close-up map
+  const FADE_MS = 100;         // fastest fade in or out of the close-up map (was 250: it held back the sharp frame)
   // Holding the close-up back until its tiles arrive measured slower to sharp (Pan-STARRS 0.3 deg 4.0 -> 5.4 s),
   // so it is off by default; ?cg=1 turns it on (max 4 s hold).
   const WAIT_MAX_MS = new URLSearchParams(location.search).get("cg") === "1" ? 4000 : 0;
@@ -228,8 +228,14 @@ export function createCloseup({ A = null, al = null, state, pix2sky, size, onCha
     return w.op > 0 ? w.key : null;
   }
 
+  /** Close-up map and its opacity at field fov near dec: { key, op } (key null when none shows). */
+  function weightFor(fov, dec) {
+    const w = wanted(dec, fov);
+    return w.op > 0 && w.key ? { key: w.key, op: w.op } : { key: null, op: 0 };
+  }
+
   return {
-    update, spherexFactor, render, credit, minFov: closest, keyFor,
+    update, spherexFactor, render, credit, minFov: closest, keyFor, weightFor,
     setPrefetch: (p) => { prefetch = p; },
     // For tests and the measurement script.
     info: () => ({ key: layer?.key || null, opacity: sharpOp, failed: [...failed] }),

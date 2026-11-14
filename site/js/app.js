@@ -177,7 +177,7 @@ function drawOverlay(canvas, toCanvas, frame, zoom) {
  *  first position, true end marked; label = speed ± error and direction (js/motion_arrow.js, ilk_izlenim). */
 function drawMotionArrow(ctx, canvas, toCanvas) {
   const a = run && run.astro, P = a && a.positions;
-  if (!current || current.preview || !P || P.length < 2) return;
+  if (!current || current.preview || !P || P.length < 2 || run.pgNoArrow) return;   // pgNoArrow: bins_bar.js, the answer is too uncertain
   const A = P[0], Z = P[P.length - 1];
   const p = (a.pairs || []).find((q) => q.from === A.season && q.to === Z.season);
   if (!p || !significant(p.shift, p.err)) return;               // a shift inside its own noise is not drawn as motion
@@ -531,6 +531,7 @@ async function go(text, opts = {}) {
   current = null; fieldStars = [];
   setStage(null);
   $("viewer").hidden = true; $("bins").innerHTML = ""; $("measure").innerHTML = ""; $("fieldnote").textContent = ""; live.clear();
+  import("./bins_bar.js").then((m) => m.resetSky()).catch(() => {});   // the previous run's wavelength bar
   if ($("spectrum")) $("spectrum").hidden = true;
   run = { ctl: new AbortController(), input: text, finished: false, gaiaField: null, results: {} };
   prog = { base: 0, span: 0, f: 0, tFull: 0 };
@@ -597,7 +598,22 @@ async function go(text, opts = {}) {
     }
     let first = Number(params.get("bin")) || 2.0;
     if (!avail.some((b) => b.um === first)) first = avail[0].um;
-    if (params.get("preview") !== "0") {
+    if (params.get("pg") !== "0" && typeof run.engine.loadAll === "function") {   // wavelength by wavelength: js/bins_bar.js (?pg=0: old flow)
+      const PG = await import("./bins_bar.js");
+      setStatus(() => t("pg.bb.skyRun"), "warn");
+      await PG.runSky({ engine: run.engine, bins: avail, canvas: $("blink"), alive: () => run === myRun,
+        stored(um, r, astro) {
+          run.results[um] = r; run.astro = astro;
+          const btn = document.querySelector(`#bins button[data-um="${um}"]`);
+          if (btn) btn.classList.add("loaded");
+          setStage("full", fullCount(), t("sk.stage.more"));
+          setStatus(() => t("pg.bb.skyRun"), "warn");            // a wavelength arrived: an old "S3 busy" warning is over
+          if (current && !current.preview) showMotion();
+        },
+        show(um) { if (!run.results[um]) return; current = run.results[um]; frameIdx = 0; $("viewer").hidden = false; showFrame(); showDiff(); startBlink(); showMotion(); },
+        redraw() { if (current) showFrame(); },
+        setArrow(on) { run.pgNoArrow = !on; } });
+    } else if (params.get("preview") !== "0") {
       await previewThenFull(first, avail, myRun);
     } else {
       await loadBin(first);

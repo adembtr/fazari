@@ -1,0 +1,54 @@
+/* Wavelength-by-wavelength bar (js/bins_bar.js): one row of wavelength buttons right above the answer,
+   the answer ("based on N of M wavelengths so far") and one time line. Used by ornek.html and sky.html. */
+.pg-bins { margin: 0 0 8px; min-width: 0; }
+.pg-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; min-width: 0; }
+.pg-b { position: relative; overflow: hidden; flex: none; min-width: 64px; padding: 5px 10px 7px; border-radius: 8px;
+        font: inherit; font-size: .9rem; font-variant-numeric: tabular-nums; line-height: 1.2; text-align: center;
+        background: #1b2030; color: #c9d2e3; border: 1px solid #39425a; cursor: pointer; }
+.pg-b .pg-l { position: relative; z-index: 1; white-space: nowrap; }
+.pg-b .pg-f { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--acc, #ffb347); transition: width .5s linear; }
+/* waiting: pale */
+.pg-b[data-state="queued"] { color: #7f8aa0; background: #141824; border-style: dashed; border-color: #343c52; }
+/* loading: fills with images done / total */
+.pg-b[data-state="loading"] { color: #e8eaf0; border-color: #6a5a2a; background: #1d1a12; }
+.pg-b[data-state="loading"] .pg-f { animation: pgpulse 1.4s ease-in-out infinite; }
+/* loaded: lit */
+.pg-b[data-state="done"] { color: #fff; background: #23324e; border-color: #4f6ea6; }
+.pg-b[data-state="done"] .pg-f { display: none; }
+/* failed: marked, click = try again */
+.pg-b[data-state="failed"] { color: #ffb3b3; background: #2a1416; border-color: #8a3a3a; }
+.pg-b[data-state="failed"] .pg-l::after { content: " !"; font-weight: 700; }
+.pg-b[data-state="failed"] .pg-f { display: none; }
+/* the one asked for next (priority) */
+.pg-b.pg-want { border: 1px dashed var(--acc, #ffb347); }
+/* on screen */
+.pg-b[aria-pressed="true"] { outline: 2px solid var(--acc, #ffb347); outline-offset: 1px; color: #fff; font-weight: 650; }
+.pg-b.pg-all { min-width: 56px; }
+.pg-b.pg-all:disabled { opacity: .45; cursor: default; }
+.pg-b:focus-visible { outline: 2.5px solid #7fd4ff; outline-offset: 2px; }
+.pg-ans { margin: 7px 0 0; font-size: 1.12rem; line-height: 1.32; font-weight: 650; border-radius: 6px; transition: background-color .9s ease; }
+.pg-ans { min-height: 2.75em; }
+.pg-ans .pg-n { display: block; margin-top: 2px; font-size: .86rem; font-weight: 400; color: var(--mut, #9aa3b2); font-variant-numeric: tabular-nums; }
+.pg-ans.pg-flash { background-color: rgba(255, 179, 71, .16); transition: none; }
+.pg-line { margin: 4px 0 0; min-height: 1.3em; font-size: .85rem; color: var(--mut, #9aa3b2); font-variant-numeric: tabular-nums; }
+.pg-line:empty::before { content: "\00a0"; }
+/* sky.html: the bar is its own card between the status card and the viewer */
+.pg-card { margin-top: 10px; }
+/* the composite ("All") picture inside the viewer's zoom box, above the frame, below the overlays */
+#pgComp { z-index: 4; }
+/* while a progressive run is on: the bar's answer is the answer (one sentence, not two); the old stage line goes */
+html.pg-live #explainSentence, html.pg-live #uiQuick, html.pg-live #stagebar { display: none !important; }
+/* sky.html during a progressive run: the buttons are the progress; the old bar is reduced to the time line */
+body.pg-run .progressrow .barwrap, body.pg-run #eta, body.pg-run #progress, body.pg-run #fovEst { display: none !important; }   /* #fovEst: no fixed time promise next to the engine's own estimate */
+body.pg-run .progressrow { min-height: 0; }
+.pg-eta { flex: 1; min-width: 0; font-size: .85rem; color: var(--mut, #9aa3b2); font-variant-numeric: tabular-nums; }
+@keyframes pgpulse { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .pg-b .pg-f { transition: none; animation: none !important; } .pg-ans { transition: none; } }
+@media (max-width: 560px) {
+  .pg-row { gap: 5px; }
+  .pg-b { min-width: 0; flex: 1 1 54px; padding: 5px 6px 7px; font-size: .84rem; }
+  .pg-ans { font-size: 1.02rem; min-height: 5em; }
+  .pg-ans .pg-list { display: none; }
+  .pg-line { min-height: 2.9em; }
+  .pg-bins.pg-run .pg-row { min-height: 66px; align-content: flex-start; }
+}
