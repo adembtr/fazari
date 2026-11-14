@@ -1,0 +1,324 @@
+{
+ "schema": "fazari-flags/1",
+ "generated": "2026-11-14T13:18:13Z",
+ "target": "R Draconis",
+ "grid": {
+  "projection": "TAN",
+  "pixel_arcsec": 3.0,
+  "size_px": [
+   180,
+   180
+  ],
+  "upscale": 4,
+  "png_px": [
+   720,
+   770
+  ],
+  "label_strip_px": 50,
+  "north_up_east_left": true
+ },
+ "ra": 248.16723307608785,
+ "dec": 66.75502382552456,
+ "groups": [
+  {
+   "bit": 1,
+   "key": "saturated",
+   "flags": [
+    "OVERFLOW",
+    "SUR_ERROR",
+    "NONLINEAR"
+   ],
+   "rule": "saturated in most images of the frame (the frame's white saturation mask)"
+  },
+  {
+   "bit": 2,
+   "key": "masked",
+   "flags": [
+    "TRANSIENT",
+    "NONFUNC",
+    "MISSING_DATA",
+    "HOT",
+    "COLD",
+    "PERSIST",
+    "OUTLIER",
+    "STREAK",
+    "SNOWBALL"
+   ],
+   "rule": "removed (bad flag or no value) in most images of the frame, or not covered by any image"
+  },
+  {
+   "bit": 4,
+   "key": "other",
+   "flags": [
+    "DICHROIC",
+    "PHANMISS",
+    "CROSSTALK",
+    "GHOST",
+    "GHOST_FPA",
+    "GHOST_EXT",
+    "BLOOM",
+    "HALO"
+   ],
+   "rule": "kept but flagged (ghost, halo, bloom, crosstalk, ...) in most images of the frame"
+  }
+ ],
+ "png": "RGB, 0/255 per channel: R = bit 1 saturated, G = bit 2 masked, B = bit 4 other; frames of a bin stacked top to bottom in meta.json order, each size_px rows, PNG order (row 0 = north)",
+ "source": "SPHEREx FLAGS extension of the cutouts already on disk (no download)",
+ "bins": {
+  "1.0": {
+   "file": "flags_1.0um.png",
+   "wavelength_um": 1.0,
+   "frames": [
+    {
+     "epoch": "2025-06",
+     "frame": "frames/2025-06_1.0um.png",
+     "n_images": 7,
+     "n_read": 7,
+     "available": true,
+     "share": {
+      "saturated": 0.0114,
+      "masked": 0.0033,
+      "other": 0.0384
+     }
+    },
+    {
+     "epoch": "2025-11",
+     "frame": "frames/2025-11_1.0um.png",
+     "n_images": 11,
+     "n_read": 11,
+     "available": true,
+     "share": {
+      "saturated": 0.0101,
+      "masked": 0.0006,
+      "other": 0.0184
+     }
+    },
+    {
+     "epoch": "2026-06",
+     "frame": "frames/2026-06_1.0um.png",
+     "n_images": 8,
+     "n_read": 8,
+     "available": true,
+     "share": {
+      "saturated": 0.0095,
+      "masked": 0.004,
+      "other": 0.0171
+     }
+    }
+   ]
+  },
+  "1.5": {
+   "file": "flags_1.5um.png",
+   "wavelength_um": 1.5,
+   "frames": [
+    {
+     "epoch": "2025-06",
+     "frame": "frames/2025-06_1.5um.png",
+     "n_images": 6,
+     "n_read": 6,
+     "available": true,
+     "share": {
+      "saturated": 0.0089,
+      "masked": 0.0004,
+      "other": 0.0
+     }
+    },
+    {
+     "epoch": "2025-11",
+     "frame": "frames/2025-11_1.5um.png",
+     "n_images": 10,
+     "n_read": 10,
+     "available": true,
+     "share": {
+      "saturated": 0.0098,
+      "masked": 0.0001,
+      "other": 0.0
+     }
+    },
+    {
+     "epoch": "2026-06",
+     "frame": "frames/2026-06_1.5um.png",
+     "n_images": 5,
+     "n_read": 5,
+     "available": true,
+     "share": {
+      "saturated": 0.0066,
+      "masked": 0.0023,
+      "other": 0.0
+     }
+    }
+   ]
+  },
+  "2.0": {
+   "file": "flags_2.0um.png",
+   "wavelength_um": 2.0,
+   "frames": [
+    {
+     "epoch": "2025-06",
+     "frame": "frames/2025-06_2.0um.png",
+     "n_images": 4,
+     "n_read": 4,
+     "available": true,
+     "share": {
+      "saturated": 0.0113,
+      "masked": 0.0006,
+      "other": 0.0001
+     }
+    },
+    {
+     "epoch": "2025-11",
+     "frame": "frames/2025-11_2.0um.png",
+     "n_images": 7,
+     "n_read": 7,
+     "available": true,
+     "share": {
+      "saturated": 0.0121,
+      "masked": 0.0023,
+      "other": 0.0
+     }
+    },
+    {
+     "epoch": "2026-06",
+     "frame": "frames/2026-06_2.0um.png",
+     "n_images": 16,
+     "n_read": 16,
+     "available": true,
+     "share": {
+      "saturated": 0.0095,
+      "masked": 0.0002,
+      "other": 0.0
+     }
+    }
+   ]
+  },
+  "3.0": {
+   "file": "flags_3.0um.png",
+   "wavelength_um": 3.0,
+   "frames": [
+    {
+     "epoch": "2025-06",
+     "frame": "frames/2025-06_3.0um.png",
+     "n_images": 6,
+     "n_read": 6,
+     "available": true,
+     "share": {
+      "saturated": 0.0243,
+      "masked": 0.0079,
+      "other": 0.0
+     }
+    },
+    {
+     "epoch": "2025-11",
+     "frame": "frames/2025-11_3.0um.png",
+     "n_images": 12,
+     "n_read": 12,
+     "available": true,
+     "share": {
+      "saturated": 0.0196,
+      "masked": 0.0024,
+      "other": 0.0
+     }
+    },
+    {
+     "epoch": "2026-06",
+     "frame": "frames/2026-06_3.0um.png",
+     "n_images": 6,
+     "n_read": 6,
+     "available": true,
+     "share": {
+      "saturated": 0.0178,
+      "masked": 0.0072,
+      "other": 0.0
+     }
+    }
+   ]
+  },
+  "4.0": {
+   "file": "flags_4.0um.png",
+   "wavelength_um": 4.0,
+   "frames": [
+    {
+     "epoch": "2025-06",
+     "frame": "frames/2025-06_4.0um.png",
+     "n_images": 24,
+     "n_read": 24,
+     "available": true,
+     "share": {
+      "saturated": 0.0137,
+      "masked": 0.004,
+      "other": 0.0
+     }
+    },
+    {
+     "epoch": "2025-11",
+     "frame": "frames/2025-11_4.0um.png",
+     "n_images": 26,
+     "n_read": 26,
+     "available": true,
+     "share": {
+      "saturated": 0.0118,
+      "masked": 0.0041,
+      "other": 0.0
+     }
+    },
+    {
+     "epoch": "2026-06",
+     "frame": "frames/2026-06_4.0um.png",
+     "n_images": 14,
+     "n_read": 14,
+     "available": true,
+     "share": {
+      "saturated": 0.0108,
+      "masked": 0.0031,
+      "other": 0.0
+     }
+    }
+   ]
+  },
+  "4.6": {
+   "file": "flags_4.6um.png",
+   "wavelength_um": 4.6,
+   "frames": [
+    {
+     "epoch": "2025-06",
+     "frame": "frames/2025-06_4.6um.png",
+     "n_images": 18,
+     "n_read": 18,
+     "available": true,
+     "share": {
+      "saturated": 0.0105,
+      "masked": 0.0011,
+      "other": 0.0
+     }
+    },
+    {
+     "epoch": "2025-11",
+     "frame": "frames/2025-11_4.6um.png",
+     "n_images": 21,
+     "n_read": 21,
+     "available": true,
+     "share": {
+      "saturated": 0.0092,
+      "masked": 0.0019,
+      "other": 0.0
+     }
+    },
+    {
+     "epoch": "2026-06",
+     "frame": "frames/2026-06_4.6um.png",
+     "n_images": 40,
+     "n_read": 40,
+     "available": true,
+     "share": {
+      "saturated": 0.0073,
+      "masked": 0.0017,
+      "other": 0.0
+     }
+    }
+   ]
+  }
+ },
+ "missing_files": [],
+ "n_files_read": 241,
+ "available": true
+}

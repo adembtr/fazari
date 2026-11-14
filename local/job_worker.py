@@ -375,6 +375,8 @@ def run_blink(job_id, target, inputs, out_root, status, n_in):
 POST_STEPS = []
 # spectrum of the target from every exposure of the job -> spectrum.csv, spectrum.json (pipeline/spectrum.py)
 POST_STEPS.append(("spectrum", "spectrum", "job_step"))
+# flag layer of the blink frames (saturated / masked / other FLAGS, a few kB) -> flags/ (pipeline/flags.py)
+POST_STEPS.append(("flags", "flags", "post_step"))
 # moving / changing sources in the whole field -> candidates.json (pipeline/detect, pipeline/DETECTION.md)
 POST_STEPS.append(("candidates", "detect.run", "job_step"))
 # faint-object mode: float frames, deep stacks, shift-and-stack -> faint/ (pipeline/faint.py, pipeline/FAINT.md)

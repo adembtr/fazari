@@ -338,6 +338,7 @@
         <label class="chk"><input id="arrowOn" type="checkbox" checked> <span data-i18n="vw.c.arrow">Motion arrow and path</span></label>
       </section>
       <div id="faintControls"></div>
+      <div id="flagControls"></div>
       <section class="actions" aria-label="Share" data-i18n-attr="aria-label:vw.a.share">
         <a id="saveGif" class="btn" href="#" download hidden data-i18n="vw.gif">Save GIF</a>
         <button type="button" id="copyLink" class="btn" data-i18n="vw.copy">Copy link</button>
@@ -387,6 +388,7 @@ if (v) {
 }
 </script>
 <script src="js/faint_view.js"></script>
+<script src="js/flags_view.js"></script>
 <script type="module">import { mountFromUrl } from "./js/spectrum_chart.js"; mountFromUrl(document.getElementById("spectrum"), new URLSearchParams(location.search).get("data") || "data/barnard/");</script>
 </body>
 </html>
