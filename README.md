@@ -107,8 +107,9 @@ engine does not run the candidate finder, the quick decision or the finds list.
 small job API. The explorer uses it only when the page is opened from that computer and `/api/health` answers;
 otherwise it uses the browser engine. It adds:
 
-- full jobs (`local/job_worker.py` → `pipeline/blink.py`): up to 6 exposures per season and bin by default (1–30),
-  all six bins, the detection check, the Gaia DR3 field calibration and the measurement, field 0.2–0.6° (default 0.4°); results are cached;
+- full jobs (`local/job_worker.py` → `pipeline/blink.py`): all exposures within ±5.5 % of each bin centre, up to 30
+  per season and bin by default (1–30; the first answer uses 3), all six bins, the detection check, the Gaia DR3 field
+  calibration and the measurement, field 0.2–0.6° (default 0.2°: about 190 MB and 2 min); results are cached;
 - a preview lane (`local/preview.py`) and the quick decision (`local/quick.py`: a 0.05° box from every exposure,
   a preliminary "is it moving?" answer);
 - post-steps after a full job: spectrum, FLAGS layer, candidate finder (`pipeline/detect/`), faint-object mode,

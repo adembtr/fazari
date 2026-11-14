@@ -44,7 +44,8 @@ preview is queued or running the full job starts no new image download (flag fil
    its `parallax` (mas, when the point has one); else the `pmra`/`pmdec`/`epoch`/`parallax` of the request.
 2. **selection** (not for local targets, which use all their cutouts): per observing season and per
    single-detector wavelength bin (1.0 D1, 1.5 D2, 2.0 D3, 3.0 D4, 4.0 D5, 4.6 D6 um), the `cap` exposures
-   closest to the bin centre; bins seen in fewer than 2 seasons are skipped.
+   closest to the bin centre (default 30, in practice all of them); bins seen in fewer than 2 seasons are
+   skipped. The first answer uses 3 per season and bin (`FIRST_CAP`), the rest refine it.
 3. **downloading**: cutouts of `FULL_CUTOUT_DEG` = 0.2 deg (`local/serve.py`; request option `cutout_deg`)
    are read from the public SPHEREx S3 bucket with HTTP Range (`pipeline/fetch_region.py`, at most 4
    requests in flight, User-Agent `fazari-spaceapps/1.0`), about 3.6 MB per image (0.4 deg: about 7 MB).
@@ -90,7 +91,7 @@ and its status shows `post_pending: {steps, state}` meanwhile. Without the cutou
 
 - `ra` 0..360, `dec` -90..90 (degrees, ICRS); `name` free text (label only, max 100 chars);
   `bins` subset of `[1.0, 1.5, 2.0, 3.0, 4.0, 4.6]` (default all); `cap` 1..30 exposures per season and bin
-  (default 6). Optional: `pmra`, `pmdec` (mas/yr), `epoch` (Julian year), `parallax`
+  (default 30 = in practice all within ±5.5 % of the bin centre; was 6). Optional: `pmra`, `pmdec` (mas/yr), `epoch` (Julian year), `parallax`
   (mas, 0..2000; the explorer sends it for category points and fast stars), `kind` (`motion`|`brightness`), `force`.
 - `cutout_deg`: cutout size of a full job, one of 0.2, 0.3, 0.4, 0.5, 0.6 (default `FULL_CUTOUT_DEG` = 0.2).
   It is part of the job id (`...-s0.4`; 0.2 deg ids have no tag, as before) and of the cutout store

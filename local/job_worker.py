@@ -365,9 +365,9 @@ def run_blink(job_id, target, inputs, out_root, status, n_in):
         try:
             return orig_read(path, t)
         finally:
-            seen[0] += 1
+            seen[0] += 1                                    # blink.py may read an exposure twice: never show > total
             if seen[0] >= n_in:
-                status.set(progress={"done": seen[0], "total": n_in},
+                status.set(progress={"done": n_in, "total": n_in},
                            message="measuring: " + ("motion against Gaia field stars" if target.get("kind", "motion")
                                                     == "motion" else "brightness against comparison stars"))
             elif seen[0] % 4 == 0:

@@ -81,7 +81,11 @@ EST_MEASURE_S_PER_IMAGE = 0.7     # blink.py after reading: detection, calibrati
 EST_POST_S = 180.0                # the post-steps of a full job (spectrum ~10 s, candidates + faint minutes)
 
 BINS_ALL = [1.0, 1.5, 2.0, 3.0, 4.0, 4.6]
-CAP_DEFAULT, CAP_MIN, CAP_MAX = 6, 1, 30
+# Exposures per season and wavelength bin of a full result. Default 30 = in practice all the exposures
+# within +-5.5 % of each bin centre (a 0.2 deg test field had 12-15 per season and bin at most); 30 still
+# bounds the cost on the much-visited deep fields. Was 6 until 15 November 2026 (about 1.5x fewer images).
+# The first answer stays fast: job_worker.FIRST_CAP exposures per season and bin come first.
+CAP_DEFAULT, CAP_MIN, CAP_MAX = 30, 1, 30
 # Cutout size of FULL results (degrees). Default 0.2 deg (14 November 2026): the smallest download and
 # the fastest first result. 0.3-0.6 deg stay on request ("cutout_deg"); 0.4 deg holds ~4-6x the Gaia
 # reference stars of 0.2 deg and halves the field-calibration error (pipeline/ACCURACY.md). The preview
@@ -827,6 +831,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         if self.path.startswith("/api/") or self.path.startswith("/jobs/"):
             self.send_header("Cache-Control", "no-store")
+        else:                       # site files: always revalidate (cheap 304), so an edited page is never stale
+            self.send_header("Cache-Control", "no-cache")
         super().end_headers()
 
     def _json(self, code, obj):
