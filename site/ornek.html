@@ -29,12 +29,16 @@
   td, th { text-align:left; padding:3px 6px; border-bottom:1px solid #262c3c; }
   .diff img { width:100%; image-rendering: pixelated; border-radius:6px; }
   small { color: var(--mut); }
+  .targets { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px; }
+  .targets button.on { border-color: var(--acc); color: var(--acc); }
+  .targets button:disabled { opacity:.45; cursor:default; }
 </style>
 </head>
 <body>
 <main>
   <h1 id="title">SPHEREx blink</h1>
   <p class="sub" id="subtitle">Loading meta.json ...</p>
+  <div class="targets" id="targets"></div>
 
   <div class="controls">
     <label>Wavelength <select id="wl"></select></label>
@@ -71,6 +75,21 @@
 const BASE = new URLSearchParams(location.search).get("data") || "data/barnard/";
 let meta, bin, idx = 0, timer = null, playing = true;
 const $ = id => document.getElementById(id);
+
+// Target buttons: the five challenge targets; a target is enabled once its products exist.
+const TARGETS = [["barnard", "Barnard's Star"], ["eps_indi_b", "Epsilon Indi B"],
+                 ["wise0855", "WISE 0855-0714"], ["rw_aur", "RW Aurigae"], ["r_dra", "R Draconis"]];
+TARGETS.forEach(([id, name]) => {
+  const b = document.createElement("button");
+  b.textContent = name;
+  b.disabled = true;
+  if (BASE.replace(/^\.?\//, "") === `data/${id}/`) b.classList.add("on");
+  b.onclick = () => { location.search = "?data=data/" + id + "/"; };
+  $("targets").appendChild(b);
+  fetch(`data/${id}/meta.json`, { method: "HEAD" })
+    .then(r => { if (r.ok) b.disabled = false; else { b.textContent = name + " (soon)"; b.title = "Coming soon"; } })
+    .catch(() => { b.textContent = name + " (soon)"; b.title = "Coming soon"; });
+});
 
 function show() {
   const f = bin.frames[idx];
