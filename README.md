@@ -150,6 +150,9 @@ prediction by about +0.27″ E, −0.53″ N (±0.03″ per season).
 - It is the same before and after the field-star calibration.
 - It is larger at 4–5 µm (about 0.7″) than at 1–3 µm (about 0.5″).
 - No Gaia DR3 star lies within 45″ that could contaminate the fit.
+- Scattered light from Eps Indi A (6.7′ W) does not explain it: subtracting a fitted local
+  background plane changes the offset by < 0.02″, and Gaia field stars at the same distance
+  from A are offset by < 0.04″ (check: `pipeline/eps_indi_check.py`).
 
 This is consistent with the binary nature of the source. Ba+Bb are not resolved in the Gaia
 DR3 solution, which has RUWE 4.30 and astrometric excess noise 5.8 mas. The infrared
