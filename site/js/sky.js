@@ -12,7 +12,7 @@ import { SpherexFile, flagBits } from "./fits.js";
 import { SipWcs, WaveWcs, TanGrid } from "./wcs.js";
 import { s3Source } from "./net.js";
 import { gaiaStars, tychoStars } from "./gaia.js";
-import { CALIB, prepareStars, calibrateExposure, calibrateSaturated, poolCells } from "./calib.js";
+import { CALIB, prepareStars, calibrateExposure, calibrateSaturated, poolCells, fieldStarTable } from "./calib.js";
 import { propagate, offsetArcsec, mjdToDate, mjdToMonth, median, percentile, gaussCentroid, jyearToMjd } from "./astro.js";
 
 export const CONFIG = {
@@ -508,6 +508,7 @@ export class SkySession {
     }
     const calEx = ex.filter((e) => e.posPool && e.cell && e.cell.ok);
     return { positions, pairs, nFits: ex.length, nExposures: this.exposures.length,
+             fieldStars: fieldStarTable(this.exposures, cells),   // per star x exposure, columns of field_stars.csv
              calibration: { nCalibrated: calEx.length, nFits: ex.length,
                             stars: calEx.length ? median(calEx.map((e) => e.cell.nStars)) : 0,
                             rms: calEx.length ? median(calEx.map((e) => e.cell.rms)) : NaN,

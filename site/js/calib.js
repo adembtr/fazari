@@ -7,6 +7,7 @@
 // (pipeline/ASTROMETRY.md) uses the same method.
 
 import { propagate, offsetArcsec, gaussCentroid, median } from "./astro.js";
+import { WaveWcs } from "./wcs.js";
 
 export const CALIB = {          // as pipeline/ASTROMETRY.md (CAL_* in blink.py)
   gmaxQuery: 19.0,      // Gaia stars fetched (also used for the isolation test)
@@ -45,39 +46,56 @@ export function prepareStars(stars, ra0, dec0) {
 
 /**
  * Measure the reference stars in one exposure (same Gaussian estimator as the target).
- * Returns {pts: [{id, x, y (arcsec from the target), rE, rN}], ...single-exposure fit (diagnostic)}.
+ * Returns {pts: [{id, x, y (arcsec from the target), rE, rN}], stars: [one record per reference
+ * star on the region, used or not (fieldStarTable)], ...single-exposure fit (diagnostic)}.
+ * file: optional SpherexFile of the exposure (its wavelength table gives each star's wavelength).
  */
-export function calibrateExposure({ cal, data, sat, W, H, y0, wcs, mjd, target, sigma0, mask = null }) {
+export function calibrateExposure({ cal, data, sat, W, H, y0, wcs, mjd, target, sigma0, mask = null, file = null }) {
   const [tra, tdec] = target;
   const cosd = Math.cos(tdec * Math.PI / 180);
-  const pts = [];
+  let wave = null;
+  try { if (file && file.waveTable) wave = new WaveWcs(file.header, file.waveTable); } catch (_) { wave = null; }
+  const pts = [], stars = [];
   for (const s of cal) {
     const [ra, dec] = propagate(s, mjd, true);
     const dE = ((ra - tra + 540) % 360 - 180) * cosd * 3600, dN = (dec - tdec) * 3600;
-    if (Math.hypot(dE, dN) < CALIB.minTargetSep) continue;
     const [x, y] = wcs.skyToPix(ra, dec);
     const yl = y - y0;
-    if (!(x >= CALIB.edge && x <= W - 1 - CALIB.edge && yl >= CALIB.edge && yl <= H - 1 - CALIB.edge)) continue;
+    if (!(x >= -0.5 && x < W - 0.5 && yl >= -0.5 && yl < H - 0.5)) continue;   // not on the region
+    const rec = { s, ra, dec, x, y, dE, dN, status: "used", lam: wave ? wave.at(x, y)[0] : null };
+    stars.push(rec);
+    if (Math.hypot(dE, dN) < CALIB.minTargetSep) { rec.status = "near_target"; continue; }
+    if (!(x >= CALIB.edge && x <= W - 1 - CALIB.edge && yl >= CALIB.edge && yl <= H - 1 - CALIB.edge)) { rec.status = "edge"; continue; }
     let bad = false;     // no saturated or missing pixel in the 5x5 box
     for (let j = Math.round(yl) - 2; j <= Math.round(yl) + 2 && !bad; j++)
       for (let i = Math.round(x) - 2; i <= Math.round(x) + 2; i++) {
         const k = j * W + i;
         if (sat[k] || !Number.isFinite(data[k])) { bad = true; break; }
       }
-    if (bad) continue;
+    if (bad) { rec.status = "saturated_or_missing"; continue; }
     const ci = Math.round(x), cj = Math.round(yl);
     const ok = mask ? (i, j) => !sat[j * W + i] && !mask.has((i - ci) * 1000 + (j - cj)) : (i, j) => !sat[j * W + i];
-    const fit = gaussCentroid(data, W, H, ok, x, yl, sigma0);
-    if (!fit) continue;
+    const fit = gaussCentroid(data, W, H, ok, x, yl, sigma0, 5, true);
+    if (!fit) { rec.status = "centroid_failed"; continue; }
     const peak = fit.amp / (2 * Math.PI * Math.max(fit.sigma, 0.3) ** 2);
-    if (peak / sigma0 < CALIB.minSnr || fit.sigma < 0.3 || fit.sigma > 2.0) continue;
     const [mra, mdec] = wcs.pixToSky(fit.x, fit.y + y0);
     const o = offsetArcsec(ra, dec, mra, mdec);
-    if (Math.hypot(o[0], o[1]) > CALIB.mismatch) continue;
-    pts.push({ id: s.source_id, x: dE, y: dN, rE: o[0], rN: o[1] });
+    Object.assign(rec, { fit, xm: fit.x, ym: fit.y + y0, mra, mdec, rE: o[0], rN: o[1], snr: peak / sigma0 });
+    if (fit.cov) {       // position error in east / north arcsec (local Jacobian of the WCS)
+      const [r1, d1] = wcs.pixToSky(fit.x + 1, fit.y + y0), [r2, d2] = wcs.pixToSky(fit.x, fit.y + y0 + 1);
+      const jx = offsetArcsec(mra, mdec, r1, d1), jy = offsetArcsec(mra, mdec, r2, d2), C = fit.cov;
+      const v = (a, b) => a * a * C[0][0] + a * b * (C[0][1] + C[1][0]) + b * b * C[1][1];
+      rec.errE = Math.sqrt(Math.max(v(jx[0], jy[0]), 0)); rec.errN = Math.sqrt(Math.max(v(jx[1], jy[1]), 0));
+    }
+    if (peak / sigma0 < CALIB.minSnr) { rec.status = "low_snr"; continue; }
+    if (fit.sigma < 0.3 || fit.sigma > 2.0) { rec.status = "bad_width"; continue; }
+    if (Math.hypot(o[0], o[1]) > CALIB.mismatch) { rec.status = "mismatch"; continue; }
+    rec.pt = { id: s.source_id, x: dE, y: dN, rE: o[0], rN: o[1] };
+    pts.push(rec.pt);
   }
   const r = fitResiduals(pts);
   r.pts = pts;
+  r.stars = stars;
   return r;
 }
 
@@ -140,6 +158,9 @@ function fitCell(pts) {
   const P = pts.filter((_, i) => use[i]);
   const m = model(P);
   res = fitModel(P, m);
+  pts.forEach((p, i) => {   // per measurement, for fieldStarTable: kept by the clipping, residual about the cell model
+    p.kept = use[i]; p.cellResE = p.rE - res.eE(p.x, p.y); p.cellResN = p.rN - res.eN(p.x, p.y);
+  });
   const rE = P.map((p) => p.rE - res.eE(p.x, p.y)), rN = P.map((p) => p.rN - res.eN(p.x, p.y));
   const sd = (a) => Math.sqrt(a.reduce((s, v) => s + v * v, 0) / Math.max(a.length - 1, 1));
   const errE = sd(rE) / Math.sqrt(P.length), errN = sd(rN) / Math.sqrt(P.length);
@@ -148,6 +169,71 @@ function fitCell(pts) {
   return { ok, source: ok ? "cell" : undefined, model: m, corrE: res.a, corrN: res.b, errE, errN, nStars, nMeas: P.length,
            rms: Math.sqrt((sd(rE) ** 2 + sd(rN) ** 2) / 2),
            reason: ok ? undefined : `${nStars} stars, ${P.length} measurements, error ${Math.max(errE, errN).toFixed(2)}″` };
+}
+
+// ---- per-star export: the columns of blink.py's field_stars.csv (pipeline/ASTROMETRY.md) ------
+export const FIELD_STAR_COLUMNS = [
+  "source_id", "gaia_g", "gaia_bp_rp", "gaia_ruwe", "gaia_pmra", "gaia_pmdec", "gaia_parallax",
+  "file", "obs_id", "collection", "mjd", "season", "detector", "wavelength_um", "bin_um", "orient_deg",
+  "ra_gaia", "dec_gaia", "x_pred", "y_pred", "lever_east_arcsec", "lever_north_arcsec",
+  "x_meas", "y_meas", "ra_meas", "dec_meas", "east_arcsec", "north_arcsec", "east_err_arcsec", "north_err_arcsec",
+  "centroid_method", "psf_sigma_px", "fit_npix", "fit_chi2r", "flux_ujy", "flux_err_ujy", "snr", "flux_method",
+  "status", "cell_kept", "cell_resid_east_arcsec", "cell_resid_north_arcsec", "calib_east_arcsec", "calib_north_arcsec"];
+const FIELD_STAR_DECIMALS = { ra_gaia: 8, dec_gaia: 8, ra_meas: 8, dec_meas: 8, mjd: 6, wavelength_um: 5, bin_um: 1, orient_deg: 3 };
+const FIELD_STAR_INTS = new Set(["fit_npix", "cell_kept"]);
+const PIXEL_UJY = 1e12 * (6.15 / 206264.806) ** 2;   // 1 MJy/sr over one native pixel in uJy (blink.py)
+
+/**
+ * The field-star measurements of all processed exposures, one row per reference star x exposure
+ * (every reference star on the exposure's region, used or not: "status"). Same columns as
+ * blink.py's field_stars.csv. cells: poolCells() result (the exposure's correction and each
+ * star's clipping flag). Returns {columns, rows}: rows are arrays in column order, null = empty.
+ */
+export function fieldStarTable(exposures, cells = null) {
+  const rows = [];
+  const fin = (v) => (typeof v === "number" && !Number.isFinite(v) ? null : v ?? null);
+  for (const ex of exposures) {
+    const stars = ex.calibField && ex.calibField.stars;
+    if (!stars || !stars.length) continue;
+    const c = cells ? cells.get(`${ex.season}|${ex.detector}`) : null;
+    const img = ex.img || {};
+    const base = { file: (img.url || "").split("/").pop() || null, obs_id: img.obs_id, collection: img.collection,
+                   mjd: ex.mjd, season: ex.season, detector: `D${ex.detector}`, bin_um: ex.bin, orient_deg: ex.orient,
+                   calib_east_arcsec: c && c.ok ? c.corrE : null, calib_north_arcsec: c && c.ok ? c.corrN : null,
+                   centroid_method: "gauss", flux_method: "gauss_fit" };
+    for (const r of stars) {
+      const s = r.s, f = r.fit, p = r.pt;
+      const o = { ...base, source_id: s.source_id, gaia_g: s.gmag, gaia_bp_rp: s.bp_rp, gaia_ruwe: s.ruwe,
+                  gaia_pmra: s.pmra, gaia_pmdec: s.pmdec, gaia_parallax: s.plx,
+                  wavelength_um: r.lam ?? ex.lam,   // at the star if calibrateExposure got `file`, else at the target
+                  ra_gaia: r.ra, dec_gaia: r.dec, x_pred: r.x, y_pred: r.y, lever_east_arcsec: r.dE, lever_north_arcsec: r.dN,
+                  status: r.status };
+      if (f) {
+        Object.assign(o, { x_meas: r.xm, y_meas: r.ym, ra_meas: r.mra, dec_meas: r.mdec, east_arcsec: r.rE, north_arcsec: r.rN,
+                           east_err_arcsec: r.errE, north_err_arcsec: r.errN, psf_sigma_px: f.sigma, fit_npix: f.npix,
+                           fit_chi2r: f.chi2, flux_ujy: f.amp * PIXEL_UJY,
+                           flux_err_ujy: f.ampErr != null ? f.ampErr * PIXEL_UJY : null, snr: r.snr });
+      }
+      if (p && p.kept != null) {
+        Object.assign(o, { cell_kept: p.kept ? 1 : 0, cell_resid_east_arcsec: p.cellResE, cell_resid_north_arcsec: p.cellResN });
+      }
+      rows.push(FIELD_STAR_COLUMNS.map((k) => fin(o[k])));
+    }
+  }
+  return { columns: FIELD_STAR_COLUMNS, rows };
+}
+
+/** CSV text of a fieldStarTable() result, with the number formats of blink.py's field_stars.csv. */
+export function fieldStarsCsv(table) {
+  const cell = (k, v) => {
+    if (v == null) return "";
+    if (typeof v === "number") return FIELD_STAR_INTS.has(k) ? String(Math.round(v)) : v.toFixed(FIELD_STAR_DECIMALS[k] ?? 4);
+    const t = String(v);
+    return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+  };
+  const lines = [table.columns.join(",")];
+  for (const row of table.rows) lines.push(row.map((v, i) => cell(table.columns[i], v)).join(","));
+  return lines.join("\r\n") + "\r\n";   // CRLF, as Python's csv module
 }
 
 /** dE = a + s*x - r*y, dN = b + r*x + s*y (similarity) or dE = a, dN = b (shift); x, y arcsec. */

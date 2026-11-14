@@ -137,3 +137,72 @@ Barnard's Star shows why this matters.
   excess noise 5.8 mas (significance 425) and ipd_frac_multi_peak 8 (Ba+Bb are not resolved
   in that solution). The measured - Gaia offset of about +0.25 arcsec E, -0.5 arcsec N is the
   same before and after the field-star calibration.
+
+## Per-star export: field_stars.csv
+
+Format final (2026-11-14). Column names and meanings below are fixed; new columns are only
+ever appended at the end.
+
+- One row per reference star x exposure: every reference star (selection above) whose Gaia
+  position falls on the exposure, used by the calibration or not (`status` says why not).
+  Other Gaia stars (G > 17.5, RUWE > 1.4, not isolated, 2-parameter) are not measured.
+- Only an export. The calibration does not change: `meta.json` and `images.csv` are identical
+  with and without it.
+- Python: `field_calibration()` writes `<out>/<target>/field_stars.csv` next to `images.csv`.
+  - On by default when the products do not go to the repo's `site/data`, i.e. local engine
+    jobs and runs with `FAZARI_OUT`. Off for the site data.
+  - `FAZARI_FIELD_STARS=1` / `0` forces it on / off.
+  - Written only when the field calibration runs: motion targets detected in >= 2 seasons.
+  - Cost (Barnard's Star): +3 s on a 2 min run (2.5 %), of which 1.4 s is the CSV write, and
+    +90 MB peak memory. With the export off the run time is unchanged.
+  - Size. Barnard's Star: 52 369 rows, 165 stars, 358 exposures, 17 MB. Eps Indi B: 21 120
+    rows, 50 stars, 458 exposures, 7 MB.
+- Browser: `SkySession.astrometry().fieldStars = {columns, rows}` (`calib.js`
+  `fieldStarTable`), with the same columns. Rows are arrays in column order, and null means
+  empty. `fieldStarsCsv(table)` gives the same CSV text.
+- Empty cell = not measured / not available.
+
+| column | meaning |
+|---|---|
+| `source_id` | Gaia DR3 source_id |
+| `gaia_g` | Gaia G (phot_g_mean_mag) |
+| `gaia_bp_rp` | Gaia BP-RP. Empty for now: not in `gaia_field.json` or the browser query |
+| `gaia_ruwe`, `gaia_pmra`, `gaia_pmdec`, `gaia_parallax` | Gaia DR3 (mas/yr, mas) |
+| `file` | image file name (Python: the cutout; browser: the S3 file) |
+| `obs_id`, `collection` | IRSA obs_id; `dr1` / `qr3` |
+| `mjd` | exposure mid-time `MJD-AVG`, the epoch of the Gaia prediction |
+| `season` | season label `YYYY-MM` (`epoch` in `images.csv`) |
+| `detector` | `D1` .. `D6` |
+| `wavelength_um` | wavelength at the star's predicted pixel (the LVF wavelength changes by ~0.035 um across a cutout). Browser: the exposure's wavelength at the target, until `sky.js` passes `file` to `calibrateExposure` |
+| `bin_um` | blink wavelength bin of the exposure; empty if it is in none |
+| `orient_deg` | sky angle of the detector x axis, `atan2(PC2_1, PC1_1)`. The two orientations are ~180 deg apart, which flips any detector-fixed bias on the sky |
+| `ra_gaia`, `dec_gaia` | Gaia position at `mjd` (proper motion + parallax, as for the target), deg |
+| `x_pred`, `y_pred` | that position in 0-based pixels (Python: cutout pixels; browser: pixels of the full image) |
+| `lever_east_arcsec`, `lever_north_arcsec` | star minus target, tangent plane (Python: target's predicted position; browser: target's measured position) |
+| `x_meas`, `y_meas` | centroid, px |
+| `ra_meas`, `dec_meas` | centroid through the exposure's own WCS (no field correction applied), deg |
+| `east_arcsec`, `north_arcsec` | measured minus Gaia, tangent plane E / N, arcsec, raw WCS |
+| `east_err_arcsec`, `north_err_arcsec` | centroid error in E / N: formal covariance of the fit x `fit_chi2r`, through the local WCS Jacobian |
+| `centroid_method` | `gauss` (bright path, browser) or `epsf` (faint path) |
+| `psf_sigma_px` | width of the Gaussian fit, px; empty for `epsf` |
+| `fit_npix`, `fit_chi2r` | pixels in the centroid fit, its reduced chi2 (`err / sqrt(fit_chi2r)` = unscaled formal error) |
+| `flux_ujy`, `flux_err_ujy` | flux in uJy (see `flux_method`) |
+| `snr` | S/N of the selection cut (Python: forced-photometry flux / error; browser: Gaussian peak / pixel noise) |
+| `flux_method` | `epsf_forced`: EPSF at the predicted position (Python); `gauss_fit`: Gaussian fit flux (browser, ~0.9 x the EPSF flux) |
+| `status` | `used`, or why not: `near_target`, `edge`, `saturated_or_missing`, `no_photometry`, `low_snr`, `centroid_failed`, `bad_width` (browser), `mismatch` (> 2 arcsec) |
+| `cell_kept` | 1 / 0: kept / clipped in its season x detector cell fit; empty if not used or the cell had < 5 stars |
+| `cell_resid_east_arcsec`, `cell_resid_north_arcsec` | `east/north_arcsec` minus the cell model (WCS - Gaia) at this star |
+| `calib_east_arcsec`, `calib_north_arcsec` | correction applied to the exposure (cell or season median, WCS - Gaia at the target); empty if none |
+
+- Measured columns are filled for `used` and `mismatch` (browser also `low_snr`, `bad_width`).
+  The flux is filled from `low_snr` on (browser: whenever a fit exists).
+- Offset on the Gaia frame: `east_arcsec - calib_east_arcsec` (same for north), or
+  `cell_resid_*` (also removes the rotation/scale of the cell model).
+- Error check (2026-11-14): one star measured >= 5 times in one season x detector cell. The
+  scatter of its offsets is 0.8-1.3 x `east/north_err_arcsec` when `fit_chi2r` < 5. It is
+  0.4-0.65 x when `fit_chi2r` > 5 (bright stars; most of the Barnard field). The errors are
+  about right or conservative. The scatter also contains the per-exposure WCS jitter.
+- Browser vs Python on the same cutouts (5 exposures, Barnard + Eps Indi B):
+  - Gaia position: < 0.1 mas. Predicted pixel: < 1e-4 px. Wavelength at the star: < 1e-5 um.
+  - Centroids: 0.01-0.03 px median, 0.1 px max (different noise weights and bad-pixel masks).
+  - The selection differs: different S/N definition, and the browser has the `bad_width` cut.

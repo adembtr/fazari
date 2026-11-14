@@ -123,9 +123,11 @@ function solve(A, b) {   // small dense Gauss-Jordan with partial pivoting
  * Fit the star near (x0, y0) in native pixels. img: Float32Array (w x h, row-major),
  * ok(i, j) -> bool tells which pixels may be used (not flagged, not saturated), sigma0 = noise
  * per pixel. The saturated core is excluded, so the symmetric model is pinned by the wings.
- * Returns {x, y, sigma, npix} or null.
+ * Returns {x, y, amp, sigma, bg, npix, chi2} or null. errors = true adds cov (2x2 position
+ * covariance, px^2) and ampErr: formal errors at the solution scaled by the reduced chi2
+ * (as blink.py fit_errors); left out if the normal matrix is singular.
  */
-export function gaussCentroid(img, w, h, ok, x0, y0, sigma0, half = 5) {
+export function gaussCentroid(img, w, h, ok, x0, y0, sigma0, half = 5, errors = false) {
   const ix = Math.round(x0), iy = Math.round(y0);
   const xs = [], ys = [], ds = [], ws = [];
   let nsat = 0, dmax = -Infinity;
@@ -147,9 +149,8 @@ export function gaussCentroid(img, w, h, ok, x0, y0, sigma0, half = 5) {
   const lo = [0, x0 - 2.5, y0 - 2.5, 0.25, -Infinity], hi = [Infinity, x0 + 2.5, y0 + 2.5, 3.0, Infinity];
   const resid = (q) => ds.map((d, k) => (gauss(q, xs[k], ys[k]) - d) * ws[k]);
   let r = resid(p), cost = r.reduce((s, v) => s + v * v, 0);
-  let lambda = 1e-3;
-  for (let it = 0; it < 100; it++) {
-    // numeric Jacobian
+  // numeric Jacobian (one column per parameter) and the normal matrix J^T J
+  const jacobian = (p, r) => {
     const J = [];
     for (let a = 0; a < 5; a++) {
       const h = a === 0 ? Math.max(1e-6, Math.abs(p[0]) * 1e-6) : a === 4 ? Math.max(1e-6, Math.abs(p[4]) * 1e-6) : 1e-6;
@@ -157,7 +158,13 @@ export function gaussCentroid(img, w, h, ok, x0, y0, sigma0, half = 5) {
       const rq = resid(q);
       J.push(rq.map((v, k) => (v - r[k]) / h));
     }
-    const JTJ = Array.from({ length: 5 }, (_, a) => Array.from({ length: 5 }, (_, b) => J[a].reduce((s, v, k) => s + v * J[b][k], 0)));
+    return J;
+  };
+  const normal = (J) => Array.from({ length: 5 }, (_, a) => Array.from({ length: 5 }, (_, b) => J[a].reduce((s, v, k) => s + v * J[b][k], 0)));
+  let lambda = 1e-3;
+  for (let it = 0; it < 100; it++) {
+    const J = jacobian(p, r);
+    const JTJ = normal(J);
     const JTr = J.map((col) => col.reduce((s, v, k) => s + v * r[k], 0));
     let improved = false;
     for (let tries = 0; tries < 10; tries++) {
@@ -179,5 +186,15 @@ export function gaussCentroid(img, w, h, ok, x0, y0, sigma0, half = 5) {
   }
   const atBound = [1, 2].some((a) => Math.abs(p[a] - lo[a]) < 1e-6 || Math.abs(p[a] - hi[a]) < 1e-6);
   if (atBound || !Number.isFinite(p[1]) || !Number.isFinite(p[2])) return null;
-  return { x: p[1], y: p[2], amp: p[0], sigma: p[3], bg: p[4], npix: n, chi2: cost / Math.max(n - 5, 1) };
+  const out = { x: p[1], y: p[2], amp: p[0], sigma: p[3], bg: p[4], npix: n, chi2: cost / Math.max(n - 5, 1) };
+  if (errors) {
+    const JTJ = normal(jacobian(p, r));
+    const col = (c) => solve(JTJ, [0, 1, 2, 3, 4].map((a) => (a === c ? 1 : 0)));   // column c of (J^T J)^-1
+    const c0 = col(0), c1 = col(1), c2 = col(2), s = out.chi2;
+    if (c0 && c1 && c2) {
+      out.ampErr = Math.sqrt(Math.max(c0[0] * s, 0));
+      out.cov = [[c1[1] * s, c1[2] * s], [c2[1] * s, c2[2] * s]];
+    }
+  }
+  return out;
 }

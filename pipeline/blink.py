@@ -230,9 +230,10 @@ def centroid_epsf(img, var, ok, x0, y0, psf, ovs=5, half=4):
     return float(best.x[1]), float(best.x[2]), float(2 * best.cost / max(m.sum() - 4, 1)), int(m.sum())
 
 
-def centroid(img, var, ok, x0, y0, half=5, nb=()):
+def centroid(img, var, ok, x0, y0, half=5, nb=(), full=False):
     """Fit the star in native pixels. The saturated core is NaN, so the fit uses the wings
-    (a symmetric model still pins the centre). Returns (x, y, sigma, npix) or None.
+    (a symmetric model still pins the centre). Returns (x, y, sigma, npix) or None; with
+    full=True a 5th element fit_errors() (position covariance, reduced chi2) is appended.
     nb: pixel positions of known field stars (Gaia DR3) near the box; each is fitted at its
     fixed position with the same width and a free flux, so that its light does not pull the
     wing fit (for Barnard's Star a G = 15 star 35" to the NE did exactly that)."""
@@ -266,7 +267,8 @@ def centroid(img, var, ok, x0, y0, half=5, nb=()):
         return None
     if not r.success or np.any(np.isclose(r.x[1:3], lo[1:3])) or np.any(np.isclose(r.x[1:3], hi[1:3])):
         return None
-    return float(r.x[1]), float(r.x[2]), float(r.x[3]), int(m.sum())
+    out = (float(r.x[1]), float(r.x[2]), float(r.x[3]), int(m.sum()))
+    return (out + (fit_errors(r, len(d)),)) if full else out
 
 
 # ---- forced ePSF photometry -------------------------------------------------------------
@@ -490,7 +492,7 @@ def read_exposure(path, t):
     k = int(np.argmin((epsf_tab["XCENTER"] - (x + det_off[0])) ** 2 + (epsf_tab["YCENTER"] - (y + det_off[1])) ** 2))
     good_ph = ~bad & ~sat & np.isfinite(clean) & np.isfinite(var) & (var > 0)
     info["_px"] = dict(clean=clean.astype(np.float32), var=np.where(good_ph, var, np.inf).astype(np.float32),
-                       good=good_ph, satnan=sat | ~np.isfinite(img), wcs=wcs, path=path, det_off=det_off,
+                       good=good_ph, satnan=sat | ~np.isfinite(img), wcs=wcs, swcs=swcs, path=path, det_off=det_off,
                        psf=prep_psf(np.asarray(epsf_tab["EPSF"][k], float)), ovs=epsf_ovs)
     return info, clean, sat.astype(float), wcs, nanmap
 
@@ -883,8 +885,9 @@ CAL_MAX_ERR = 0.08                  # cell offset error (arcsec) must be below t
 CAL_ROT_STARS = 12                  # >= this many distinct stars around the target: + rotation/scale
 
 
-def epsf_centroid(px, x0, y0):
-    """Free-position EPSF fit (flux, x, y, background) of an unsaturated star."""
+def epsf_centroid(px, x0, y0, full=False):
+    """Free-position EPSF fit (flux, x, y, background) of an unsaturated star. Returns (x, y);
+    with full=True (x, y, None, npix, fit_errors()) like centroid(full=True)."""
     st = stamp(px, x0, y0)
     if st is None:
         return None
@@ -900,6 +903,8 @@ def epsf_centroid(px, x0, y0):
         return None
     if not r.success or abs(r.x[1] - x0) > 1.9 or abs(r.x[2] - y0) > 1.9:
         return None
+    if full:
+        return float(r.x[1]), float(r.x[2]), None, int(g.sum()), fit_errors(r, int(g.sum()))
     return float(r.x[1]), float(r.x[2])
 
 
@@ -920,39 +925,62 @@ def reference_stars(gaia, t, ra_c, dec_c):
         dd = np.hypot(xy[:, 0] - xy[k, 0], xy[:, 1] - xy[k, 1])
         if np.sum(dd < CAL_ISOL_ARCSEC) > 1:
             continue
-        refs.append(dict(source_id=sid, ra=ra, dec=dec, epoch=2016.0, pmra=pmra, pmdec=pmdec, plx=plx, G=G))
+        refs.append(dict(source_id=sid, ra=ra, dec=dec, epoch=2016.0, pmra=pmra, pmdec=pmdec, plx=plx, G=G, ruwe=ruwe))
     return refs
 
 
-def star_residuals(i, refs, path):
+def star_residuals(i, refs, path, log=None):
     """Measured - Gaia offsets (east, north, arcsec) of the reference stars in one exposure,
-    with each star's lever arm (east, north offset from the target, degrees)."""
+    with each star's lever arm (east, north offset from the target, degrees).
+    log: optional list. One record per reference star that falls on the cutout is appended,
+    used or not, with the reason when not (field_stars.csv). The returned rows are the same."""
     px = i["_px"]
     wcs = px["wcs"]
     ny, nx = px["clean"].shape
     rows = []
     for s in refs:
         r, d = target_position(s, i["mjd"])
-        if offset_arcsec(r, d, i["ra_pred"], i["dec_pred"])[2] < CAL_TARGET_ARCSEC:
+        near = offset_arcsec(r, d, i["ra_pred"], i["dec_pred"])[2] < CAL_TARGET_ARCSEC
+        if near and log is None:
             continue
         x, y = (float(v) for v in wcs.all_world2pix(r, d, 0))
+        rec = {}                                     # filled only when logging
+        if log is not None:
+            if not (-0.5 <= x < nx - 0.5 and -0.5 <= y < ny - 0.5):
+                continue                             # not on this cutout
+            rec = dict(star=s, ra_gaia=r, dec_gaia=d, x_pred=x, y_pred=y, status="used",
+                       lever=offset_arcsec(i["ra_pred"], i["dec_pred"], r, d)[:2])
+            log.append(rec)
+        if near:
+            rec["status"] = "near_target"
+            continue
         if not (CAL_EDGE_PX <= x < nx - CAL_EDGE_PX and CAL_EDGE_PX <= y < ny - CAL_EDGE_PX):
+            rec["status"] = "edge"
             continue
         ix, iy = int(round(x)), int(round(y))
         if px["satnan"][iy - 2:iy + 3, ix - 2:ix + 3].any():
+            rec["status"] = "saturated_or_missing"
             continue
         q = forced_phot(px, x, y)
-        if not q or q["err"] <= 0 or q["flux"] < CAL_MIN_SNR * q["err"]:
+        rec["phot"] = q
+        if not q or q["err"] <= 0:
+            rec["status"] = "no_photometry"
+            continue
+        if q["flux"] < CAL_MIN_SNR * q["err"]:
+            rec["status"] = "low_snr"
             continue
         if path == "faint":
-            c = epsf_centroid(px, x, y)
+            c = epsf_centroid(px, x, y, full=log is not None)
         else:
-            c = centroid(px["clean"].astype(float), px["var"].astype(float), px["good"], x, y)
+            c = centroid(px["clean"].astype(float), px["var"].astype(float), px["good"], x, y, full=log is not None)
         if not c:
+            rec["status"] = "centroid_failed"
             continue
         rm, dm = (float(v) for v in wcs.all_pix2world(c[0], c[1], 0))
         e, n = offset_arcsec(r, d, rm, dm)[:2]
+        rec.update(fit=c, ra_meas=rm, dec_meas=dm, east=e, north=n)
         if math.hypot(e, n) > CAL_MATCH_ARCSEC:
+            rec["status"] = "mismatch"
             continue
         xe, xn = offset_arcsec(i["ra_pred"], i["dec_pred"], r, d)[:2]   # star position rel. to the target
         rows.append((e, n, xe / 3600, xn / 3600, s["source_id"]))       # lever arm in degrees
@@ -1003,7 +1031,8 @@ def fit_offsets(rows):
     # effective number of independent points is the number of DISTINCT stars
     neff = min(n, nd)
     return dict(east=float(p[0]), north=float(p[1]), err_east=sE / math.sqrt(neff), err_north=sN / math.sqrt(neff),
-                n=n, n_stars=nd, model=model, rms=[round(sE, 3), round(sN, 3)])
+                n=n, n_stars=nd, model=model, rms=[round(sE, 3), round(sN, 3)],
+                _use=use, _res=(rE, rN))         # per input row: kept by the clipping, residual (field_stars.csv)
 
 
 NB_FIT_GMAX = 17.0          # Gaia neighbours fitted in the bright-target wing fit: G < 17 ...
@@ -1059,15 +1088,24 @@ def field_calibration(t, name, used, path, ra_c, dec_c):
         print("  WARNING: no Gaia field stars (", e, "): positions stay on the SPHEREx WCS")
         return {"applied": False, "note": f"Gaia field stars unavailable: {e}"}
     refs = reference_stars(gaia, t, ra_c, dec_c)
-    pooled, per_exp = {}, []
+    export = field_stars_on()                      # per-star table field_stars.csv (no effect on the fit)
+    pooled, per_exp, pooled_recs = {}, [], {}
     for i in used:
-        rows = star_residuals(i, refs, path)
+        log = [] if export else None
+        rows = star_residuals(i, refs, path, log)
         i["calib_nstars"] = len(rows)
         pooled.setdefault((i["epoch"], i["detector"]), []).extend(rows)
+        if export:
+            i["_field_stars"] = log
+            pooled_recs.setdefault((i["epoch"], i["detector"]), []).extend(r for r in log if r["status"] == "used")
         f = fit_offsets(rows)
         if f:
             per_exp.append(((i["epoch"], i["detector"]), f))
     cells = {k: fit_offsets(v) for k, v in pooled.items()}
+    for k, recs in pooled_recs.items():            # clipping flag and residual of each star in its cell fit
+        if cells.get(k):
+            for rec, u, rE, rN in zip(recs, cells[k]["_use"], *cells[k]["_res"]):
+                rec.update(kept=bool(u), cres=(float(rE), float(rN)))
     good = {k: c for k, c in cells.items() if c and c["n"] >= CAL_MIN_MEAS
             and max(c["err_east"], c["err_north"]) <= CAL_MAX_ERR}
     summ = []
@@ -1115,10 +1153,129 @@ def field_calibration(t, name, used, path, ra_c, dec_c):
             i["ra_fit_wcs"], i["dec_fit_wcs"] = i["ra_fit"], i["dec_fit"]
             i["ra_fit"] = i["ra_fit"] - c["east"] / 3600 / cosd
             i["dec_fit"] = i["dec_fit"] - c["north"] / 3600
+    if export:
+        write_field_stars(name, used, path)
     return {"applied": True, "n_reference_stars": len(refs), "pooling": "season x detector",
             "n_exposures_calibrated": len(used) - nnone, "n_uncorrected": nnone,
             "centroid": "gauss" if path == "bright" else "epsf", "cells": summ,
             "reference": "pipeline/ASTROMETRY.md", "gaia_cache": f"site/data/{name}/gaia_field.json"}
+
+
+# ---- field_stars.csv: the field-star measurements, one row per reference star x exposure ----
+# Every reference star that falls on a cutout, measured or not ("status" says why not). Only an
+# export: nothing here feeds back into the calibration. Columns: pipeline/ASTROMETRY.md; the
+# browser engine (site/js/calib.js fieldStarTable) uses the same names.
+FIELD_STAR_COLUMNS = [
+    "source_id", "gaia_g", "gaia_bp_rp", "gaia_ruwe", "gaia_pmra", "gaia_pmdec", "gaia_parallax",
+    "file", "obs_id", "collection", "mjd", "season", "detector", "wavelength_um", "bin_um", "orient_deg",
+    "ra_gaia", "dec_gaia", "x_pred", "y_pred", "lever_east_arcsec", "lever_north_arcsec",
+    "x_meas", "y_meas", "ra_meas", "dec_meas", "east_arcsec", "north_arcsec", "east_err_arcsec", "north_err_arcsec",
+    "centroid_method", "psf_sigma_px", "fit_npix", "fit_chi2r", "flux_ujy", "flux_err_ujy", "snr", "flux_method",
+    "status", "cell_kept", "cell_resid_east_arcsec", "cell_resid_north_arcsec", "calib_east_arcsec", "calib_north_arcsec"]
+FIELD_STAR_DECIMALS = {"ra_gaia": 8, "dec_gaia": 8, "ra_meas": 8, "dec_meas": 8, "mjd": 6, "wavelength_um": 5,
+                       "bin_um": 1, "orient_deg": 3}          # all other floats: 4
+
+
+def field_stars_on():
+    """Env FAZARI_FIELD_STARS=1 / 0 forces the export on / off. Default: on when the products do
+    not go to the repo's site/data (local engine jobs, runs with FAZARI_OUT), off for the site."""
+    v = os.environ.get("FAZARI_FIELD_STARS", "").strip().lower()
+    if v:
+        return v not in ("0", "false", "no", "off")
+    return OUT.resolve() != (ROOT / "site" / "data").resolve()
+
+
+def fit_errors(r, n, idx=(1, 2)):
+    """Covariance (px^2) of the position parameters idx of a scipy least_squares fit: formal
+    errors from the Jacobian at the solution, scaled by the reduced chi2 (curve_fit's default).
+    Returns dict(cov = 2x2 array or None if singular, chi2r)."""
+    chi2r = 2.0 * float(r.cost) / max(n - len(r.x), 1)
+    try:
+        cov = np.linalg.inv(r.jac.T @ r.jac)[np.ix_(idx, idx)] * chi2r
+    except (np.linalg.LinAlgError, ValueError):
+        cov = None
+    return {"cov": cov, "chi2r": chi2r}
+
+
+def field_star_rows(i, path):
+    """field_stars.csv rows of one exposure, from its star_residuals() log (i["_field_stars"])."""
+    recs = i.get("_field_stars") or []
+    if not recs:
+        return []
+    px = i["_px"]
+    swcs = px.get("swcs")
+    if swcs is None:                              # read_exposure() without it: open the file once
+        try:
+            with fits.open(px["path"], memmap=False) as h:
+                swcs = WCS(h["IMAGE"].header, fobj=h, key="W")
+                swcs.sip = None
+        except Exception:
+            swcs = None
+    lam = [None] * len(recs)                      # wavelength at the star (the LVF changes across the cutout)
+    if swcs is not None:
+        try:
+            lam = swcs.pixel_to_world_values(np.array([r["x_pred"] for r in recs]),
+                                             np.array([r["y_pred"] for r in recs]))[0]
+        except Exception:
+            pass
+    J = np.array(i["jac_pred"])                   # d(east, north)/d(x, y), arcsec per native px
+    base = {"file": i["file"], "obs_id": i.get("obs_id", ""), "collection": i.get("collection", ""),
+            "mjd": i["mjd"], "season": i.get("epoch", ""), "detector": i["detector"], "bin_um": i.get("bin_um"),
+            "orient_deg": i.get("orient_deg"), "calib_east_arcsec": i.get("calib_east_arcsec"),
+            "calib_north_arcsec": i.get("calib_north_arcsec"),
+            "centroid_method": "epsf" if path == "faint" else "gauss", "flux_method": "epsf_forced"}
+    out = []
+    for k, rec in enumerate(recs):
+        s = rec["star"]
+        row = dict(base, source_id=s["source_id"], gaia_g=s["G"], gaia_bp_rp=s.get("bp_rp"), gaia_ruwe=s.get("ruwe"),
+                   gaia_pmra=s["pmra"], gaia_pmdec=s["pmdec"], gaia_parallax=s["plx"], wavelength_um=lam[k],
+                   ra_gaia=rec["ra_gaia"], dec_gaia=rec["dec_gaia"], x_pred=rec["x_pred"], y_pred=rec["y_pred"],
+                   lever_east_arcsec=rec["lever"][0], lever_north_arcsec=rec["lever"][1], status=rec["status"])
+        q = rec.get("phot")
+        if q:
+            row.update(flux_ujy=q["flux"] * PIXEL_UJY, flux_err_ujy=q["err"] * PIXEL_UJY,
+                       snr=q["flux"] / q["err"] if q["err"] > 0 else None)
+        c = rec.get("fit")
+        if c:
+            row.update(x_meas=c[0], y_meas=c[1], ra_meas=rec["ra_meas"], dec_meas=rec["dec_meas"],
+                       east_arcsec=rec["east"], north_arcsec=rec["north"], psf_sigma_px=c[2], fit_npix=c[3],
+                       fit_chi2r=c[4]["chi2r"])
+            if c[4]["cov"] is not None:
+                ce = J @ c[4]["cov"] @ J.T
+                row.update(east_err_arcsec=math.sqrt(ce[0, 0]) if ce[0, 0] >= 0 else None,
+                           north_err_arcsec=math.sqrt(ce[1, 1]) if ce[1, 1] >= 0 else None)
+        if "kept" in rec:
+            row.update(cell_kept=rec["kept"], cell_resid_east_arcsec=rec["cres"][0], cell_resid_north_arcsec=rec["cres"][1])
+        out.append(row)
+    return out
+
+
+def write_field_stars(name, used, path):
+    """<out>/<target>/field_stars.csv from the field-star logs of the exposures (then dropped)."""
+    import time
+    t0 = time.perf_counter()
+    rows = []
+    for i in sorted(used, key=lambda i: (i["mjd"], i["detector"])):
+        rows.extend(field_star_rows(i, path))
+        i.pop("_field_stars", None)
+
+    def fmt(k, v):
+        if v is None:
+            return ""
+        if isinstance(v, (bool, np.bool_)):
+            return int(v)
+        if isinstance(v, (float, np.floating)):
+            return f"{v:.{FIELD_STAR_DECIMALS.get(k, 4)}f}" if np.isfinite(v) else ""
+        return v
+    dest = OUT / name / "field_stars.csv"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with open(dest, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(FIELD_STAR_COLUMNS)
+        for r in rows:
+            w.writerow([fmt(k, r.get(k)) for k in FIELD_STAR_COLUMNS])
+    print(f"  field_stars.csv: {len(rows)} rows ({sum(r['status'] == 'used' for r in rows)} used) of "
+          f"{len({r['source_id'] for r in rows})} stars in {len(used)} exposures ({time.perf_counter() - t0:.1f} s)")
 
 
 # ---- detection check ---------------------------------------------------------------------
