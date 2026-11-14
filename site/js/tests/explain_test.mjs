@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { plainSentence } from "../explain.js";
-import { explainResult } from "../explain.js";
+import { explainResult, answerGuard } from "../explain.js";
 import { gridOf } from "../marking.js";
 
 const SITE = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -140,6 +140,47 @@ for (const lg of ["en", "tr"]) {
   globalThis.__fzI18n = { lang: () => "en" };
   check(/^Barnard's Star moves 10\.4″ north/.test((plainSentence(bm) || {}).text || ""), "global en: not English");
   delete globalThis.__fzI18n;
+}
+
+// answer guards (PROGRESSIVE CONTRACT v1.2, same as job_worker.py answer_from_meta / progressive.js answerFrom):
+// one synthetic meta per guard; the sentence must say why, in both languages, and never state the motion
+{
+  const plain = { ...base, target: null, gaia: { label: "requested position" } };
+  const bins = (us) => us.map((u) => ({ wavelength_um: u, frames: [] }));
+  const P = (epoch, mjd, ra, dec, err, extra = {}) => ({ epoch, mjd, ra, dec, err_east_arcsec: err, err_north_arcsec: err, bias_corrected: true, ...extra });
+  const pos3 = (dN, err) => [P("2025-08", 60900, 100, 10, err), P("2026-03", 61100, 100, 10 + dN[1] / 3600, err), P("2026-08", 61265, 100, 10 + dN[2] / 3600, err)];
+  const G = {
+    degenerate: { ...plain, wavelength_bins: bins([4.6]), measured: { status: "detected", shift_arcsec: 0, shift_err_arcsec: 0, dt_years: 1.0, pa_deg: 0,
+      from_epoch: "2025-08", to_epoch: "2026-08", positions: pos3([0, 0, 0], 0) } },
+    saturated: { ...plain, wavelength_bins: bins([2.0]), measured: { status: "detected", shift_arcsec: 2.8, shift_err_arcsec: 0.3, dt_years: 1.0, pa_deg: 100,
+      from_epoch: "2025-08", to_epoch: "2026-08", positions: [P("2025-08", 60900, 100, 10, 0.2, { saturated: true, bias_corrected: false }), P("2026-08", 61265, 100, 10 + 2.8 / 3600, 0.2)] } },
+    implausible_speed: { ...plain, wavelength_bins: bins([1.0, 2.0]), measured: { status: "detected", shift_arcsec: 18.05, shift_err_arcsec: 1.2, dt_years: 0.99, pa_deg: 212,
+      from_epoch: "2025-08", to_epoch: "2026-08", positions: [P("2025-08", 60900, 100, 10, 0.4), P("2026-08", 61265, 100, 10 + 18 / 3600, 0.4)] } },
+    inconsistent: { ...plain, wavelength_bins: bins([2.0, 3.0]), measured: { status: "detected", shift_arcsec: 3.0, shift_err_arcsec: 0.2, dt_years: 1.0, pa_deg: 0,
+      from_epoch: "2025-08", to_epoch: "2026-08", positions: pos3([0, 9, 3], 0.1) } },
+    disagrees_with_catalogue: { ...base, wavelength_bins: bins([1.0]), measured: { status: "detected", shift_arcsec: 2.4, shift_err_arcsec: 0.15, dt_years: 1.0, pa_deg: 90,
+      gaia_predicted_arcsec: 10.2, gaia_pa_deg: 356, from_epoch: "2025-08", to_epoch: "2026-08",
+      positions: [P("2025-08", 60900, 100, 10, 0.1), P("2026-08", 61265, 100.0007, 10, 0.1)] } },
+    large_error: { ...plain, wavelength_bins: bins([4.6]), measured: { status: "detected", shift_arcsec: 2.83, shift_err_arcsec: 1.3, dt_years: 1.02, pa_deg: 102,
+      from_epoch: "2025-05", to_epoch: "2026-05", positions: [P("2025-05", 60800, 100, 10, 0.9), P("2026-05", 61172, 100, 10 + 2.8 / 3600, 0.9)] } },
+  };
+  const WHY = { degenerate: [/No error bar could be measured in 4\.6 µm/, /hata payı ölçülemedi/],
+    saturated: [/saturated \(too bright\) in 2 µm/, /doymuş/], implausible_speed: [/faster than any known star/, /bilinen her yıldızdan hızlı/],
+    inconsistent: [/do not line up on one steady motion/, /tek bir düzgün harekete oturmuyor/],
+    disagrees_with_catalogue: [/disagrees with the catalogue and the measurement is weak/, /katalogla uyuşmuyor/],
+    large_error: [/The error bar \(2\.77 ± 1\.27″ per year, 4\.6 µm\) is too large to tell whether it moves/, /çok büyük/] };
+  for (const [k, m] of Object.entries(G)) {
+    check(answerGuard(m) === k, `guard ${k}: got ${answerGuard(m)}`);
+    for (const [i, lg] of [[0, "en"], [1, "tr"]]) {
+      const s = plainSentence(m, { lang: lg });
+      console.log(`(guard, ${lg}) ${k}: ${s && s.text}`);
+      check(s && WHY[k][i].test(s.text), `guard ${k} (${lg}): "${s && s.text}" !~ ${WHY[k][i]}`);
+      check(s && !/\b(moves|moved) (about )?\d|did not move:|No motion measured|kayıyor|kaydı|hareket etmedi|candidate|aday|discover|keşif/i.test(s.text), `guard ${k} (${lg}) states a motion: "${s && s.text}"`);
+      if (lg === "tr") commaOnly(`guard ${k}`, s && s.text);
+    }
+  }
+  // the five prepared results trip no guard
+  for (const t of Object.keys(EXPECT)) check(answerGuard(JSON.parse(readFileSync(`${SITE}/data/${t}/meta.json`, "utf8"))) === null, `${t}: guard ${answerGuard(JSON.parse(readFileSync(`${SITE}/data/${t}/meta.json`, "utf8")))}`);
 }
 
 const url = process.argv[2];

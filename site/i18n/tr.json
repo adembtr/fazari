@@ -1720,5 +1720,10 @@
  "pg.ans.no_measurement": "Hareket ölçülemedi.",
  "pg.bb.skyRun": "Dalga boyları tek tek yükleniyor; her yeni dalga boyu cevabı günceller.",
  "pg.bb.based0": "Henüz dalga boyu yüklenmedi ({m} dalga boyundan 0).",
- "pg.bb.retryWhy": "{um} µm yüklenemiyor: {err}"
+ "pg.bb.retryWhy": "{um} µm yüklenemiyor: {err}",
+ "bm.fast.away": "Gaia'ya göre yılda {pm}″ kayan bir yıldız şimdi bu noktadan {sep}″ uzakta: şimdi olduğu yere git.",
+ "bm.fast.here": "Gaia'ya göre yılda {pm}″ kayan bir yıldız şimdi bu noktada; Gaia kataloğunda (2016) {sep}″ uzaktaydı.",
+ "bm.target.near": "Hazır hedeflerden {name} bu noktanın yakınından geçiyor: hazır sonucuna bak.",
+ "bm.centre.none": "Merkezde kaynak yok: burada her sezonda aynı olan bir yıldız yok, bu yüzden hareket verilmiyor.",
+ "bm.catalogue.pending": "Yıldız kataloğu gelmeden ölçüldü: henüz kalibrasyon ve katalog tahmini yok. Sonraki dalga boyları katalogla ölçülüyor."
 }

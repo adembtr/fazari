@@ -15,6 +15,8 @@ import { gaiaStars, tychoStars } from "./gaia.js";
 import { CALIB, prepareStars, calibrateExposure, calibrateSaturated, poolCells, fieldStarTable } from "./calib.js";
 import { propagate, offsetArcsec, mjdToDate, mjdToMonth, median, percentile, gaussCentroid, jyearToMjd } from "./astro.js";
 import { flagStats } from "./ch_flags.js";   // challenge item: flags of the box (frame information)
+import { checkFit, sameSource } from "./centre_check.js";   // bm: free point, same source in every season
+import { SAT, ownCore, symmetryCentre, jointBias } from "./satfit.js";   // bm: free point, saturated star
 
 export const CONFIG = {
   pixArcsec: 3.0,          // output grid (half the native 6.15" pixel)
@@ -34,6 +36,8 @@ export const CONFIG = {
   satCal: true,            // saturated target: calibrate with saturated Tycho-2 stars
   satMaskMatch: false,
   satMinRefs: 10,          // saturated reference stars per detector for a bias estimate
+  uncalWcsArcsec: 0.2,     // bm: plain coordinate: error added (per axis) to a season without a field-star correction
+  gaiaWaitMs: 3000,        // bm: an exposure waits at most this long (after the first wait) for the Gaia field stars
   // FLAGS: masked (set to NaN). SOURCE and OUTLIER are NOT masked (they mark real stars).
   badFlags: ["TRANSIENT", "SUR_ERROR", "NONFUNC", "HOT", "COLD", "MISSING_DATA"],
   // saturated star core: drawn white (as blink.py), excluded from the centroid fit
@@ -112,13 +116,34 @@ export class SkySession {
     this.headerChecks = 0;
   }
 
-  /** Promise of the Gaia DR3 field stars ({ok, nGaia, cal}); the query starts on first use. */
+  /** Promise of the Gaia DR3 field stars ({ok, nGaia, cal}); the query starts on first use.
+   * bm: whoever waits for it waits at most cfg.gaiaWaitMs after the first wait: then it resolves with
+   * {ok: false, pending: true, cal: []} and the exposure is measured on the SPHEREx WCS (marked
+   * calibField.reason "catalogue_pending"); exposures read after the rows arrive are calibrated.
+   * this.catalogueState: "loaded" | "pending" | "unavailable" (query failed: an outage, not "no star"). */
   get calStars() {
+    this._startCalStars();
+    if (this._calDone || !this.cfg.calibrate) return this._calStars;
+    this._calWait0 ??= Date.now();
+    const left = this.cfg.gaiaWaitMs - (Date.now() - this._calWait0);
+    const pending = { ok: false, pending: true, error: "catalogue_pending", cal: [] };
+    if (left <= 0) return Promise.resolve(pending);
+    return Promise.race([this._calStars, new Promise((res) => setTimeout(() => res(pending), left))]);
+  }
+
+  _startCalStars() {   // bm: starts the Gaia query without waiting for it
     this._calStars ||= !this.cfg.calibrate ? Promise.resolve(null)
       : gaiaStars(this.ra0, this.dec0, CALIB.maxFieldRadius + 0.01, { gmax: CALIB.gmaxQuery, signal: this.signal })
         .then((stars) => ({ ok: true, nGaia: stars.length, cal: prepareStars(stars, this.ra0, this.dec0) }))
-        .catch((e) => ({ ok: false, error: e.message, cal: [] }));
+        .catch((e) => ({ ok: false, error: e.message, cal: [] }))
+        .then((v) => { this._calDone = v; this.catalogueAt = Date.now(); return v; });
     return this._calStars;
+  }
+
+  /** bm: "loaded" | "pending" | "unavailable" | null (calibration off). */
+  get catalogueState() {
+    if (!this.cfg.calibrate) return null;
+    return !this._calDone ? "pending" : this._calDone.ok ? "loaded" : "unavailable";
   }
 
   /** Target position at `mjd` (with parallax), or the fixed point. */
@@ -199,12 +224,37 @@ export class SkySession {
       }
       if (ns) { gx = sx / ns; gy = sy / ns; }
     }
-    const fit = gaussCentroid(data, W, H, (i, j) => !sat[j * W + i], gx, gy, sigma0);
+    // bm: plain coordinate on a very bright star (big saturated core): symmetry centre of the wings (satfit.js)
+    const core = !this.target ? ownCore(sat, W, H, gx, gy) : null;
+    let big = !!(core && core.n >= SAT.bigCorePx);
+    if (big) { gx = core.cx; gy = core.cy; ex.core = { n: core.n, r: +core.r.toFixed(2) }; }
+    let fit = big ? symmetryCentre(data, sat, W, H, core, sigma0) : gaussCentroid(data, W, H, (i, j) => !sat[j * W + i], gx, gy, sigma0);
+    // bm: the Gaussian stuck at its start on a saturated core (its 0.6 px start width sees none of the wings)
+    if (!this.target && !big && core && core.n >= SAT.midCorePx && (!fit || (Math.abs(fit.x - gx) < 1e-6 && Math.abs(fit.y - gy) < 1e-6))) {
+      const s = symmetryCentre(data, sat, W, H, core, sigma0);
+      if (s) { fit = s; big = true; gx = core.cx; gy = core.cy; ex.core = { n: core.n, r: +core.r.toFixed(2), fallback: true }; }
+    }
+    // bm: plain coordinate: the fit counts only if it is a real source at the point (centre_check.js)
+    if (!this.target) {
+      ex.sigma0 = sigma0;
+      ex.centre = checkFit(fit, { start: [gx, gy], point: [ex.x, ex.y - y0], sigma0, sat, W, H });
+      if (fit && !ex.centre.ok) { ex.fitRejected = { x: fit.x, y: fit.y + y0, why: ex.centre.why }; fit = null; }
+    }
     if (fit) {
       ex.x_fit = fit.x; ex.y_fit = fit.y + y0;
       [ex.ra_fit, ex.dec_fit] = wcs.pixToSky(ex.x_fit, ex.y_fit);
       ex.fit = fit;
-      if (calibrate) await this.calibrate(ex, { data, sat, W, H, y0, wcs, sigma0, gx, gy });
+      // bm: a very bright centre star's glow fills the noise box around it: field stars get the noise of the
+      // whole region instead (else every one of them fails the S/N test)
+      let sigmaField = null;
+      if (big) {
+        const v = [];
+        for (let k = 0; k < W * H; k += 7) if (Number.isFinite(data[k]) && !sat[k]) v.push(data[k]);
+        const m = median(v);
+        sigmaField = 1.4826 * median(v.map((a) => Math.abs(a - m))) || null;
+        if (sigmaField && sigmaField >= sigma0) sigmaField = null;
+      }
+      if (calibrate) await this.calibrate(ex, { data, sat, W, H, y0, wcs, sigma0, gx, gy, sigmaField });
     }
     // bilinear reprojection (NaN if any neighbour is NaN, like reproject_interp order=1)
     const out = new Float32Array(N), satOut = new Uint8Array(N);
@@ -233,7 +283,7 @@ export class SkySession {
   /** Relative astrometry for one exposure (calib.js). The target's pixels that the fit could not
    * use (saturated core) decide the method: a saturated target is calibrated with saturated
    * catalogue stars in the same rows (same bias), an unsaturated one with Gaia field stars. */
-  async calibrate(ex, { data, sat, W, H, y0, wcs, sigma0, gx, gy }) {
+  async calibrate(ex, { data, sat, W, H, y0, wcs, sigma0, gx, gy, sigmaField = null }) {
     let nmask = 0, ncore = 0;
     const ci = Math.round(gx), cj = Math.round(gy);
     for (let j = cj - 5; j <= cj + 5; j++) for (let i = ci - 5; i <= ci + 5; i++) {
@@ -244,14 +294,21 @@ export class SkySession {
     }
     ex.maskPx = nmask;
     ex.saturated = ncore > 0;
+    // bm: plain coordinate: a lone flagged pixel is not a saturated core (needs a blob of >= 4 px)
+    if (!this.target && ex.saturated) { const oc = ownCore(sat, W, H, gx, gy); if (!oc || oc.n < 4) ex.saturated = false; }
     const target = [ex.ra_fit, ex.dec_fit];
     let sc = null;
     if (ex.saturated && this.cfg.satCal) {
       if (!this.brightStars) {
         this.brightStars = tychoStars(this.ra0, this.dec0, this.cfg.brightRadius, this.cfg.brightVmax, { signal: this.signal })
-          .catch((e) => ({ error: e.message }));
+          .catch((e) => ({ error: e.message }))
+          .then((v) => (this._brightDone = v));   // bm
       }
-      const bright = await this.brightStars;
+      // bm: same limit as the Gaia field stars: wait at most cfg.gaiaWaitMs after the first wait
+      this._calWait0 ??= Date.now();
+      const leftB = this.cfg.gaiaWaitMs - (Date.now() - this._calWait0);
+      const bright = this._brightDone || (leftB <= 0 ? { error: "catalogue_pending", pending: true }
+        : await Promise.race([this.brightStars, new Promise((res) => setTimeout(() => res({ error: "catalogue_pending", pending: true }), leftB))]));
       sc = Array.isArray(bright)
         ? calibrateSaturated({ bright, data, sat, W, H, y0, wcs, mjd: ex.mjd, sigma0, target, targetMask: this.cfg.satMaskMatch ? nmask : 0 })
         : { ok: false, reason: bright.error };
@@ -259,8 +316,9 @@ export class SkySession {
       delete sc.pts;
     }
     const field = await this.calStars;          // getter: starts the Gaia query on first use
+    ex.catalogue = !field ? null : field.ok ? "loaded" : field.pending ? "pending" : "unavailable";   // bm
     const fc = field && field.cal.length
-      ? calibrateExposure({ cal: field.cal, data, sat, W, H, y0, wcs, mjd: ex.mjd, target, sigma0, file: ex.f })
+      ? calibrateExposure({ cal: field.cal, data, sat, W, H, y0, wcs, mjd: ex.mjd, target, sigma0: sigmaField || sigma0, file: ex.f })   // bm: sigmaField
       : { ok: false, reason: field && !field.ok ? field.error : "no Gaia stars" };
     const cosd = Math.cos(ex.dec_fit * Math.PI / 180);
     const apply = (c) => (c && c.ok ? [ex.ra_fit - c.corrE / 3600 / cosd, ex.dec_fit - c.corrN / 3600] : null);
@@ -281,6 +339,7 @@ export class SkySession {
     if (this.results[um]) return this.results[um];
     const bin = this.bins.find((b) => b.um === um);
     if (!bin || !bin.available) throw new Error(`no SPHEREx images for ${um} um here`);
+    this._startCalStars();   // bm: the Gaia query runs while the first images download
     const perSeason = await this._collect(bin, um, this.cfg.cap, {}, onProgress);
     for (const { season, exposures } of perSeason) {
       for (const ex of exposures) { ex.bin = um; ex.season = season.label; }
@@ -488,21 +547,49 @@ export class SkySession {
    * Uses the Gaia-calibrated positions (calib.js) where an exposure could be calibrated;
    * a season with no calibrated exposure falls back to the raw centroids ("uncalibrated"). */
   astrometry({ calibrated = true, mode = null } = {}) {
-    const ex = this.exposures.filter((e) => e.ra_fit != null);
+    let ex = this.exposures.filter((e) => e.ra_fit != null);
+    // bm: plain coordinate: only seasons where the centre source is the same source (centre_check.js)
+    const centre = this.target ? null : sameSource(ex, { nAll: this.exposures.length });
+    if (centre) ex = ex.filter((e) => centre.use.has(e));
     const bySeason = new Map();
     for (const e of ex) { if (!bySeason.has(e.season)) bySeason.set(e.season, []); bySeason.get(e.season).push(e); }
     const cosd = Math.cos(this.dec0 * Math.PI / 180);
     const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
     const cells = this.fieldCells();
     const satBias = this.saturatedBias(cells);
+    // bm: plain coordinate, saturated centre: per-detector bias from the joint fit over both orientations
+    // (satfit.js jointBias = blink.py joint_fit) for each detector without a Tycho-2 estimate
+    // A symmetry centre (satfit.js, very bright star) is a different estimator from the Gaussian the Tycho-2
+    // reference stars are measured with: its bias always comes from the joint fit (key "<det>|sym").
+    let joint = null;
+    const symOf = (e) => !!(e.fit && e.fit.method === "symmetry");
+    const biasKey = (e) => (symOf(e) ? `${e.detector}|sym` : String(e.detector));
+    for (const e of ex) e.jointClipped = false;
+    if (!this.target) {
+      const cd = Math.cos(this.dec0 * Math.PI / 180);
+      const js = ex.filter((e) => e.saturated && e.jac && (symOf(e) || !(satBias[e.detector] && satBias[e.detector].ok))).map((e) => {
+        const cc = cells.get(`${e.season}|${e.detector}`), f = cc && cc.ok ? [cc.corrE, cc.corrN] : [0, 0];
+        return { e, mjd: e.mjd, detector: biasKey(e), orient: e.orient, jac: e.jac,
+                 E: ((e.ra_fit - this.ra0 + 540) % 360 - 180) * cd * 3600 - f[0], N: (e.dec_fit - this.dec0) * 3600 - f[1] };
+      });
+      if (js.length) {
+        joint = jointBias(js);
+        if (joint.ok) {
+          for (const [d, b] of Object.entries(joint.bias)) satBias[d] = b;
+          js.forEach((j, k) => { if (!joint.use[k] && joint.bias[j.detector]) j.e.jointClipped = true; });
+        }
+      }
+    }
     for (const e of ex) {
       const cc = cells.get(`${e.season}|${e.detector}`);
       e.cell = cc || null;
       const f = cc && cc.ok ? [cc.corrE, cc.corrN] : null;
       e.posCell = f ? [e.ra_fit - f[0] / 3600 / Math.cos(e.dec_fit * Math.PI / 180), e.dec_fit - f[1] / 3600] : null;
-      const b = e.saturated ? satBias[e.detector] : null;
+      const b = e.saturated ? satBias[biasKey(e)] : null;
+      e.satB = b && b.ok ? b : null;                        // bm: the bias used (its error enters the season error)
       e.posPool = null;
       if (e.saturated && !(b && b.ok)) continue;            // saturated, no bias estimate: uncalibrated
+      if (e.jointClipped) continue;                         // bm: clipped by the joint fit (blink.py drops it too)
       if (!f && !b) continue;
       const fe = f || [0, 0];
       const be = b ? [e.jac[0][0] * b.dx + e.jac[0][1] * b.dy, e.jac[1][0] * b.dx + e.jac[1][1] * b.dy] : [0, 0];
@@ -542,9 +629,9 @@ export class SkySession {
       // systematic part of the error: the saturated-star bias estimate, common to a detector
       let sysE = 0, sysN = 0;
       if (useCal && satBias) {
-        const dets = keep.filter((e) => e.saturated && satBias[e.detector] && satBias[e.detector].ok);
+        const dets = keep.filter((e) => e.saturated && e.satB);            // bm: e.satB (Tycho-2 or joint fit)
         if (dets.length) {
-          const pe = dets.map((e) => { const b = satBias[e.detector]; return [Math.hypot(e.jac[0][0] * b.errX, e.jac[0][1] * b.errY), Math.hypot(e.jac[1][0] * b.errX, e.jac[1][1] * b.errY)]; });
+          const pe = dets.map((e) => { const b = e.satB; return [Math.hypot(e.jac[0][0] * b.errX, e.jac[0][1] * b.errY), Math.hypot(e.jac[1][0] * b.errX, e.jac[1][1] * b.errY)]; });
           sysE = mean(pe.map((p) => p[0])) / Math.sqrt(new Set(dets.map((e) => e.detector)).size);
           sysN = mean(pe.map((p) => p[1])) / Math.sqrt(new Set(dets.map((e) => e.detector)).size);
         }
@@ -556,6 +643,9 @@ export class SkySession {
         sysN = Math.hypot(sysN, mean(cl.map((c) => c.errN)) / Math.sqrt(cl.length));
       }
       P.errEast = Math.hypot(P.errEast, sysE); P.errNorth = Math.hypot(P.errNorth, sysN);
+      // bm: plain coordinate, season without a field-star correction: the raw WCS error (cells measured
+      // tonight: rms 0.11" E / 0.06" N, largest 0.21") is part of its error
+      if (!this.target && !useCal) { P.errEast = Math.hypot(P.errEast, this.cfg.uncalWcsArcsec); P.errNorth = Math.hypot(P.errNorth, this.cfg.uncalWcsArcsec); }
       positions.push({ season: s.label, ra: P.ra, dec: P.dec, mjd, date: mjdToDate(mjd), n: keep.length, nRejected: P.nRejected,
                        errEast: P.errEast, errNorth: P.errNorth, orient: (ori + 360) % 360, gaia,
                        calibrated: useCal, nExposures: list.length, nCalibrated: cal.length,
@@ -582,6 +672,15 @@ export class SkySession {
     }
     const calEx = ex.filter((e) => e.posPool && e.cell && e.cell.ok);
     return { positions, pairs, nFits: ex.length, nExposures: this.exposures.length,
+             centre: centre ? { status: centre.status, seasons: centre.seasons, dropped: centre.dropped, nFits: centre.nFits,
+                                nRejectedFits: this.exposures.filter((e) => e.fitRejected).length } : null,   // bm: free point only
+             jointFit: joint ? { ok: joint.ok, reason: joint.reason, dets: joint.dets || [], rms: joint.rms, nUsed: joint.nUsed,   // bm
+                                 nClipped: joint.nClipped, pm_mas_yr: joint.pm ? joint.pm.map((v) => v * 1000) : null,
+                                 pm_err_mas_yr: joint.pmErr ? joint.pmErr.map((v) => v * 1000) : null } : null,
+             // bm: v1.3 "catalogue": "pending" also when the rows came, but a season measured before them is uncalibrated
+             catalogue: this.catalogueState === "loaded" && this.exposures.some((e) => e.catalogue === "pending") && positions.some((p) => !p.calibrated)
+               ? "pending" : this.catalogueState,
+             catalogueExposures: ["loaded", "pending", "unavailable"].reduce((o, k) => ({ ...o, [k]: this.exposures.filter((e) => e.catalogue === k).length }), {}),
              fieldStars: fieldStarTable(this.exposures, cells),   // per star x exposure, columns of field_stars.csv
              calibration: { nCalibrated: calEx.length, nFits: ex.length,
                             stars: calEx.length ? median(calEx.map((e) => e.cell.nStars)) : 0,

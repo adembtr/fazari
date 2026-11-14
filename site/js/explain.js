@@ -125,6 +125,68 @@ function subject(meta) {
 }
 const angDiff = (a, b) => Math.abs((((a - b) % 360) + 540) % 360 - 180);
 
+// ---- answer guards (PROGRESSIVE CONTRACT v1.2; same rules as local/job_worker.py answer_from_meta and
+// js/progressive.js answerFrom): a measured shift that must not be stated as a motion. tarayici_olcum.
+export const GUARD = { maxSpeed: 12, maxNotMovingErr: 1 };   // "/yr: fastest known star 10.4; error bar of "not moving"
+/** Why the shift in meta.measured must not be stated (null = it can be): "degenerate" | "saturated" |
+ *  "implausible_speed" | "inconsistent" | "disagrees_with_catalogue" | "large_error". */
+export function answerGuard(meta) {
+  const ms = (meta && meta.measured) || {};
+  if (!ok(ms.shift_arcsec)) return null;
+  const s = +ms.shift_arcsec, e = ok(ms.shift_err_arcsec) && +ms.shift_err_arcsec > 0 ? +ms.shift_err_arcsec : null;
+  const eU = e ?? Math.max(0.1, 0.05 * s), dt = ok(ms.dt_years) && +ms.dt_years > 0 ? +ms.dt_years : null;
+  const g = (meta && meta.gaia) || {};
+  const p = (+g.pmra_mas_yr || +g.pmdec_mas_yr) && ok(ms.gaia_predicted_arcsec) ? +ms.gaia_predicted_arcsec : null;
+  const sig = s > Math.max(3 * eU, 0.2), psig = p != null && p > Math.max(3 * eU, 0.2);
+  if (psig && !sig) return null;                                     // "too uncertain" already (no motion claimed)
+  const notMoving = !sig && !psig;
+  const pos = (ms.positions || []).filter((q) => ok(q.mjd));
+  if (pos.length && pos.every((q) => !(+q.err_east_arcsec || +q.err_north_arcsec))) return "degenerate";
+  // saturated (browser-made results): a season of the headline pair is saturated with no bias-corrected position
+  const pair = [ms.from_epoch, ms.to_epoch];
+  if (pos.some((q) => pair.includes(q.epoch) && q.saturated === true && (q.bias_corrected === false || q.calibrated === false))) return "saturated";
+  if (dt && s / dt > GUARD.maxSpeed) return "implausible_speed";
+  if (pos.length >= 3) {                                             // straight-line motion through every season
+    const t = pos.map((q) => +q.mjd), c = Math.cos(+pos[0].dec * Math.PI / 180);
+    const E = pos.map((q) => (q.ra - pos[0].ra) * c * 3600), N = pos.map((q) => (q.dec - pos[0].dec) * 3600);
+    const mt = t.reduce((a, b) => a + b, 0) / t.length, sxx = t.reduce((a, v) => a + (v - mt) ** 2, 0);
+    const res = (y) => { const my = y.reduce((a, b) => a + b, 0) / y.length, b = sxx > 0 ? t.reduce((a, v, k) => a + (v - mt) * (y[k] - my), 0) / sxx : 0;
+      return t.map((v, k) => y[k] - (my + b * (v - mt))); };
+    const rE = res(E), rN = res(N);
+    if (pos.some((q, k) => Math.hypot(rE[k], rN[k]) > Math.max(4 * Math.hypot(+q.err_east_arcsec || 0, +q.err_north_arcsec || 0), 1.5))) return "inconsistent";
+  }
+  if (notMoving && dt && eU / dt > GUARD.maxNotMovingErr) return "large_error";
+  const bins = new Set(((meta && meta.wavelength_bins) || []).map((b) => b.wavelength_um));
+  const poor = bins.size < 2 || !pos.every((q) => q.bias_corrected);
+  if (p != null && !notMoving && Math.abs(s - p) > 3 * eU && poor) return "disagrees_with_catalogue";
+  return null;
+}
+/** The contract's sentence for a guarded result (text_en / text_tr; Turkish with decimal commas). */
+function guardSentence(reason, meta, L) {
+  const ms = meta.measured, s = +ms.shift_arcsec, dt = ok(ms.dt_years) && +ms.dt_years > 0 ? +ms.dt_years : null;
+  const e = ok(ms.shift_err_arcsec) && +ms.shift_err_arcsec > 0 ? +ms.shift_err_arcsec : null;
+  const f = (v) => (L === "tr" ? dc(v.toFixed(2)) : v.toFixed(2));
+  const sp = dt ? f(s / dt) + (e != null ? ` ± ${f(e / dt)}` : "") : "";
+  const b = ((meta.wavelength_bins || []).map((x) => +x.wavelength_um)).map((x) => (L === "tr" ? dc(String(x)) : String(x))).join(", ");
+  const T = {
+    degenerate: ["No error bar could be measured in {b} µm (one exposure per season, or the position fit did not move from its start): no motion can be stated.",
+                 "{b} µm'de hata payı ölçülemedi (sezon başına tek görüntü ya da konum ölçümü başlangıçtan ayrılmadı): hareket söylenemez."],
+    saturated: ["The source is saturated (too bright) in {b} µm, so its position there is not reliable: too uncertain so far. A longer wavelength (4.0 / 4.6 µm) may settle it.",
+                "Kaynak {b} µm'de doymuş (fazla parlak); oradaki konumu güvenilir değil: şimdilik fazla belirsiz. Daha uzun bir dalga boyu (4.0 / 4.6 µm) netleştirebilir."],
+    implausible_speed: ["The measured shift ({sp}″ per year, {b} µm) is faster than any known star: most likely a different source was measured in each season. Too uncertain; check the blink by eye.",
+                        "Ölçülen kayma (yılda {sp}″, {b} µm) bilinen her yıldızdan hızlı: büyük olasılıkla her sezonda farklı bir kaynak ölçüldü. Fazla belirsiz; göz kırpmaya gözle bakın."],
+    inconsistent: ["The season positions ({b} µm) do not line up on one steady motion: too uncertain so far.",
+                   "Sezon konumları ({b} µm) tek bir düzgün harekete oturmuyor: şimdilik fazla belirsiz."],
+    disagrees_with_catalogue: ["The measured shift ({sp}″ per year, {b} µm) disagrees with the catalogue and the measurement is weak here: too uncertain so far.",
+                               "Ölçülen kayma (yılda {sp}″, {b} µm) katalogla uyuşmuyor ve buradaki ölçüm zayıf: şimdilik fazla belirsiz."],
+    large_error: ["The error bar ({sp}″ per year, {b} µm) is too large to tell whether it moves: too uncertain so far.",
+                  "Hata payı (yılda {sp}″, {b} µm) hareket edip etmediğini söylemek için çok büyük: şimdilik fazla belirsiz."],
+  }[reason];
+  let t = (L === "tr" ? T[1] : T[0]).replace("{sp}", sp).replace("{b}", b);
+  if (L === "tr") t = t.replace("(4.0 / 4.6 µm)", "(4,0 / 4,6 µm)");
+  return t;
+}
+
 /** The sentence says the speed per year (meta.measured.fit: the joint fit of every exposure) when the result
  *  has one, like the result tiles; the shift between two seasons (it also holds the yearly parallax wobble)
  *  is shown on the card as a second line. Without a fit: the shift, as before. */
@@ -319,6 +381,8 @@ function sentenceCore(meta, opt) {
   const tidy = (s) => (L === "tr" ? s.replace(/\( /g, "(").replace(/ \)/g, ")").trim() : s);
   try {
     if (ms.photometry) return brightnessSentence(meta, ms.photometry, S, !!name, L);
+    const why = ok(ms.shift_arcsec) ? answerGuard(meta) : null;     // contract v1.2 guards (tarayici_olcum)
+    if (why) return { text: guardSentence(why, meta, L), note: "", reason: why };
     if (ok(ms.shift_arcsec)) return { text: tidy(motionSentence(meta, ms, S, L).replace(/ {2,}/g, " ").replace(/ ([,.;:])/g, "$1")), note: "" };
     if (L === "tr") { const r = plainSentenceTr(meta, ms, status, name, S); if (r !== undefined) return r; }
     if (status === "preview" || meta.preview) {
