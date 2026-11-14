@@ -166,7 +166,7 @@ fetch(BASE + "meta.json").then(r => r.json()).then(m => {
   }
   if (rows) html += `<table><tr><th>Season</th><th>Mean date</th><th>Images</th><th>Measured − Gaia (E, N)</th></tr>${rows}</table>`;
   if (rows && ms.positions.some(p => p.bias_corrected) && ms.same_orientation === true)
-    html += `<small>Positions corrected for a small detector-fixed centroid bias of the saturated star; ` +
+    html += `<small>Positions corrected for a small detector-fixed centroid bias (fitted per detector); ` +
     `the main result above uses two seasons seen in the same orientation, where that bias cancels.</small>`;
   if (ms.note) html += `<p><small>${ms.note}</small></p>`;
   $("measure").innerHTML = html;
