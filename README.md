@@ -281,6 +281,11 @@ Data and services
 - [SIMBAD](https://simbad.cds.unistra.fr/simbad/): Wenger et al. 2000, A&AS 143, 9; with the CDS Sesame name resolver.
 - [VizieR](https://vizier.cds.unistra.fr/): Ochsenbein, Bauer & Marcout 2000, A&AS 143, 23;
   [doi:10.26093/cds/vizier](https://doi.org/10.26093/cds/vizier).
+- [NASA Exoplanet Archive](https://exoplanetarchive.ipac.caltech.edu/): Planetary Systems Composite Parameters
+  table ([doi:10.26133/NEA13](https://doi.org/10.26133/NEA13)); Christiansen et al. 2025, PSJ (the archive's paper).
+  One TAP query on 2026-11-14 gave 6470 planets around 4862 host stars (`site/data/exoplanet_hosts.json`, built by
+  `pipeline/exoplanet_hosts.py`); the explorer and the result viewer say when a star has known planets and link its
+  archive page. SPHEREx sees these stars move; the planets were found by other methods.
 - WISE 0855-0714 motion and parallax: Kirkpatrick et al. 2021, ApJS 253, 7.
 - Planet Nine band: Brown & Batygin 2021, AJ 162, 219; Brown, Holman & Batygin 2024, arXiv:2401.17977.
 
@@ -320,6 +325,10 @@ The Digitized Sky Surveys were produced at the Space Telescope Science Institute
 NAG W-2166. The images of these surveys are based on photographic data obtained using the Oschin Schmidt
 Telescope on Palomar Mountain and the UK Schmidt Telescope. The plates were processed into the present
 compressed digital form with the permission of these institutions.
+
+This research has made use of the NASA Exoplanet Archive, which is operated by the California Institute of
+Technology, under contract with the National Aeronautics and Space Administration under the Exoplanet
+Exploration Program.
 
 This research has made use of the SIMBAD database, the VizieR catalogue access tool, the Sesame name resolver
 and the Aladin Lite sky atlas, operated at CDS, Strasbourg, France.

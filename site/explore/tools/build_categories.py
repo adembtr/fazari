@@ -6,7 +6,9 @@ computed points (ecliptic, poles, Planet Nine path) from astropy.
 Parallax (mas) of the nearby stars and brown dwarfs: the SIMBAD value (Gaia DR3 where SIMBAD takes it from Gaia,
 else the cited literature value); challenge targets: pipeline/targets_extra.json (the values blink.py uses).
 Turkish text (name_tr, description_tr, disclaimer_tr, note_tr) comes from categories_tr.json next to this script.
-Only the Turkish fields, no network, nothing recomputed: python3 -I site/explore/tools/build_categories.py <repo root> --tr-only"""
+Only the Turkish fields, no network, nothing recomputed: python3 -I site/explore/tools/build_categories.py <repo root> --tr-only
+Only add (or refresh) the "Planet hosts on the move" category from site/data/exoplanet_hosts.json, no network,
+every other category untouched: python3 -I site/explore/tools/build_categories.py <repo root> --planets-only"""
 import json, re, sys, math, urllib.request, urllib.parse, datetime, os
 
 REPO = sys.argv[1]
@@ -34,6 +36,81 @@ def add_tr(cats):
         for p in c.get("points", []):
             put(p, tr["points"].get(p["id"]))
     return cats
+
+# Fast-moving nearby stars with confirmed planets. Host names are the NASA Exoplanet Archive's (pscomppars),
+# each checked against site/data/exoplanet_hosts.json (built by pipeline/exoplanet_hosts.py). Points that already
+# exist in another category keep their position fields (their first entry is the one the explorer uses).
+# Wolf 359 was asked for but is not in the archive's confirmed list (checked 2026-11-14), so it is not here.
+PLANET_HOSTS = [   # (id, archive host name, display name, Turkish name or None)
+    ("barnard", "Barnard's star", "Barnard's Star", "Barnard Yıldızı"),
+    ("proxima", "Proxima Cen", "Proxima Centauri", None),
+    ("lacaille9352", "GJ 887", "Lacaille 9352", None),
+    ("teegarden", "Teegarden's Star", "Teegarden's Star", "Teegarden Yıldızı"),
+    ("tau_cet", "tau Cet", "Tau Ceti", None),
+    ("eps_eri", "eps Eri", "Epsilon Eridani", None),
+    ("ross128", "Ross 128", "Ross 128", None),
+    ("luyten", "GJ 273", "Luyten's Star", "Luyten Yıldızı"),
+    ("lalande21185", "GJ 411", "Lalande 21185", None),
+    ("yz_cet", "YZ Cet", "YZ Ceti", None),
+]
+
+def planet_hosts_category(cats):
+    hosts_doc = json.load(open(f"{REPO}/site/data/exoplanet_hosts.json", encoding="utf-8"))
+    ix = {f: i for i, f in enumerate(hosts_doc["fields"])}
+    by_host = {r[ix["host"]]: r for r in hosts_doc["hosts"]}
+    known = {}
+    for c in cats:
+        for p in c.get("points", []):
+            known.setdefault(p["id"], p)
+    pts = []
+    for pid, host, name, name_tr in PLANET_HOSTS:
+        r = by_host.get(host)
+        if r is None:
+            raise SystemExit(f"{host!r} is not in exoplanet_hosts.json")
+        n, plx = r[ix["n"]], r[ix["plx"]]          # parallax, not sy_dist: they disagree for GJ 273 and GJ 411
+        ra, dec, ep, pmra, pmdec = (r[ix[k]] for k in ("ra", "dec", "epoch", "pmra", "pmdec"))
+        dt = 2026.0 - ep
+        dec26 = dec + pmdec * dt / 3.6e6
+        ra26 = (ra + pmra * dt / 3.6e6 / math.cos(math.radians(dec))) % 360
+        pm, ly = math.hypot(pmra, pmdec) / 1000, 1000 / plx * 3.26156
+        planets = "planet" if n == 1 else "planets"
+        note = f"{n} known {planets} (NASA Exoplanet Archive). Moves {pm:.1f}\u2033 a year, {ly:.1f} light-years away."
+        tr1 = lambda x: f"{x:.1f}".replace(".", ",")      # Turkish decimal comma
+        note_tr = f"Bilinen {n} gezegeni var (NASA Ötegezegen Arşivi). Yılda {tr1(pm)}\u2033 ilerler, {tr1(ly)} ışık yılı uzaklıkta."
+        if pid in known:                                   # same place as in another category
+            p = {k: v for k, v in known[pid].items() if k not in ("note", "note_tr")}
+            off = math.hypot((p["ra_2026"] - ra26) * math.cos(math.radians(dec26)), p["dec_2026"] - dec26) * 3600
+            print(f"planet host {host}: archive position at 2026.0 is {off:.2f}\" from our {pid}", file=sys.stderr)
+        else:
+            p = {"id": pid, "name": name}
+            if name_tr:
+                p["name_tr"] = name_tr
+            p.update(ra=round(ra, 6), dec=round(dec, 6), epoch=ep, pmra=round(pmra, 3), pmdec=round(pmdec, 3),
+                     parallax=round(plx, 3), parallax_source="NASA Exoplanet Archive (sy_plx)",
+                     ra_2026=round(ra26, 6), dec_2026=round(dec26, 6),
+                     source=f"NASA Exoplanet Archive pscomppars (host {host!r}), retrieved {hosts_doc['retrieved'][:10]}")
+        p.update(note=note, note_tr=note_tr, exo_host=host, planets=n)
+        pts.append(p)
+    return dict(id="planet_hosts", name="Planet hosts on the move", name_tr="Hareket eden gezegenli yıldızlar", icon="🪐",
+        description=("Nearby stars with confirmed planets that also move fast across our sky. SPHEREx sees the star "
+                     "move; the planets were found by other methods."),
+        description_tr=("Gezegeni doğrulanmış, gökyüzünde de hızlı ilerleyen yakın yıldızlar. SPHEREx yıldızın "
+                        "hareketini görür; gezegenler başka yöntemlerle bulundu."),
+        citation="NASA Exoplanet Archive, Planetary Systems Composite Parameters (doi:10.26133/NEA13)",
+        points=pts)
+
+if "--planets-only" in sys.argv[2:]:
+    path = f"{REPO}/site/data/categories.json"
+    data = json.load(open(path, encoding="utf-8"))
+    cats = [c for c in data["categories"] if c["id"] != "planet_hosts"]
+    new = planet_hosts_category(cats)
+    at = next((i for i, c in enumerate(cats) if c["id"] == "surprise"), len(cats))
+    cats.insert(at, new)
+    data["categories"] = cats
+    with open(path + ".tmp", "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=1, ensure_ascii=False)
+    os.replace(path + ".tmp", path)
+    sys.exit(0)
 
 if "--tr-only" in sys.argv[2:]:
     path = f"{REPO}/site/data/categories.json"
@@ -291,6 +368,9 @@ cats.append(dict(id="deep_fields", name="SPHEREx deep fields", icon="🎯",
         computed("sep", "South Ecliptic Pole", ECL(0, -90), "SPHEREx's southern deep field, in Dorado, next to the Large Magellanic Cloud.",
                  "Computed: ecliptic latitude -90 deg (J2000 mean ecliptic, astropy)."),
     ]))
+
+# 10b. Planet hosts on the move (NASA Exoplanet Archive) ---------------------
+cats.append(planet_hosts_category(cats))
 
 # 11. Surprise me --------------------------------------------------------------
 cats.append(dict(id="surprise", name="Surprise me", icon="🎲", random=True,

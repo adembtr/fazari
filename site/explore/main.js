@@ -61,6 +61,7 @@ function loadExtras() {
     const ext = { state, hooks, select, flyTo, toast, coverageAt, setSheet, isPhone, syncCatalogs };
     state.starsNow = sn.initStarsNow(ext);
     state.fast = fs.initFastStars(ext);
+    import("./planets.js").then((m) => { state.planets = m.initPlanets(ext); }).catch((e) => console.warn("Planet layer unavailable", e));   // stars with known planets
     return state.fast;
   });
   extrasP.catch((e) => console.warn("Star layers unavailable", e));

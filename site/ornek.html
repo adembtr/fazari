@@ -379,6 +379,7 @@ if (v) {
   import("./js/marking.js").then(x => v.setMarking(x.mountMarking({ meta: v.meta, base: v.base, current: v.current })))
     .catch(e => console.warn("marking.js", e));
   import("./explore/candidates.js").then(x => x.mountCandidates(v)).catch(e => console.warn("candidates.js", e));   // candidate finder: list + rings
+  import("./js/planet_note.js").then(x => x.mountPlanetNote(v.meta)).catch(e => console.warn("planet_note.js", e));   // star with known planets (NASA Exoplanet Archive)
   // local engine: the result is shown before its post-steps finish (status post_pending); mount each
   // output when its step is done (faint_view.js and others listen to the "fazari:post" event)
   import("./js/post_watch.js").then(x => x.watchPostSteps(v.base, (step) => {
