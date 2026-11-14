@@ -56,6 +56,10 @@ def field_of(name, out):
 def movers(ctx, A, T, exps, src, ng, floor, gt):
     """Indices of sources passing the B / D mover criteria for this season table, and the
     number with a drift >= SIG before the checks."""
+    # v1.1 (algorithm agent, with the coordinator's permission; the only change in this file): the
+    # finder's own complete decision is applied, so the test measures the rule that is shipped.
+    # The v0 re-implementation below is kept for reference and is no longer reached.
+    return DA.null_movers(ctx, exps, A, T, src, ng, floor)
     hits, raw = [], 0
     snr_max = np.nanmax(np.where(np.isfinite(T["snr"]), T["snr"], -1), 0)
     cosd = math.cos(math.radians(ctx.field.dec))

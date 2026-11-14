@@ -1,0 +1,161 @@
+{
+ "title": "SPHEREx-measured vs Gaia DR3 proper motion",
+ "status": "interim: 14 of 90 pre-registered stars (target 100), sweep continuing",
+ "code_version": "1370ca11c5",
+ "x": "Gaia DR3 total proper motion (arcsec/yr)",
+ "y": "measured / Gaia - 1 (%)",
+ "points": [
+  {
+   "sid": "4472832130942575872",
+   "name": "Barnard's Star",
+   "gaia": 10.3934,
+   "meas": 10.3681,
+   "err": 0.1202,
+   "diff_pct": 2.3,
+   "sigma": 1.08,
+   "saturated": true
+  },
+  {
+   "sid": "6060561079334177664",
+   "name": "DENIS J125310.8-570924",
+   "gaia": 1.622,
+   "meas": 1.5713,
+   "err": 0.1002,
+   "diff_pct": 4.69,
+   "sigma": 0.37,
+   "saturated": false
+  },
+  {
+   "sid": "4810594479418041856",
+   "name": "Kapteyn's Star",
+   "gaia": 8.6443,
+   "meas": 8.8997,
+   "err": 0.1367,
+   "diff_pct": 3.09,
+   "sigma": 1.73,
+   "saturated": true
+  },
+  {
+   "sid": "2009481748875806976",
+   "name": "HD 219134",
+   "gaia": 2.0952,
+   "meas": 1.7293,
+   "err": 0.2484,
+   "diff_pct": 17.47,
+   "sigma": 0.96,
+   "saturated": true
+  },
+  {
+   "sid": "4034171629042489088",
+   "name": "Groombridge 1830",
+   "gaia": 7.0618,
+   "meas": 6.9229,
+   "err": 0.132,
+   "diff_pct": 3.27,
+   "sigma": 1.2,
+   "saturated": true
+  },
+  {
+   "sid": "3528998159802747136",
+   "name": "PM J12445-1306N",
+   "gaia": 0.5282,
+   "meas": 0.6104,
+   "err": 0.0985,
+   "diff_pct": 15.78,
+   "sigma": 0.38,
+   "saturated": false
+  },
+  {
+   "sid": "6553614253923452800",
+   "name": "Lacaille 9352",
+   "gaia": 6.8955,
+   "meas": 6.7843,
+   "err": 0.1894,
+   "diff_pct": 3.15,
+   "sigma": 0.67,
+   "saturated": true
+  },
+  {
+   "sid": "1544517282421468032",
+   "name": "G 198-58",
+   "gaia": 0.7142,
+   "meas": 0.7307,
+   "err": 0.105,
+   "diff_pct": 7.46,
+   "sigma": 0.28,
+   "saturated": false
+  },
+  {
+   "sid": "2306965202564744064",
+   "name": "HD 225213",
+   "gaia": 6.098,
+   "meas": 6.0712,
+   "err": 0.1369,
+   "diff_pct": 0.97,
+   "sigma": 0.11,
+   "saturated": true
+  },
+  {
+   "sid": "3685363487960149376",
+   "name": "HD 112943",
+   "gaia": 0.8067,
+   "meas": 1.1408,
+   "err": 0.7566,
+   "diff_pct": 41.78,
+   "sigma": 0.13,
+   "saturated": false
+  },
+  {
+   "sid": "1872046609345556480",
+   "name": "61 Cygni A",
+   "gaia": 5.2821,
+   "meas": 5.7536,
+   "err": 0.2712,
+   "diff_pct": 12.59,
+   "sigma": 2.75,
+   "saturated": true
+  },
+  {
+   "sid": "5393976588699151744",
+   "name": "SCR J1053-3858",
+   "gaia": 0.6329,
+   "meas": 0.6201,
+   "err": 0.0589,
+   "diff_pct": 3.67,
+   "sigma": 0.11,
+   "saturated": false
+  },
+  {
+   "sid": "1872046574983497216",
+   "name": "61 Cyg B",
+   "gaia": 5.1787,
+   "meas": 5.5524,
+   "err": 0.4142,
+   "diff_pct": 9.62,
+   "sigma": 0.59,
+   "saturated": true
+  },
+  {
+   "sid": "2441630500517079808",
+   "name": "G 158-27",
+   "gaia": 2.0599,
+   "meas": 1.8567,
+   "err": 0.1868,
+   "diff_pct": 9.87,
+   "sigma": 0.62,
+   "saturated": false
+  }
+ ],
+ "summary": {
+  "n": 14,
+  "median_abs_diff_pct": 6.07,
+  "p90_abs_diff_pct": 16.96,
+  "median_abs_diff_arcsec_yr": 0.2241,
+  "p90_abs_diff_arcsec_yr": 0.4584,
+  "frac_within_1sigma": 0.714,
+  "frac_within_2sigma": 0.929,
+  "frac_within_3sigma_pass": 1.0,
+  "median_error_arcsec_yr_per_axis": 0.1385,
+  "min_motion_5sigma_arcsec_yr": 0.692
+ }
+}
