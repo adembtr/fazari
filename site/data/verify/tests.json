@@ -1,8 +1,8 @@
 {
  "schema": "fazari-verify-tests/1",
- "code_version": "e80289c + note: core = TEST-READY v1 working tree (six uncommitted v1 files in pipeline/detect); e80289c was HEAD when the round started 16:59; commits during the round (0345f66, 455f09f, 1a09d7d) touch no pipeline/detect file",
- "thresholds_frozen": "TEST-READY v1 16:58 (ajan_durumu/algoritma.md)",
- "generated": "2026-11-14T14:42:32Z",
+ "code_version": "a5de792 + note: round v1.1 tested candidate finder v1.1 as committed (f50d77d; a5de792 registers detector P, not used by these tests); pipeline/detect had no uncommitted change. V8 keeps the asteroid numbers of round v1 (not re-run). V12 was measured by the fast-star sweep with its frozen copy of the v1 detection core (1370ca11c5).",
+ "thresholds_frozen": "TEST-READY v1 16:58 (ajan_durumu/algoritma.md; unchanged in round v1.1; V12: per-star criterion pre-registered in pipeline/FAST_SWEEP.md 2026-11-14 17:06, test rule fixed by the tester 2026-11-15 01:05 before the final sweep summary)",
+ "generated": "2026-11-14T23:43:30Z",
  "tests": [
   {
    "id": "V1",
@@ -11,8 +11,8 @@
     "tr": "Barnard Yıldızı (bilinen en hızlı yıldız)"
    },
    "result": {
-    "en": "Found blind as gaia-known (A+B): 10.361 ± 0.051\"/yr at PA 355.4°, reference 10.393\"/yr at 355.6° (-0.6 sigma in speed, -0.6 sigma in direction).",
-    "tr": "Konum verilmeden bilinen Gaia hareketlisi olarak bulundu (A+B): 10,361 ± 0,051\"/yıl, yön 355,4°; referans 10,393\"/yıl, 355,6° (hızda -0,6, yönde -0,6 sigma)."
+    "en": "Found blind as gaia-known (A+B): 10.361 ± 0.051\"/yr at PA 355.4°, reference 10.393\"/yr at 355.6° (-0.6 sigma in speed, -0.6 sigma in direction); confirmed by the finder.",
+    "tr": "Konum verilmeden bilinen Gaia hareketlisi olarak bulundu (A+B): 10,361 ± 0,051\"/yıl, yön 355,4°; referans 10,393\"/yıl, 355,6° (hızda -0,6, yönde -0,6 sigma); bulucu doğruladı."
    },
    "numbers": {
     "speed_arcsec_yr": 10.361,
@@ -27,11 +27,32 @@
     "class": "gaia-known",
     "detectors": "A+B",
     "criterion_sigma": 3,
-    "seconds": 447.5
+    "seconds": 351.4,
+    "confirmed": true
    },
    "status": "pass",
    "evidence": "data/verify/evidence/blind.csv",
-   "v0": null
+   "v0": null,
+   "v1": {
+    "numbers": {
+     "speed_arcsec_yr": 10.361,
+     "err_speed": 0.051,
+     "ref_speed": 10.393,
+     "d_speed_sigma": -0.6,
+     "pa_deg": 355.4,
+     "err_pa": 0.3,
+     "ref_pa": 355.6,
+     "d_pa_deg": -0.2,
+     "d_pa_sigma": -0.6,
+     "class": "gaia-known",
+     "detectors": "A+B",
+     "criterion_sigma": 3,
+     "seconds": 447.5
+    },
+    "status": "pass",
+    "result_en": "Found blind as gaia-known (A+B): 10.361 ± 0.051\"/yr at PA 355.4°, reference 10.393\"/yr at 355.6° (-0.6 sigma in speed, -0.6 sigma in direction).",
+    "note": "finder v1 (round v1, 14 Nov 2026)"
+   }
   },
   {
    "id": "V2",
@@ -40,8 +61,8 @@
     "tr": "Epsilon Indi B (kahverengi cüce)"
    },
    "result": {
-    "en": "Found blind as gaia-known (A+B): 4.678 ± 0.02\"/yr at PA 121.6°, reference 4.684\"/yr at 121.8° (-0.3 sigma in speed, -0.9 sigma in direction).",
-    "tr": "Konum verilmeden bilinen Gaia hareketlisi olarak bulundu (A+B): 4,678 ± 0,02\"/yıl, yön 121,6°; referans 4,684\"/yıl, 121,8° (hızda -0,3, yönde -0,9 sigma)."
+    "en": "Found blind as gaia-known (A+B): 4.678 ± 0.02\"/yr at PA 121.6°, reference 4.684\"/yr at 121.8° (-0.3 sigma in speed, -0.9 sigma in direction); confirmed by the finder.",
+    "tr": "Konum verilmeden bilinen Gaia hareketlisi olarak bulundu (A+B): 4,678 ± 0,02\"/yıl, yön 121,6°; referans 4,684\"/yıl, 121,8° (hızda -0,3, yönde -0,9 sigma); bulucu doğruladı."
    },
    "numbers": {
     "speed_arcsec_yr": 4.678,
@@ -56,11 +77,32 @@
     "class": "gaia-known",
     "detectors": "A+B",
     "criterion_sigma": 3,
-    "seconds": 97.6
+    "seconds": 70.5,
+    "confirmed": true
    },
    "status": "pass",
    "evidence": "data/verify/evidence/blind.csv",
-   "v0": null
+   "v0": null,
+   "v1": {
+    "numbers": {
+     "speed_arcsec_yr": 4.678,
+     "err_speed": 0.02,
+     "ref_speed": 4.684,
+     "d_speed_sigma": -0.3,
+     "pa_deg": 121.6,
+     "err_pa": 0.2,
+     "ref_pa": 121.8,
+     "d_pa_deg": -0.2,
+     "d_pa_sigma": -0.9,
+     "class": "gaia-known",
+     "detectors": "A+B",
+     "criterion_sigma": 3,
+     "seconds": 97.6
+    },
+    "status": "pass",
+    "result_en": "Found blind as gaia-known (A+B): 4.678 ± 0.02\"/yr at PA 121.6°, reference 4.684\"/yr at 121.8° (-0.3 sigma in speed, -0.9 sigma in direction).",
+    "note": "finder v1 (round v1, 14 Nov 2026)"
+   }
   },
   {
    "id": "V3",
@@ -69,31 +111,56 @@
     "tr": "Luhman 16 (en yakın kahverengi cüceler)"
    },
    "result": {
-    "en": "Found blind as candidate (A+D): 2.678 ± 0.059\"/yr at PA 274.3°, reference 2.79\"/yr at 277.4° (-1.9 sigma in speed, -2.0 sigma in direction). Measured parallax 426.4 mas vs 501.557 mas (Lazorenko & Sahlmann 2018): -15.0 %, a large difference.",
-    "tr": "Konum verilmeden aday olarak bulundu (A+D): 2,678 ± 0,059\"/yıl, yön 274,3°; referans 2,79\"/yıl, 277,4° (hızda -1,9, yönde -2,0 sigma). Ölçülen paralaks 426,4 mas, referans 501,557 mas (Lazorenko ve Sahlmann 2018): %−15,0, büyük bir fark."
+    "en": "Found blind as candidate (A+D): 2.816 ± 0.057\"/yr at PA 275.8°, reference 2.79\"/yr at 277.4° (+0.4 sigma in speed, -1.1 sigma in direction); confirmed by the finder. Measured parallax 467.9 mas vs 501.557 mas (Lazorenko & Sahlmann 2018): -6.7 %.",
+    "tr": "Konum verilmeden aday olarak bulundu (A+D): 2,816 ± 0,057\"/yıl, yön 275,8°; referans 2,79\"/yıl, 277,4° (hızda +0,4, yönde -1,1 sigma); bulucu doğruladı. Ölçülen paralaks 467,9 mas, referans 501,557 mas (Lazorenko ve Sahlmann 2018): %-6,7."
    },
    "numbers": {
-    "speed_arcsec_yr": 2.678,
-    "err_speed": 0.059,
+    "speed_arcsec_yr": 2.816,
+    "err_speed": 0.057,
     "ref_speed": 2.79,
-    "d_speed_sigma": -1.9,
-    "pa_deg": 274.3,
-    "err_pa": 1.5,
+    "d_speed_sigma": 0.4,
+    "pa_deg": 275.8,
+    "err_pa": 1.4,
     "ref_pa": 277.4,
-    "d_pa_deg": -3.0,
-    "d_pa_sigma": -2.0,
+    "d_pa_deg": -1.6,
+    "d_pa_sigma": -1.1,
     "class": "candidate",
     "detectors": "A+D",
     "criterion_sigma": 3,
-    "seconds": 156.8,
-    "parallax_mas": 426.4,
+    "seconds": 135.4,
+    "parallax_mas": 467.9,
     "ref_parallax_mas": 501.557,
-    "d_parallax_percent": -15.0,
-    "ref_parallax_source": "Lazorenko & Sahlmann 2018"
+    "d_parallax_percent": -6.7,
+    "ref_parallax_source": "Lazorenko & Sahlmann 2018",
+    "confirmed": true
    },
    "status": "pass",
    "evidence": "data/verify/evidence/blind.csv",
-   "v0": null
+   "v0": null,
+   "v1": {
+    "numbers": {
+     "speed_arcsec_yr": 2.678,
+     "err_speed": 0.059,
+     "ref_speed": 2.79,
+     "d_speed_sigma": -1.9,
+     "pa_deg": 274.3,
+     "err_pa": 1.5,
+     "ref_pa": 277.4,
+     "d_pa_deg": -3.0,
+     "d_pa_sigma": -2.0,
+     "class": "candidate",
+     "detectors": "A+D",
+     "criterion_sigma": 3,
+     "seconds": 156.8,
+     "parallax_mas": 426.4,
+     "ref_parallax_mas": 501.557,
+     "d_parallax_percent": -15.0,
+     "ref_parallax_source": "Lazorenko & Sahlmann 2018"
+    },
+    "status": "pass",
+    "result_en": "Found blind as candidate (A+D): 2.678 ± 0.059\"/yr at PA 274.3°, reference 2.79\"/yr at 277.4° (-1.9 sigma in speed, -2.0 sigma in direction). Measured parallax 426.4 mas vs 501.557 mas (Lazorenko & Sahlmann 2018): -15.0 %, a large difference.",
+    "note": "finder v1 (round v1, 14 Nov 2026)"
+   }
   },
   {
    "id": "V4",
@@ -102,27 +169,48 @@
     "tr": "WISE 0855-0714 (bilinen en soğuk kahverengi cüce)"
    },
    "result": {
-    "en": "Found blind as candidate (A): 8.429 ± 0.377\"/yr at PA 284.2°, reference 8.152\"/yr at 274.7° (0.7 sigma in speed, 3.8 sigma in direction); the direction is off by more than 3 sigma.",
-    "tr": "Konum verilmeden aday olarak bulundu (A): 8,429 ± 0,377\"/yıl, yön 284,2°; referans 8,152\"/yıl, 274,7° (hızda 0,7, yönde 3,8 sigma); yön 3 sigmadan fazla sapıyor."
+    "en": "Found blind as candidate (A): 8.187 ± 0.567\"/yr at PA 277.6°, reference 8.152\"/yr at 274.7° (+0.1 sigma in speed, +0.8 sigma in direction); confirmed by the finder. Status fail -> pass: the measurement changed (finder v1.1), the 3-sigma rule did not. In v1 the direction was 3.8 sigma off (284.2 ± 2.5°); v1.1 fits listed stars within 12.3\" of a mover's track with one constant-flux model. That change was made by the finder's author with this target in view, so this is a re-measurement, not an independent test of the change.",
+    "tr": "Konum verilmeden aday olarak bulundu (A): 8,187 ± 0,567\"/yıl, yön 277,6°; referans 8,152\"/yıl, 274,7° (hızda +0,1, yönde +0,8 sigma); bulucu doğruladı. Durum: geçmedi -> geçti; ölçüm değişti (bulucu v1.1), 3 sigma kuralı değişmedi. v1'de yön 3,8 sigma sapıyordu (284,2 ± 2,5°); v1.1 bir hareketlinin izine 12,3\" yakın katalog yıldızlarını tek bir sabit akı modeliyle uyduruyor. Bu değişikliği bulucunun yazarı bu hedefi bilerek yaptı; bu yüzden bu bir yeniden ölçüm, değişikliğin bağımsız testi değil."
    },
    "numbers": {
-    "speed_arcsec_yr": 8.429,
-    "err_speed": 0.377,
+    "speed_arcsec_yr": 8.187,
+    "err_speed": 0.567,
     "ref_speed": 8.152,
-    "d_speed_sigma": 0.7,
-    "pa_deg": 284.2,
-    "err_pa": 2.5,
+    "d_speed_sigma": 0.1,
+    "pa_deg": 277.6,
+    "err_pa": 3.8,
     "ref_pa": 274.7,
-    "d_pa_deg": 9.5,
-    "d_pa_sigma": 3.8,
+    "d_pa_deg": 2.9,
+    "d_pa_sigma": 0.8,
     "class": "candidate",
     "detectors": "A",
     "criterion_sigma": 3,
-    "seconds": 58.5
+    "seconds": 43.2,
+    "confirmed": true
    },
-   "status": "fail",
+   "status": "pass",
    "evidence": "data/verify/evidence/blind.csv",
-   "v0": null
+   "v0": null,
+   "v1": {
+    "numbers": {
+     "speed_arcsec_yr": 8.429,
+     "err_speed": 0.377,
+     "ref_speed": 8.152,
+     "d_speed_sigma": 0.7,
+     "pa_deg": 284.2,
+     "err_pa": 2.5,
+     "ref_pa": 274.7,
+     "d_pa_deg": 9.5,
+     "d_pa_sigma": 3.8,
+     "class": "candidate",
+     "detectors": "A",
+     "criterion_sigma": 3,
+     "seconds": 58.5
+    },
+    "status": "fail",
+    "result_en": "Found blind as candidate (A): 8.429 ± 0.377\"/yr at PA 284.2°, reference 8.152\"/yr at 274.7° (0.7 sigma in speed, 3.8 sigma in direction); the direction is off by more than 3 sigma.",
+    "note": "finder v1 (round v1, 14 Nov 2026)"
+   }
   },
   {
    "id": "V5",
@@ -131,18 +219,29 @@
     "tr": "Boş alanlarda sahte hareket (alan yıldızları)"
    },
    "result": {
-    "en": "In 6 fields with no known mover the finder reported 0 moving candidates; 3 brightness-change candidates were reported there.",
-    "tr": "Bilinen hareketli cisim olmayan 6 alanda 0 hareketli aday çıktı; parlaklık değişimi adayı sayısı 3."
+    "en": "In 6 fields with no known mover the finder reported 0 moving candidates; 4 brightness-change candidates were reported there (v1: 3; field-259.095s34.806 now has 2, one of them flagged as an unresolved pair of catalogue stars). In all 12 fields there are 0 moving candidates besides the known targets.",
+    "tr": "Bilinen hareketli cisim olmayan 6 alanda 0 hareketli aday çıktı; parlaklık değişimi adayı sayısı 4 (v1: 3; field-259.095s34.806 alanında artık 2 aday var, biri çözülmemiş bir katalog yıldızı çifti olarak işaretli). 12 alanın hepsinde bilinen hedefler dışında 0 hareketli aday var."
    },
    "numbers": {
     "null_fields": 6,
     "moving_candidates": 0,
-    "variable_candidates": 3,
+    "variable_candidates": 4,
     "moving_candidates_all_12_fields_besides_targets": 0
    },
    "status": "pass",
    "evidence": "data/verify/evidence/blind.csv",
-   "v0": null
+   "v0": null,
+   "v1": {
+    "numbers": {
+     "null_fields": 6,
+     "moving_candidates": 0,
+     "variable_candidates": 3,
+     "moving_candidates_all_12_fields_besides_targets": 0
+    },
+    "status": "pass",
+    "result_en": "In 6 fields with no known mover the finder reported 0 moving candidates; 3 brightness-change candidates were reported there.",
+    "note": "finder v1 (round v1, 14 Nov 2026)"
+   }
   },
   {
    "id": "V6",
@@ -151,14 +250,22 @@
     "tr": "Enjeksiyon testi (gerçek görüntülere eklenen sahte cisimler)"
    },
    "result": {
-    "en": "473/868 injected movers and 158/287 brightness changes recovered; best bin 89/91 = 97.8 % (Epsilon Indi B, at least 0.3\"/yr, AB 12-14), below the 99 % target; 88 false candidates in 20 runs.",
-    "tr": "Eklenen 868 hareketli cismin 473 tanesi, 287 parlaklık değişiminin 158 tanesi bulundu; en iyi aralık 89/91 = %97,8 (Epsilon Indi B, en az 0,3\"/yıl, AB 12-14), %99 hedefinin altında; 20 koşuda 88 sahte aday."
+    "en": "Reduced re-run with finder v1.1: 5 of the 20 injection runs of round v1 (Epsilon Indi B AB 12-14, WISE 0855 AB 14 and 18; seed 1, the same injected positions). Movers 155/225 recovered (v1 on the same runs 154/225), brightness changes 46/72 (v1 47/72), false candidates 17 (v1 32). Best bin 89/91 = 97.8 % (Epsilon Indi B, at least 0.3\"/yr, AB 12-14; v1 89/91), below the 99 % target. WISE 0855 field, AB 18, at least 1\"/yr: 16/24 (v1 15/24). The other 15 runs (all of the Barnard's Star field and the remaining magnitudes) were not re-run for v1.1; the round v1 totals over all 20 runs (473/868 movers, 158/287 brightness changes, 88 false candidates) were measured with finder v1 and are kept under \"v1\".",
+    "tr": "Bulucu v1.1 ile azaltılmış yeniden koşu: v1 turunun 20 enjeksiyon koşusundan 5 tanesi (Epsilon Indi B AB 12-14, WISE 0855 AB 14 ve 18; tohum 1, aynı eklenen konumlar). Hareketli 155/225 bulundu (aynı koşularda v1 154/225), parlaklık değişimi 46/72 (v1 47/72), sahte aday 17 (v1 32). En iyi aralık 89/91 = %97,8 (Epsilon Indi B, en az 0,3\"/yıl, AB 12-14; v1 89/91), %99 hedefinin altında. WISE 0855 alanı, AB 18, en az 1\"/yıl: 16/24 (v1 15/24). Diğer 15 koşu (Barnard Yıldızı alanının hepsi ve kalan parlaklıklar) v1.1 için yeniden koşulmadı; 20 koşunun v1 toplamları (868 hareketliden 473, 287 parlaklık değişiminden 158, 88 sahte aday) bulucu v1 ile ölçüldü ve \"v1\" altında duruyor."
    },
    "numbers": {
-    "motion_recovered": 473,
-    "motion_injected": 868,
-    "brightness_recovered": 158,
-    "brightness_injected": 287,
+    "rerun_runs": 5,
+    "runs_not_rerun": 15,
+    "rerun_motion_recovered": 155,
+    "rerun_motion_injected": 225,
+    "v1_same_runs_motion_recovered": 154,
+    "v1_same_runs_motion_injected": 225,
+    "rerun_brightness_recovered": 46,
+    "rerun_brightness_injected": 72,
+    "v1_same_runs_brightness_recovered": 47,
+    "v1_same_runs_brightness_injected": 72,
+    "rerun_false_candidates": 17,
+    "v1_same_runs_false_candidates": 32,
     "best_bin_recovered": 89,
     "best_bin_injected": 91,
     "best_bin_percent": 97.8,
@@ -166,10 +273,9 @@
     "best_bin_mag_lo": 12,
     "best_bin_mag_hi": 14,
     "target_percent": 99,
-    "false_candidates": 88,
-    "runs": 20,
-    "wise0855_ab18_ge1_recovered": 15,
-    "wise0855_ab18_ge1_injected": 24
+    "wise0855_ab18_ge1_recovered": 16,
+    "wise0855_ab18_ge1_injected": 24,
+    "seed": 1
    },
    "status": "fail",
    "evidence": "data/verify/evidence/injection.csv",
@@ -186,6 +292,28 @@
     "wise0855_ab18_ge1_recovered": 18,
     "wise0855_ab18_ge1_injected": 24,
     "note": "v0 seed 1 only, same injected positions"
+   },
+   "v1": {
+    "numbers": {
+     "motion_recovered": 473,
+     "motion_injected": 868,
+     "brightness_recovered": 158,
+     "brightness_injected": 287,
+     "best_bin_recovered": 89,
+     "best_bin_injected": 91,
+     "best_bin_percent": 97.8,
+     "best_bin_min_speed_arcsec_yr": 0.3,
+     "best_bin_mag_lo": 12,
+     "best_bin_mag_hi": 14,
+     "target_percent": 99,
+     "false_candidates": 88,
+     "runs": 20,
+     "wise0855_ab18_ge1_recovered": 15,
+     "wise0855_ab18_ge1_injected": 24
+    },
+    "status": "fail",
+    "result_en": "473/868 injected movers and 158/287 brightness changes recovered; best bin 89/91 = 97.8 % (Epsilon Indi B, at least 0.3\"/yr, AB 12-14), below the 99 % target; 88 false candidates in 20 runs.",
+    "note": "finder v1 (round v1, 14 Nov 2026)"
    }
   },
   {
@@ -195,8 +323,8 @@
     "tr": "Tarih karıştırma testi"
    },
    "result": {
-    "en": "With exposure dates shuffled 100 times in each of 12 fields, 0 fake movers appeared in 1200 field-shuffles with the finder's own v1 decision rule (DA.null_movers); with the earlier v0 rule there were 15 (v1 core) and 26 (v0 core). With the real dates the only mover is Luhman 16 in its own field, a known mover; it stays a mover in all 4 season permutations of that field (66 season permutations in all, no other mover).",
-    "tr": "Poz tarihleri 12 alanın her birinde 100 kez karıştırıldı: bulucunun kendi v1 karar kuralıyla (DA.null_movers) 1200 denemede 0 sahte hareketli cisim çıktı; önceki v0 kuralıyla 15 (v1 çekirdek) ve 26 (v0 çekirdek) idi. Gerçek tarihlerle tek hareketli cisim kendi alanındaki Luhman 16 (bilinen hareketli cisim); o alanın 4 sezon permütasyonunun hepsinde de hareketli kalıyor (toplam 66 sezon permütasyonu, başka hareketli cisim yok)."
+    "en": "With exposure dates shuffled 100 times in each of 12 fields, 0 fake movers appeared in 1200 field-shuffles (1,739,200 source trials) with finder v1.1's own decision rule. With the real dates the only mover is Luhman 16 in its own field (11.2 sigma), a known mover; it stays a mover in all 4 season permutations of that field (66 season permutations in all, no other mover). Same result as the v1 rule on the v1 core; the earlier v0 rule gave 15 (v1 core) and 26 (v0 core).",
+    "tr": "Poz tarihleri 12 alanın her birinde 100 kez karıştırıldı: bulucu v1.1'in kendi karar kuralıyla 1200 denemede (1.739.200 kaynak denemesi) 0 sahte hareketli cisim çıktı. Gerçek tarihlerle tek hareketli cisim kendi alanındaki Luhman 16 (11,2 sigma, bilinen hareketli cisim); o alanın 4 sezon permütasyonunun hepsinde de hareketli kalıyor (toplam 66 sezon permütasyonu, başka hareketli cisim yok). v1 çekirdekte v1 kuralıyla aynı sonuç; önceki v0 kuralı 15 (v1 çekirdek) ve 26 (v0 çekirdek) vermişti."
    },
    "numbers": {
     "fields": 12,
@@ -205,14 +333,15 @@
     "fake_movers": 0,
     "fake_per_field_shuffle": 0.0,
     "real_label_movers": 1,
-    "real_label_movers_note": "Luhman 16 (known mover) in its own field",
+    "real_label_movers_note": "Luhman 16 (known mover) in its own field, 11.2 sigma",
     "season_permutations": 66,
     "season_permutation_movers": 4,
     "season_permutation_movers_note": "all 4 are Luhman 16 in its own field",
     "v0_fake_movers": 26,
     "v1_core_v0_rule_fake_movers": 15,
     "criterion_fake_movers": 0,
-    "decision_rule": "v1 (DA.null_movers; tests/shuffle.py at 522d3ab, core v1 257a7c3)"
+    "decision_rule": "v1.1 (DA.null_movers of finder v1.1; tests/shuffle.py unchanged since 522d3ab; commit a5de792)",
+    "source_trials": 1739200
    },
    "status": "pass",
    "evidence": "data/verify/evidence/shuffle.csv",
@@ -224,6 +353,27 @@
     "fake_movers": 15,
     "fake_per_field_shuffle": 0.0125,
     "real_label_movers": 0
+   },
+   "v1": {
+    "numbers": {
+     "fields": 12,
+     "shuffles_per_field": 100,
+     "field_shuffles": 1200,
+     "fake_movers": 0,
+     "fake_per_field_shuffle": 0.0,
+     "real_label_movers": 1,
+     "real_label_movers_note": "Luhman 16 (known mover) in its own field",
+     "season_permutations": 66,
+     "season_permutation_movers": 4,
+     "season_permutation_movers_note": "all 4 are Luhman 16 in its own field",
+     "v0_fake_movers": 26,
+     "v1_core_v0_rule_fake_movers": 15,
+     "criterion_fake_movers": 0,
+     "decision_rule": "v1 (DA.null_movers; tests/shuffle.py at 522d3ab, core v1 257a7c3)"
+    },
+    "status": "pass",
+    "result_en": "With exposure dates shuffled 100 times in each of 12 fields, 0 fake movers appeared in 1200 field-shuffles with the finder's own v1 decision rule (DA.null_movers); with the earlier v0 rule there were 15 (v1 core) and 26 (v0 core). With the real dates the only mover is Luhman 16 in its own field, a known mover; it stays a mover in all 4 season permutations of that field (66 season permutations in all, no other mover).",
+    "note": "finder v1 (round v1, 14 Nov 2026)"
    }
   },
   {
@@ -271,17 +421,28 @@
     "tr": "Bilinen tüm hareketli cisimlerin körlemesine bulunması"
    },
    "result": {
-    "en": "4 of 4 known movers were found without being told where they are.",
-    "tr": "Bilinen 4 hareketli cismin 4 tanesi konumu verilmeden bulundu."
+    "en": "4 of 4 known movers were found without being told where they are; the finder confirmed 4 of them.",
+    "tr": "Bilinen 4 hareketli cismin 4 tanesi konumu verilmeden bulundu; bulucu 4 tanesini doğruladı."
    },
    "numbers": {
     "movers_found": 4,
     "movers_known": 4,
-    "slowest_field_seconds": 447.5
+    "slowest_field_seconds": 351.4,
+    "movers_confirmed": 4
    },
    "status": "pass",
    "evidence": "data/verify/evidence/blind.csv",
-   "v0": null
+   "v0": null,
+   "v1": {
+    "numbers": {
+     "movers_found": 4,
+     "movers_known": 4,
+     "slowest_field_seconds": 447.5
+    },
+    "status": "pass",
+    "result_en": "4 of 4 known movers were found without being told where they are.",
+    "note": "finder v1 (round v1, 14 Nov 2026)"
+   }
   },
   {
    "id": "V10",
@@ -290,36 +451,70 @@
     "tr": "Doymuş çekirdek / kenar yöntemi (yanlış başlangıçla Barnard Yıldızı)"
    },
    "result": {
-    "en": "Started from the Gaia track and from 4 wrong tracks up to 1.039\"/yr off, the measurement always returned 10.2963-10.3267\"/yr, 1.1-1.5 sigma from Gaia's 10.3933\"/yr; every wrong start ended within 0.0413\"/yr of the true-start result.",
-    "tr": "Gaia izinden ve 1,039\"/yıla kadar hatalı 4 yanlış izden başlatılan ölçüm her seferinde 10,2963-10,3267\"/yıl verdi; Gaia'nın 10,3933\"/yıl değerinden 1,1-1,5 sigma uzakta; her yanlış başlangıç gerçek başlangıç sonucuna 0,0413\"/yıl yakın bitti."
+    "en": "Started from the Gaia track and from 4 wrong tracks up to 1.039\"/yr off, the measurement always returned 10.3024-10.3445\"/yr, 0.6-1.2 sigma from Gaia's 10.3933\"/yr; every wrong start ended within 0.0425\"/yr of the true-start result. The per-detector fit of finder v1.1 gives 10.3481-10.3766 ± 0.0583\"/yr (at most 0.8 sigma from Gaia, every start within 0.0332\"/yr of the true-start result).",
+    "tr": "Gaia izinden ve 1,039\"/yıla kadar hatalı 4 yanlış izden başlatılan ölçüm her seferinde 10,3024-10,3445\"/yıl verdi; Gaia'nın 10,3933\"/yıl değerinden 0,6-1,2 sigma uzakta; her yanlış başlangıç gerçek başlangıç sonucuna 0,0425\"/yıl yakın bitti. Bulucu v1.1'in dedektör başına uyumu 10,3481-10,3766 ± 0,0583\"/yıl veriyor (Gaia'dan en çok 0,8 sigma, her başlangıç gerçek başlangıç sonucuna 0,0332\"/yıl yakın)."
    },
    "numbers": {
     "gaia_speed_arcsec_yr": 10.3933,
     "wrong_starts": 4,
     "max_start_error_arcsec_yr": 1.039,
-    "measured_min": 10.2963,
-    "measured_max": 10.3267,
+    "measured_min": 10.3024,
+    "measured_max": 10.3445,
     "err_arcsec_yr": 0.0777,
-    "sigma_min": 1.1,
-    "sigma_max": 1.5,
-    "max_dist_to_true_start_result": 0.0413,
+    "sigma_min": 0.6,
+    "sigma_max": 1.2,
+    "max_dist_to_true_start_result": 0.0425,
     "pct_recovered_vs_gaia": [
-     77,
-     90,
+     85,
+     93,
      92,
-     89
+     93
     ],
     "pct_recovered_vs_true_start_result": [
-     95,
-     97,
+     90,
      96,
-     96
+     98,
+     97
     ],
-    "verdict": "real measurement, not pulled toward the starting track"
+    "verdict": "real measurement, not pulled toward the starting track",
+    "cells_fit_measured_min": 10.3481,
+    "cells_fit_measured_max": 10.3766,
+    "cells_fit_err_arcsec_yr": 0.0583,
+    "cells_fit_sigma_max": 0.8,
+    "cells_fit_max_dist_to_true_start_result": 0.0332
    },
    "status": "pass",
    "evidence": "data/verify/evidence/saturated.csv",
-   "v0": null
+   "v0": null,
+   "v1": {
+    "numbers": {
+     "gaia_speed_arcsec_yr": 10.3933,
+     "wrong_starts": 4,
+     "max_start_error_arcsec_yr": 1.039,
+     "measured_min": 10.2963,
+     "measured_max": 10.3267,
+     "err_arcsec_yr": 0.0777,
+     "sigma_min": 1.1,
+     "sigma_max": 1.5,
+     "max_dist_to_true_start_result": 0.0413,
+     "pct_recovered_vs_gaia": [
+      77,
+      90,
+      92,
+      89
+     ],
+     "pct_recovered_vs_true_start_result": [
+      95,
+      97,
+      96,
+      96
+     ],
+     "verdict": "real measurement, not pulled toward the starting track"
+    },
+    "status": "pass",
+    "result_en": "Started from the Gaia track and from 4 wrong tracks up to 1.039\"/yr off, the measurement always returned 10.2963-10.3267\"/yr, 1.1-1.5 sigma from Gaia's 10.3933\"/yr; every wrong start ended within 0.0413\"/yr of the true-start result.",
+    "note": "finder v1 (round v1, 14 Nov 2026)"
+   }
   },
   {
    "id": "V11",
@@ -328,19 +523,67 @@
     "tr": "Bilinen parlaklık değişimlerinin körlemesine bulunması"
    },
    "result": {
-    "en": "Of the 2 brightness targets, R Draconis was found without being told where it is; RW Aurigae was not found.",
-    "tr": "2 parlaklık hedefinden R Draconis konumu verilmeden bulundu; RW Aurigae bulunamadı."
+    "en": "Both brightness targets were found without being told where they are: R Draconis (0.52\" from the target, -43.9 %, 25 sigma) and RW Aurigae (1.06\" from the target, reported as a colour change: brighter in D1-D2, fainter in D5-D6). Status fail -> pass: the measurement changed (finder v1.1 adds a colour-change rule), the rule of this test (a variable candidate within 10\" of the target) did not. The colour-change rule was written by the finder's author with RW Aurigae in view.",
+    "tr": "İki parlaklık hedefi de konumu verilmeden bulundu: R Draconis (hedefe 0,52\", %-43,9, 25 sigma) ve RW Aurigae (hedefe 1,06\", renk değişimi olarak: D1-D2'de daha parlak, D5-D6'da daha sönük). Durum: geçmedi -> geçti; ölçüm değişti (bulucu v1.1 bir renk değişimi kuralı ekliyor), bu testin kuralı (hedefe 10\" içinde bir parlaklık değişimi adayı) değişmedi. Renk değişimi kuralını bulucunun yazarı RW Aurigae'yi bilerek yazdı."
    },
    "numbers": {
     "brightness_targets": 2,
-    "brightness_found": 1,
+    "brightness_found": 2,
     "r_dra_found": true,
-    "rw_aur_found": false
+    "rw_aur_found": true,
+    "r_dra_sep_arcsec": 0.52,
+    "rw_aur_sep_arcsec": 1.06,
+    "match_radius_arcsec": 10
+   },
+   "status": "pass",
+   "evidence": "data/verify/evidence/blind.csv",
+   "v0": null,
+   "v1": {
+    "numbers": {
+     "brightness_targets": 2,
+     "brightness_found": 1,
+     "r_dra_found": true,
+     "rw_aur_found": false
+    },
+    "status": "fail",
+    "result_en": "Of the 2 brightness targets, R Draconis was found without being told where it is; RW Aurigae was not found.",
+    "note": "finder v1 (round v1, 14 Nov 2026)"
+   }
+  },
+  {
+   "id": "V12",
+   "title": {
+    "en": "Fast-star sweep (90 Gaia fast stars, one pre-registered procedure)",
+    "tr": "Hızlı yıldız taraması (90 Gaia hızlı yıldızı, önceden kayda geçirilmiş tek yöntem)"
+   },
+   "result": {
+    "en": "Of 90 pre-registered stars, 86 were measured (4 could not be: no drift fit: HD 125455B, omi02 Eri B, EGGR 536; target not in the Gaia field list: 2MASS J05325346+8246465). 81 of 86 agree with Gaia DR3 within 3 sigma, 72 within 2 sigma and 52 within 1 sigma (correct error bars would give about 86, 82 and 59); 5 stars are outside 3 sigma, so the test does not pass (pre-registered per-star criterion in pipeline/FAST_SWEEP.md: within 3 sigma; test rule, fixed by the tester before the final summary existed: every measured star meets it). Known and not fixed: 8 of 86 stars get a two-season fit with no degree of freedom (dof = 0), and LAWD 37 and Ross 578 come out about 22 % slow (pipeline/FAST_SWEEP.md, Limits). Median difference 7.1 % (0.1662\"/yr). Measured with the frozen v1 detection core (1370ca11c5), not with finder v1.1.",
+    "tr": "Önceden kayda geçirilmiş 90 yıldızdan 86 tanesi ölçüldü (4 tanesi ölçülemedi). 86 yıldızın 81 tanesi Gaia DR3 ile 3 sigma, 72 tanesi 2 sigma, 52 tanesi 1 sigma içinde uyuşuyor (doğru hata çubuklarıyla yaklaşık 86, 82 ve 59 beklenirdi); 5 yıldız 3 sigma dışında, bu yüzden test geçmiyor (pipeline/FAST_SWEEP.md'de önceden konan yıldız başına ölçüt: 3 sigma içinde; test kuralı, son özet çıkmadan önce test eden tarafından kondu: ölçülen her yıldız bu ölçütü sağlamalı). Bilinen ve düzeltilmemiş: 86 yıldızın 8 tanesinde iki sezonluk uyumun serbestlik derecesi yok (dof = 0); LAWD 37 ve Ross 578 yaklaşık %22 yavaş çıkıyor (pipeline/FAST_SWEEP.md, sınırlar). Ortanca fark %7,1 (0,1662\"/yıl). Bulucu v1.1 ile değil, dondurulmuş v1 tespit çekirdeğiyle (1370ca11c5) ölçüldü."
+   },
+   "numbers": {
+    "sample_size": 90,
+    "attempted": 90,
+    "measured": 86,
+    "failed": 4,
+    "within_1sigma": 52,
+    "within_2sigma": 72,
+    "within_3sigma": 81,
+    "outside_3sigma": 5,
+    "expected_within_3sigma_percent": 99.7,
+    "median_abs_diff_pct": 7.1,
+    "p90_abs_diff_pct": 25.23,
+    "median_abs_diff_arcsec_yr": 0.1662,
+    "median_error_arcsec_yr_per_axis": 0.1286,
+    "median_independence_pull": 0.0032,
+    "criterion": "every measured star within 3 sigma of Gaia DR3 (2-D chi2 <= 11.83); rule pipeline/FAST_SWEEP.md, 2026-11-14 17:06",
+    "code_version": "1370ca11c5",
+    "source": "site/data/fast_sweep/summary.json",
+    "source_built": "2026-11-15T01:43:58+0300"
    },
    "status": "fail",
-   "evidence": "data/verify/evidence/blind.csv",
+   "evidence": "data/fast_sweep/stars.csv",
    "v0": null
   }
  ],
- "edited": "2026-11-14 18:10: V9 split into movers (V9) and brightness changes (V11); V3 parallax compared with Lazorenko & Sahlmann 2018. No result was re-measured. 2026-11-14 21:58: V7 re-run with the finder's own v1 decision rule (tests/shuffle.py uses DA.null_movers, 522d3ab): 0 fake movers in 1200 field-shuffles, status fail -> pass; the v0-rule numbers are kept (v0, v1_core_v0_rule)."
+ "edited": "2026-11-14 18:10: V9 split into movers (V9) and brightness changes (V11); V3 parallax compared with Lazorenko & Sahlmann 2018. No result was re-measured. 2026-11-14 21:58: V7 re-run with the finder's own v1 decision rule (tests/shuffle.py uses DA.null_movers, 522d3ab): 0 fake movers in 1200 field-shuffles, status fail -> pass; the v0-rule numbers are kept (v0, v1_core_v0_rule). 2026-11-15 02:43: round v1.1 (independent tester, finder v1.1, commit a5de792; outputs ajan_durumu/round_v11): V1-V5, V7, V9, V10, V11 re-measured, V6 re-measured on a reduced set (see V6), V12 added (fast-star sweep, final summary). Thresholds and decision rules unchanged; V4 and V11 changed from fail to pass because the measurement changed. The v1 numbers of every re-measured test are kept under \"v1\"."
 }

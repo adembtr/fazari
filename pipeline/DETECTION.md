@@ -176,15 +176,18 @@ engine falls back to its own rough answer.
 ## 7. Tests
 
 <!-- status:begin (generated from site/data/verify/tests.json, not typed by hand) -->
-**Independent test round** (`site/data/verify/tests.json`: 11 tests of the code state "TEST-READY v1
-16:58", generated 2026-11-14T14:42:32Z, last edited 2026-11-14 21:58): **7 pass, 3 fail, 1 limit**.
-Failing: V4 (WISE 0855-0714 (coldest known brown dwarf)); V6 (Injection recovery (fake movers added
-to real images)); V11 (Blind recovery of the known brightness changes). Limit: V8 (Known asteroids).
+**Independent test round** (`site/data/verify/tests.json`: 12 tests of the code state "TEST-READY v1
+16:58", generated 2026-11-14T23:43:30Z, last edited 2026-11-15 02:43): **9 pass, 2 fail, 1 limit**.
+Failing: V6 (Injection recovery (fake movers added to real images)); V12 (Fast-star sweep (90 Gaia
+fast stars, one pre-registered procedure)). Limit: V8 (Known asteroids).
 <!-- status:end -->
 
-That round tested finder 1.0. The round for 1.1 is run by the independent tester and replaces
-`tests.json`; until then everything below is the author's own test of 1.1 (14 Nov 2026, logs in
-`ajan_durumu/algoritma_v11/log/`, results in `.../out/`), not an independent result.
+That paragraph is the independent round on finder 1.1 (15 Nov 2026, commit a5de792, outputs in
+`ajan_durumu/round_v11/`, notes in `ajan_durumu/test_sonuclari.md`, "Round v1.1"): V1-V5, V7 and V9-V11
+re-measured in full, V6 on 5 of its 20 injection runs, V12 (fast-star sweep, `pipeline/FAST_SWEEP.md`) added;
+V8 keeps the asteroid numbers of round v1. Thresholds unchanged. Everything below is the author's own test of
+1.1 (14 Nov 2026, logs in `ajan_durumu/algoritma_v11/log/`, results in `.../out/`); the independent round
+reproduced its blind numbers for the four movers in every digit.
 
 **Known objects, found blind in the full 12-field run** (`v9_all.log`; the two fields with an
 uncatalogued mover again after the last change, `v10_two.log`):

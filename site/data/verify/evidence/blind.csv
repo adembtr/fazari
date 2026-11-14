@@ -1,13 +1,13 @@
-field,role,v0,found,class,detectors,speed_arcsec_yr,err_speed,ref_speed,d_speed_sigma,pa_deg,err_pa,ref_pa,d_pa_sigma,sep_arcsec,parallax_mas,gaia_known,candidates,variables,artifacts,seconds
-barnard,known mover,not run in v0,yes,gaia-known,A+B,10.3611,0.0509,10.3933,-0.6,355.4,0.3,355.58,-0.6,0.94,,1,0,5,27,447.5
-eps_indi_b,known mover,not run in v0,yes,gaia-known,A+B,4.6784,0.0204,4.6842,-0.3,121.6,0.2,121.78,-0.9,0.56,,1,0,0,7,97.6
-job:field-10.000n41.000-c2-b63,null field,not run in v0,,,,,,,,,,,,,,0,0,0,1,16.2
-job:field-106.796s5.562-c6-b63,null field,not run in v0,,,,,,,,,,,,,,0,0,1,14,70.9
-job:field-201.365s43.019-c6-b63,null field,not run in v0,,,,,,,,,,,,,,0,0,0,3,41.6
-job:field-259.095s34.806-c6-b63,null field,not run in v0,,,,,,,,,,,,,,0,0,1,14,197.8
-job:field-263.523s68.901-c6-b63,null field,not run in v0,,,,,,,,,,,,,,0,0,0,9,61.3
-job:field-74.831n28.578-c6-b63,null field,not run in v0,,,,,,,,,,,,,,0,0,1,7,38.7
-job:luhman16-162.295s53.317-c6-b63-pm8778,known mover,not run in v0,yes,candidate,A+D,2.678,0.0587,2.7904,-1.9,274.3,1.5,277.35,-2.0,1.22,426.4,0,1,0,21,156.8
-r_dra,brightness target,not run in v0,,,,,,,,,,,,,,0,0,1,1,143.5
-rw_aur,brightness target,not run in v0,,,,,,,,,,,,,,0,0,1,16,178.3
-wise0855,known mover,not run in v0,yes,candidate,A,8.4292,0.3773,8.1515,0.7,284.2,2.5,274.74,3.8,1.46,,0,1,0,4,58.5
+field,role,v0,found,class,detectors,speed_arcsec_yr,err_speed,ref_speed,d_speed_sigma,pa_deg,err_pa,ref_pa,d_pa_sigma,sep_arcsec,parallax_mas,gaia_known,candidates,variables,artifacts,seconds,v11_found,v11_class,v11_detectors,v11_confirmed,v11_speed_arcsec_yr,v11_err_speed,v11_d_speed_sigma,v11_pa_deg,v11_err_pa,v11_d_pa_sigma,v11_sep_arcsec,v11_parallax_mas,v11_gaia_known,v11_candidates,v11_variables,v11_artifacts,v11_target_variable_sep_arcsec,v11_seconds
+barnard,known mover,not run in v0,yes,gaia-known,A+B,10.3611,0.0509,10.3933,-0.6,355.4,0.3,355.58,-0.6,0.94,,1,0,5,27,447.5,yes,gaia-known,A+B,yes,10.3611,0.0509,-0.6,355.4,0.3,-0.6,0.94,,1,0,5,27,,351.4
+eps_indi_b,known mover,not run in v0,yes,gaia-known,A+B,4.6784,0.0204,4.6842,-0.3,121.6,0.2,121.78,-0.9,0.56,,1,0,0,7,97.6,yes,gaia-known,A+B,yes,4.6784,0.0204,-0.3,121.6,0.2,-0.9,0.56,,1,0,0,7,,70.5
+job:field-10.000n41.000-c2-b63,null field,not run in v0,,,,,,,,,,,,,,0,0,0,1,16.2,,,,,,,,,,,,,0,0,0,1,,9.5
+job:field-106.796s5.562-c6-b63,null field,not run in v0,,,,,,,,,,,,,,0,0,1,14,70.9,,,,,,,,,,,,,0,0,1,14,,44.5
+job:field-201.365s43.019-c6-b63,null field,not run in v0,,,,,,,,,,,,,,0,0,0,3,41.6,,,,,,,,,,,,,0,0,0,3,,24.5
+job:field-259.095s34.806-c6-b63,null field,not run in v0,,,,,,,,,,,,,,0,0,1,14,197.8,,,,,,,,,,,,,0,0,2,13,,117.0
+job:field-263.523s68.901-c6-b63,null field,not run in v0,,,,,,,,,,,,,,0,0,0,9,61.3,,,,,,,,,,,,,0,0,0,9,,35.0
+job:field-74.831n28.578-c6-b63,null field,not run in v0,,,,,,,,,,,,,,0,0,1,7,38.7,,,,,,,,,,,,,0,0,1,7,,22.4
+job:luhman16-162.295s53.317-c6-b63-pm8778,known mover,not run in v0,yes,candidate,A+D,2.678,0.0587,2.7904,-1.9,274.3,1.5,277.35,-2.0,1.22,426.4,0,1,0,21,156.8,yes,candidate,A+D,yes,2.8159,0.0574,0.4,275.8,1.4,-1.1,1.32,467.9,0,1,1,18,,135.4
+r_dra,brightness target,not run in v0,,,,,,,,,,,,,,0,0,1,1,143.5,yes,variable,V,,,,,,,,,,0,0,1,1,0.52,72.5
+rw_aur,brightness target,not run in v0,,,,,,,,,,,,,,0,0,1,16,178.3,yes,variable,V,,,,,,,,,,0,0,2,15,1.06,99.9
+wise0855,known mover,not run in v0,yes,candidate,A,8.4292,0.3773,8.1515,0.7,284.2,2.5,274.74,3.8,1.46,,0,1,0,4,58.5,yes,candidate,A,yes,8.1874,0.5673,0.1,277.6,3.8,0.8,0.55,,0,1,0,4,,43.2
