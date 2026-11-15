@@ -217,10 +217,10 @@ function nearest(stars, w, rMax) {
 /** SIMBAD (TAP) for objects Gaia does not have: the object with a proper motion that lies at `w` once moved to its date.
  *  SIMBAD positions are for J2000, so a fast object sits far from where we measured it: ask 120″ around (4.6″/yr
  *  over 26 years), then move every object with its own motion and keep the nearest within rMax. */
-async function simbadAt(w, rMax) {
+async function simbadAt(w, rMax, radius = 120, pmMin = null) {
   const q = `SELECT TOP 200 main_id, ra, dec, pmra, pmdec FROM basic ` +
-    `WHERE CONTAINS(POINT('ICRS', ra, dec), CIRCLE('ICRS', ${w.ra.toFixed(6)}, ${w.dec.toFixed(6)}, ${(120 / 3600).toFixed(5)})) = 1 ` +
-    `AND pmra IS NOT NULL AND pmdec IS NOT NULL`;
+    `WHERE CONTAINS(POINT('ICRS', ra, dec), CIRCLE('ICRS', ${w.ra.toFixed(6)}, ${w.dec.toFixed(6)}, ${(radius / 3600).toFixed(5)})) = 1 ` +
+    `AND pmra IS NOT NULL AND pmdec IS NOT NULL` + (pmMin ? ` AND pmra * pmra + pmdec * pmdec > ${pmMin * pmMin}` : "");
   // SIMBAD's mirror at Harvard sends Access-Control-Allow-Origin: * (tested 2026-11-14 from a page, 4 of 4 answered;
   // simbad.cds.unistra.fr answered 404 that night). Any failure: no SIMBAD value, nothing shown.
   const u = "https://simbad.harvard.edu/simbad/sim-tap/sync?" + new URLSearchParams({ request: "doQuery", lang: "adql", format: "json", query: q });
@@ -251,12 +251,17 @@ export function catalogueAt(meta, base) {
     // here only gave a 404 in the console), so a free point asks Gaia DR3 through VizieR directly
     let hit = null;
     try { hit = nearest(await gaiaStars(w.ra, w.dec, 20 / 3600, { max: 50 }), w, R); } catch (e) { hit = null; }
+    // a fast star has left that circle since Gaia's epoch 2016 (Kapteyn's Star, 8.7″/yr: about 90″ by 2026), so the
+    // fast stars (over 1″/yr) of a wider circle are asked too and moved to the date the same way (150″: up to ~14″/yr)
+    if (!hit) { try { hit = nearest(await gaiaStars(w.ra, w.dec, 150 / 3600, { pmMin: 1000, max: 50 }), w, R); } catch (e) { hit = null; } }
     if (hit && hit.s.has5p !== false) {
       const s = hit.s;
       return { src: "Gaia DR3", id: s.source_id, pmra: s.pmra, pmdec: s.pmdec, v: Math.hypot(s.pmra, s.pmdec) / 1000,
         pa: (Math.atan2(s.pmra, s.pmdec) / D2R + 360) % 360, sep: hit.sep, gmag: ok(s.gmag) ? +s.gmag : null };
     }
-    return simbadAt(w, R);
+    // SIMBAD positions are for J2000: an object faster than ~4.6″/yr is outside 120″ by now (WISE 0855-0714, 8.2″/yr:
+    // about 215″), so the fast objects (over 1″/yr) of 330″ around are asked when the first answer has none
+    return (await simbadAt(w, R)) || simbadAt(w, R, 330, 1000);
   })().catch(() => null);
   catCache.set(key, p);
   return p;
