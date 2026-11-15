@@ -2147,5 +2147,12 @@
  "ex.sh.pos": "Copy position",
  "ex.sh.link": "Copy link",
  "ex.sh.share": "Share",
- "ex.sh.first": "Not finished yet: fetch the SPHEREx images of this place first"
+ "ex.sh.first": "Not finished yet: fetch the SPHEREx images of this place first",
+ "cp.embed": "Embed",
+ "cp.embed.tip": "Copy the code that shows this blink on another page",
+ "cp.embed.ok": "Embed code copied: paste it into your page",
+ "cp.embed.fail": "Could not copy; select the code below and copy it",
+ "cp.embed.title": "Fazari: SPHEREx blink of {name}",
+ "cp.embed.point": "a sky point ({pos})",
+ "ex.sh.embed": "Embed (iframe code)"
 }

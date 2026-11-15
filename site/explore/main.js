@@ -1403,6 +1403,11 @@ function wireShareMenu() {
     if (!it) return;
     open(false);
     const what = it.dataset.sh, p = state.selected;
+    if (what === "embed") {                                 // the <iframe> code of embed.html for this place (js/embed_code.js)
+      const em = await import("../js/embed_code.js");
+      await em.copyEmbed(em.placeOptions(p, pname(p)), (msg, err) => toast(msg, err));
+      return;
+    }
     if (what === "pos" || what === "link") {
       const cp = await import("../js/cp_save.js");
       if (what === "pos") {

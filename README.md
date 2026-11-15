@@ -118,6 +118,27 @@ otherwise it uses the browser engine. It adds:
 - post-steps after a full job: spectrum, FLAGS layer, candidate finder (`pipeline/detect/`), faint-object mode,
   and the finds list (`pipeline/finds.py`, served at `/api/finds`, shown in the explorer on that computer only).
 
+## Embed
+
+A ready result or any sky point can be shown on another web page as a small blink card (`site/embed.html`). It
+needs no server: the card reads the result's own files from the site.
+
+```html
+<iframe src="https://adembtr.github.io/fazari/embed.html?target=barnard" width="480" height="400" style="border:0" loading="lazy" title="Fazari: SPHEREx blink of Barnard's Star"></iframe>
+```
+
+- `?target=<name>`: a ready result in `site/data/<name>/` (`barnard`, `eps_indi_b`, `wise0855`, `rw_aur`, `r_dra`).
+  The seasons blink in turn with the catalogue ring, north/east and a scale bar, above one verdict line (speed ± error,
+  or brightness change ± error) and the credits.
+- `?ra=<deg>&dec=<deg>`: any point. The card shows where it is on the SPHEREx all-sky map and links to the full site,
+  which measures it. "Quick look here" fetches a few SPHEREx images of one wavelength in the browser, on click only
+  (a quick look, not a measurement).
+- `&bin=2.0`: wavelength in µm (default: the one the full viewer opens with). `&lang=tr`: Turkish.
+- Works from about 300×300 to 600×450 px without scrolling. The blink has a pause button and starts paused when the
+  visitor's system asks for reduced motion.
+- "Embed" in the save row under a result's picture, and in the explorer's "Download / Share" menu, copies this code for
+  the result or place on screen (`site/js/embed_code.js`).
+
 ## Repository layout
 
 - `pipeline/targets.json` — target catalog (position, proper motion, reference epoch, source).
@@ -131,6 +152,7 @@ otherwise it uses the browser engine. It adds:
 - `local/` — local engine: serves the site and runs on-demand blink jobs for any clicked position (see `local/README.md`).
 - `site/ornek.html` — viewer page (blink, wavelength choice, zoom, Gaia marker, difference image, measured motion).
 - `site/explore.html` (+ `site/explore/`) — sky explorer; `site/sky.html` — blink for any point (browser engine, `site/js/`).
+- `site/embed.html` (+ `site/js/embed.js`) — the small blink card for other pages (see "Embed").
 - `site/asteroids.html` — known-asteroid recovery results; `site/verify.html` — evidence page.
 - `site/vr.html` — look around the sky (not yet linked from the site); its sky picture `site/data/vr/` (`sky_2k.jpg`, `sky_4k.jpg`, `sky.json`) is made by `pipeline/vr_sky.py` from the SPHEREx DR1 all-sky HiPS at IRSA.
 - `site/comets.html` (+ `site/comets.js`) — comets in SPHEREx (three comets and Pluto), data in `site/data/comets/`; method and results in `pipeline/COMETS.md`.

@@ -28,6 +28,7 @@ const WORDS = {
     openPoint: "Measure this point on the Fazari site (opens a new tab)",
     pause: "Pause the blink", play: "Play the blink",
     visit: "Visit {i} of {n}: {date}",
+    visits: "Visits",
     stage: "SPHEREx images of {name} at {um}, one per visit, shown in turn",
     alt: "SPHEREx image of {name}, {date}, {um}",
     ringTip: "Ring: where {cat} puts the object at each visit",
@@ -70,6 +71,7 @@ const WORDS = {
     openPoint: "Bu noktayı Fazari sitesinde ölçün (yeni sekmede açılır)",
     pause: "Blink'i durdur", play: "Blink'i oynat",
     visit: "Ziyaret {i}/{n}: {date}",
+    visits: "Ziyaretler",
     stage: "{name} için {um} SPHEREx görüntüleri: her ziyaretten bir kare, sırayla",
     alt: "{name}, {date}, {um} SPHEREx görüntüsü",
     ringTip: "Halka: {cat} kaynağına göre cismin her ziyaretteki yeri",
@@ -164,7 +166,8 @@ export function verdictHtml(meta, X, lang = LANG) {
   const ms = (meta && meta.measured) || {};
   const L = (k, p) => T(k, p, lang), mo = (ep) => esc(monthTxt(ep, lang));
   if (ms.photometry || ms.status === "brightness") {
-    const c = X && X.brightnessChange ? X.brightnessChange(ms.photometry) : null;
+    if (!X || !X.brightnessChange) return "";          // the site's rule did not load: no line rather than a wrong one
+    const c = X.brightnessChange(ms.photometry);
     if (!c) return esc(L("few"));
     if (c.flat) return L("flat", { e: ok(c.err) ? "± " + pctTxt(Math.max(1, Math.round(100 * c.err)), lang) : "", a: mo(c.from), b: mo(c.to) }).replace(" ()", "").replace("(; ", "(");
     const m = c.main, pc = Math.round(100 * Math.abs(m.r - 1)), pe = Math.max(1, Math.round(100 * m.er));
@@ -268,7 +271,6 @@ function setPlaying(on) {
   if (b) {
     b.setAttribute("aria-label", T(playing ? "pause" : "play"));
     b.title = T(playing ? "pause" : "play");
-    b.setAttribute("aria-pressed", playing ? "false" : "true");
     b.innerHTML = playing
       ? '<svg viewBox="0 0 14 14" aria-hidden="true"><rect x="2.5" y="1.5" width="3.2" height="11" rx="1" fill="currentColor"/><rect x="8.3" y="1.5" width="3.2" height="11" rx="1" fill="currentColor"/></svg>'
       : '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3.5 1.8v10.4L12 7z" fill="currentColor"/></svg>';
@@ -300,7 +302,7 @@ function mountBlink(els, labels, epochs, name, um) {
   ctl.className = "ctl";
   if (frames.length > 1) {
     const dots = document.createElement("div");
-    dots.className = "dots"; dots.setAttribute("role", "group"); dots.setAttribute("aria-label", T("stage", { name, um }));
+    dots.className = "dots"; dots.setAttribute("role", "group"); dots.setAttribute("aria-label", T("visits"));
     frames.forEach((f, i) => {
       const d = document.createElement("button");
       d.type = "button"; d.className = "dot"; d.style.setProperty("--v", visitColour(i));

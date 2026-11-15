@@ -2210,5 +2210,12 @@
  "ex.sh.pos": "Konumu kopyala",
  "ex.sh.link": "Bağlantıyı kopyala",
  "ex.sh.share": "Paylaş",
- "ex.sh.first": "Henüz bitmedi: önce bu yerin SPHEREx görüntülerini getirin"
+ "ex.sh.first": "Henüz bitmedi: önce bu yerin SPHEREx görüntülerini getirin",
+ "cp.embed": "Yerleştir",
+ "cp.embed.tip": "Bu blink'i başka bir sayfada gösteren kodu kopyalar",
+ "cp.embed.ok": "Yerleştirme kodu kopyalandı: sayfanıza yapıştırın",
+ "cp.embed.fail": "Kopyalanamadı; aşağıdaki kodu seçip kopyalayın",
+ "cp.embed.title": "Fazari: {name} için SPHEREx blink",
+ "cp.embed.point": "bir gökyüzü noktası ({pos})",
+ "ex.sh.embed": "Yerleştir (iframe kodu)"
 }

@@ -581,7 +581,8 @@
       '<button type="button" id="tsVid" data-i18n="cp.vid"' + (canVid ? "" : " hidden") + ">Save video</button>" +
       '<button type="button" id="tsPdf" data-i18n="cp.pdf">PDF report</button>' +
       '<button type="button" id="tsPos" data-i18n="cp.pos">Copy position</button>' +
-      '<button type="button" id="tsLink" data-i18n="' + (share ? "cp.share" : "cp.link") + '">' + (share ? "Share" : "Copy link") + "</button>");
+      '<button type="button" id="tsLink" data-i18n="' + (share ? "cp.share" : "cp.link") + '">' + (share ? "Share" : "Copy link") + "</button>" +
+      '<button type="button" id="tsEmbed" data-i18n="cp.embed" data-i18n-attr="title:cp.embed.tip" title="Copy the code that shows this blink on another page">Embed</button>');   // js/embed_code.js
     B.insertBefore(save, ctl.nextSibling);
     if (!isSky) {                                     // the viewer's own link button gives way to the one above (same link)
       into(B, $("tsView"), ctl); into(save, $("copyLink")); into(save, $("linkOut"));
@@ -658,6 +659,7 @@
     if (tab) { cpUser = true; setTab(tab.getAttribute("data-tab")); return; }
     var sea = t.closest("[data-ts-sea]");
     if (sea) { seasonGo(+sea.getAttribute("data-ts-sea"), sea.getAttribute("data-ep")); return; }
+    if (t.closest("#tsEmbed")) { mod("./embed_code.js").then(function (m) { return m.copyFromPage(); }).catch(function (x) { console.warn("ts_flow: embed", x); }); return; }
     var b = t.closest("#tsPng, #tsGif, #tsVid, #tsPdf, #tsPos, #tsLink");
     if (b) { mod("./cp_save.js").then(function (m) { return m.act(SAVE_KIND[b.id], b); }).catch(function (x) { console.warn("ts_flow: save", x); }); return; }
     var mv = t.closest("#tsVdMore [data-vd-other], #tsVdMore [data-vd-list]");      // the strip's own buttons do the work
