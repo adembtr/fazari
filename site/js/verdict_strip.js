@@ -1,6 +1,7 @@
 // Verdict strip: one clear verdict at the top of the answer, the same weight for every result class.
-//   none   (not_detected, not_moving)                         "No moving object found here." + what was looked at,
-//                                                              the limit, what it means, two actions
+//   none   (not_detected, not_moving)                         "Nothing here moves" (+ "the star we measured stays put"
+//                                                              when a source was measured) + what was looked at, the
+//                                                              catalogue's own motion of the star, the limit, two actions
 //   unsure (too_uncertain, no_measurement, one_season, guards) the engine's own reason sentence
 //   moves  (moving, moving_as_predicted, ..._unlike_prediction) the speed + whether a catalogue star matches it
 //   wait   while wavelengths are still loading: an interim verdict that says it is interim
@@ -110,8 +111,10 @@ function makeStrip() {
 /** v = { kind, title, tag, what, cat, lim, mean, actions: html, field: html } */
 function paint(el, v) {
   if (!el) return;
-  if (!v) { el.hidden = true; H.classList.remove("vd-on", "vd-k-none", "vd-k-unsure", "vd-k-moves", "vd-k-wait"); return; }
+  if (!v) { el.hidden = true; H.classList.remove("vd-on", "vd-k-none", "vd-k-unsure", "vd-k-moves", "vd-k-wait"); delete el.dataset.cap; delete H.dataset.vdCap; return; }
   el.hidden = false;
+  // the short form written on the picture (js/app.js, js/viewer.js); on <html> too, so that the picture redraws on a change
+  if (v.cap) { el.dataset.cap = v.cap; H.dataset.vdCap = v.cap; } else { delete el.dataset.cap; delete H.dataset.vdCap; }
   el.className = "vd vd-" + v.kind;
   el.setAttribute("aria-label", L("vd.aria", "Verdict"));
   for (const k of ["none", "unsure", "moves", "wait"]) H.classList.toggle("vd-k-" + k, v.kind === k);
@@ -134,8 +137,12 @@ function infoTxt(n, s, ep) {
   if (ep && ep.length > 1) parts.push(`${month(ep[0], true)} – ${month(ep[ep.length - 1], true)}`);
   return parts.join(", ");
 }
-function noneWhat(code, k, m, info, sp) {
+function noneWhat(code, k, m, info, sp, off) {
   const paren = info ? ` (${info})` : "";
+  if (code === "not_moving" && off) {                      // measured beside the point picked (gr.js offPoint), not at the centre
+    return sp ? L("vd.stillOff", "The source we measured did not move (measured {v}, within the error{info}).", { v: speedTxt(sp.v, sp.e), info: info ? "; " + info : "" })
+      : L("vd.stillOffNoV", "The source we measured did not move{info}.", { info: paren });
+  }
   if (code === "not_moving") {
     return sp ? L("vd.still", "The source at the centre did not move (measured {v}, within the error{info}).", { v: speedTxt(sp.v, sp.e), info: info ? "; " + info : "" })
       : L("vd.stillNoV", "The source at the centre did not move{info}.", { info: paren });
@@ -243,6 +250,20 @@ function catalogueMatch(meta, base, code, sp, onDone) {
   }).catch(() => { catMemo.set(key, { k: "unknown" }); onDone(); });
   return null;
 }
+/** The catalogue star of a "not moving" result (ornek.html): { label, v (″/yr) }, false when none, null while asking. */
+const stillMemo = new Map();
+function stillCatOf(meta, base, onDone) {
+  const g = meta.gaia || {};
+  if (!/requested position/i.test(g.label || "") && (g.source_id || g.label) && ok(g.pmra_mas_yr) && ok(g.pmdec_mas_yr)) {
+    return { label: catName(meta), v: Math.hypot(+g.pmra_mas_yr, +g.pmdec_mas_yr) / 1000 };
+  }
+  const key = base + "|" + (meta.generated || "");
+  if (stillMemo.has(key)) return stillMemo.get(key);
+  stillMemo.set(key, null);
+  GR.catalogueAt(meta, base).then((c) => { stillMemo.set(key, c && ok(c.v) ? { label: c.src || "Gaia DR3", v: c.v } : false); onDone(); })
+    .catch(() => { stillMemo.set(key, false); onDone(); });
+  return null;
+}
 function catLine(m) {
   if (!m) return L("vd.moves.checking", "Checking the star catalogues…");
   if (m.k === "known") return L("vd.moves.known", "Known star, matches the catalogue ({cat}).", { cat: m.label });
@@ -272,14 +293,41 @@ function confTag(code, sp) {
 /** A very slow object: "too slow to measure with these data: slower than X/yr", X = 3 × the measured error. */
 const slowLine = (sp) => (sp && ok(sp.e) && 3 * sp.e >= 0.005 ? L("vd.slow", "Too slow to measure with these data: slower than {x}.", { x: speedTxt(3 * sp.e, null) }) : "");
 
+/** The yearly motion of a catalogue star, as the catalogue gives it: "0.05″" (more digits for a very slow star). */
+const pmTxt = (v) => loc((+v).toFixed(v >= 1 ? 1 : v >= 0.1 ? 2 : 3)) + "″";
+/** "Not moving" and the catalogue knows the star (c = { label, v }): its expected motion beside our result, against the
+ *  same limit as slowLine (3 × the measured error per year). Slower than the limit: no motion is the expected result.
+ *  Faster: we should have seen it, and the line says plainly that we did not. "" when there is no catalogue star. */
+function stillCatLine(c, sp) {
+  if (!c || !ok(c.v)) return "";
+  const src = c.label || "Gaia DR3", v = pmTxt(c.v);
+  if (!sp || !ok(sp.e) || !(3 * sp.e >= 0.005)) return L("vd.cat.pm", "According to {src}, this star moves {v} a year.", { src, v });
+  const x = speedTxt(3 * sp.e, null);
+  return c.v < 3 * sp.e
+    ? L("vd.cat.ok", "According to {src}, this star moves {v} a year; the limit of this measurement is {x}. Seeing no motion is the expected result, in line with {src}.", { src, v, x })
+    : L("vd.cat.miss", "{src} says this star moves {v} a year, above the limit of this measurement ({x}), yet we did not see it move: the two disagree, so take this result with care.", { src, v, x });
+}
+/** The headline of a "none" verdict and its short form for the picture. Nothing measured: "Nothing here moves." A
+ *  source measured and not moving: "... the star (or source, when no catalogue star is known there) we measured
+ *  [nearby] stays put". c: the catalogue star (null: none known or still asking); off: measured beside the point. */
+function noneTitle(code, c, off) {
+  if (code !== "not_moving") return { title: L("vd.none.t", "Nothing here moves."), cap: L("vd.cap.none", "No motion: no source at this point.") };
+  const star = !!(c && ok(c.v));
+  const key = "vd.still.t." + (star ? "star" : "src") + (off ? "Off" : "");
+  const en = `Nothing here moves: the ${star ? "star" : "source"} we measured${off ? " nearby" : ""} stays put.`;
+  return { title: L(key, en), cap: star ? L("vd.cap.star", "No motion: the star stays put.") : L("vd.cap.src", "No motion: the source stays put.") };
+}
+
 /** The final strip of one class. d = { code, reason, text, meta, base, k, m, n, seasons, epochs, sp, cand, page, pos } */
 function finalView(d, repaint) {
   const kind = KIND[d.code];
   if (!kind) return null;
   const info = infoTxt(d.n, d.seasons, d.epochs);
   if (kind === "none") {
-    return { kind, tag: confTag(d.code, d.sp), title: L("vd.none.t", "No moving object found here."), what: noneWhat(d.code, d.k, d.m, info, d.sp),
-      cat: d.code === "not_moving" ? [d.off ? offLine(d.off, { k: "unknown" }) : "", slowLine(d.sp)].filter(Boolean).join(" ") : "", lim: d.lim || "", mean: MEAN(), actions: actionsHtml(d.page, d.pos), field: fieldHtml(d.cand) };
+    const still = d.code === "not_moving", c = still ? d.stillCat || null : null, head = noneTitle(d.code, c, still && !!d.off);
+    const catTxt = still ? stillCatLine(c, d.sp) : "";
+    return { kind, tag: confTag(d.code, d.sp), title: head.title, cap: head.cap, what: noneWhat(d.code, d.k, d.m, info, d.sp, still && d.off),
+      cat: still ? [d.off ? offLine(d.off, { k: "unknown" }) : "", catTxt || slowLine(d.sp)].filter(Boolean).join(" ") : "", lim: d.lim || "", mean: MEAN(), actions: actionsHtml(d.page, d.pos), field: fieldHtml(d.cand) };
   }
   if (kind === "unsure") {
     // the title is the confidence level here (no tag)
@@ -366,7 +414,8 @@ async function mountOrnek() {
     const n = imagesOf(meta);
     const sp = KIND[c.code] === "unsure" ? null : (speedOf(meta) || speedOfAnswer(a));
     const free = !!(meta.gaia && !meta.gaia.source_id && /requested position/i.test(meta.gaia.label || ""));
-    S.view = finalView({ ...c, meta, base: S.metaUrl, k, m, n, seasons: (meta.epochs || []).length, epochs: meta.epochs || [], sp,
+    const stillCat = c.code === "not_moving" ? stillCatOf(meta, S.metaUrl, repaint) : null;
+    S.view = finalView({ ...c, meta, base: S.metaUrl, k, m, n, seasons: (meta.epochs || []).length, epochs: meta.epochs || [], sp, stillCat,
       cand: S.cand, lim: limitTxt(S.cand, meta), page: "ornek", pos: free && ok(meta.ra) ? { ra: +meta.ra, dec: +meta.dec } : null }, repaint);
     paint(el, S.view);
     sureSimple(meta, c.code);
@@ -446,7 +495,9 @@ function mountSky() {
     const catm = kind === "moves" ? (a.code === "moving_as_predicted" ? { k: "known", label: "Gaia DR3" } : a.code === "moving_unlike_prediction" ? { k: "knownDiff", label: "Gaia DR3" } : skyCat(run, sp)) : null;
     // a free point: the fit may have settled on a bright neighbour of the point picked (gr.js offPoint)
     const off = !run.target && code !== "not_detected" && run.info ? GR.offPoint((run.astro && run.astro.positions) || [], run.info.ra0, run.info.dec0) : null;
-    paint(el, finalView({ code, reason: a.reason, text: answerText(a), k, m, n, seasons, epochs: ep.length > 1 ? ep : [], sp, lim, catm, off, page: "sky" }, render));
+    // "not moving": the catalogue's own motion of the measured star (a target's catalogue entry, else the star there)
+    const stillCat = code === "not_moving" ? (run.target ? targetCat(run.target) : skyCat(run, sp)) : null;
+    paint(el, finalView({ code, reason: a.reason, text: answerText(a), k, m, n, seasons, epochs: ep.length > 1 ? ep : [], sp, lim, catm, off, stillCat, page: "sky" }, render));
     post(k, m, n, true);
   }
   const catState = { key: null, val: null };
@@ -459,11 +510,14 @@ function mountSky() {
     catState.key = key; catState.val = null;
     GR.catalogueAt({ measured: { positions: pos } }, "").then((c) => {
       const e = sp && ok(sp.e) ? sp.e : 0.1;
-      catState.val = c && ok(c.v) ? { k: !sp || Math.abs(sp.v - c.v) <= Math.max(3 * e, 0.1 + 0.05 * c.v) ? "known" : "knownDiff", label: c.src || "Gaia DR3", id: c.id || "" } : { k: "new" };
+      catState.val = c && ok(c.v) ? { k: !sp || Math.abs(sp.v - c.v) <= Math.max(3 * e, 0.1 + 0.05 * c.v) ? "known" : "knownDiff", label: c.src || "Gaia DR3", id: c.id || "", v: c.v } : { k: "new" };
       render();
     }).catch(() => { catState.val = { k: "unknown" }; render(); });
     return null;
   }
+  /** A target resolved with its motion (js/targets.js, or a name through Sesame): its catalogue and yearly motion. */
+  const targetCat = (tg) => (ok(tg.pmra) && ok(tg.pmdec) ? { label: tg.gaia_dr3 || /gaia/i.test(tg.source || "") ? "Gaia DR3" : /simbad/i.test(tg.source || "") ? "SIMBAD" : "Gaia DR3",
+    v: Math.hypot(+tg.pmra, +tg.pmdec) / 1000 } : null);
   const noSource = (a) => !!(a && a.code === "no_measurement" && S.astro && S.astro.centre && S.astro.centre.status === "not_detected");
   function post(k, m, n, complete) {
     try { if (window.parent !== window) window.parent.postMessage({ type: "fazari-vd-stage", k, m, n, complete, src: location.href }, location.origin); } catch (_) { /* ignore */ }

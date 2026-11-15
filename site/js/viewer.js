@@ -682,9 +682,9 @@ const expTxt = (n) => (+n === 1 ? L("fz.cap.exp1", "1 exposure") : L("fz.cap.exp
  *  is not sure: the picture must not be left with an empty ring and no word. */
 function statusLine() {
   const H = document.documentElement.classList, kind = H.contains("vd-k-none") ? "none" : H.contains("vd-k-unsure") ? "unsure" : "";
-  const tEl = kind && $("vdStrip") && !$("vdStrip").hidden ? $("vdStrip").querySelector(".vd-t") : null;
+  const vs = kind && $("vdStrip") && !$("vdStrip").hidden ? $("vdStrip") : null, tEl = vs ? vs.querySelector(".vd-t") : null;
   if (!tEl) return "";
-  const txt = [...tEl.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").trim();
+  const txt = vs.dataset.cap || [...tEl.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").trim();   // its short form for the picture
   return txt ? `<span class="st ${kind}">${esc(txt)}</span>` : "";
 }
 /** Caption on the picture: which visit, when, wavelength and detector, how many exposures over which days. */

@@ -7,10 +7,16 @@
 // wider radius (their epoch is only known to about 2 years).
 // Credit: NASA Exoplanet Archive (Caltech/IPAC, NASA Exoplanet Exploration Program).
 
-import { t, tn } from "./i18n.js";
+import { t, tn, num } from "./i18n.js";
 
 const DATA = "data/exoplanet_hosts.json";
 const OVERVIEW = "https://exoplanetarchive.ipac.caltech.edu/overview/{host}";
+// The smallest yearly motion SPHEREx shows between visits about a year apart, for the planet card ("this star is slow").
+// The site's own "too slow to measure" limit is 3 × the measured error per year: about 0.2″/yr for a ready result with
+// ~110 images a visit (Barnard's Star, pipeline/ACCURACY.md: ± 0.056″/yr), 0.5–0.8″/yr for a point measured in the browser
+// with a few exposures (β Sco: 0.71″/yr). 0.5″/yr sits in that range; 4,400 of the 4,550 hosts with a known motion are
+// slower, the median being 0.02″/yr. Only a guide before measuring: the result gives the real limit of each point.
+export const SLOW_PM_ARCSEC_YR = 0.5;
 const D2R = Math.PI / 180;
 
 let P = null;
@@ -27,6 +33,7 @@ export function loadHosts(base = "") {
       for (const row of doc.hosts) {
         const h = Object.fromEntries(doc.fields.map((f) => [f, row[ix[f]]]));
         if (typeof h.host !== "string" || !Number.isFinite(h.ra) || !Number.isFinite(h.dec) || !(h.n >= 1)) continue;
+        h.pmKnown = Number.isFinite(h.pmra) && Number.isFinite(h.pmdec);
         h.pmra = Number.isFinite(h.pmra) ? h.pmra : 0;
         h.pmdec = Number.isFinite(h.pmdec) ? h.pmdec : 0;
         h.pm = Math.hypot(h.pmra, h.pmdec);                       // mas/yr
@@ -89,11 +96,15 @@ export const overviewUrl = (h) => OVERVIEW.replace("{host}", encodeURIComponent(
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-/** Card block (HTML): N known planets + archive link + the honesty sentence. shownName: the name on the card. */
+/** Card block (HTML): N known planets + archive link + the honesty sentence. shownName: the name on the card.
+ *  A star slower than SLOW_PM_ARCSEC_YR is said to be slow first: no motion in the blink is then the expected answer. */
 export function hostHtml(h, shownName = "") {
   const same = String(shownName).toLowerCase().replace(/[^a-z0-9]/g, "") === h.host.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const slow = h.pmKnown !== false && Number.isFinite(h.pm) && h.pm / 1000 < SLOW_PM_ARCSEC_YR;
+  const pm = h.pm / 1000;
   return `<p class="exo-head"><span class="exo-ico" aria-hidden="true">🪐</span><b>${esc(tn("pg.exo.has", h.n))}</b></p>` +
+    (slow ? `<p class="exo-slow">${esc(t("pg.exo.slow", { pm: num(pm, pm >= 0.1 ? 2 : 3), lim: num(SLOW_PM_ARCSEC_YR, 1) }))}</p>` : "") +
     `<p class="exo-link"><a href="${esc(overviewUrl(h))}" target="_blank" rel="noopener">${esc(t("pg.exo.link"))} ↗</a>` +
     (same ? "" : ` <small>${esc(t("pg.exo.as", { host: h.host }))}</small>`) + `</p>` +
-    `<p class="exo-honest">${esc(t("pg.exo.honest"))}</p>`;
+    `<p class="exo-honest">${esc(t(slow ? "pg.exo.honestSlow" : "pg.exo.honest"))}</p>`;
 }

@@ -68,6 +68,8 @@ html.ts-cp .ts-pic > canvas { width: 100%; border-radius: 10px; }
 html.ts-cp .ts-pic > #date { position: absolute; left: 10px; top: 10px; z-index: 2; padding: 3px 9px; border-radius: 8px; font-size: .86rem; font-weight: 700;
   background: rgba(5, 7, 13, .72); border: 1px solid var(--ts-line); color: var(--ts-ours); pointer-events: none; }
 html.ts-cp .ts-pic > #date:empty { display: none; }
+/* the verdict line written on the picture (js/app.js skyStatusLine) takes the top-left corner: the date goes under it */
+html.ts-cp .ts-pic.fz-cap > #date { top: calc(var(--fz-cap-b, 0) * 100% + 6px); }
 html.ts-cp .ts-seas { display: flex; gap: 6px; margin: 10px 0 0; overflow-x: auto; scrollbar-width: thin; }
 html.ts-cp .ts-seas:empty { display: none; }
 html.ts-cp .ts-sea { flex: 1 1 0; min-width: 118px; text-align: left; display: flex; flex-direction: column; gap: 1px; padding: 6px 10px; border-radius: 10px;

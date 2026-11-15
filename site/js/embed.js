@@ -37,7 +37,8 @@ const WORDS = {
     movesPred: "<b>Moves {v}</b>, matching {cat}.",
     movesDiff: "<b>Moves {v}</b>; {cat} gives a different motion.",
     movesNew: "<b>Moves {v}</b>. Not in the catalogue: a candidate, not confirmed.",
-    still: "<b>No motion measured</b> (slower than {x}).",
+    still: "<b>No motion</b>: the star stays put (slower than {x}).",
+    stillSrc: "<b>No motion</b>: the source stays put (slower than {x}).",
     unsure: "<b>Not sure yet</b>: the measurement is too uncertain to say whether it moves.",
     noSrc: "<b>No source detected</b> at this point.",
     up: "<b>Got brighter: {pc}</b> at {um}, {a} → {b}.",
@@ -80,7 +81,8 @@ const WORDS = {
     movesPred: "<b>Hareket ediyor: {v}</b>; {cat} ile uyumlu.",
     movesDiff: "<b>Hareket ediyor: {v}</b>; {cat} başka bir hareket veriyor.",
     movesNew: "<b>Hareket ediyor: {v}</b>. Katalogda yok: aday, doğrulanmadı.",
-    still: "<b>Hareket ölçülmedi</b> ({x} değerinden yavaş).",
+    still: "<b>Hareket yok</b>: yıldız yerinde duruyor ({x} değerinden yavaş).",
+    stillSrc: "<b>Hareket yok</b>: kaynak yerinde duruyor ({x} değerinden yavaş).",
     unsure: "<b>Henüz emin değiliz</b>: ölçüm, hareket edip etmediğini söylemek için fazla belirsiz.",
     noSrc: "<b>Bu noktada kaynak görülmedi.</b>",
     up: "<b>Parlaklaştı: {pc}</b> ({um}; {a} → {b}).",
@@ -176,7 +178,7 @@ export function verdictHtml(meta, X, lang = LANG) {
   const code = motionClass(meta, X), sp = speedOf(ms), ref = refOf(meta);
   if (code === "not_detected") return L("noSrc");
   if (code === "too_uncertain" || !sp) return L("unsure");
-  if (code === "not_moving") return L("still", { x: esc(speedTxt(Math.max(3 * (sp.e || 0), 0.01), null, lang)) });
+  if (code === "not_moving") return L(ref ? "still" : "stillSrc", { x: esc(speedTxt(Math.max(3 * (sp.e || 0), 0.01), null, lang)) });   // a catalogue star, else "the source"
   const v = esc(speedTxt(sp.v, sp.e, lang)), cat = esc(ref ? ref.short : "");
   if (code === "moving_as_predicted" && ref) return L("movesPred", { v, cat });
   if (code === "moving_unlike_prediction" && ref) return L("movesDiff", { v, cat });

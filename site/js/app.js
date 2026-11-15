@@ -263,12 +263,12 @@ function drawOverlay(canvas, toCanvas, frame, zoom) {
 }
 
 /** The verdict strip's own headline (js/verdict_strip.js) when nothing moved or the answer is not sure yet: written on
- *  the picture too, as on the result page, so the picture is never left with an empty ring and no word. The strip
- *  marks its kind on <html>; a change of it redraws the frame. */
+ *  the picture too, as on the result page, so the picture is never left with an empty ring and no word. Its short form
+ *  (data-cap) when the strip gives one. The strip marks its kind and short form on <html>; a change redraws the frame. */
 function skyStatus() {
   const H = document.documentElement.classList, kind = H.contains("vd-k-none") ? "none" : H.contains("vd-k-unsure") ? "unsure" : "";
-  const el = kind && $("vdStrip") && !$("vdStrip").hidden ? $("vdStrip").querySelector(".vd-t") : null;
-  const txt = el ? [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").trim() : "";
+  const vs = kind && $("vdStrip") && !$("vdStrip").hidden ? $("vdStrip") : null, el = vs ? vs.querySelector(".vd-t") : null;
+  const txt = vs && vs.dataset.cap ? vs.dataset.cap : el ? [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").trim() : "";
   return txt ? { kind, txt } : null;
 }
 function skyStatusLine(ctx, canvas) {
@@ -276,12 +276,15 @@ function skyStatusLine(ctx, canvas) {
     fz.vdObs = true;
     try {
       new MutationObserver(() => { const s = skyStatus(), k = s ? s.kind + s.txt : ""; if (k !== fz.vdLast && current) { fz.vdLast = k; showFrame(); } })
-        .observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+        .observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-vd-cap"] });
     } catch (_) { /* no observer: the line follows on the next frame */ }
   }
   const s = skyStatus();
   fz.vdLast = s ? s.kind + s.txt : "";
-  if (!s) return;
+  // the result layout puts the date over the picture's top-left corner (css/cplus.css .ts-pic > #date): it moves
+  // under this line. The line's bottom as a fraction of the picture's height, so it holds at any displayed size.
+  const box = canvas.parentElement;
+  if (!s) { if (box) { box.classList.remove("fz-cap"); box.style.removeProperty("--fz-cap-b"); } return; }
   const fs = Math.round(canvas.width / 32), pad = Math.round(fs * 0.55), maxW = canvas.width - 24 - 2 * pad;
   ctx.save();
   ctx.font = `700 ${fs}px system-ui, sans-serif`;
@@ -292,6 +295,7 @@ function skyStatusLine(ctx, canvas) {
   }
   const lh = Math.round(fs * 1.25), tw = Math.max(...lines.map((l) => ctx.measureText(l).width));
   const w = Math.min(canvas.width - 24, tw + 2 * pad), h = fs + 2 * pad + lh * (lines.length - 1);
+  if (box) { box.classList.add("fz-cap"); box.style.setProperty("--fz-cap-b", ((12 + h) / canvas.height).toFixed(4)); }
   ctx.fillStyle = "rgba(5,7,13,.82)"; ctx.fillRect(12, 12, w, h);
   ctx.fillStyle = s.kind === "none" ? "#9be7b5" : "#ffd98a"; ctx.fillRect(12, 12, 4, h);
   ctx.textBaseline = "middle";

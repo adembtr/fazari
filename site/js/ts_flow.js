@@ -128,6 +128,7 @@
     return a(L[0]) + a(L[3]) + '<details class="ts-more"><summary class="ts-chip ts-lk">' + esc(T("cp.more", "Others")) + '</summary><div class="ts-menu">' +
       [L[1], L[2], L[4]].map(a).join("") + "</div></details>";
   }
+  var arcTxt = function (d) { return loc((+d).toFixed(d < 10 ? 1 : 0)); };     // "3.7", "14": as gr.js offTxt
   var perYear = function (v) { return T("ts.rate", "{v}″ per year", { v: loc((+v).toFixed(v < 10 ? 2 : 1)) }); };
   function catHtml(r) {
     var g = r.g;
@@ -141,13 +142,13 @@
     if (c === undefined) return '<span class="ts-wait">' + esc(T("ts.a.catAsk", "Asking the Gaia star catalogue…")) + "</span>";
     if (c === null) return esc(T("ts.a.catFail", "The star catalogue did not answer just now; the links below open it directly."));
     if (c.hit) {
-      return "<b>" + esc(T("ts.a.catStar", "A catalogued star: Gaia DR3 {id}", { id: c.hit.id })) + "</b> · " +
-        esc(T("ts.a.catSep", "{d}″ from this point", { d: loc(c.hit.sep.toFixed(1)) })) +
+      return "<b>" + esc(c.hit.src === "SIMBAD" ? T("ts.a.catStarS", "A catalogued star: {id} (SIMBAD)", { id: c.hit.id }) : T("ts.a.catStar", "A catalogued star: Gaia DR3 {id}", { id: c.hit.id })) + "</b> · " +
+        esc(c.hit.meas ? T("ts.a.catSepM", "{d}″ from the position we measured", { d: loc(c.hit.sep.toFixed(1)) }) : T("ts.a.catSep", "{d}″ from this point", { d: loc(c.hit.sep.toFixed(1)) })) +
         (c.hit.v >= 0.005 ? " · " + esc(T("ts.a.catMoves", "moves {v} across the sky", { v: perYear(c.hit.v) })) : "") +
         (fin(c.hit.gmag) ? " · " + esc(T("ts.a.catMag", "magnitude {g}", { g: loc((+c.hit.gmag).toFixed(1)) })) : "");
     }
     return "<b>" + esc(T("ts.a.catEmpty", "No catalogued object at this exact point")) + "</b> · " +
-      esc(fin(c.nearest) ? T("ts.a.catNear", "the nearest Gaia DR3 star is {d}″ away", { d: loc(c.nearest.toFixed(0)) }) : T("ts.a.catFar", "no Gaia DR3 star within 20″"));
+      esc(fin(c.nearest) ? T("ts.a.catNear", "the nearest Gaia DR3 star is {d}″ away", { d: arcTxt(c.nearest) }) : T("ts.a.catFar", "no Gaia DR3 star within 20″"));
   }
   /** Second line for a free point measured off the point picked: the source measured and its catalogue star. */
   function offHtml() {
@@ -175,21 +176,40 @@
   }
   function askCatalogue(r) {
     if (!r.free) return;
-    var key = r.here.ra.toFixed(5) + "|" + r.here.dec.toFixed(5);
+    var pos = (r.ms.positions || []).filter(function (p) { return fin(p.ra) && fin(p.dec); })
+      .map(function (p) { return { ra: +p.ra, dec: +p.dec, mjd: p.mjd }; });
+    var last = pos[pos.length - 1];
+    var key = r.here.ra.toFixed(5) + "|" + r.here.dec.toFixed(5) + "|" + (last ? last.ra.toFixed(5) + "," + last.dec.toFixed(5) : "");
     if (catState.key === key) return;
-    var my = catState = { key: key, val: undefined };
-    // one catalogue request per result: where something was measured, the viewer already asks around the measured
-    // position (js/gr.js catalogueAt); the same question here is answered from its cache
-    var pos = (r.ms.positions || []).filter(function (p) { return fin(p.ra) && fin(p.dec); });
-    var w = pos.length ? { ra: +pos[pos.length - 1].ra, dec: +pos[pos.length - 1].dec } : r.here;
-    mod("./gaia.js").then(function (GA) { return GA.gaiaStars(w.ra, w.dec, 20 / 3600, { max: 50 }); }).then(function (stars) {
-      var best = null, cd = Math.cos(r.here.dec * Math.PI / 180);
-      (stars || []).forEach(function (s) {
-        var p = moved({ ra: s.ra, dec: s.dec, pmra: s.pmra, pmdec: s.pmdec, epoch: s.epoch || 2016 }, r.year);
+    var same = catState.key && catState.key.split("|").slice(0, 2).join("|") === key.split("|").slice(0, 2).join("|");
+    var my = catState = { key: key, val: same ? catState.val : undefined };   // the same point measured further: keep the last answer meanwhile
+    // The same stars as the speed tile and the verdict (js/gr.js catalogueAt), asked around the measured position (or the
+    // point) and answered from js/gaia.js's cache: the 20″ circle, and the fast stars (over 1″/yr) of 150″, which have
+    // left the 20″ circle since Gaia's epoch 2016 (Teegarden's Star, 5.1″/yr: about 50″ by 2026). Every star is moved
+    // with its own motion to the date of the images before its distance is taken.
+    var w = last || r.here;
+    var year = last && fin(last.mjd) ? 2000 + (last.mjd - 51544.5) / 365.25 : r.year;
+    Promise.all([mod("./gaia.js"), mod("./gr.js")]).then(function (M) {
+      var GA = M[0], GR = M[1];
+      var near = GA.gaiaStars(w.ra, w.dec, 20 / 3600, { max: 50 });
+      var fast = GA.gaiaStars(w.ra, w.dec, 150 / 3600, { pmMin: 1000, max: 50 }).catch(function () { return []; });
+      // measured at the point: the tiles' own match is the answer (a star there, or none), so the two never disagree
+      var off = pos.length ? GR.offPoint(pos, r.here.ra, r.here.dec) : null;
+      var tile = pos.length && !off ? GR.catalogueAt({ measured: { positions: pos } }, "").catch(function () { return null; }) : null;
+      return Promise.all([near, fast, tile]);
+    }).then(function (R) {
+      var best = null, seen = {}, cd = Math.cos(r.here.dec * Math.PI / 180);
+      (R[0] || []).concat(R[1] || []).forEach(function (s) {
+        if (seen[s.source_id]) return;
+        seen[s.source_id] = 1;
+        var p = moved({ ra: s.ra, dec: s.dec, pmra: s.pmra, pmdec: s.pmdec, epoch: s.epoch || 2016 }, year);
         var sep = Math.hypot((p.ra - r.here.ra) * cd, p.dec - r.here.dec) * 3600;
         if (!best || sep < best.sep) best = { sep: sep, s: s };
       });
-      my.val = best && best.sep <= 3 ? { hit: { id: best.s.source_id, sep: best.sep, v: Math.hypot(best.s.pmra || 0, best.s.pmdec || 0) / 1000, gmag: best.s.gmag } }
+      var c = R[2];                                         // the tiles' star (sep: from the measured position)
+      if (c && fin(c.v)) my.val = { hit: { id: c.id, src: c.src, sep: c.sep, v: c.v, gmag: c.gmag, meas: true } };
+      else my.val = best && best.sep <= 3
+        ? { hit: { id: best.s.source_id, src: "Gaia DR3", sep: best.sep, v: Math.hypot(best.s.pmra || 0, best.s.pmdec || 0) / 1000, gmag: best.s.gmag } }
         : { hit: null, nearest: best ? best.sep : null };
     }).catch(function () { my.val = null; }).then(function () { if (catState === my) paintA(); });
   }
@@ -237,8 +257,10 @@
     var c = catState.val;
     if (c === undefined) return '<span class="ts-wait">' + esc(T("cp.cat.ask", "Asking the catalogue…")) + "</span>";
     if (c === null) return esc(T("cp.cat.fail", "Catalogue did not answer"));
-    if (c.hit) return lab(K(c.hit.id)) + " · " + esc(T("cp.cat.known", "known star"));
-    return esc(T("cp.cat.empty", "Nothing catalogued at this point"));
+    if (c.hit) return lab(c.hit.src === "SIMBAD" ? "<b>" + esc(c.hit.id) + "</b>" : K(c.hit.id)) + " · " + esc(T("cp.cat.knownAt", "known star, {d}″ away", { d: arcTxt(c.hit.sep) }));
+    // nothing within the 3″ rule: say how far the nearest Gaia star is, so a bright star just beside the point is not hidden
+    return esc(T("cp.cat.empty", "Nothing catalogued at this point")) + " · " +
+      esc(fin(c.nearest) ? T("cp.cat.near", "nearest Gaia star {d}″", { d: arcTxt(c.nearest) }) : T("cp.cat.far", "no Gaia star within 20″"));
   }
 
   // ---- C: the limit, big ("anything faster than about X per year would have shown") ------------------------------
