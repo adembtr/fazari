@@ -50,6 +50,9 @@ let current = null;        // displayed bin result
 let frameIdx = 0, timer = null, playing = true;
 let fieldStars = [];       // Gaia high-PM stars (other coordinates)
 window.__fzSky = () => ({ run, current, frameIdx, fieldStars });   // read-only view for the challenge tools (ch_sky.js)
+// the result layout (js/ts_flow.js season strip, js/cp_save.js PNG / GIF): show season i; Go also pauses the film
+window.__fzSkyShow = (i) => { if (current && i >= 0 && i < current.frames.length) { frameIdx = i; showFrame(); } };
+window.__fzSkyGo = (i) => { if (!current || !(i >= 0 && i < current.frames.length)) return; playing = false; startBlink(); frameIdx = i; showFrame(); };
 const t0 = { start: 0 };
 
 let lastStatus = null;     // [msg, kind]; msg may be a function, re-run when the language changes
