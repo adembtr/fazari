@@ -2,6 +2,10 @@
 """V6 bins over several injection seeds (pipeline/INJECTION_V11_PLAN.md).
 
   python3 -I pipeline/detect/tests/inj_seeds.py --new <dir> [--old <dir>] [--csv out.csv] [--json out.json]
+  ... --csv <new csv> --amend-of <earlier csv>   (amendment, pipeline/INJECTION_V11_PLAN_AMEND.md: the runs that are
+                                                  not in the earlier csv are tagged "new seed (amendment)" and only
+                                                  they go into the new csv, then the pooled bins of all runs as
+                                                  "pooled bin after amendment, ..."; the earlier csv is only read)
 
 <dir> holds tests/injection.py outputs (inj_<field>_m<AB>_s<seed>.json). --new: the runs of the new seeds;
 --old: the earlier runs of the same finder (here the seed-1 runs of the round v1.1 reduced re-run).
@@ -90,8 +94,18 @@ def main():
     ap.add_argument("--old")
     ap.add_argument("--csv")
     ap.add_argument("--json")
+    ap.add_argument("--amend-of")
     a = ap.parse_args()
     new = load(a.new, "new seed")
+    had = set()                                 # (field, AB, seed) of the per-run rows of the earlier csv
+    if a.amend_of:
+        with open(a.amend_of, newline="") as fh:
+            for r in csv.DictReader(fh):
+                if not r["kind"].startswith("pooled bin"):
+                    had.add((r["field"], int(r["mag_ab"]), int(r["seed"])))
+        for k in new:
+            if k not in had:
+                new[k]["_set"] = "new seed (amendment)"
     old = load(a.old, "seed 1 (reduced re-run)") if a.old else {}
     both = dict(old)
     both.update(new)
@@ -110,6 +124,11 @@ def main():
     summ = {"new_runs": len(nk), "new_total": tot(nk), "complete_seeds": full_seeds,
             "complete_seed_totals": {s: tot([k for k in nk if k[2] == s]) for s in full_seeds},
             "old_runs": len(old), "old_total": tot(list(old))}
+    if a.amend_of:
+        ak = [k for k in nk if k not in had]
+        summ["amendment_runs"] = sorted(ak, key=lambda k: (k[2], k[0], k[1]))
+        summ["amendment_total"] = tot(ak)
+        print("\namendment runs", len(ak), summ["amendment_total"])
     print("\nnew runs", len(nk), summ["new_total"])
     for s, t in summ["complete_seed_totals"].items():
         print("complete seed", s, t)
@@ -133,6 +152,8 @@ def main():
             w = csv.writer(fh, lineterminator="\n")
             w.writerow(["kind", "field", "mag_ab", "seed", "set", "bin", "recovered", "injected", "no_data"])
             for k in order:
+                if k in had:
+                    continue
                 r = both[k]
                 cells = {}
                 for s in r["sources"]:
@@ -150,7 +171,7 @@ def main():
             for name in ("new seeds alone", "all finder v1.1 runs"):
                 for b in summ[name]["bins"]:
                     if b["injected"]:
-                        w.writerow([f"pooled bin, {name}", b["field"], f"{b['mag_lo']}-{b['mag_hi']}",
+                        w.writerow([("pooled bin after amendment, " if a.amend_of else "pooled bin, ") + name, b["field"], f"{b['mag_lo']}-{b['mag_hi']}",
                                     " ".join(str(s) for s in b["seeds"]), "", f">= {b['min_speed']:g}", b["recovered"],
                                     b["injected"], ""])
 

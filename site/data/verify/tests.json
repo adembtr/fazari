@@ -379,6 +379,84 @@
     "evidence": "data/verify/evidence/injection_v11.csv",
     "note": "finder v1.1 (code as in round v1.1) on new random positions, 15 Nov 2026 11:08-13:05 +03; shown on verify.html since 15 Nov 2026, after the team lead read it",
     "later": true
+   },
+   "v11_amend": {
+    "numbers": {
+     "runs": 42,
+     "runs_seed_101": 3,
+     "runs_seed_102": 19,
+     "runs_seed_103": 20,
+     "runs_not_started": 0,
+     "bodies_injected": 2688,
+     "bodies_no_data": 235,
+     "motion_recovered": 932,
+     "motion_injected": 1855,
+     "brightness_recovered": 318,
+     "brightness_injected": 598,
+     "false_candidates": 103,
+     "track_fragments": 60,
+     "new_seeds_runs": 60,
+     "new_seeds_motion_recovered": 1435,
+     "new_seeds_motion_injected": 2673,
+     "new_seeds_brightness_recovered": 474,
+     "new_seeds_brightness_injected": 857,
+     "new_seeds_false_candidates": 152,
+     "complete_seeds": [
+      101,
+      102,
+      103
+     ],
+     "seed101_motion_recovered": 476,
+     "seed101_motion_injected": 883,
+     "seed101_brightness_recovered": 151,
+     "seed101_brightness_injected": 283,
+     "seed101_false_candidates": 56,
+     "seed102_motion_recovered": 486,
+     "seed102_motion_injected": 893,
+     "seed102_brightness_recovered": 162,
+     "seed102_brightness_injected": 287,
+     "seed102_false_candidates": 52,
+     "seed103_motion_recovered": 473,
+     "seed103_motion_injected": 897,
+     "seed103_brightness_recovered": 161,
+     "seed103_brightness_injected": 287,
+     "seed103_false_candidates": 44,
+     "new_seeds_best_bin_recovered": 257,
+     "new_seeds_best_bin_injected": 268,
+     "new_seeds_best_bin_percent": 95.9,
+     "new_seeds_best_bin_field": "eps_indi_b",
+     "all_v11_best_bin_recovered": 346,
+     "all_v11_best_bin_injected": 359,
+     "all_v11_best_bin_percent": 96.4,
+     "all_v11_best_bin_lower95_percent": 94.3,
+     "all_v11_best_bin_field": "eps_indi_b",
+     "all_v11_best_bin_min_speed_arcsec_yr": 0.3,
+     "all_v11_best_bin_mag_lo": 12,
+     "all_v11_best_bin_mag_hi": 14,
+     "all_v11_best_bin_seeds": [
+      1,
+      101,
+      102,
+      103
+     ],
+     "all_v11_wise0855_ab18_ge1_recovered": 59,
+     "all_v11_wise0855_ab18_ge1_injected": 86,
+     "target_percent": 99,
+     "seeds": [
+      101,
+      102,
+      103
+     ]
+    },
+    "status": "fail",
+    "status_rule": "unchanged V6 rule: best bin >= 99 % passes; bins of round v0; decided on all finder v1.1 runs (seed-1 reduced re-run + seeds 101-103), a seed entering a bin only if it ran every magnitude of the bin",
+    "result_en": "Two more seeds (amendment, plan committed before the runs; finder v1.1 unchanged, 15 Nov 2026): 42 more runs, so that seeds 101, 102 and 103 each have all 20 V6 runs. 2688 bodies injected in these runs; movers 932/1855 recovered, brightness changes 318/598, false candidates 103. All finder v1.1 runs together: best bin 346/359 = 96.4 % (Epsilon Indi B, at least 0.3\"/yr, AB 12-14, seeds 1, 101, 102 and 103; 95 % lower limit 94.3 %), below the 99 % target, so V6 still fails. Seeds 101-103 alone: 257/268 = 95.9 % in the same bin.",
+    "result_tr": "İki tohum daha (ek plan, koşulardan önce kaydedildi; bulucu v1.1 değişmeden, 15 Kasım 2026): 42 koşu daha; böylece 101, 102 ve 103 tohumlarının her birinde 20 V6 koşusunun hepsi var. Bu koşularda 2688 cisim eklendi; hareketli 1855'te 932 bulundu, parlaklık değişimi 598'de 318, sahte aday 103. Bulucu v1.1'in bütün koşuları birlikte: en iyi aralık 359'da 346 = %96,4 (Epsilon Indi B, en az 0,3\"/yıl, AB 12-14, tohum 1, 101, 102 ve 103; %95 alt sınır %94,3). Bu %99 hedefinin altında, yani V6 yine geçmiyor. Yalnız 101-103 tohumları: aynı aralıkta 268'de 257 = %95,9.",
+    "plan": "pipeline/INJECTION_V11_PLAN_AMEND.md (commit 015b291, pushed 2026-11-15 10:16:15 UTC)",
+    "results": "pipeline/INJECTION_V11.md (section \"Amendment run\")",
+    "evidence": "data/verify/evidence/injection_v11_amend.csv",
+    "extra_only": true,
+    "note": "finder v1.1 (code 4d283b1) on new random positions, 15 Nov 2026 15:30-17:57 +03; shown on verify.html only with ?extra=1 until the team lead has read it"
    }
   },
   {
@@ -755,5 +833,5 @@
    "v0": null
   }
  ],
- "edited": "2026-11-14 18:10: V9 split into movers (V9) and brightness changes (V11); V3 parallax compared with Lazorenko & Sahlmann 2018. No result was re-measured. 2026-11-14 21:58: V7 re-run with the finder's own v1 decision rule (tests/shuffle.py uses DA.null_movers, 522d3ab): 0 fake movers in 1200 field-shuffles, status fail -> pass; the v0-rule numbers are kept (v0, v1_core_v0_rule). 2026-11-15 02:43: round v1.1 (independent tester, finder v1.1, commit a5de792; outputs in a local run folder, not in this repository): V1-V5, V7, V9, V10, V11 re-measured, V6 re-measured on a reduced set (see V6), V12 added (fast-star sweep, final summary). Thresholds and decision rules unchanged; V4 and V11 changed from fail to pass because the measurement changed. The v1 numbers of every re-measured test are kept under \"v1\". 2026-11-15 10:14: V13 added (parallax from the fast-star sweep season positions; rule committed and pushed before the fit, pipeline/PARALLAX_SWEEP_RULE.md, 6549d13). No other test changed. 2026-11-15 13:30: V6 re-run on new random positions with finder v1.1 (seeds 101-102, 18 runs; pipeline/INJECTION_V11_PLAN.md before the runs, pipeline/INJECTION_V11.md): new block v11_new_seeds; V6 status by its unchanged rule stays fail (best bin of all v1.1 runs 173/182 = 95.1 %); the earlier V6 text and numbers are not changed; the block is shown on verify.html only with ?extra=1."
+ "edited": "2026-11-14 18:10: V9 split into movers (V9) and brightness changes (V11); V3 parallax compared with Lazorenko & Sahlmann 2018. No result was re-measured. 2026-11-14 21:58: V7 re-run with the finder's own v1 decision rule (tests/shuffle.py uses DA.null_movers, 522d3ab): 0 fake movers in 1200 field-shuffles, status fail -> pass; the v0-rule numbers are kept (v0, v1_core_v0_rule). 2026-11-15 02:43: round v1.1 (independent tester, finder v1.1, commit a5de792; outputs in a local run folder, not in this repository): V1-V5, V7, V9, V10, V11 re-measured, V6 re-measured on a reduced set (see V6), V12 added (fast-star sweep, final summary). Thresholds and decision rules unchanged; V4 and V11 changed from fail to pass because the measurement changed. The v1 numbers of every re-measured test are kept under \"v1\". 2026-11-15 10:14: V13 added (parallax from the fast-star sweep season positions; rule committed and pushed before the fit, pipeline/PARALLAX_SWEEP_RULE.md, 6549d13). No other test changed. 2026-11-15 13:30: V6 re-run on new random positions with finder v1.1 (seeds 101-102, 18 runs; pipeline/INJECTION_V11_PLAN.md before the runs, pipeline/INJECTION_V11.md): new block v11_new_seeds; V6 status by its unchanged rule stays fail (best bin of all v1.1 runs 173/182 = 95.1 %); the earlier V6 text and numbers are not changed; the block is shown on verify.html only with ?extra=1. 2026-11-15 18:02: V6 amendment, two more seeds (pipeline/INJECTION_V11_PLAN_AMEND.md before the runs, 015b291; results in pipeline/INJECTION_V11.md): new block v11_amend, shown only with ?extra=1; best bin of all finder v1.1 runs 346/359 = 96.4 %, V6 status by its unchanged rule stays fail; the V6 text, numbers, status and the block v11_new_seeds are not changed."
 }

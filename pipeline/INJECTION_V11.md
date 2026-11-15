@@ -207,3 +207,155 @@ This is the first injection measurement of finder v1.1 in the Barnard's Star fie
 - `site/data/verify/tests.json`, test V6: the numbers are in a new block `v11_new_seeds`; the v0, v1 and reduced
   re-run numbers, the V6 text and its status stay as they were. `verify.html` shows the new sentence only with
   `?extra=1` until the team lead has read it (`extra_only` in the block, `laterLines` in `site/js/verify_tests.js`).
+
+## Amendment run (2026-11-15, 15:30-17:57 +03)
+
+Plan: [`INJECTION_V11_PLAN_AMEND.md`](INJECTION_V11_PLAN_AMEND.md), commit 015b291, pushed to `dev` on GitHub at
+2026-11-15 10:16:15 UTC (13:16:15 +03, GitHub repository activity), before any run under it. The file says "written
+13:15-13:25"; it was in fact written about 13:13-13:16 (the push time is the record). Finder v1.1, thresholds, grid,
+harness and the V6 rule unchanged. The sections above are not changed; the numbers below are as they came out.
+
+### Result in short
+
+- **42 runs, the whole amendment list**: the 3 runs of seed 101 not reached before 13:05 (Barnard's Star AB 18,
+  Epsilon Indi B AB 19, WISE 0855 AB 19), the 19 remaining runs of seed 102 and all 20 runs of seed 103. None was left
+  out for the 18:00 stop, none was stopped. Seeds 101, 102 and 103 now each have all 20 runs of the V6 grid.
+- **2688 bodies injected** (42 runs x 64: 2016 movers, 672 brightness changes); 235 fell where there is no data and are
+  left out, as in every round. Recovered: **932 of 1855 movers**, **318 of 598 brightness changes**; **103 false
+  candidates** (plus 60 track fragments of fast injected movers, not counted as false).
+- All 60 new-seed runs (seeds 101-103) together: movers 1435/2673, brightness changes 474/857, false candidates 152,
+  track fragments 92.
+- Per complete seed, 20 runs each (comparable with the 20-run totals of round v0, 466/868 movers, and round v1,
+  473/868, both seed 1): seed 101 movers 476/883, brightness 151/283, false 56; seed 102 486/893, 162/287, 52;
+  seed 103 473/897, 161/287, 44 (round v0: brightness 140/287, false 126; round v1: 158/287, 88).
+- Best bin, **all finder v1.1 runs** (the data that decide the status): Epsilon Indi B, at least 0.3"/yr, AB 12-14,
+  seeds 1, 101, 102 and 103: **346/359 = 96.4 %** (95 % lower limit 94.3 %), below the 99 % target. Reaching 99 % with
+  359 movers would allow at most 3 misses; there are 13.
+- **V6 stays "fail"** by its unchanged rule. The new seeds alone give the same answer: best bin 257/268 = 95.9 %, the
+  same Epsilon Indi B bin.
+
+### What ran
+
+| | |
+|---|---|
+| Code | 4d283b1 (`pipeline/detect` and `pipeline/blink.py` as in the 18 runs above; `tests/injection.py` and `inject.py` md5 as in the plan) |
+| Runs | 15:30:40 - 17:56:43 +03 after the asteroid re-run had ended; 2 workers on CPU 18-19, `nice -n 15`, one BLAS thread each |
+| Heat | the guard never paused a worker (no two readings >= 90 C in a row); the driver waited twice, 10 s each, at 94-95 C |
+| Not started | none |
+| Stopped unfinished | none counted (see the line below) |
+
+- Outage, 15:40: the driver stopped because its code folder (the worktree of the earlier runs) was moved away in a
+  clean-up; restarted at 15:43:41 from a git archive of the same commit 4d283b1 (check: WISE 0855 AB 19 seed 101 re-run
+  from it gave the same record); Epsilon Indi B AB 12 seed 102, running at 15:40, was stopped and run again from the
+  start; Barnard's Star AB 18 seed 101, which ended at 15:40:20, was re-run as a check and gave the same record (counted
+  once).
+- Changes from "What will be reported" in the amendment (instruction from the coordinator at ~13:35, after the team
+  lead decided to show the earlier block on the site; decided before any amendment run, no result changes): the rows
+  go into a new evidence file `site/data/verify/evidence/injection_v11_amend.csv` instead of being appended to
+  `injection_v11.csv`, which is not changed; `pipeline/ACCURACY.md` is not changed; the numbers are in a new
+  `tests.json` V6 block `v11_amend`, shown on `verify.html` only with `?extra=1`.
+
+### Per run (amendment runs)
+
+| field | AB | seed | movers | brightness | false | track fragments | seconds |
+|---|---|---|---|---|---|---|---|
+| eps_indi_b | 19 | 101 | 1/38 | 1/12 | 1 | 1 | 106.4 |
+| wise0855 | 19 | 101 | 1/36 | 0/12 | 1 | 1 | 67.3 |
+| barnard | 18 | 101 | 2/37 | 2/14 | 7 | 8 | 544.5 |
+| eps_indi_b | 12 | 102 | 38/46 | 13/14 | 2 | 0 | 511.2 |
+| eps_indi_b | 13 | 102 | 34/44 | 12/15 | 6 | 1 | 406.6 |
+| eps_indi_b | 14 | 102 | 36/46 | 13/14 | 0 | 0 | 405.0 |
+| eps_indi_b | 15 | 102 | 35/46 | 11/13 | 2 | 0 | 327.3 |
+| eps_indi_b | 16 | 102 | 30/46 | 9/13 | 1 | 0 | 317.7 |
+| eps_indi_b | 17 | 102 | 24/44 | 7/12 | 2 | 1 | 285.8 |
+| eps_indi_b | 18 | 102 | 12/43 | 6/13 | 0 | 3 | 244.3 |
+| eps_indi_b | 19 | 102 | 0/40 | 1/12 | 2 | 0 | 87.7 |
+| wise0855 | 12 | 102 | 31/45 | 11/15 | 1 | 1 | 227.7 |
+| wise0855 | 13 | 102 | 34/45 | 7/15 | 1 | 0 | 211.3 |
+| wise0855 | 14 | 102 | 34/46 | 10/16 | 2 | 1 | 199.0 |
+| wise0855 | 16 | 102 | 27/48 | 6/14 | 1 | 1 | 183.9 |
+| wise0855 | 17 | 102 | 20/45 | 6/13 | 1 | 0 | 149.4 |
+| wise0855 | 18 | 102 | 11/41 | 5/15 | 1 | 2 | 123.0 |
+| wise0855 | 19 | 102 | 4/38 | 0/15 | 1 | 0 | 83.1 |
+| barnard | 12 | 102 | 32/48 | 12/16 | 7 | 0 | 916.5 |
+| barnard | 14 | 102 | 27/48 | 10/16 | 10 | 0 | 879.4 |
+| barnard | 16 | 102 | 24/48 | 10/16 | 5 | 1 | 776.0 |
+| barnard | 18 | 102 | 2/40 | 5/16 | 5 | 16 | 434.2 |
+| eps_indi_b | 12 | 103 | 34/43 | 9/13 | 5 | 1 | 493.6 |
+| eps_indi_b | 13 | 103 | 34/44 | 14/16 | 3 | 0 | 418.7 |
+| eps_indi_b | 14 | 103 | 33/45 | 10/15 | 3 | 0 | 441.6 |
+| eps_indi_b | 15 | 103 | 30/44 | 11/15 | 0 | 2 | 301.3 |
+| eps_indi_b | 16 | 103 | 32/46 | 10/14 | 2 | 0 | 352.2 |
+| eps_indi_b | 17 | 103 | 26/48 | 9/14 | 0 | 0 | 352.6 |
+| eps_indi_b | 18 | 103 | 11/43 | 7/15 | 1 | 2 | 207.5 |
+| eps_indi_b | 19 | 103 | 1/43 | 2/11 | 0 | 0 | 89.2 |
+| wise0855 | 12 | 103 | 32/46 | 9/15 | 0 | 0 | 232.5 |
+| wise0855 | 13 | 103 | 33/45 | 10/15 | 0 | 1 | 215.0 |
+| wise0855 | 14 | 103 | 32/46 | 9/15 | 0 | 1 | 207.3 |
+| wise0855 | 15 | 103 | 31/45 | 6/14 | 1 | 0 | 198.6 |
+| wise0855 | 16 | 103 | 24/47 | 6/14 | 1 | 0 | 170.0 |
+| wise0855 | 17 | 103 | 20/46 | 7/16 | 1 | 0 | 161.9 |
+| wise0855 | 18 | 103 | 15/43 | 4/16 | 1 | 1 | 124.2 |
+| wise0855 | 19 | 103 | 0/41 | 0/10 | 1 | 0 | 59.7 |
+| barnard | 12 | 103 | 28/48 | 12/16 | 9 | 1 | 910.8 |
+| barnard | 14 | 103 | 28/48 | 13/16 | 7 | 2 | 921.2 |
+| barnard | 16 | 103 | 25/48 | 7/16 | 4 | 0 | 791.3 |
+| barnard | 18 | 103 | 4/38 | 6/11 | 5 | 12 | 518.5 |
+
+Movers and brightness changes: recovered / injected, injections with no data at their position left out. The 18
+earlier new-seed runs and the 5 seed-1 runs are in the table above. AB 19 and Barnard's Star AB 18 are the faint end
+of the grid (movers 2/121 at Epsilon Indi B AB 19, 5/115 at WISE 0855 AB 19, 8/115 at Barnard's Star AB 18).
+
+### V6 bins after the amendment (rule unchanged: best bin >= 99 % passes)
+
+Movers recovered / injected at or above the speed, pooled over the magnitudes of the field's grid and over the seeds
+that ran every magnitude of the bin. 95 % low = one-sided Clopper-Pearson lower limit.
+
+| field | bin | new seeds alone (101-103) | 95 % low | all finder v1.1 runs (seeds) | 95 % low |
+|---|---|---|---|---|---|
+| Epsilon Indi B | >= 0.3"/yr, AB 12-14 | 257/268 = 95.9 % | 93.3 % | **346/359 = 96.4 %** (1, 101, 102, 103) | 94.3 % |
+| Epsilon Indi B | >= 0.3"/yr, AB 12-16 | 423/448 = 94.4 % | 92.3 % | 423/448 = 94.4 % (101, 102, 103) | 92.3 % |
+| Epsilon Indi B | >= 1"/yr, AB 12-17 | 369/399 = 92.5 % | 89.9 % | 369/399 = 92.5 % (101, 102, 103) | 89.9 % |
+| Epsilon Indi B | >= 1"/yr, AB 18 | 32/64 = 50.0 % | 39.1 % | 32/64 = 50.0 % (101, 102, 103) | 39.1 % |
+| Epsilon Indi B | >= 5"/yr, AB 18 | 26/44 = 59.1 % | 45.6 % | 26/44 = 59.1 % (101, 102, 103) | 45.6 % |
+| WISE 0855 | >= 0.3"/yr, AB 12-14 | 260/274 = 94.9 % | 92.1 % | 260/274 = 94.9 % (101, 102, 103) | 92.1 % |
+| WISE 0855 | >= 0.3"/yr, AB 12-16 | 420/458 = 91.7 % | 89.3 % | 420/458 = 91.7 % (101, 102, 103) | 89.3 % |
+| WISE 0855 | >= 1"/yr, AB 12-17 | 383/407 = 94.1 % | 91.8 % | 383/407 = 94.1 % (101, 102, 103) | 91.8 % |
+| WISE 0855 | >= 1"/yr, AB 18 | 43/62 = 69.4 % | 58.4 % | 59/86 = 68.6 % (1, 101, 102, 103) | 59.4 % |
+| WISE 0855 | >= 5"/yr, AB 18 | 33/43 = 76.7 % | 63.7 % | 45/59 = 76.3 % (1, 101, 102, 103) | 65.4 % |
+| Barnard's Star | >= 0.3"/yr, AB 12-14 | 152/192 = 79.2 % | 73.8 % | 152/192 = 79.2 % (101, 102, 103) | 73.8 % |
+| Barnard's Star | >= 0.3"/yr, AB 12-16 | 224/288 = 77.8 % | 73.4 % | 224/288 = 77.8 % (101, 102, 103) | 73.4 % |
+| Barnard's Star | >= 1"/yr, AB 12-17 | 184/216 = 85.2 % | 80.6 % | 184/216 = 85.2 % (101, 102, 103) | 80.6 % |
+| Barnard's Star | >= 1"/yr, AB 18 | 8/63 = 12.7 % | 6.5 % | 8/63 = 12.7 % (101, 102, 103) | 6.5 % |
+| Barnard's Star | >= 5"/yr, AB 18 | 8/45 = 17.8 % | 9.2 % | 8/45 = 17.8 % (101, 102, 103) | 9.2 % |
+
+- **Status by the rule: best bin of all finder v1.1 runs 346/359 = 96.4 % < 99 % -> V6 fails.**
+- The 13 misses of that bin: 2 of seed 1 and 7 of seed 101 (listed above), and 4 of seeds 102 and 103:
+
+| seed | AB | speed "/yr | reason (the harness's own miss reasons) |
+|---|---|---|---|
+| 102 | 12 | 10 | not in the deep-stack source list; rejected for crowding, 10" from the track of a brighter moving source |
+| 102 | 13 | 0.5 | blended (a source within 8"); rejected: detector halves disagree, season positions not on a straight line |
+| 103 | 14 | 2 | in the wings of a saturated star (rejected) |
+| 103 | 14 | 2 | rejected by the motion model: season positions not on a straight line (parallax or blend?) |
+
+- Miss reasons over all 60 new-seed runs (a miss can have more than one): motion too slow (< 5 x the achievable motion
+  error) 831, not in the deep-stack source list 461, blended 247, rejected 148, too faint (season S/N < 10) 123,
+  saturated-star zone 62, not detected 29; brightness not detected 192, not in the source list 97, blended 64,
+  rejected 57, saturated-star zone 13.
+- False candidates of the 60 new-seed runs by kind and detector (152): variable V 49, variable B+V 46, motion A 24,
+  variable A+B+V 7, appearing A 6, appearing V 6, motion D 6, disappearing A 4, motion D+V 2, variable A+V 1, motion
+  A+B+D 1. V6 has no pass threshold for false candidates.
+
+### Evidence and how to repeat
+
+- `site/data/verify/evidence/injection_v11_amend.csv` (new): the same columns as `injection_v11.csv`, for the 42
+  amendment runs (set "new seed (amendment)"), then the pooled bins after the amendment (rows "pooled bin after
+  amendment, new seeds alone" and "pooled bin after amendment, all finder v1.1 runs"). With `injection_v11.csv` it
+  holds every run.
+- Made by `python3 -I pipeline/detect/tests/inj_seeds.py --new <new-seed runs> --old <round v1.1 runs> --csv
+  injection_v11_amend.csv --amend-of site/data/verify/evidence/injection_v11.csv` (the option `--amend-of` was added
+  for this; without it the script gives the same output as before). Motion and brightness tables and miss reasons:
+  `pipeline/detect/tests/inj_report.py <new-seed runs>`.
+- `site/data/verify/tests.json`, test V6: new block `v11_amend` with `"extra_only": true`; the V6 text, numbers,
+  status and the block `v11_new_seeds` are not changed.
