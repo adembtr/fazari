@@ -187,7 +187,10 @@ function shuffleLine() {
 // Labels "vfx.*". A missing file shows nothing.
 const EXTRA = { k: "data/fast_sweep/error_scale.json", w2: "data/wise0855/w2_check.json", align: "data/verify/align_residuals.json" };
 let XK = null, XW2 = null, XAL = null;
+// Shown only with ?extra=1 until the team lead has read the three numbers (2026-11-15); remove this line to show them.
+const EXTRA_ON = new URLSearchParams(location.search).get("extra") === "1";
 async function loadExtra() {
+  if (!EXTRA_ON) return;
   const get = (u) => fetch(u, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
   [XK, XW2, XAL] = await Promise.all([get(EXTRA.k), get(EXTRA.w2), get(EXTRA.align)]);
 }
