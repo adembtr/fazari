@@ -229,6 +229,17 @@ function alignLine() {
   p.hidden = false;
 }
 
+/** Later re-runs kept in a test's own block with "extra_only": true (e.g. V6 "v11_new_seeds", pipeline/INJECTION_V11.md):
+ *  their EN/TR sentence and evidence file, shown only with ?extra=1 until the team lead has read them. */
+function laterLines(x) {
+  if (!EXTRA_ON || !x || typeof x !== "object") return "";
+  return Object.values(x).filter((b) => b && typeof b === "object" && b.extra_only === true && (b.result_en || b.result_tr)).map((b) => {
+    const s = plain(tx({ en: b.result_en, tr: b.result_tr }));
+    const ev = typeof b.evidence === "string" ? b.evidence : "", evName = ev.split("/").pop();
+    return `<p class="vf-res vfx">${esc(s)}${ev ? ` <a href="${esc(ev)}" download="${esc(evName)}">${esc(evName)} ↓</a>` : ""}</p>`;
+  }).join("");
+}
+
 // ------------------------------------------------------------------------------------------------ one test
 function item(x) {
   const k = stKey(x.status);
@@ -274,7 +285,7 @@ function item(x) {
     ${sf ? `<p class="vf-short">${esc(t("gr.vf.tested"))} ${esc(sf.what)} · <b>${esc(t("gr.vf.short"))}</b> ${esc(sf.short)}</p>` : ""}
     ${res ? `<p class="vf-res">${esc(res)}</p>` : ""}
     ${x === (DATA?.tests || []).find((y) => /barnard/i.test(y?.title?.en || "")) ? bandsLine() : ""}
-    ${isSweep(x) ? kLine() : ""}${isW0855(x) ? w2Line() : ""}
+    ${isSweep(x) ? kLine() : ""}${isW0855(x) ? w2Line() : ""}${laterLines(x)}
     ${mean}
     ${ev || more ? `<p class="vf-foot">${ev ? `<a href="${esc(ev)}" download="${esc(evName)}">${esc(t("vf.evidence"))}: ${esc(evName)} ↓</a>` : ""}${more ? `<button type="button" class="vf-mt" aria-controls="vfm-${esc(x.id)}" aria-expanded="${isDetailed()}">${esc(t("vf.more"))}</button>` : ""}</p>` : ""}
     ${more}

@@ -1,0 +1,510 @@
+kind,field,mag_ab,seed,set,bin,recovered,injected,no_data
+motion,eps_indi_b,12,1,seed 1 (reduced re-run),0.02,0,4,0
+motion,eps_indi_b,12,1,seed 1 (reduced re-run),0.05,0,4,0
+motion,eps_indi_b,12,1,seed 1 (reduced re-run),0.1,3,3,1
+motion,eps_indi_b,12,1,seed 1 (reduced re-run),0.2,3,4,0
+motion,eps_indi_b,12,1,seed 1 (reduced re-run),0.3,4,4,0
+motion,eps_indi_b,12,1,seed 1 (reduced re-run),0.5,4,4,0
+motion,eps_indi_b,12,1,seed 1 (reduced re-run),1.0,4,4,0
+motion,eps_indi_b,12,1,seed 1 (reduced re-run),2.0,3,3,1
+motion,eps_indi_b,12,1,seed 1 (reduced re-run),5.0,4,4,0
+motion,eps_indi_b,12,1,seed 1 (reduced re-run),10.0,4,4,0
+motion,eps_indi_b,12,1,seed 1 (reduced re-run),20.0,4,4,0
+motion,eps_indi_b,12,1,seed 1 (reduced re-run),40.0,4,4,0
+brightness,eps_indi_b,12,1,seed 1 (reduced re-run),0.03,0,2,0
+brightness,eps_indi_b,12,1,seed 1 (reduced re-run),0.05,2,2,0
+brightness,eps_indi_b,12,1,seed 1 (reduced re-run),0.1,1,1,1
+brightness,eps_indi_b,12,1,seed 1 (reduced re-run),0.2,1,1,1
+brightness,eps_indi_b,12,1,seed 1 (reduced re-run),0.5,2,2,0
+brightness,eps_indi_b,12,1,seed 1 (reduced re-run),1.0,1,1,1
+brightness,eps_indi_b,12,1,seed 1 (reduced re-run),appearing,2,2,0
+brightness,eps_indi_b,12,1,seed 1 (reduced re-run),disappearing,1,2,0
+false candidates per run,eps_indi_b,12,1,seed 1 (reduced re-run),,5,,
+motion,eps_indi_b,13,1,seed 1 (reduced re-run),0.02,0,3,1
+motion,eps_indi_b,13,1,seed 1 (reduced re-run),0.05,0,4,0
+motion,eps_indi_b,13,1,seed 1 (reduced re-run),0.1,3,3,1
+motion,eps_indi_b,13,1,seed 1 (reduced re-run),0.2,4,4,0
+motion,eps_indi_b,13,1,seed 1 (reduced re-run),0.3,3,3,1
+motion,eps_indi_b,13,1,seed 1 (reduced re-run),0.5,2,2,2
+motion,eps_indi_b,13,1,seed 1 (reduced re-run),1.0,4,4,0
+motion,eps_indi_b,13,1,seed 1 (reduced re-run),2.0,4,4,0
+motion,eps_indi_b,13,1,seed 1 (reduced re-run),5.0,4,4,0
+motion,eps_indi_b,13,1,seed 1 (reduced re-run),10.0,4,4,0
+motion,eps_indi_b,13,1,seed 1 (reduced re-run),20.0,2,3,1
+motion,eps_indi_b,13,1,seed 1 (reduced re-run),40.0,4,4,0
+brightness,eps_indi_b,13,1,seed 1 (reduced re-run),0.03,0,2,0
+brightness,eps_indi_b,13,1,seed 1 (reduced re-run),0.05,2,2,0
+brightness,eps_indi_b,13,1,seed 1 (reduced re-run),0.1,1,1,1
+brightness,eps_indi_b,13,1,seed 1 (reduced re-run),0.2,2,2,0
+brightness,eps_indi_b,13,1,seed 1 (reduced re-run),0.5,2,2,0
+brightness,eps_indi_b,13,1,seed 1 (reduced re-run),1.0,2,2,0
+brightness,eps_indi_b,13,1,seed 1 (reduced re-run),appearing,2,2,0
+brightness,eps_indi_b,13,1,seed 1 (reduced re-run),disappearing,2,2,0
+false candidates per run,eps_indi_b,13,1,seed 1 (reduced re-run),,8,,
+motion,eps_indi_b,14,1,seed 1 (reduced re-run),0.02,0,4,0
+motion,eps_indi_b,14,1,seed 1 (reduced re-run),0.05,0,3,1
+motion,eps_indi_b,14,1,seed 1 (reduced re-run),0.1,1,3,1
+motion,eps_indi_b,14,1,seed 1 (reduced re-run),0.2,3,4,0
+motion,eps_indi_b,14,1,seed 1 (reduced re-run),0.3,4,4,0
+motion,eps_indi_b,14,1,seed 1 (reduced re-run),0.5,4,4,0
+motion,eps_indi_b,14,1,seed 1 (reduced re-run),1.0,4,4,0
+motion,eps_indi_b,14,1,seed 1 (reduced re-run),2.0,4,4,0
+motion,eps_indi_b,14,1,seed 1 (reduced re-run),5.0,3,4,0
+motion,eps_indi_b,14,1,seed 1 (reduced re-run),10.0,4,4,0
+motion,eps_indi_b,14,1,seed 1 (reduced re-run),20.0,4,4,0
+motion,eps_indi_b,14,1,seed 1 (reduced re-run),40.0,4,4,0
+brightness,eps_indi_b,14,1,seed 1 (reduced re-run),0.03,0,2,0
+brightness,eps_indi_b,14,1,seed 1 (reduced re-run),0.05,0,2,0
+brightness,eps_indi_b,14,1,seed 1 (reduced re-run),0.1,1,1,1
+brightness,eps_indi_b,14,1,seed 1 (reduced re-run),0.2,2,2,0
+brightness,eps_indi_b,14,1,seed 1 (reduced re-run),0.5,2,2,0
+brightness,eps_indi_b,14,1,seed 1 (reduced re-run),1.0,2,2,0
+brightness,eps_indi_b,14,1,seed 1 (reduced re-run),appearing,1,2,0
+brightness,eps_indi_b,14,1,seed 1 (reduced re-run),disappearing,2,2,0
+false candidates per run,eps_indi_b,14,1,seed 1 (reduced re-run),,3,,
+motion,wise0855,14,1,seed 1 (reduced re-run),0.02,0,4,0
+motion,wise0855,14,1,seed 1 (reduced re-run),0.05,0,3,1
+motion,wise0855,14,1,seed 1 (reduced re-run),0.1,0,4,0
+motion,wise0855,14,1,seed 1 (reduced re-run),0.2,4,4,0
+motion,wise0855,14,1,seed 1 (reduced re-run),0.3,3,4,0
+motion,wise0855,14,1,seed 1 (reduced re-run),0.5,3,4,0
+motion,wise0855,14,1,seed 1 (reduced re-run),1.0,4,4,0
+motion,wise0855,14,1,seed 1 (reduced re-run),2.0,4,4,0
+motion,wise0855,14,1,seed 1 (reduced re-run),5.0,4,4,0
+motion,wise0855,14,1,seed 1 (reduced re-run),10.0,4,4,0
+motion,wise0855,14,1,seed 1 (reduced re-run),20.0,4,4,0
+motion,wise0855,14,1,seed 1 (reduced re-run),40.0,3,3,1
+brightness,wise0855,14,1,seed 1 (reduced re-run),0.03,0,2,0
+brightness,wise0855,14,1,seed 1 (reduced re-run),0.05,0,2,0
+brightness,wise0855,14,1,seed 1 (reduced re-run),0.1,1,1,1
+brightness,wise0855,14,1,seed 1 (reduced re-run),0.2,2,2,0
+brightness,wise0855,14,1,seed 1 (reduced re-run),0.5,2,2,0
+brightness,wise0855,14,1,seed 1 (reduced re-run),1.0,2,2,0
+brightness,wise0855,14,1,seed 1 (reduced re-run),appearing,2,2,0
+brightness,wise0855,14,1,seed 1 (reduced re-run),disappearing,0,2,0
+false candidates per run,wise0855,14,1,seed 1 (reduced re-run),,0,,
+motion,wise0855,18,1,seed 1 (reduced re-run),0.02,0,4,0
+motion,wise0855,18,1,seed 1 (reduced re-run),0.05,0,3,1
+motion,wise0855,18,1,seed 1 (reduced re-run),0.1,0,4,0
+motion,wise0855,18,1,seed 1 (reduced re-run),0.2,0,4,0
+motion,wise0855,18,1,seed 1 (reduced re-run),0.3,0,4,0
+motion,wise0855,18,1,seed 1 (reduced re-run),0.5,0,2,2
+motion,wise0855,18,1,seed 1 (reduced re-run),1.0,1,4,0
+motion,wise0855,18,1,seed 1 (reduced re-run),2.0,3,4,0
+motion,wise0855,18,1,seed 1 (reduced re-run),5.0,4,4,0
+motion,wise0855,18,1,seed 1 (reduced re-run),10.0,3,4,0
+motion,wise0855,18,1,seed 1 (reduced re-run),20.0,2,4,0
+motion,wise0855,18,1,seed 1 (reduced re-run),40.0,3,4,0
+brightness,wise0855,18,1,seed 1 (reduced re-run),0.03,0,2,0
+brightness,wise0855,18,1,seed 1 (reduced re-run),0.05,0,1,1
+brightness,wise0855,18,1,seed 1 (reduced re-run),0.1,0,2,0
+brightness,wise0855,18,1,seed 1 (reduced re-run),0.2,0,2,0
+brightness,wise0855,18,1,seed 1 (reduced re-run),0.5,1,2,0
+brightness,wise0855,18,1,seed 1 (reduced re-run),1.0,2,2,0
+brightness,wise0855,18,1,seed 1 (reduced re-run),appearing,1,1,1
+brightness,wise0855,18,1,seed 1 (reduced re-run),disappearing,0,2,0
+false candidates per run,wise0855,18,1,seed 1 (reduced re-run),,1,,
+motion,barnard,12,101,new seed,0.02,0,4,0
+motion,barnard,12,101,new seed,0.05,0,4,0
+motion,barnard,12,101,new seed,0.1,1,4,0
+motion,barnard,12,101,new seed,0.2,1,4,0
+motion,barnard,12,101,new seed,0.3,2,4,0
+motion,barnard,12,101,new seed,0.5,2,4,0
+motion,barnard,12,101,new seed,1.0,3,4,0
+motion,barnard,12,101,new seed,2.0,3,4,0
+motion,barnard,12,101,new seed,5.0,4,4,0
+motion,barnard,12,101,new seed,10.0,4,4,0
+motion,barnard,12,101,new seed,20.0,4,4,0
+motion,barnard,12,101,new seed,40.0,4,4,0
+brightness,barnard,12,101,new seed,0.03,0,2,0
+brightness,barnard,12,101,new seed,0.05,0,2,0
+brightness,barnard,12,101,new seed,0.1,2,2,0
+brightness,barnard,12,101,new seed,0.2,2,2,0
+brightness,barnard,12,101,new seed,0.5,2,2,0
+brightness,barnard,12,101,new seed,1.0,2,2,0
+brightness,barnard,12,101,new seed,appearing,2,2,0
+brightness,barnard,12,101,new seed,disappearing,2,2,0
+false candidates per run,barnard,12,101,new seed,,11,,
+motion,barnard,14,101,new seed,0.02,0,4,0
+motion,barnard,14,101,new seed,0.05,0,4,0
+motion,barnard,14,101,new seed,0.1,1,4,0
+motion,barnard,14,101,new seed,0.2,3,4,0
+motion,barnard,14,101,new seed,0.3,1,4,0
+motion,barnard,14,101,new seed,0.5,2,4,0
+motion,barnard,14,101,new seed,1.0,4,4,0
+motion,barnard,14,101,new seed,2.0,3,4,0
+motion,barnard,14,101,new seed,5.0,4,4,0
+motion,barnard,14,101,new seed,10.0,4,4,0
+motion,barnard,14,101,new seed,20.0,4,4,0
+motion,barnard,14,101,new seed,40.0,4,4,0
+brightness,barnard,14,101,new seed,0.03,0,2,0
+brightness,barnard,14,101,new seed,0.05,2,2,0
+brightness,barnard,14,101,new seed,0.1,2,2,0
+brightness,barnard,14,101,new seed,0.2,1,2,0
+brightness,barnard,14,101,new seed,0.5,2,2,0
+brightness,barnard,14,101,new seed,1.0,2,2,0
+brightness,barnard,14,101,new seed,appearing,2,2,0
+brightness,barnard,14,101,new seed,disappearing,1,2,0
+false candidates per run,barnard,14,101,new seed,,3,,
+motion,barnard,16,101,new seed,0.02,0,4,0
+motion,barnard,16,101,new seed,0.05,0,3,1
+motion,barnard,16,101,new seed,0.1,0,4,0
+motion,barnard,16,101,new seed,0.2,1,4,0
+motion,barnard,16,101,new seed,0.3,1,4,0
+motion,barnard,16,101,new seed,0.5,2,4,0
+motion,barnard,16,101,new seed,1.0,3,4,0
+motion,barnard,16,101,new seed,2.0,4,4,0
+motion,barnard,16,101,new seed,5.0,3,4,0
+motion,barnard,16,101,new seed,10.0,4,4,0
+motion,barnard,16,101,new seed,20.0,4,4,0
+motion,barnard,16,101,new seed,40.0,3,4,0
+brightness,barnard,16,101,new seed,0.03,0,2,0
+brightness,barnard,16,101,new seed,0.05,0,2,0
+brightness,barnard,16,101,new seed,0.1,2,2,0
+brightness,barnard,16,101,new seed,0.2,1,2,0
+brightness,barnard,16,101,new seed,0.5,1,2,0
+brightness,barnard,16,101,new seed,1.0,2,2,0
+brightness,barnard,16,101,new seed,appearing,2,2,0
+brightness,barnard,16,101,new seed,disappearing,1,2,0
+false candidates per run,barnard,16,101,new seed,,8,,
+motion,eps_indi_b,12,101,new seed,0.02,0,3,1
+motion,eps_indi_b,12,101,new seed,0.05,0,4,0
+motion,eps_indi_b,12,101,new seed,0.1,2,4,0
+motion,eps_indi_b,12,101,new seed,0.2,2,4,0
+motion,eps_indi_b,12,101,new seed,0.3,3,4,0
+motion,eps_indi_b,12,101,new seed,0.5,3,3,1
+motion,eps_indi_b,12,101,new seed,1.0,3,4,0
+motion,eps_indi_b,12,101,new seed,2.0,3,4,0
+motion,eps_indi_b,12,101,new seed,5.0,4,4,0
+motion,eps_indi_b,12,101,new seed,10.0,4,4,0
+motion,eps_indi_b,12,101,new seed,20.0,4,4,0
+motion,eps_indi_b,12,101,new seed,40.0,3,4,0
+brightness,eps_indi_b,12,101,new seed,0.03,0,2,0
+brightness,eps_indi_b,12,101,new seed,0.05,1,1,1
+brightness,eps_indi_b,12,101,new seed,0.1,2,2,0
+brightness,eps_indi_b,12,101,new seed,0.2,2,2,0
+brightness,eps_indi_b,12,101,new seed,0.5,1,1,1
+brightness,eps_indi_b,12,101,new seed,1.0,1,1,1
+brightness,eps_indi_b,12,101,new seed,appearing,2,2,0
+brightness,eps_indi_b,12,101,new seed,disappearing,2,2,0
+false candidates per run,eps_indi_b,12,101,new seed,,4,,
+motion,eps_indi_b,13,101,new seed,0.02,0,3,1
+motion,eps_indi_b,13,101,new seed,0.05,0,4,0
+motion,eps_indi_b,13,101,new seed,0.1,4,4,0
+motion,eps_indi_b,13,101,new seed,0.2,4,4,0
+motion,eps_indi_b,13,101,new seed,0.3,3,4,0
+motion,eps_indi_b,13,101,new seed,0.5,4,4,0
+motion,eps_indi_b,13,101,new seed,1.0,3,3,1
+motion,eps_indi_b,13,101,new seed,2.0,3,3,1
+motion,eps_indi_b,13,101,new seed,5.0,4,4,0
+motion,eps_indi_b,13,101,new seed,10.0,4,4,0
+motion,eps_indi_b,13,101,new seed,20.0,4,4,0
+motion,eps_indi_b,13,101,new seed,40.0,3,4,0
+brightness,eps_indi_b,13,101,new seed,0.03,0,0,2
+brightness,eps_indi_b,13,101,new seed,0.05,1,1,1
+brightness,eps_indi_b,13,101,new seed,0.1,2,2,0
+brightness,eps_indi_b,13,101,new seed,0.2,2,2,0
+brightness,eps_indi_b,13,101,new seed,0.5,2,2,0
+brightness,eps_indi_b,13,101,new seed,1.0,2,2,0
+brightness,eps_indi_b,13,101,new seed,appearing,0,1,1
+brightness,eps_indi_b,13,101,new seed,disappearing,1,1,1
+false candidates per run,eps_indi_b,13,101,new seed,,7,,
+motion,eps_indi_b,14,101,new seed,0.02,0,4,0
+motion,eps_indi_b,14,101,new seed,0.05,0,4,0
+motion,eps_indi_b,14,101,new seed,0.1,2,4,0
+motion,eps_indi_b,14,101,new seed,0.2,2,2,2
+motion,eps_indi_b,14,101,new seed,0.3,3,3,1
+motion,eps_indi_b,14,101,new seed,0.5,4,4,0
+motion,eps_indi_b,14,101,new seed,1.0,4,4,0
+motion,eps_indi_b,14,101,new seed,2.0,3,4,0
+motion,eps_indi_b,14,101,new seed,5.0,4,4,0
+motion,eps_indi_b,14,101,new seed,10.0,4,4,0
+motion,eps_indi_b,14,101,new seed,20.0,3,3,1
+motion,eps_indi_b,14,101,new seed,40.0,4,4,0
+brightness,eps_indi_b,14,101,new seed,0.03,0,2,0
+brightness,eps_indi_b,14,101,new seed,0.05,1,2,0
+brightness,eps_indi_b,14,101,new seed,0.1,2,2,0
+brightness,eps_indi_b,14,101,new seed,0.2,2,2,0
+brightness,eps_indi_b,14,101,new seed,0.5,2,2,0
+brightness,eps_indi_b,14,101,new seed,1.0,1,2,0
+brightness,eps_indi_b,14,101,new seed,appearing,1,2,0
+brightness,eps_indi_b,14,101,new seed,disappearing,2,2,0
+false candidates per run,eps_indi_b,14,101,new seed,,3,,
+motion,eps_indi_b,15,101,new seed,0.02,0,3,1
+motion,eps_indi_b,15,101,new seed,0.05,0,3,1
+motion,eps_indi_b,15,101,new seed,0.1,1,4,0
+motion,eps_indi_b,15,101,new seed,0.2,3,4,0
+motion,eps_indi_b,15,101,new seed,0.3,3,4,0
+motion,eps_indi_b,15,101,new seed,0.5,4,4,0
+motion,eps_indi_b,15,101,new seed,1.0,3,4,0
+motion,eps_indi_b,15,101,new seed,2.0,4,4,0
+motion,eps_indi_b,15,101,new seed,5.0,4,4,0
+motion,eps_indi_b,15,101,new seed,10.0,4,4,0
+motion,eps_indi_b,15,101,new seed,20.0,4,4,0
+motion,eps_indi_b,15,101,new seed,40.0,4,4,0
+brightness,eps_indi_b,15,101,new seed,0.03,0,2,0
+brightness,eps_indi_b,15,101,new seed,0.05,0,2,0
+brightness,eps_indi_b,15,101,new seed,0.1,1,2,0
+brightness,eps_indi_b,15,101,new seed,0.2,2,2,0
+brightness,eps_indi_b,15,101,new seed,0.5,1,1,1
+brightness,eps_indi_b,15,101,new seed,1.0,1,1,1
+brightness,eps_indi_b,15,101,new seed,appearing,2,2,0
+brightness,eps_indi_b,15,101,new seed,disappearing,2,2,0
+false candidates per run,eps_indi_b,15,101,new seed,,1,,
+motion,eps_indi_b,16,101,new seed,0.02,0,4,0
+motion,eps_indi_b,16,101,new seed,0.05,0,4,0
+motion,eps_indi_b,16,101,new seed,0.1,0,4,0
+motion,eps_indi_b,16,101,new seed,0.2,3,4,0
+motion,eps_indi_b,16,101,new seed,0.3,2,4,0
+motion,eps_indi_b,16,101,new seed,0.5,4,4,0
+motion,eps_indi_b,16,101,new seed,1.0,3,4,0
+motion,eps_indi_b,16,101,new seed,2.0,4,4,0
+motion,eps_indi_b,16,101,new seed,5.0,3,3,1
+motion,eps_indi_b,16,101,new seed,10.0,2,4,0
+motion,eps_indi_b,16,101,new seed,20.0,3,3,1
+motion,eps_indi_b,16,101,new seed,40.0,3,3,1
+brightness,eps_indi_b,16,101,new seed,0.03,0,2,0
+brightness,eps_indi_b,16,101,new seed,0.05,0,2,0
+brightness,eps_indi_b,16,101,new seed,0.1,1,1,1
+brightness,eps_indi_b,16,101,new seed,0.2,1,1,1
+brightness,eps_indi_b,16,101,new seed,0.5,1,2,0
+brightness,eps_indi_b,16,101,new seed,1.0,2,2,0
+brightness,eps_indi_b,16,101,new seed,appearing,1,2,0
+brightness,eps_indi_b,16,101,new seed,disappearing,2,2,0
+false candidates per run,eps_indi_b,16,101,new seed,,2,,
+motion,eps_indi_b,17,101,new seed,0.02,0,4,0
+motion,eps_indi_b,17,101,new seed,0.05,0,4,0
+motion,eps_indi_b,17,101,new seed,0.1,0,4,0
+motion,eps_indi_b,17,101,new seed,0.2,0,4,0
+motion,eps_indi_b,17,101,new seed,0.3,3,3,1
+motion,eps_indi_b,17,101,new seed,0.5,4,4,0
+motion,eps_indi_b,17,101,new seed,1.0,2,3,1
+motion,eps_indi_b,17,101,new seed,2.0,1,3,1
+motion,eps_indi_b,17,101,new seed,5.0,2,3,1
+motion,eps_indi_b,17,101,new seed,10.0,3,4,0
+motion,eps_indi_b,17,101,new seed,20.0,4,4,0
+motion,eps_indi_b,17,101,new seed,40.0,3,4,0
+brightness,eps_indi_b,17,101,new seed,0.03,0,2,0
+brightness,eps_indi_b,17,101,new seed,0.05,0,2,0
+brightness,eps_indi_b,17,101,new seed,0.1,1,2,0
+brightness,eps_indi_b,17,101,new seed,0.2,0,1,1
+brightness,eps_indi_b,17,101,new seed,0.5,2,2,0
+brightness,eps_indi_b,17,101,new seed,1.0,2,2,0
+brightness,eps_indi_b,17,101,new seed,appearing,0,2,0
+brightness,eps_indi_b,17,101,new seed,disappearing,1,1,1
+false candidates per run,eps_indi_b,17,101,new seed,,2,,
+motion,eps_indi_b,18,101,new seed,0.02,0,4,0
+motion,eps_indi_b,18,101,new seed,0.05,0,4,0
+motion,eps_indi_b,18,101,new seed,0.1,0,3,1
+motion,eps_indi_b,18,101,new seed,0.2,0,2,2
+motion,eps_indi_b,18,101,new seed,0.3,0,4,0
+motion,eps_indi_b,18,101,new seed,0.5,0,3,1
+motion,eps_indi_b,18,101,new seed,1.0,1,4,0
+motion,eps_indi_b,18,101,new seed,2.0,1,3,1
+motion,eps_indi_b,18,101,new seed,5.0,2,4,0
+motion,eps_indi_b,18,101,new seed,10.0,2,4,0
+motion,eps_indi_b,18,101,new seed,20.0,3,4,0
+motion,eps_indi_b,18,101,new seed,40.0,0,4,0
+brightness,eps_indi_b,18,101,new seed,0.03,0,2,0
+brightness,eps_indi_b,18,101,new seed,0.05,0,2,0
+brightness,eps_indi_b,18,101,new seed,0.1,0,2,0
+brightness,eps_indi_b,18,101,new seed,0.2,0,2,0
+brightness,eps_indi_b,18,101,new seed,0.5,2,2,0
+brightness,eps_indi_b,18,101,new seed,1.0,1,2,0
+brightness,eps_indi_b,18,101,new seed,appearing,1,2,0
+brightness,eps_indi_b,18,101,new seed,disappearing,1,1,1
+false candidates per run,eps_indi_b,18,101,new seed,,1,,
+motion,wise0855,12,101,new seed,0.02,0,4,0
+motion,wise0855,12,101,new seed,0.05,0,4,0
+motion,wise0855,12,101,new seed,0.1,1,4,0
+motion,wise0855,12,101,new seed,0.2,4,4,0
+motion,wise0855,12,101,new seed,0.3,4,4,0
+motion,wise0855,12,101,new seed,0.5,2,3,1
+motion,wise0855,12,101,new seed,1.0,4,4,0
+motion,wise0855,12,101,new seed,2.0,4,4,0
+motion,wise0855,12,101,new seed,5.0,4,4,0
+motion,wise0855,12,101,new seed,10.0,4,4,0
+motion,wise0855,12,101,new seed,20.0,4,4,0
+motion,wise0855,12,101,new seed,40.0,3,4,0
+brightness,wise0855,12,101,new seed,0.03,0,2,0
+brightness,wise0855,12,101,new seed,0.05,2,2,0
+brightness,wise0855,12,101,new seed,0.1,2,2,0
+brightness,wise0855,12,101,new seed,0.2,2,2,0
+brightness,wise0855,12,101,new seed,0.5,1,1,1
+brightness,wise0855,12,101,new seed,1.0,2,2,0
+brightness,wise0855,12,101,new seed,appearing,2,2,0
+brightness,wise0855,12,101,new seed,disappearing,0,2,0
+false candidates per run,wise0855,12,101,new seed,,1,,
+motion,wise0855,13,101,new seed,0.02,0,2,2
+motion,wise0855,13,101,new seed,0.05,0,4,0
+motion,wise0855,13,101,new seed,0.1,0,4,0
+motion,wise0855,13,101,new seed,0.2,4,4,0
+motion,wise0855,13,101,new seed,0.3,4,4,0
+motion,wise0855,13,101,new seed,0.5,3,4,0
+motion,wise0855,13,101,new seed,1.0,4,4,0
+motion,wise0855,13,101,new seed,2.0,3,3,1
+motion,wise0855,13,101,new seed,5.0,4,4,0
+motion,wise0855,13,101,new seed,10.0,4,4,0
+motion,wise0855,13,101,new seed,20.0,4,4,0
+motion,wise0855,13,101,new seed,40.0,3,3,1
+brightness,wise0855,13,101,new seed,0.03,0,2,0
+brightness,wise0855,13,101,new seed,0.05,0,2,0
+brightness,wise0855,13,101,new seed,0.1,2,2,0
+brightness,wise0855,13,101,new seed,0.2,2,2,0
+brightness,wise0855,13,101,new seed,0.5,2,2,0
+brightness,wise0855,13,101,new seed,1.0,2,2,0
+brightness,wise0855,13,101,new seed,appearing,2,2,0
+brightness,wise0855,13,101,new seed,disappearing,0,1,1
+false candidates per run,wise0855,13,101,new seed,,0,,
+motion,wise0855,14,101,new seed,0.02,0,4,0
+motion,wise0855,14,101,new seed,0.05,0,4,0
+motion,wise0855,14,101,new seed,0.1,0,4,0
+motion,wise0855,14,101,new seed,0.2,2,2,2
+motion,wise0855,14,101,new seed,0.3,3,4,0
+motion,wise0855,14,101,new seed,0.5,3,4,0
+motion,wise0855,14,101,new seed,1.0,4,4,0
+motion,wise0855,14,101,new seed,2.0,4,4,0
+motion,wise0855,14,101,new seed,5.0,4,4,0
+motion,wise0855,14,101,new seed,10.0,4,4,0
+motion,wise0855,14,101,new seed,20.0,3,4,0
+motion,wise0855,14,101,new seed,40.0,4,4,0
+brightness,wise0855,14,101,new seed,0.03,0,2,0
+brightness,wise0855,14,101,new seed,0.05,0,2,0
+brightness,wise0855,14,101,new seed,0.1,2,2,0
+brightness,wise0855,14,101,new seed,0.2,2,2,0
+brightness,wise0855,14,101,new seed,0.5,1,1,1
+brightness,wise0855,14,101,new seed,1.0,2,2,0
+brightness,wise0855,14,101,new seed,appearing,2,2,0
+brightness,wise0855,14,101,new seed,disappearing,1,2,0
+false candidates per run,wise0855,14,101,new seed,,0,,
+motion,wise0855,15,101,new seed,0.02,0,3,1
+motion,wise0855,15,101,new seed,0.05,0,4,0
+motion,wise0855,15,101,new seed,0.1,1,4,0
+motion,wise0855,15,101,new seed,0.2,4,4,0
+motion,wise0855,15,101,new seed,0.3,3,4,0
+motion,wise0855,15,101,new seed,0.5,2,4,0
+motion,wise0855,15,101,new seed,1.0,4,4,0
+motion,wise0855,15,101,new seed,2.0,3,3,1
+motion,wise0855,15,101,new seed,5.0,4,4,0
+motion,wise0855,15,101,new seed,10.0,4,4,0
+motion,wise0855,15,101,new seed,20.0,4,4,0
+motion,wise0855,15,101,new seed,40.0,3,4,0
+brightness,wise0855,15,101,new seed,0.03,0,1,1
+brightness,wise0855,15,101,new seed,0.05,0,1,1
+brightness,wise0855,15,101,new seed,0.1,2,2,0
+brightness,wise0855,15,101,new seed,0.2,2,2,0
+brightness,wise0855,15,101,new seed,0.5,1,2,0
+brightness,wise0855,15,101,new seed,1.0,1,2,0
+brightness,wise0855,15,101,new seed,appearing,2,2,0
+brightness,wise0855,15,101,new seed,disappearing,0,2,0
+false candidates per run,wise0855,15,101,new seed,,1,,
+motion,wise0855,16,101,new seed,0.02,0,4,0
+motion,wise0855,16,101,new seed,0.05,0,4,0
+motion,wise0855,16,101,new seed,0.1,0,4,0
+motion,wise0855,16,101,new seed,0.2,1,4,0
+motion,wise0855,16,101,new seed,0.3,4,4,0
+motion,wise0855,16,101,new seed,0.5,3,4,0
+motion,wise0855,16,101,new seed,1.0,4,4,0
+motion,wise0855,16,101,new seed,2.0,4,4,0
+motion,wise0855,16,101,new seed,5.0,4,4,0
+motion,wise0855,16,101,new seed,10.0,2,3,1
+motion,wise0855,16,101,new seed,20.0,3,3,1
+motion,wise0855,16,101,new seed,40.0,3,4,0
+brightness,wise0855,16,101,new seed,0.03,0,2,0
+brightness,wise0855,16,101,new seed,0.05,0,2,0
+brightness,wise0855,16,101,new seed,0.1,0,2,0
+brightness,wise0855,16,101,new seed,0.2,1,1,1
+brightness,wise0855,16,101,new seed,0.5,2,2,0
+brightness,wise0855,16,101,new seed,1.0,2,2,0
+brightness,wise0855,16,101,new seed,appearing,2,2,0
+brightness,wise0855,16,101,new seed,disappearing,0,2,0
+false candidates per run,wise0855,16,101,new seed,,1,,
+motion,wise0855,17,101,new seed,0.02,0,4,0
+motion,wise0855,17,101,new seed,0.05,0,4,0
+motion,wise0855,17,101,new seed,0.1,0,4,0
+motion,wise0855,17,101,new seed,0.2,0,4,0
+motion,wise0855,17,101,new seed,0.3,0,4,0
+motion,wise0855,17,101,new seed,0.5,2,3,1
+motion,wise0855,17,101,new seed,1.0,3,4,0
+motion,wise0855,17,101,new seed,2.0,3,3,1
+motion,wise0855,17,101,new seed,5.0,3,3,1
+motion,wise0855,17,101,new seed,10.0,4,4,0
+motion,wise0855,17,101,new seed,20.0,4,4,0
+motion,wise0855,17,101,new seed,40.0,3,4,0
+brightness,wise0855,17,101,new seed,0.03,0,2,0
+brightness,wise0855,17,101,new seed,0.05,0,2,0
+brightness,wise0855,17,101,new seed,0.1,0,2,0
+brightness,wise0855,17,101,new seed,0.2,1,2,0
+brightness,wise0855,17,101,new seed,0.5,2,2,0
+brightness,wise0855,17,101,new seed,1.0,1,1,1
+brightness,wise0855,17,101,new seed,appearing,1,1,1
+brightness,wise0855,17,101,new seed,disappearing,0,1,1
+false candidates per run,wise0855,17,101,new seed,,1,,
+motion,wise0855,18,101,new seed,0.02,0,4,0
+motion,wise0855,18,101,new seed,0.05,0,4,0
+motion,wise0855,18,101,new seed,0.1,0,3,1
+motion,wise0855,18,101,new seed,0.2,0,2,2
+motion,wise0855,18,101,new seed,0.3,0,4,0
+motion,wise0855,18,101,new seed,0.5,0,4,0
+motion,wise0855,18,101,new seed,1.0,0,3,1
+motion,wise0855,18,101,new seed,2.0,2,2,2
+motion,wise0855,18,101,new seed,5.0,4,4,0
+motion,wise0855,18,101,new seed,10.0,4,4,0
+motion,wise0855,18,101,new seed,20.0,4,4,0
+motion,wise0855,18,101,new seed,40.0,3,4,0
+brightness,wise0855,18,101,new seed,0.03,0,2,0
+brightness,wise0855,18,101,new seed,0.05,0,2,0
+brightness,wise0855,18,101,new seed,0.1,0,2,0
+brightness,wise0855,18,101,new seed,0.2,0,2,0
+brightness,wise0855,18,101,new seed,0.5,1,2,0
+brightness,wise0855,18,101,new seed,1.0,2,2,0
+brightness,wise0855,18,101,new seed,appearing,1,1,1
+brightness,wise0855,18,101,new seed,disappearing,0,0,2
+false candidates per run,wise0855,18,101,new seed,,1,,
+motion,wise0855,15,102,new seed,0.02,0,4,0
+motion,wise0855,15,102,new seed,0.05,0,4,0
+motion,wise0855,15,102,new seed,0.1,0,4,0
+motion,wise0855,15,102,new seed,0.2,3,4,0
+motion,wise0855,15,102,new seed,0.3,4,4,0
+motion,wise0855,15,102,new seed,0.5,4,4,0
+motion,wise0855,15,102,new seed,1.0,4,4,0
+motion,wise0855,15,102,new seed,2.0,3,3,1
+motion,wise0855,15,102,new seed,5.0,3,3,1
+motion,wise0855,15,102,new seed,10.0,3,4,0
+motion,wise0855,15,102,new seed,20.0,4,4,0
+motion,wise0855,15,102,new seed,40.0,3,4,0
+brightness,wise0855,15,102,new seed,0.03,0,2,0
+brightness,wise0855,15,102,new seed,0.05,0,2,0
+brightness,wise0855,15,102,new seed,0.1,2,2,0
+brightness,wise0855,15,102,new seed,0.2,2,2,0
+brightness,wise0855,15,102,new seed,0.5,1,1,1
+brightness,wise0855,15,102,new seed,1.0,2,2,0
+brightness,wise0855,15,102,new seed,appearing,1,1,1
+brightness,wise0855,15,102,new seed,disappearing,0,2,0
+false candidates per run,wise0855,15,102,new seed,,2,,
+"pooled bin, new seeds alone",eps_indi_b,12-14,101,,>= 0.3,84,91,
+"pooled bin, new seeds alone",eps_indi_b,12-16,101,,>= 0.3,138,152,
+"pooled bin, new seeds alone",eps_indi_b,12-17,101,,>= 1,120,135,
+"pooled bin, new seeds alone",eps_indi_b,18-18,101,,>= 1,9,23,
+"pooled bin, new seeds alone",eps_indi_b,18-18,101,,>= 5,7,16,
+"pooled bin, new seeds alone",wise0855,12-14,101,,>= 0.3,87,93,
+"pooled bin, new seeds alone",wise0855,12-16,101,,>= 0.3,141,154,
+"pooled bin, new seeds alone",wise0855,12-17,101,,>= 1,130,137,
+"pooled bin, new seeds alone",wise0855,18-18,101,,>= 1,17,21,
+"pooled bin, new seeds alone",wise0855,18-18,101,,>= 5,15,16,
+"pooled bin, new seeds alone",barnard,12-14,101,,>= 0.3,52,64,
+"pooled bin, new seeds alone",barnard,12-16,101,,>= 0.3,76,96,
+"pooled bin, new seeds alone",barnard,12-17,101,,>= 1,66,72,
+"pooled bin, all finder v1.1 runs",eps_indi_b,12-14,1 101,,>= 0.3,173,182,
+"pooled bin, all finder v1.1 runs",eps_indi_b,12-16,101,,>= 0.3,138,152,
+"pooled bin, all finder v1.1 runs",eps_indi_b,12-17,101,,>= 1,120,135,
+"pooled bin, all finder v1.1 runs",eps_indi_b,18-18,101,,>= 1,9,23,
+"pooled bin, all finder v1.1 runs",eps_indi_b,18-18,101,,>= 5,7,16,
+"pooled bin, all finder v1.1 runs",wise0855,12-14,101,,>= 0.3,87,93,
+"pooled bin, all finder v1.1 runs",wise0855,12-16,101,,>= 0.3,141,154,
+"pooled bin, all finder v1.1 runs",wise0855,12-17,101,,>= 1,130,137,
+"pooled bin, all finder v1.1 runs",wise0855,18-18,1 101,,>= 1,33,45,
+"pooled bin, all finder v1.1 runs",wise0855,18-18,1 101,,>= 5,27,32,
+"pooled bin, all finder v1.1 runs",barnard,12-14,101,,>= 0.3,52,64,
+"pooled bin, all finder v1.1 runs",barnard,12-16,101,,>= 0.3,76,96,
+"pooled bin, all finder v1.1 runs",barnard,12-17,101,,>= 1,66,72,
