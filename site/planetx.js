@@ -465,6 +465,8 @@ let wasCompact = compact();
 window.addEventListener("resize", () => { if (S && compact() !== wasCompact) { wasCompact = compact(); renderChart(); renderMap(); renderI10(); } });
 onLang(() => { document.documentElement.lang = lang(); renderAll(); });
 document.documentElement.lang = lang();
-[S, R2, I10] = await Promise.all([get("data/planetx/summary.json"), get("data/planetx/run2.json"), get("data/planetx/inject10k.json")]);
+// The 10,400-body test shows only with ?extra=1 until the team lead has read it (15 Nov 2026); drop the condition to show it.
+const I10_ON = new URLSearchParams(location.search).get("extra") === "1";
+[S, R2, I10] = await Promise.all([get("data/planetx/summary.json"), get("data/planetx/run2.json"), I10_ON ? get("data/planetx/inject10k.json") : null]);
 renderAll();
 if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
