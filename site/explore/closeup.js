@@ -51,11 +51,14 @@ export function createCloseup({ A = null, al = null, state, pix2sky, size, onCha
   let limitKey = null;         // sharpest map at the view centre, which sets the closest zoom
   const failed = new Set();    // close-up maps whose servers did not answer
   let prefetch = null;         // prefetch.js: says when the close-up tiles of the view are in the cache
-  let lastT = 0, heldSince = 0, tick = 0;
+  let lastT = 0, tick = 0;
   const FADE_MS = 100;         // fastest fade in or out of the close-up map (was 250: it held back the sharp frame)
-  // Holding the close-up back until its tiles arrive measured slower to sharp (Pan-STARRS 0.3 deg 4.0 -> 5.4 s),
-  // so it is off by default; ?cg=1 turns it on (max 4 s hold).
-  const WAIT_MAX_MS = new URLSearchParams(location.search).get("cg") === "1" ? 4000 : 0;
+  // Where Aladin has no tile of the order it draws, the close-up layer is a black patch over the map below (Pan-STARRS
+  // at 0.3 deg, Nov 15 2026: a black diamond over Barnard's Star while its tiles were late). So it shows only while
+  // its tiles cover the view (prefetch.js coverage): GATE_SHOW of it shows it, under GATE_HIDE for GATE_HIDE_MS hides
+  // it; the map below (DSS2) stays on screen meanwhile. (Replaces the ?cg=1 hold.)
+  const GATE_SHOW = 0.97, GATE_HIDE = 0.9, GATE_HIDE_MS = 500;
+  let gate = false, badSince = 0;
 
   const enabled = () => !!al && (ui.on ? ui.on.checked : true);
   const mix = () => (ui.mix ? Number(ui.mix.value) / 100 : 0);
@@ -119,20 +122,22 @@ export function createCloseup({ A = null, al = null, state, pix2sky, size, onCha
     const now = performance.now();
     const dt = lastT ? Math.min(100, now - lastT) : 16;
     lastT = now;
-    // Keep the map you see (DSS2) until the sharp tiles of this view have arrived, instead of fading in a
-    // blurry placeholder; then fade in quickly. Only for its first appearance, not while you pan or zoom on.
-    if (target > 0 && sharpOp === 0 && prefetch && layer) {
-      heldSince ||= now;
-      if (now - heldSince < WAIT_MAX_MS && prefetch.progress(layer.key) < 0.98) target = 0;
-      else heldSince = 0;
-    } else heldSince = 0;
+    let waiting = false;
+    if (target > 0 && layer) {
+      const cov = prefetch ? prefetch.coverage(layer.key) : null;   // null: not known (?tq=0): no gate
+      if (cov == null || cov >= GATE_SHOW) { gate = true; badSince = 0; }
+      else if (cov < GATE_HIDE) { badSince ||= now; if (now - badSince >= GATE_HIDE_MS) gate = false; }
+      else badSince = 0;
+      if (!gate) { target = 0; waiting = true; }
+      else if (cov != null && cov < GATE_SHOW) waiting = true;
+    } else { gate = false; badSince = 0; }
     if (target !== sharpOp) {
       const step = dt / FADE_MS;
       sharpOp = Math.abs(target - sharpOp) <= step ? target : sharpOp + Math.sign(target - sharpOp) * step;
     }
     if (layer) { try { layer.hips.setOpacity(sharpOp); } catch { /* not ready yet */ } }
     // Still fading or waiting for tiles: look again shortly.
-    if (layer && (sharpOp !== target || heldSince) && !tick) {
+    if (layer && (sharpOp !== target || waiting) && !tick) {
       tick = setTimeout(() => { tick = 0; lastT = performance.now() - 16; onChange?.(); }, sharpOp !== target ? 16 : 100);
     }
   }
@@ -230,10 +235,13 @@ export function createCloseup({ A = null, al = null, state, pix2sky, size, onCha
     return w.op > 0 ? w.key : null;
   }
 
-  /** Close-up map and its opacity at field fov near dec: { key, op } (key null when none shows). */
+  /**
+   * Close-up map and its opacity at field fov near dec: { key, op, shown } (key null when none shows). shown: how much
+   * it hides the map below, 0 while it waits for its tiles (that map is then needed in full).
+   */
   function weightFor(fov, dec) {
     const w = wanted(dec, fov);
-    return w.op > 0 && w.key ? { key: w.key, op: w.op } : { key: null, op: 0 };
+    return w.op > 0 && w.key ? { key: w.key, op: w.op, shown: gate ? w.op : 0 } : { key: null, op: 0, shown: 0 };
   }
 
   return {

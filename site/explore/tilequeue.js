@@ -60,6 +60,7 @@ let realFetch = (...a) => window.fetch(...a);
 // Tiles Aladin has received ("m|order|pix|tail", tail = cube frame and extension): hasTile(), for prefetch.js coverage().
 const TILE_AT = /\/Norder(\d+)\/Dir\d+\/Npix(\d+)([^/]*)$/;
 const drawn = new Set();
+const failedAt = [];            // map index -> times of failed tile downloads (recentFailures)
 const stats = { asks: 0, memory: 0, joined: 0, later: 0, held: 0, prefetch: 0, stale: 0, rerouted: 0, retried: 0, hedged: 0, failed: 0, direct: 0 };
 
 function hostOf(url) { try { return new URL(url, location.href).host; } catch { return null; } }
@@ -348,6 +349,11 @@ function hedge(job, firstHost) {
 function finish(job, res) {
   job.state = "done";
   job.res = res;
+  if (res && job.m != null && (res.error || (!res.ok && res.status !== 404))) {   // server error, timeout, CORS (not "no tile here")
+    const f = (failedAt[job.m] ||= []);
+    f.push(performance.now());
+    if (f.length > 50) f.shift();
+  }
   for (const cb of job.done) cb(res ? !!res.ok : null);
   job.done = [];
   const waiters = job.waiters;
@@ -503,6 +509,12 @@ export function hasTile(key, order, pix, tail) {
   if (!installed) return null;
   const m = maps.findIndex((x) => x.key === key);
   return m >= 0 && drawn.has(`${m}|${order}|${pix}|${tail}`);
+}
+
+/** Tile downloads of map `key` that failed (server error, timeout, CORS; not 404) in the last ms milliseconds. */
+export function recentFailures(key, ms = 10000) {
+  const m = maps.findIndex((x) => x.key === key), t = performance.now() - ms;
+  return m < 0 || !failedAt[m] ? 0 : failedAt[m].filter((x) => x >= t).length;
 }
 
 /** For tests: queue state. */

@@ -7,7 +7,7 @@ import {
 } from "./coords.js";
 import { SURVEYS, CLOSEUP_SURVEYS, SPHEREX_SLICES, CLOSEUP_FOV, surveyUrl, minFov } from "./surveys.js";
 import { createCloseup } from "./closeup.js";
-import { installTileQueue } from "./tilequeue.js";
+import { installTileQueue, recentFailures } from "./tilequeue.js";
 import { createPrefetch } from "./prefetch.js";
 import { findLocal, sesame, plainType, typeName } from "./lookup.js";
 import { detectEngine, engineLabel, runLocalPreviewJob, jobLine, stateText, resultSummary, isLocalHost, quickLines, quickProgress, quickBlink, sureFor, fmtWait } from "./engine.js";
@@ -450,9 +450,9 @@ function layerWeightsAt(fov, dec) {
     const [a, b] = SPHEREX_FADE;
     const t = Math.max(0, Math.min(1, (a - fov) / (a - b)));
     spx = auto ? t * t * (3 - 2 * t) * keep : 0;
-    under = 1 - spx;
+    under = 1 - spx * spxGate.op;      // its tiles not in yet (layer hidden): the map under it shows
   }
-  const out = { [baseKey()]: under * (1 - cu.op) };
+  const out = { [baseKey()]: under * (1 - (cu.shown ?? cu.op)) };   // the close-up waiting for its tiles: the map under it shows
   if (spx > 0) out.spherex = (out.spherex || 0) + spx * (1 - cu.op);
   if (cu.key) out[cu.key] = (out[cu.key] || 0) + cu.op;
   return out;
@@ -629,6 +629,7 @@ async function preloadSpherex() {
     $("bg-spherex").disabled = true;
     $("bg-spherex").title = T("ex.spx.down");
     if (state.bg === "spherex") fallBackToVisible();
+    if (BG_START === "spherex" && !state.bgPicked) toast(T("ex.spx.down"), true);   // the visible map instead, and why
   }
 }
 
@@ -646,18 +647,23 @@ function fallBackToVisible() {
   onViewChange();
 }
 
-// SPHEREx as the sky map. Its tiles come from IRSA (1.5-6 s each), and where Aladin has no tile yet it paints the
-// layer as a flat grey patch, even over the map below (the "grey wedge"). So the layer shows only once Aladin has the
-// tiles of the whole view (prefetch.js coverage), and gives way to the visible map under it while a new part of the
-// sky loads: under GATE_HIDE of the view covered for GATE_HIDE_MS hides it, all of it for GATE_SHOW_MS shows it.
-const GATE_SHOW_MS = 250, GATE_HIDE_MS = 500, GATE_FADE_MS = 450, GATE_HIDE = 0.9;
+// SPHEREx as the sky map. Its tiles come from IRSA (1.5-6 s each), and where Aladin has no tile of the order it draws
+// it paints the layer as a flat dark patch, even over the map below (a coarser tile does not stand in). So the layer
+// shows only once Aladin has the tiles of the whole view (prefetch.js coverage), and gives way to the map under it
+// while a new part of the sky loads: under GATE_HIDE of the view covered for GATE_HIDE_MS hides it, GATE_SHOW of it
+// for GATE_SHOW_MS shows it. The same gate holds the SPHEREx layer that fades in on its own below 3 deg.
+const GATE_SHOW_MS = 250, GATE_HIDE_MS = 500, GATE_FADE_MS = 450, GATE_HIDE = 0.9, GATE_SHOW = 0.97;
 const spxGate = { op: 0, t0: 0, okSince: 0, badSince: 0, last: 0, timer: 0,
   reset(op = 0) { this.op = op; this.t0 = performance.now(); this.okSince = this.badSince = 0; this.last = 0; } };
 function stepSpxGate() {
   const g = spxGate, now = performance.now();
   const cov = state.prefetch ? state.prefetch.coverage("spherex") : null;   // null: not known (?tq=0): wait a few seconds
   g.cov = cov;
-  const ok = cov == null ? now - g.t0 > 4000 : cov >= 1;
+  const ok = cov == null ? now - g.t0 > 4000 : cov >= GATE_SHOW;
+  // Its server fails (IRSA answered 502 for a while on Nov 15 2026): the map under it stays on screen; say why (at
+  // most every 2 min).
+  if (!ok && state.bg === "spherex" && g.op < 0.5 && now - g.t0 > 3000 && now - (g.toldAt || -1e9) > 120000
+    && recentFailures("spherex", 15000) >= 3) { g.toldAt = now; toast(T("ex.spx.down"), true); }
   const bad = cov == null ? !ok : cov < GATE_HIDE;
   if (ok) g.okSince ||= now; else g.okSince = 0;
   if (bad) g.badSince ||= now; else g.badSince = 0;
@@ -670,7 +676,7 @@ function stepSpxGate() {
   }
   // look again soon while fading, while tiles are on their way, or while waiting to decide
   if (!g.timer && (g.op !== target || !ok || g.op < 1)) {
-    g.timer = setTimeout(() => { g.timer = 0; if (state.al && state.bg === "spherex") updateSpherexFade(state.al.getFov()[0]); }, g.op !== target ? 30 : 150);
+    g.timer = setTimeout(() => { g.timer = 0; if (state.al && state.spxOverlay) updateSpherexFade(state.al.getFov()[0]); }, g.op !== target ? 30 : 150);
   }
   return g.op;
 }
@@ -710,8 +716,9 @@ function updateSpherexFade(fov) {
   let op = 0;
   if (h && chosen) op = stepSpxGate() * keep;
   else if (h && auto) {
+    // fades in as you zoom in, and (like the chosen map) only where Aladin has its tiles: else a flat dark patch
     const t = Math.max(0, Math.min(1, (a - fov) / (a - b)));
-    op = t * t * (3 - 2 * t) * keep;
+    op = t > 0 ? t * t * (3 - 2 * t) * keep * stepSpxGate() : 0;
   }
   if (h) { try { h.setOpacity(op); } catch { /* not ready yet */ } }
   const showing = op > 0.5;

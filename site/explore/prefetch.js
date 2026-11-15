@@ -243,8 +243,10 @@ export function createPrefetch({ al, size, weights, base = () => "visible", fram
 
   /**
    * Share (0-1) of the view on screen that Aladin can paint from tiles of map `key` it has received: at each sample
-   * point a tile of the order it draws now or a coarser one (it stands in while the finer one loads). Where it has
-   * none, Aladin paints a flat grey patch (the SPHEREx map, main.js). null when this cannot be known (?tq=0, map not
+   * point the tile of the order it draws now. A coarser tile does not count: Aladin 3.8.2 does not draw it in place
+   * of a missing finer one (checked Nov 15 2026 with the SPHEREx order-5 tiles blocked at 5 deg: its order-4 tiles
+   * were all in, and the layer was a flat dark patch over the whole sky). Where it has no tile, Aladin paints the
+   * SPHEREx layer flat dark grey (main.js keeps it hidden then). null when this cannot be known (?tq=0, map not
    * resolved yet).
    */
   function coverage(key) {
@@ -260,11 +262,9 @@ export function createPrefetch({ al, size, weights, base = () => "visible", fram
     let n = 0, ok = 0;
     for (const [ra, dec] of samples(map, w, h, w / 2, h / 2)) {
       n++;
-      for (let o = top; o >= 0; o--) {
-        const has = hasTile(key, o, ang2pixNest(o, ra, dec), tail);
-        if (has === null) return null;
-        if (has) { ok++; break; }
-      }
+      const has = hasTile(key, top, ang2pixNest(top, ra, dec), tail);
+      if (has === null) return null;
+      if (has) ok++;
     }
     return n ? ok / n : null;
   }
