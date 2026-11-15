@@ -1,0 +1,679 @@
+{
+ "run": 2,
+ "rules": "distant-v3b (md5 14dd135e1ec5f00771fcf26784a40f92)",
+ "prereg": "pipeline/PLANETX_RUN2_PREREG.md",
+ "strips": [
+  {
+   "name": "R2-nu+170",
+   "nu_deg": 170.0,
+   "r_au": 458.1,
+   "ra": 57.7663,
+   "dec": 9.90852,
+   "ecl_lon": 57.757,
+   "ecl_lat": -9.996,
+   "gal_b": -32.85,
+   "n_plan": 205,
+   "mb_read": 189.0,
+   "n_strips": 204,
+   "searched": true,
+   "injection_cells": 10,
+   "seconds": 45.0,
+   "version": "distant-v3b",
+   "seasons": [
+    "2025-08",
+    "2026-02",
+    "2026-08"
+   ],
+   "n_exposures": [
+    72,
+    72,
+    60
+   ],
+   "depth_ab": [
+    19.72,
+    19.72,
+    19.77
+   ],
+   "n_orphans": [
+    24,
+    45,
+    23
+   ],
+   "grid_deg": [
+    3.934,
+    0.21
+   ],
+   "n_links": 1,
+   "n_candidates": 0,
+   "n_confirmed": 0,
+   "chance_links_per_shuffled_strip": 0.1825,
+   "n_shuffled": 2000,
+   "link_checks": {
+    "candidate_triples": 8,
+    "rejected_orbit_fit": 1,
+    "rejected_physical": 2,
+    "rejected_no_motion": 2,
+    "rejected_flux": 1,
+    "rejected_ghost": 0,
+    "rejected_fixed_artifact": 0,
+    "rejected_off_track": 1,
+    "passed": 1,
+    "selected": 1
+   },
+   "links": [
+    {
+     "strip": "R2-nu+170",
+     "distance_au": 2117.4,
+     "err_au": 25.4,
+     "fap": 0.12044,
+     "confirmed": false,
+     "mag_ab": 19.15,
+     "snr": [
+      7.7,
+      5.2,
+      7.3
+     ],
+     "positions": [
+      [
+       "2025-08",
+       56.38967504306516,
+       9.572016606685152
+      ],
+      [
+       "2026-02",
+       56.335594170277915,
+       9.557880478593718
+      ],
+      [
+       "2026-08",
+       56.387154400540005,
+       9.570836261625926
+      ]
+     ],
+     "motion_arcsec_yr": 10.568,
+     "circular_arcsec_yr": 13.302,
+     "failed_checks": [
+      "false-link probability (randomised orphan lists of this field)"
+     ]
+    }
+   ],
+   "area_eff_deg2": {
+    "250": 0.507,
+    "350": 0.535,
+    "500": 0.551,
+    "700": 0.562,
+    "1000": 0.573
+   },
+   "usable_for_limit": true
+  },
+  {
+   "name": "R2-nu+145",
+   "nu_deg": 145.0,
+   "r_au": 438.8,
+   "ra": 35.14228,
+   "dec": -0.94843,
+   "ecl_lon": 32.529,
+   "ecl_lat": -14.13,
+   "gal_b": -56.2,
+   "n_plan": 202,
+   "mb_read": 186.2,
+   "n_strips": 201,
+   "searched": true,
+   "injection_cells": 10,
+   "seconds": 39.1,
+   "version": "distant-v3b",
+   "seasons": [
+    "2025-07",
+    "2026-01",
+    "2026-07"
+   ],
+   "n_exposures": [
+    72,
+    67,
+    62
+   ],
+   "depth_ab": [
+    19.77,
+    19.67,
+    19.73
+   ],
+   "n_orphans": [
+    24,
+    104,
+    10
+   ],
+   "grid_deg": [
+    4.001,
+    0.21
+   ],
+   "n_links": 0,
+   "n_candidates": 0,
+   "n_confirmed": 0,
+   "chance_links_per_shuffled_strip": 0.075,
+   "n_shuffled": 200,
+   "link_checks": {
+    "candidate_triples": 7,
+    "rejected_orbit_fit": 1,
+    "rejected_physical": 5,
+    "rejected_no_motion": 0,
+    "rejected_flux": 0,
+    "rejected_ghost": 0,
+    "rejected_fixed_artifact": 0,
+    "rejected_off_track": 1,
+    "passed": 0,
+    "selected": 0
+   },
+   "area_eff_deg2": {
+    "250": 0.455,
+    "350": 0.498,
+    "500": 0.528,
+    "700": 0.544,
+    "1000": 0.553
+   },
+   "usable_for_limit": true
+  },
+  {
+   "name": "R2-nu+135",
+   "nu_deg": 135.0,
+   "r_au": 426.7,
+   "ra": 26.14525,
+   "dec": -5.34592,
+   "ecl_lon": 22.24,
+   "ecl_lat": -15.07,
+   "gal_b": -64.81,
+   "n_plan": 180,
+   "mb_read": 165.9,
+   "n_strips": 179,
+   "searched": true,
+   "injection_cells": 10,
+   "seconds": 30.6,
+   "version": "distant-v3b",
+   "seasons": [
+    "2025-07",
+    "2026-01",
+    "2026-07"
+   ],
+   "n_exposures": [
+    56,
+    56,
+    67
+   ],
+   "depth_ab": [
+    19.72,
+    19.44,
+    19.74
+   ],
+   "n_orphans": [
+    8,
+    34,
+    12
+   ],
+   "grid_deg": [
+    3.734,
+    0.21
+   ],
+   "n_links": 0,
+   "n_candidates": 0,
+   "n_confirmed": 0,
+   "chance_links_per_shuffled_strip": 0.02,
+   "n_shuffled": 200,
+   "link_checks": {
+    "candidate_triples": 3,
+    "rejected_orbit_fit": 1,
+    "rejected_physical": 1,
+    "rejected_no_motion": 1,
+    "rejected_flux": 0,
+    "rejected_ghost": 0,
+    "rejected_fixed_artifact": 0,
+    "rejected_off_track": 0,
+    "passed": 0,
+    "selected": 0
+   },
+   "area_eff_deg2": {
+    "250": 0.412,
+    "350": 0.453,
+    "500": 0.482,
+    "700": 0.497,
+    "1000": 0.508
+   },
+   "usable_for_limit": true
+  },
+  {
+   "name": "R2-nu+125",
+   "nu_deg": 125.0,
+   "r_au": 413.0,
+   "ra": 17.02032,
+   "dec": -9.61076,
+   "ecl_lon": 11.883,
+   "ecl_lat": -15.544,
+   "gal_b": -72.05,
+   "n_plan": 202,
+   "mb_read": 187.1,
+   "n_strips": 202,
+   "searched": true,
+   "injection_cells": 10,
+   "seconds": 36.0,
+   "version": "distant-v3b",
+   "seasons": [
+    "2025-07",
+    "2025-12",
+    "2026-07"
+   ],
+   "n_exposures": [
+    68,
+    74,
+    60
+   ],
+   "depth_ab": [
+    19.65,
+    19.43,
+    19.71
+   ],
+   "n_orphans": [
+    28,
+    37,
+    24
+   ],
+   "grid_deg": [
+    3.601,
+    0.21
+   ],
+   "n_links": 0,
+   "n_candidates": 0,
+   "n_confirmed": 0,
+   "chance_links_per_shuffled_strip": 0.05,
+   "n_shuffled": 200,
+   "link_checks": {
+    "candidate_triples": 14,
+    "rejected_orbit_fit": 4,
+    "rejected_physical": 3,
+    "rejected_no_motion": 3,
+    "rejected_flux": 0,
+    "rejected_ghost": 0,
+    "rejected_fixed_artifact": 2,
+    "rejected_off_track": 2,
+    "passed": 0,
+    "selected": 0
+   },
+   "area_eff_deg2": {
+    "250": 0.441,
+    "350": 0.47,
+    "500": 0.492,
+    "700": 0.507,
+    "1000": 0.514
+   },
+   "usable_for_limit": true
+  },
+  {
+   "name": "R2-nu+115",
+   "nu_deg": 115.0,
+   "r_au": 398.6,
+   "ra": 7.66979,
+   "dec": -13.6309,
+   "ecl_lon": 1.502,
+   "ecl_lat": -15.534,
+   "gal_b": -75.66,
+   "n_plan": 169,
+   "mb_read": 156.6,
+   "n_strips": 169,
+   "searched": true,
+   "injection_cells": 10,
+   "seconds": 28.0,
+   "version": "distant-v3b",
+   "seasons": [
+    "2025-06",
+    "2025-12",
+    "2026-06"
+   ],
+   "n_exposures": [
+    55,
+    56,
+    58
+   ],
+   "depth_ab": [
+    19.78,
+    19.48,
+    19.75
+   ],
+   "n_orphans": [
+    13,
+    33,
+    13
+   ],
+   "grid_deg": [
+    3.383,
+    0.21
+   ],
+   "n_links": 0,
+   "n_candidates": 0,
+   "n_confirmed": 0,
+   "chance_links_per_shuffled_strip": 0.01,
+   "n_shuffled": 200,
+   "link_checks": {
+    "candidate_triples": 0,
+    "rejected_orbit_fit": 0,
+    "rejected_physical": 0,
+    "rejected_no_motion": 0,
+    "rejected_flux": 0,
+    "rejected_ghost": 0,
+    "rejected_fixed_artifact": 0,
+    "rejected_off_track": 0,
+    "passed": 0,
+    "selected": 0
+   },
+   "area_eff_deg2": {
+    "250": 0.423,
+    "350": 0.453,
+    "500": 0.476,
+    "700": 0.489,
+    "1000": 0.501
+   },
+   "usable_for_limit": true
+  }
+ ],
+ "strips_in_limit": [
+  "R2-nu+170",
+  "R2-nu+145",
+  "R2-nu+135",
+  "R2-nu+125",
+  "R2-nu+115"
+ ],
+ "candidates": [],
+ "n_links": 1,
+ "n_candidates": 0,
+ "bytes_read": 884798400,
+ "requests": 1913,
+ "limits": {
+  "run2": {
+   "all": {
+    "found": {
+     "18.5": [
+      113,
+      120
+     ],
+     "19": [
+      98,
+      120
+     ],
+     "19.4": [
+      86,
+      120
+     ],
+     "19.7": [
+      34,
+      120
+     ],
+     "20": [
+      5,
+      120
+     ]
+    },
+    "n_bodies": 600,
+    "m50": 19.55,
+    "m90": 18.67
+   },
+   "by_distance": {
+    "350": {
+     "found": {
+      "18.5": [
+       56,
+       60
+      ],
+      "19": [
+       52,
+       60
+      ],
+      "19.4": [
+       43,
+       60
+      ],
+      "19.7": [
+       18,
+       60
+      ],
+      "20": [
+       0,
+       60
+      ]
+     },
+     "n_bodies": 300,
+     "m50": 19.56,
+     "m90": 18.75
+    },
+    "500": {
+     "found": {
+      "18.5": [
+       57,
+       60
+      ],
+      "19": [
+       46,
+       60
+      ],
+      "19.4": [
+       43,
+       60
+      ],
+      "19.7": [
+       16,
+       60
+      ],
+      "20": [
+       5,
+       60
+      ]
+     },
+     "n_bodies": 300,
+     "m50": 19.54,
+     "m90": 18.64
+    }
+   }
+  },
+  "run1": {
+   "all": {
+    "found": {
+     "18.5": [
+      107,
+      120
+     ],
+     "19": [
+      94,
+      120
+     ],
+     "19.4": [
+      59,
+      120
+     ],
+     "19.7": [
+      23,
+      120
+     ],
+     "20": [
+      2,
+      24
+     ],
+     "20.3": [
+      0,
+      24
+     ]
+    },
+    "n_bodies": 528,
+    "m50": 19.39,
+    "m90": null
+   },
+   "by_distance": {
+    "350": {
+     "found": {
+      "18.5": [
+       54,
+       60
+      ],
+      "19": [
+       47,
+       60
+      ],
+      "19.4": [
+       26,
+       60
+      ],
+      "19.7": [
+       13,
+       60
+      ],
+      "20": [
+       1,
+       12
+      ],
+      "20.3": [
+       0,
+       12
+      ]
+     },
+     "n_bodies": 264,
+     "m50": 19.32,
+     "m90": 18.5
+    },
+    "500": {
+     "found": {
+      "18.5": [
+       53,
+       60
+      ],
+      "19": [
+       47,
+       60
+      ],
+      "19.4": [
+       33,
+       60
+      ],
+      "19.7": [
+       10,
+       60
+      ],
+      "20": [
+       1,
+       12
+      ],
+      "20.3": [
+       0,
+       12
+      ]
+     },
+     "n_bodies": 264,
+     "m50": 19.44,
+     "m90": null
+    }
+   }
+  },
+  "combined": {
+   "all": {
+    "found": {
+     "18.5": [
+      220,
+      240
+     ],
+     "19": [
+      192,
+      240
+     ],
+     "19.4": [
+      145,
+      240
+     ],
+     "19.7": [
+      57,
+      240
+     ],
+     "20": [
+      7,
+      144
+     ],
+     "20.3": [
+      0,
+      24
+     ]
+    },
+    "n_bodies": 1128,
+    "m50": 19.49,
+    "m90": 18.57
+   },
+   "by_distance": {
+    "350": {
+     "found": {
+      "18.5": [
+       110,
+       120
+      ],
+      "19": [
+       99,
+       120
+      ],
+      "19.4": [
+       69,
+       120
+      ],
+      "19.7": [
+       31,
+       120
+      ],
+      "20": [
+       1,
+       72
+      ],
+      "20.3": [
+       0,
+       12
+      ]
+     },
+     "n_bodies": 564,
+     "m50": 19.47,
+     "m90": 18.59
+    },
+    "500": {
+     "found": {
+      "18.5": [
+       110,
+       120
+      ],
+      "19": [
+       93,
+       120
+      ],
+      "19.4": [
+       76,
+       120
+      ],
+      "19.7": [
+       26,
+       120
+      ],
+      "20": [
+       6,
+       72
+      ],
+      "20.3": [
+       0,
+       12
+      ]
+     },
+     "n_bodies": 564,
+     "m50": 19.5,
+     "m90": 18.56
+    }
+   }
+  }
+ },
+ "area_eff_deg2": {
+  "run2": {
+   "250": 2.238,
+   "350": 2.409,
+   "500": 2.529,
+   "700": 2.599,
+   "1000": 2.649
+  },
+  "run1_350": 2.08,
+  "combined_350": 4.49
+ },
+ "band_deg2": 8640
+}

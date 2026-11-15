@@ -123,6 +123,15 @@ Effective area (reference positions whose three season positions are all covered
 With the first-pass rules (v3; its two candidates fail the checks): V 19.31 at 50 % between 250 and 1000 AU (82 % at V 18.5).
 Chance links expected from the shuffled copies, five strips together: v3 4.01 (found: 8 links), distant-v3b 0.67 (found: 1).
 
+## Run 2 (15 Nov 2026, registered in git before the data were read)
+
+Five more strips on the same median orbit (nu +170, +145, +135, +125, +115; time-weighted next to aphelion, >= 6 deg from
+every strip above), distant-v3b unchanged. Rules, plan, file hashes and injection plan: `pipeline/PLANETX_RUN2_PREREG.md`,
+pushed to GitHub 10:03:55 +03 (commit 1efa576); first image byte read 10:04:12. Result: `pipeline/PLANETX_RUN2.md`.
+- 884.8 MB in 1913 requests; 1 link (2117 AU, false-link probability 0.12), 0 candidates.
+- Run 2 alone: 50 % at V 19.55, 90 % at V 18.67 (600 bodies), 2.41 deg^2 at 350 AU.
+- Both runs: **no body brighter than V 19.49 (50 %; 90 %: V 18.57) between 350 and 500 AU in 4.49 deg^2** (0.052 % of the band).
+
 ## Measured, assumed, not verified
 
 - Measured: everything in the tables; distances of found bodies are right to ~1 AU.
