@@ -459,7 +459,8 @@ export function resetSky() {
 /**
  * runSky(ctx): the whole run with Engine.loadAll (contract v1.1). ctx = {
  *   engine, alive(), stored(um, result, astrometry) (keep a loaded wavelength), show(um) (put it on screen),
- *   redraw() (draw the frame on screen again), canvas (the blink canvas) }. Resolves with loadAll's result.
+ *   redraw() (draw the frame on screen again), canvas (the blink canvas), progress(bins) (optional: every event's
+ *   per-wavelength done / accepted / checked counts) }. Resolves with loadAll's result.
  */
 export async function runSky(ctx) {
   resetSky();
@@ -506,6 +507,7 @@ export async function runSky(ctx) {
     acc.feed(ev);
     if (ev.type === "bin" && ev.answer && ctx.setArrow) ctx.setArrow(arrowAllowed(ev.answer));   // before the frame is drawn again
     if (ev.type === "bin" && ev.state === "done" && ev.result) ctx.stored(ev.um, ev.result, ev.astrometry);
+    if (ctx.progress && Array.isArray(ev.bins)) ctx.progress(ev.bins);
     bar.update(acc.model);
     if (ev.type === "composite" && compOn) ctx.redraw();
   };

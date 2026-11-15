@@ -249,6 +249,15 @@ function catLine(m) {
   if (m.k === "new") return L("vd.moves.new", "Not in the catalogue: candidate (unconfirmed).");
   return "";
 }
+/** A free point measured off the point picked (gr.js offPoint): say so, then what the measured source is. */
+function offLine(off, m) {
+  const head = L("vd.off", "We did not measure the point you picked but the brightest source near it, {off}.", { off: GR.offTxt(off) });
+  if (!m || !m.k || m.k === "unknown") return head + (m ? "" : " " + catLine(null));
+  const cat = m.id ? (m.label === "SIMBAD" ? `${m.id} (SIMBAD)` : `${m.label} ${m.id}`) : m.label;
+  if (m.k === "known") return head + " " + L("vd.off.known", "It is {cat}, a known star; its motion matches the catalogue.", { cat });
+  if (m.k === "knownDiff") return head + " " + L("vd.off.knownDiff", "It is {cat}, a known star, but the catalogue predicts a different motion.", { cat });
+  return head + " " + catLine(m);
+}
 
 /** Our four-level confidence label: "measured" (motion or no motion, with an error bar), "borderline" (2–3σ),
  *  "not sure" (guarded or no measurement), "no source here". "" when none applies (no error bar). */
@@ -269,7 +278,7 @@ function finalView(d, repaint) {
   const info = infoTxt(d.n, d.seasons, d.epochs);
   if (kind === "none") {
     return { kind, tag: confTag(d.code, d.sp), title: L("vd.none.t", "No moving object found here."), what: noneWhat(d.code, d.k, d.m, info, d.sp),
-      cat: d.code === "not_moving" ? slowLine(d.sp) : "", lim: d.lim || "", mean: MEAN(), actions: actionsHtml(d.page, d.pos), field: fieldHtml(d.cand) };
+      cat: d.code === "not_moving" ? [d.off ? offLine(d.off, { k: "unknown" }) : "", slowLine(d.sp)].filter(Boolean).join(" ") : "", lim: d.lim || "", mean: MEAN(), actions: actionsHtml(d.page, d.pos), field: fieldHtml(d.cand) };
   }
   if (kind === "unsure") {
     // the title is the confidence level here (no tag)
@@ -277,7 +286,7 @@ function finalView(d, repaint) {
   }
   const m = d.meta ? catalogueMatch(d.meta, d.base, d.code, d.sp, repaint) : d.catm || null;
   return { kind, tag: confTag(d.code, d.sp), title: d.sp ? L("vd.moves.t", "It moves: {v}.", { v: speedTxt(d.sp.v, d.sp.e) }) : L("vd.moves.t0", "It moves."),
-    cat: catLine(m), field: fieldHtml(d.cand) };
+    cat: d.off ? offLine(d.off, m) : catLine(m), field: fieldHtml(d.cand) };
 }
 /** An interim strip while wavelengths load. a = the running answer (or null), k/m = loaded / all wavelengths. */
 function waitView(a, k, m, n, page = "ornek") {
@@ -430,7 +439,9 @@ function mountSky() {
     if (v && kind === "none") lim = limitField(v);
     const ep = fr.length > 1 ? [fr[0].season, fr[fr.length - 1].season].filter(Boolean) : [];
     const catm = kind === "moves" ? (a.code === "moving_as_predicted" ? { k: "known", label: "Gaia DR3" } : a.code === "moving_unlike_prediction" ? { k: "knownDiff", label: "Gaia DR3" } : skyCat(run, sp)) : null;
-    paint(el, finalView({ code, reason: a.reason, text: answerText(a), k, m, n, seasons, epochs: ep.length > 1 ? ep : [], sp, lim, catm, page: "sky" }, render));
+    // a free point: the fit may have settled on a bright neighbour of the point picked (gr.js offPoint)
+    const off = !run.target && code !== "not_detected" && run.info ? GR.offPoint((run.astro && run.astro.positions) || [], run.info.ra0, run.info.dec0) : null;
+    paint(el, finalView({ code, reason: a.reason, text: answerText(a), k, m, n, seasons, epochs: ep.length > 1 ? ep : [], sp, lim, catm, off, page: "sky" }, render));
     post(k, m, n, true);
   }
   const catState = { key: null, val: null };
@@ -443,7 +454,7 @@ function mountSky() {
     catState.key = key; catState.val = null;
     GR.catalogueAt({ measured: { positions: pos } }, "").then((c) => {
       const e = sp && ok(sp.e) ? sp.e : 0.1;
-      catState.val = c && ok(c.v) ? { k: !sp || Math.abs(sp.v - c.v) <= Math.max(3 * e, 0.1 + 0.05 * c.v) ? "known" : "knownDiff", label: c.src || "Gaia DR3" } : { k: "new" };
+      catState.val = c && ok(c.v) ? { k: !sp || Math.abs(sp.v - c.v) <= Math.max(3 * e, 0.1 + 0.05 * c.v) ? "known" : "knownDiff", label: c.src || "Gaia DR3", id: c.id || "" } : { k: "new" };
       render();
     }).catch(() => { catState.val = { k: "unknown" }; render(); });
     return null;

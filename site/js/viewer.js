@@ -1310,8 +1310,10 @@ function renderResult() {
           ref = { v: sp.p, label: rn, head: rn === R.label ? tPredicts : esc(L("vw.t.predicts", "{who} predicts", { who: rn })), sub: dirTxt };
         } else if (R.none) {
           const c = grCat(m);                                // the catalogued star at a free point (async; repaints when known)
+          const off = GR.offPoint(ms.positions, m.ra, m.dec);  // the fit settled on a bright neighbour of the point picked
           if (c) ref = { v: c.v, label: c.src, head: esc(c.src === "SIMBAD" ? L("gr.t.simbad", "SIMBAD catalogue") : L("gr.t.gaia", "ESA Gaia DR3 catalogue")),
-            sub: esc(L("gr.t.catSub", "the star at this point ({d}″ away)", { d: loc(c.sep.toFixed(1)) })) };
+            sub: esc(off ? L("gr.t.catSubOff", "the star we measured, {off} of your point", { off: GR.offTxt(off) })
+              : L("gr.t.catSub", "the star at this point ({d}″ away)", { d: loc(c.sep.toFixed(1)) })) };
         }
         if (ref) {
           grc.ref = ref;

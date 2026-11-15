@@ -238,7 +238,7 @@ export async function runAll(session, id, opts, post, slim) {
       post({ type: "bin", id, version: ++version, um, state: "loading", ...plan() });
       try {
         const bytesBefore = stats.bytes;
-        const r = await session.loadBin(um, (p) => { st.done = p.done || 0; });
+        const r = await session.loadBin(um, (p) => { st.done = p.done || 0; st.accepted = p.accepted || 0; st.checked = p.checked || 0; });
         const nb = r.frames.reduce((a, f) => a + f.n, 0);
         nEx += nb; bytesEx += stats.bytes - bytesBefore;
         st.state = "done"; st.done = nb;

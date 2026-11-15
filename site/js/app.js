@@ -468,6 +468,9 @@ function showMotion() {
   }
   const who = run.target ? tname(run.target.name) : t("sk.m.who");
   let html = "";
+  // a free point: the fit may have settled on a bright neighbour of the point picked (gr.js offPoint)
+  const off = run.target ? null : GR.offPoint(a.positions, run.info.ra0, run.info.dec0);
+  if (off) html += `<p class="status warn">${t("vd.off", { off: GR.offTxt(off) })}</p>`;
   if (a.pairs.length) {
     const p = a.pairs.find((q) => q.from === a.positions[0].season && q.to === a.positions[a.positions.length - 1].season);
     // grafikler: the headline is the speed per year = shift ÷ time, from the same-orientation pair closest to a year
@@ -485,7 +488,7 @@ function showMotion() {
           const box = $("grSkyNl");
           if (!c || run.astro !== myA || !box) return;
           box.innerHTML = GR.numberLine({ v: sp.v, e: sp.e, p: c.v, refLabel: c.src, unit: t("gr.unit") })
-            + `<p class="small">${t("gr.sk.catAt", { src: c.src === "SIMBAD" ? "SIMBAD" : "ESA Gaia DR3", p: GR.rateTxt(c.v, sp.e), d: num(c.sep, 1) })}</p>`;
+            + `<p class="small">${t(off ? "gr.sk.catAtOff" : "gr.sk.catAt", { src: c.src === "SIMBAD" ? "SIMBAD" : "ESA Gaia DR3", p: GR.rateTxt(c.v, sp.e), d: num(c.sep, 1), off: off ? GR.offTxt(off) : "" })}</p>`;
         });
       }
     }
@@ -776,6 +779,13 @@ async function go(text, opts = {}) {
         },
         show(um) { if (!run.results[um]) return; current = run.results[um]; frameIdx = 0; $("viewer").hidden = false; showFrame(); showDiff(); startBlink(); showMotion(); },
         redraw() { if (current) showFrame(); },
+        // the image counter of the technical details: the sum over the wavelengths of loadAll's plan / eta events
+        progress(bins) {
+          if (run !== myRun) return;
+          const sum = (f) => bins.reduce((a, b) => a + (Number(b[f]) || 0), 0);
+          progressInfo = { done: sum("done"), accepted: sum("accepted"), checked: sum("checked") };
+          queueProgress();
+        },
         setArrow(on) { run.pgNoArrow = !on; } });
     } else if (params.get("preview") !== "0") {
       await previewThenFull(first, avail, myRun);

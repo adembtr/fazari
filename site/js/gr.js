@@ -214,6 +214,28 @@ function nearest(stars, w, rMax) {
   }
   return best;
 }
+/** A free point: the plain-coordinate fit starts at the brightest pixel within 3 native pixels (~18″) of the point
+ *  picked (js/sky.js), so on an empty spot it measures a bright neighbour. The measured season position nearest the
+ *  point, when it is more than `lim` ″ (half a 6″ SPHEREx pixel) from it: { d, e, n, dir } (″, east, north, compass), else null. */
+export function offPoint(positions, ra0, dec0, lim = 3) {
+  if (!ok(ra0) || !ok(dec0)) return null;
+  const cd = Math.cos(dec0 * D2R);
+  let best = null;
+  for (const p of positions || []) {
+    if (!p || !ok(p.ra) || !ok(p.dec)) continue;
+    let dra = +p.ra - ra0;
+    dra -= 360 * Math.round(dra / 360);
+    const e = dra * cd * 3600, n = (+p.dec - dec0) * 3600, d = Math.hypot(e, n);
+    if (!best || d < best.d) best = { d, e, n };
+  }
+  if (!best || !(best.d > lim)) return null;
+  best.dir = ["n", "ne", "e", "se", "s", "sw", "w", "nw"][Math.round(((Math.atan2(best.e, best.n) / D2R + 360) % 360) / 45) % 8];
+  return best;
+}
+const OFF_EN = { n: "north", ne: "north-east", e: "east", se: "south-east", s: "south", sw: "south-west", w: "west", nw: "north-west" };
+/** "8.3″ to the west" (TR "8,3″ batıda") for an offPoint result. */
+export const offTxt = (o) => L("gr.off." + o.dir, "{d}″ to the " + OFF_EN[o.dir], { d: loc(o.d.toFixed(o.d < 10 ? 1 : 0)) });
+
 /** SIMBAD (TAP) for objects Gaia does not have: the object with a proper motion that lies at `w` once moved to its date.
  *  SIMBAD positions are for J2000, so a fast object sits far from where we measured it: ask 120″ around (4.6″/yr
  *  over 26 years), then move every object with its own motion and keep the nearest within rMax. */

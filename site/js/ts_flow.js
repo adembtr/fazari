@@ -88,6 +88,8 @@
 
   // ---- A: facts of the result (catalogue, position, SPHEREx coverage, check elsewhere) ---------------------------
   var catState = { key: null, val: undefined };          // undefined = asking, null = the catalogue did not answer
+  // a free point whose fit settled on a bright neighbour (gr.js offPoint): where it is and its catalogue star
+  var srcState = { key: null, off: null, val: undefined, GR: null };
   function resultInfo() {
     var api = window.__fzViewer, m = api && api.meta;
     if (!m) return null;
@@ -142,6 +144,30 @@
     return "<b>" + esc(T("ts.a.catEmpty", "No catalogued object at this exact point")) + "</b> · " +
       esc(fin(c.nearest) ? T("ts.a.catNear", "the nearest Gaia DR3 star is {d}″ away", { d: loc(c.nearest.toFixed(0)) }) : T("ts.a.catFar", "no Gaia DR3 star within 20″"));
   }
+  /** Second line for a free point measured off the point picked: the source measured and its catalogue star. */
+  function offHtml() {
+    var o = srcState.off, GR = srcState.GR, c = srcState.val;
+    if (!o || !GR) return "";
+    var h = esc(T("ts.a.off", "We measured the brightest source near it, {off}", { off: GR.offTxt(o) })) + " · ";
+    if (c === undefined) return h + '<span class="ts-wait">' + esc(T("ts.a.catAsk", "Asking the Gaia star catalogue…")) + "</span>";
+    if (!c) return h + esc(T("ts.a.offNone", "not in Gaia DR3 or SIMBAD"));
+    var name = c.src === "SIMBAD" ? c.id + " (SIMBAD)" : "Gaia DR3 " + c.id;
+    return h + "<b>" + esc(T("ts.a.offStar", "{name}, a known star", { name: name })) + "</b>" +
+      (c.v >= 0.005 ? " · " + esc(T("ts.a.catMoves", "moves {v} across the sky", { v: perYear(c.v) })) : "");
+  }
+  function askSource(r) {
+    var pos = (r.ms.positions || []).filter(function (p) { return fin(p.ra) && fin(p.dec); })
+      .map(function (p) { return { ra: +p.ra, dec: +p.dec, mjd: p.mjd }; });
+    var key = r.free && pos.length ? r.here.ra.toFixed(5) + "|" + r.here.dec.toFixed(5) + "|" + pos.map(function (p) { return p.ra.toFixed(5) + "," + p.dec.toFixed(5); }).join(";") : "";
+    if (srcState.key === key) return;
+    var my = srcState = { key: key, off: null, val: undefined, GR: null };
+    if (!key) return;
+    mod("./gr.js").then(function (GR) {
+      my.GR = GR; my.off = GR.offPoint(pos, r.here.ra, r.here.dec);
+      // the same question as the verdict strip and the speed tile: answered from gr.js's cache
+      return my.off ? GR.catalogueAt({ measured: { positions: pos } }, "") : null;
+    }).then(function (c) { my.val = c || null; }).catch(function () { my.val = null; }).then(function () { if (srcState === my && my.off) paintA(); });
+  }
   function askCatalogue(r) {
     if (!r.free) return;
     var key = r.here.ra.toFixed(5) + "|" + r.here.dec.toFixed(5);
@@ -166,6 +192,7 @@
     var r = isSky ? skyInfo() : resultInfo();
     if (!r) return;
     askCatalogue(r);
+    askSource(r);
     var named = r.sky ? r.named : !!($("tagList") && $("tagList").textContent.trim());
     var kick = $("tsKick");
     if (kick) {
@@ -176,7 +203,7 @@
     var s = sexa(r.here.ra, r.here.dec);
     var f4 = function (v) { return loc((+v).toFixed(4)); };
     var rows = [
-      [T("ts.a.cat", "In the star catalogue"), catHtml(r)],
+      [T("ts.a.cat", "In the star catalogue"), catHtml(r) + (r.free && srcState.off ? "<br>" + offHtml() : "")],
       [T("ts.a.pos", "Position"), '<b class="ts-nb">' + esc(s.ra) + '</b> <b class="ts-nb">' + esc(s.dec) + '</b> · <span class="ts-nb">RA ' + esc(f4(r.here.ra)) + '°</span> <span class="ts-nb">Dec ' + esc((r.here.dec >= 0 ? "+" : "−") + f4(Math.abs(r.here.dec))) + "°</span>"],
       ["SPHEREx", r.n ? "<b>" + esc(T(r.n === 1 ? "ts.a.img.one" : "ts.a.img.other", r.n === 1 ? "{n} image" : "{n} images", { n: r.n })) + "</b> · " +
         esc(T(r.eps.length === 1 ? "ts.a.vis.one" : "ts.a.vis.other", r.eps.length === 1 ? "{n} visit" : "{n} visits", { n: r.eps.length })) +
@@ -382,9 +409,10 @@
         var my = skyCat = { key: key, val: undefined };
         GR.catalogueAt({ measured: { positions: pos } }, "").then(function (c) { my.val = c || null; if (skyCat === my) schedule(); }).catch(function () { my.val = null; });
       }
-      var c = skyCat.val;
+      var c = skyCat.val, off = GR.offPoint(pos, r.here.ra, r.here.dec);
       if (c) html += tile(esc(c.src === "SIMBAD" ? T("gr.t.simbad", "SIMBAD catalogue") : T("gr.t.gaia", "ESA Gaia DR3 catalogue")), esc(GR.rateTxt(c.v, sp.e)),
-        esc(T("gr.t.catSub", "the star at this point ({d}″ away)", { d: loc((+c.sep).toFixed(1)) })), "ref");
+        esc(off ? T("gr.t.catSubOff", "the star we measured, {off} of your point", { off: GR.offTxt(off) })
+          : T("gr.t.catSub", "the star at this point ({d}″ away)", { d: loc((+c.sep).toFixed(1)) })), "ref");
     }
     setHtml(box, html); setHidden(box, false);
     H.classList.toggle("ts-sky-speed", sp.v >= 3 * sp.e);     // the sentence under the tiles then only repeats them
