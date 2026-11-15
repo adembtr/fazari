@@ -1,6 +1,7 @@
 // planetx.html: "Could SPHEREx see Planet X?" One JSON, written by the pipeline:
 //   data/planetx/summary.json   pipeline/find_distant.py results, assembled after the search
 //   (prediction, the five searched strips, candidates and their checks, injection-recovery limits).
+// Run 2: data/planetx/run2.json (pipeline/planetx_run2_summary.py), one line whose EN/TR text is in that file.
 // Static page: relative paths only. Text: i18n keys px.* (site/i18n/en.json, tr.json).
 
 import { t, apply, onLang, lang, langButton } from "./js/i18n.js";
@@ -358,6 +359,17 @@ function renderInj() {
   });
 }
 
+// ------------------------------------------------------------------------------------------- run 2 (one line; EN/TR text lives in data/planetx/run2.json)
+let R2 = null;
+function renderRun2() {
+  const L = R2 && R2.site_line;
+  let el = $("pxRun2");
+  if (!L) { if (el) el.remove(); return; }
+  if (!el) { el = document.createElement("p"); el.id = "pxRun2"; el.className = "crit"; $("pxUpper").after(el); }
+  const links = L.links || {};
+  el.innerHTML = esc(L[lang()] || L.en).replace(/\{(\w+)\}/g, (m, k) => (links[k] ? `<a href="${esc(links[k].url)}" rel="noopener">${esc(links[k].label)}</a>` : m));
+}
+
 // ------------------------------------------------------------------------------------------- honest notes, sources
 function renderHonest() {
   const T = S.totals, P = S.prediction;
@@ -386,7 +398,7 @@ function renderAll() {
   apply(document);
   document.title = t("px.title");
   if (!S) { $("pxAnswer").textContent = t("px.noData"); return; }
-  renderAnswer(); renderTiles(); renderJump(); renderChart(); renderMap(); renderFields(); renderResult(); renderInj(); renderHonest();
+  renderAnswer(); renderTiles(); renderJump(); renderChart(); renderMap(); renderFields(); renderResult(); renderRun2(); renderInj(); renderHonest();
 }
 
 $("langSlot").appendChild(langButton("fz-lang"));
@@ -394,6 +406,6 @@ let wasCompact = compact();
 window.addEventListener("resize", () => { if (S && compact() !== wasCompact) { wasCompact = compact(); renderChart(); renderMap(); } });
 onLang(() => { document.documentElement.lang = lang(); renderAll(); });
 document.documentElement.lang = lang();
-S = await get("data/planetx/summary.json");
+[S, R2] = await Promise.all([get("data/planetx/summary.json"), get("data/planetx/run2.json")]);
 renderAll();
 if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
