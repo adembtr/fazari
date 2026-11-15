@@ -673,7 +673,15 @@ export class SkySession {
     const calEx = ex.filter((e) => e.posPool && e.cell && e.cell.ok);
     return { positions, pairs, nFits: ex.length, nExposures: this.exposures.length,
              centre: centre ? { status: centre.status, seasons: centre.seasons, dropped: centre.dropped, nFits: centre.nFits,
-                                nRejectedFits: this.exposures.filter((e) => e.fitRejected).length } : null,   // bm: free point only
+                                nRejectedFits: this.exposures.filter((e) => e.fitRejected).length,   // bm: free point only
+                                // per season: images read, and why the centre check turned fits down (the verdict says it)
+                                bySeason: this.exposures.reduce((o, e) => {
+                                  const s = (o[e.season] ||= { n: 0, nFit: 0, why: {} });
+                                  s.n++;
+                                  if (e.ra_fit != null) s.nFit++;
+                                  else if (e.centre && e.centre.why) s.why[e.centre.why] = (s.why[e.centre.why] || 0) + 1;
+                                  return o;
+                                }, {}) } : null,
              jointFit: joint ? { ok: joint.ok, reason: joint.reason, dets: joint.dets || [], rms: joint.rms, nUsed: joint.nUsed,   // bm
                                  nClipped: joint.nClipped, pm_mas_yr: joint.pm ? joint.pm.map((v) => v * 1000) : null,
                                  pm_err_mas_yr: joint.pmErr ? joint.pmErr.map((v) => v * 1000) : null } : null,

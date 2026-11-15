@@ -65,7 +65,9 @@ export function unreliable(astro, session, h, s, eU, p, claimsMotion) {
     const ex = session.exposures.filter((e) => e.season === lab && e.ra_fit != null);
     const sat = ex.filter((e) => e.saturated), bad = sat.filter((e) => !e.posPool);
     const q = P(lab);
-    return sat.length > 0 && ((q && !q.calibrated) || bad.length * 2 >= ex.length);
+    // an uncalibrated season counts as saturated when a quarter or more of its fits are (one saturated fit among
+    // eleven in a crowded field, RA 270.7297 Dec -28.7739, turned a 3-season result into "saturated in every bin")
+    return sat.length > 0 && ((q && !q.calibrated && sat.length * 4 >= ex.length) || bad.length * 2 >= ex.length);
   };
   const seasons = [h.from, h.to];
   const sat = seasons.some(satUncal);
@@ -164,7 +166,46 @@ export function answerFrom(astro, session, version, binsUsed, catalogue = "loade
       tr += " Yıldız kataloğu olmadan ölçüldü: katalog yüklenemedi (ağ); kalibrasyon ve katalog tahmini yok.";
     }
   }
+  // a free point measured in fewer than two seasons: name the seasons without a position and why (centre_check.js)
+  const miss = ["one_season", "no_measurement"].includes(code) ? missingSeasons(astro, session) : null;
+  if (miss) { en += " " + miss[0]; tr += " " + miss[1]; }
   return { ...out, code, reason, text_en: en, text_tr: tr };
+}
+
+const WHY = {
+  not_star_shaped: ["not star-shaped", "yıldız biçiminde değil"], too_faint: ["too faint", "çok sönük"],
+  off_centre: ["not at the point", "noktada değil"], next_to_saturated_star: ["next to a saturated bright star", "doymuş parlak bir yıldızın yanında"],
+  no_fit: ["no fit", "ölçülemedi"], fit_did_not_move: ["no fit", "ölçülemedi"],
+  exposures_disagree: ["its images disagree", "görüntüleri birbirini tutmuyor"], brightness_differs: ["its brightness differs from the other seasons", "parlaklığı diğer sezonlardan farklı"],
+  too_far_apart: ["its position is too far from the other seasons", "konumu diğer sezonlardan çok uzak"],
+  single_narrow_fit: ["only one image shows it, as a single bright pixel", "yalnızca bir görüntüde, tek parlak piksel olarak görünüyor"],
+};
+/** [en, tr] sentence for the seasons of a free point that have no position, or null. */
+function missingSeasons(astro, session) {
+  const c = astro && astro.centre;
+  if (!c || !c.bySeason || !session.seasons) return null;
+  const have = new Set(((astro && astro.positions) || []).map((p) => p.season));
+  const dropped = new Map((c.dropped || []).map((d) => [d.season, d.why]));
+  const parts = [];
+  for (const s of session.seasons) {
+    const b = c.bySeason[s.label];
+    if (!b || !b.n || have.has(s.label)) continue;
+    let why = dropped.get(s.label), n = b.n, k = null;
+    if (!why) {
+      const top = Object.entries(b.why).sort((x, y) => y[1] - x[1])[0];
+      if (!top) continue;
+      why = top[0]; k = b.n - b.nFit;
+    }
+    parts.push({ s: s.label, why, k, n });
+  }
+  if (!parts.length) return null;
+  const one = (p, tr) => {
+    const w = (WHY[p.why] || [p.why, p.why])[tr ? 1 : 0];
+    return p.k != null ? (tr ? `${p.s}: ${p.n} görüntünün ${p.k} tanesinde merkez ölçülemedi (çoğu: ${w})` : `${p.s}: no centre in ${p.k} of ${p.n} images (mostly: ${w})`)
+      : (tr ? `${p.s}: ${w}` : `${p.s}: ${w}`);
+  };
+  return [`No position in ${parts.length === 1 ? "this season" : "these seasons"}: ${parts.map((p) => one(p, false)).join("; ")}.`,
+          `Konum bulunamayan ${parts.length === 1 ? "sezon" : "sezonlar"}: ${parts.map((p) => one(p, true)).join("; ")}.`];
 }
 
 /** "All" view: per season the loaded bins' normalised frames as RGBA (short = blue, middle = green, long = red). */

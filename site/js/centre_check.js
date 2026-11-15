@@ -7,7 +7,12 @@
 // Per exposure (checkFit): the fit is used only if
 //   - it moved from its start (a fit that never left its start values is no measurement),
 //   - its peak is >= CENTRE.minSnr x the pixel noise,
-//   - its width is a star's (CENTRE.minSigma..maxSigma native px; the bounds 0.25 / 3.0 mean a hot pixel / a slope),
+//   - its width is a star's (CENTRE.minSigma..maxSigma native px; the bounds 0.25 / 3.0 mean a hot pixel / a slope);
+//     narrower than minSigma is kept only right at the point (<= CENTRE.narrowDistPx): a faint star centred on a
+//     pixel looks like one bright pixel, its wings lost in the noise (RA 270.7297 Dec -28.7739, crowded bulge field:
+//     70 of 72 fits at 0.25 px, S/N 10-40, 0.1-0.3 px from the point, in every season, following the sky across
+//     the detector; bright stars fit 0.35-0.7 px). Such a "narrow" fit counts in a season only when two or more
+//     of them agree there (sameSource), so one unflagged hot pixel never makes a season position,
 //   - it is within CENTRE.maxDistPx native px of the requested point,
 //   - its fit box does not touch, and is not next to, the saturated core of ANOTHER star (a core whose centre is
 //     > CENTRE.ownCorePx from the fit; "next to" = within 6 + 2 x core radius px: the glow of that star).
@@ -20,6 +25,7 @@
 export const CENTRE = {
   minSnr: 5,
   minSigma: 0.3, maxSigma: 2.9,
+  narrowDistPx: 1.0,       // a fit narrower than minSigma counts only this close to the point (native px)
   maxDistPx: 2.5,          // 15" (native 6.15" px): the centre box the start search uses is 3 px
   ownCorePx: 2.5,
   seasonScatter: 2.0,      // arcsec, median distance of a season's exposures from their median
@@ -76,7 +82,8 @@ export function checkFit(fit, { start, point, sigma0, sat, W, H, half = 5 }) {
   if (symm) out.snr = null;
   if (!symm && Math.abs(fit.x - start[0]) < 1e-6 && Math.abs(fit.y - start[1]) < 1e-6) out.why = "fit_did_not_move";
   else if (!symm && !(out.snr >= CENTRE.minSnr)) out.why = "too_faint";
-  else if (!symm && !(fit.sigma >= CENTRE.minSigma && fit.sigma <= CENTRE.maxSigma)) out.why = "not_star_shaped";
+  else if (!symm && !(fit.sigma <= CENTRE.maxSigma)) out.why = "not_star_shaped";
+  else if (!symm && !(fit.sigma >= CENTRE.minSigma) && !(out.distPx <= CENTRE.narrowDistPx)) out.why = "not_star_shaped";
   else if (out.distPx > CENTRE.maxDistPx) out.why = "off_centre";
   else {
     const fc = foreignCores(sat, W, H, fit.x, fit.y);
@@ -85,6 +92,7 @@ export function checkFit(fit, { start, point, sigma0, sat, W, H, half = 5 }) {
     if (touch || glow) out.why = "next_to_saturated_star";
   }
   out.ok = !out.why;
+  out.narrow = out.ok && !symm && fit.sigma < CENTRE.minSigma;
   return out;
 }
 
@@ -101,6 +109,8 @@ export function sameSource(exps, { nAll = 0 } = {}) {
   const dropped = [];
   const S = [];
   for (const [season, list] of by) {
+    // only narrow fits (one bright pixel, see checkFit) in a season: at least two must agree
+    if (list.length < 2 && list.every((e) => e.centre && e.centre.narrow)) { dropped.push({ season, why: "single_narrow_fit" }); continue; }
     const ra = med(list.map((e) => e.ra_fit)), dec = med(list.map((e) => e.dec_fit));
     const c = Math.cos(dec * Math.PI / 180);
     const r = list.map((e) => Math.hypot((e.ra_fit - ra) * c, e.dec_fit - dec) * 3600);
