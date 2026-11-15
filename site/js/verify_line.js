@@ -109,7 +109,9 @@ function mountResult() {
   fillLine(p, "full");
 }
 function mountExplore() {
-  const card = document.querySelector('#tsNav a[href="verify.html"]');
+  // Explorer panel only (.ex-nav): sky.html and ornek.html have a #tsNav too, a one-row link bar where the long
+  // line would widen the page on phones (1056 px at 390, 15 Nov); their line is the one in the Verdict tab.
+  const card = document.querySelector('#tsNav.ex-nav a[href="verify.html"]');
   if (!card || document.getElementById("vlExplore")) return;
   const a = document.createElement("a");
   a.id = "vlExplore";
