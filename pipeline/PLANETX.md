@@ -145,6 +145,16 @@ Added after the run 2 pre-registration (1efa576), at Adem's request. Detection r
 - Density check: 52 bodies per run against 12 per run, found at V 18.5: 86 % against 92 % (z -2.34); V 19: 77 % against 80 % (z -0.94); V 19.4: 55 % against 60 % (z -1.39); V 19.7: 25 % against 24 % (z 0.31); V 20: 2 % against 5 % (z -2.0).
 <!-- /inject10k -->
 
+## Run 3 (15 Nov 2026, registered in git before the data were read)
+
+Five more strips on the same median orbit (nu +105, -95, +95, -65, -55; run 2's selection rule with the run-2 strips added),
+distant-v3b unchanged. Rules, plan, file hashes and injection plan: `pipeline/PLANETX_RUN3_PREREG.md`, pushed to GitHub
+12:15:32 +03 (commit 09bd296); first image byte read 16:07:36 (after E2). Result: `pipeline/PLANETX_RUN3.md`.
+- 856.1 MB in 1853 requests; 0 links, 0 candidates (0.40 chance links expected).
+- Run 3 alone: 50 % at V 19.56, 90 % at V 19.00 (600 bodies), 2.58 deg^2 at 350 AU.
+- All three runs (old ten strips with E2's 10,400 bodies, plus run 3's 600): **no body brighter than V 19.45 (50 %; 90 %:
+  V 18.10) between 350 and 500 AU in 7.07 deg^2** (0.082 % of the band). 12 bodies per cell only (1728 bodies): V 19.51 / 18.64.
+
 ## Measured, assumed, not verified
 
 - Measured: everything in the tables; distances of found bodies are right to ~1 AU.
