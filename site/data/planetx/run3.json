@@ -1299,9 +1299,35 @@
   "0.40": 320,
   "0.20": 269
  },
+ "all_runs": {
+  "_note": "Runs 1-3 together, for the page's summary (answer and tiles). Assembled 15 Nov 2026 from this file (limits.combined, area_eff_deg2.combined_350, band_fraction_combined, reach_au_combined_m50) and the exposure and byte counts of the runs: run 1 summary.json totals (893 exposures, 827419200 bytes), run 2 PLANETX_RUN2.md (955 planned, 953 read; 884798400 bytes), run 3 924.",
+  "n_runs": 3,
+  "n_strips": 15,
+  "exposures": 2770,
+  "exposures_by_run": [
+   893,
+   953,
+   924
+  ],
+  "bytes_read": 2568355200,
+  "m50": 19.45,
+  "m90": 18.1,
+  "n_bodies": 11000,
+  "distance_range_au": [
+   350,
+   500
+  ],
+  "area_deg2": 7.07,
+  "band_fraction": 0.000818,
+  "reach_au": {
+   "0.75": 365,
+   "0.40": 312,
+   "0.20": 262
+  }
+ },
  "site_line": {
-  "en": "Run 3 (15 Nov 2026): rules registered {reg} at 12:15; search started 16:07; result {res} at 17:44 (GitHub push times, +03). Five new strips on the predicted orbit, 2.58 deg², no candidate. All three runs together: no body brighter than V 19.45 (50 % of test bodies found; 90 % at V 18.10) between 350 and 500 AU in 7.07 deg² (0.082 % of the predicted band).",
-  "tr": "3. arama (15 Kasım 2026): kurallar {reg} ile 12:15'te kaydedildi; arama 16:07'de başladı; sonuç {res}, 17:44 (GitHub push saatleri, +03). Öngörülen yörüngede beş yeni şerit, 2,58 deg², aday yok. Üç arama birlikte: 350-500 AU arasında 7,07 deg²'de (öngörülen kuşağın %0,082'si) V 19,45'ten parlak cisim yok (test cisimlerinin %50'si bulunuyor; %90'ı V 18,10'da).",
+  "en": "Run 3 (15 Nov 2026): rules registered {reg} at 12:15 and result {res} at 17:44 (GitHub push times, +03); the first image was read at 16:07. Five new strips on the predicted orbit, 2.58 deg², no candidate. All three runs together (15 strips, 2,770 exposures): no body brighter than V 19.45 (50 % of test bodies found; 90 % at V 18.10) between 350 and 500 AU in 7.07 deg² (0.082 % of the predicted band). That is the predicted planet out to 365 AU if it reflects 75 % of the light (312 AU at 40 %, 262 AU at 20 %).",
+  "tr": "3. arama (15 Kasım 2026): kurallar {reg} ile 12:15'te, sonuç {res} ile 17:44'te kaydedildi (GitHub push saatleri, +03); ilk görüntü 16:07'de okundu. Öngörülen yörüngede beş yeni şerit, 2,58 deg², aday yok. Üç arama birlikte (15 şerit, 2.770 çekim): 350-500 AU arasında 7,07 deg²'de (öngörülen kuşağın %0,082'si) V 19,45'ten parlak cisim yok (test cisimlerinin %50'si bulunuyor; %90'ı V 18,10'da). Bu, öngörülen gezegeni ışığın %75'ini yansıtıyorsa 365 AU'ya kadar bulmak demek (%40'ta 312 AU, %20'de 262 AU).",
   "links": {
    "reg": {
     "url": "https://github.com/adembtr/fazari/commit/09bd296722df4c067d0f464f43cf8c3ae2d910a8",

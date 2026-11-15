@@ -3,6 +3,7 @@
 //   (prediction, the five searched strips, candidates and their checks, injection-recovery limits).
 // Run 2: data/planetx/run2.json (pipeline/planetx_run2_summary.py), one line whose EN/TR text is in that file.
 // 10,400-body injection test (added after the run 2 pre-registration): data/planetx/inject10k.json, its own EN/TR text.
+// Run 3: data/planetx/run3.json (pipeline/planetx_run3_summary.py), one line; its "all_runs" block (runs 1-3 together) feeds the answer and tiles.
 // Static page: relative paths only. Text: i18n keys px.* (site/i18n/en.json, tr.json).
 
 import { t, apply, onLang, lang, langButton } from "./js/i18n.js";
@@ -17,6 +18,9 @@ function num(v, d = 0) {
 }
 const C = { hi: "#ffc94d", mid: "#ffa45c", lo: "#ff7a6b", lim: "#7fd4ff", band: "rgba(127, 212, 255, .10)", band2: "rgba(127, 212, 255, .05)" };
 let S = null;
+let R3 = null;                                        // run 3; R3.all_runs = runs 1-3 together (answer and tiles)
+const allRuns = () => (R3 && R3.all_runs) || null;
+const count = (n) => Number(n).toLocaleString(lang() === "tr" ? "tr-TR" : "en-US");
 const compact = () => window.innerWidth < 600;      // phone: charts are drawn narrower, with fewer ticks, so the text stays readable
 
 const pooled = (d = 0) => (S.limits.pooled || []).find((q) => q.d === d) || null;
@@ -28,6 +32,11 @@ function renderAnswer() {
   const all = pooled(0);
   const hi = S.expected.cases.find((c) => c.key === "hi"), mid = S.expected.cases.find((c) => c.key === "mid");
   if (!all || all.m50 == null) { $("pxAnswer").textContent = t("px.noLimit"); return; }
+  const A = allRuns();
+  if (A) {
+    $("pxAnswer").innerHTML = t("px.answer", { m50: num(A.m50, 2), dhi: num(A.reach_au["0.75"], 0), n: A.n_strips, q: S.prediction.q_au[0], Q: S.prediction.Q_au[0] });
+    return;
+  }
   $("pxAnswer").innerHTML = t("px.answer", {
     m50: num(all.m50, 1), dhi: num(hi.d_reach_m50_au, 0), dmid: num(mid.d_reach_m50_au, 0),
     n: S.totals.n_fields, q: S.prediction.q_au[0], Q: S.prediction.Q_au[0],
@@ -37,13 +46,15 @@ function renderAnswer() {
 function renderTiles() {
   const all = pooled(0), T = S.totals, FP = S.first_pass;
   const hi = S.expected.cases.find((c) => c.key === "hi");
-  const area = T.area_eff_deg2 ? T.area_eff_deg2["350"] : null;
-  const frac = T.band_fraction ? 100 * T.band_fraction["350"] : null;
+  const A = allRuns();                                 // runs 1-3 together when run3.json is there, else run 1
+  const area = A ? A.area_deg2 : T.area_eff_deg2 ? T.area_eff_deg2["350"] : null;
+  const frac = A ? 100 * A.band_fraction : T.band_fraction ? 100 * T.band_fraction["350"] : null;
+  const reach = A ? A.reach_au["0.75"] : hi.d_reach_m50_au;
   const li = [
-    ["me", all && all.m50 != null ? "V " + num(all.m50, 1) : "–", t("px.tile.m50", { n: S.limits.n_bodies })],
-    ["", hi.d_reach_m50_au != null ? num(hi.d_reach_m50_au, 0) + " AU" : "–", t("px.tile.reach", { q: S.prediction.q_au[0], Q: S.prediction.Q_au[0] })],
-    ["", area != null ? num(area, 1) + " deg²" : "–", t("px.tile.area", { n: T.n_fields, pct: num(frac, 2) })],
-    ["", String(T.n_strips), t("px.tile.data", { mb: num(T.bytes_read / 1e6, 0) })],
+    ["me", A ? "V " + num(A.m50, 2) : all && all.m50 != null ? "V " + num(all.m50, 1) : "–", t("px.tile.m50", { n: count(A ? A.n_bodies : S.limits.n_bodies) })],
+    ["", reach != null ? num(reach, 0) + " AU" : "–", t("px.tile.reach", { q: S.prediction.q_au[0], Q: S.prediction.Q_au[0] })],
+    ["", area != null ? num(area, A ? 2 : 1) + " deg²" : "–", t("px.tile.area", { n: A ? A.n_strips : T.n_fields, pct: num(frac, A ? 3 : 2) })],
+    ["", count(A ? A.exposures : T.n_strips), t("px.tile.data", { mb: count(Math.round((A ? A.bytes_read : T.bytes_read) / 1e6)) })],
     FP ? ["", `${FP.n_candidates} / ${FP.n_confirmed}`, t("px.tile.cand2", { c2: T.n_candidates })]
       : [T.n_confirmed ? "me" : "", `${T.n_candidates} / ${T.n_confirmed}`, t("px.tile.cand")],
   ];
@@ -457,7 +468,7 @@ function renderAll() {
   apply(document);
   document.title = t("px.title");
   if (!S) { $("pxAnswer").textContent = t("px.noData"); return; }
-  renderAnswer(); renderTiles(); renderJump(); renderChart(); renderMap(); renderFields(); renderResult(); renderRun2(); renderI10(); renderInj(); renderHonest();
+  renderAnswer(); renderTiles(); renderJump(); renderChart(); renderMap(); renderFields(); renderResult(); renderRun2(); renderI10(); renderRun3(); renderInj(); renderHonest();
 }
 
 $("langSlot").appendChild(langButton("fz-lang"));
@@ -467,15 +478,14 @@ onLang(() => { document.documentElement.lang = lang(); renderAll(); });
 document.documentElement.lang = lang();
 // The 10,400-body test shows only with ?extra=1 until the team lead has read it (15 Nov 2026); drop the condition to show it.
 const I10_ON = new URLSearchParams(location.search).get("extra") === "1";
-[S, R2, I10] = await Promise.all([get("data/planetx/summary.json"), get("data/planetx/run2.json"), I10_ON ? get("data/planetx/inject10k.json") : null]);
+[S, R2, I10, R3] = await Promise.all([get("data/planetx/summary.json"), get("data/planetx/run2.json"), I10_ON ? get("data/planetx/inject10k.json") : null,
+  get("data/planetx/run3.json")]);
 renderAll();
 if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
 
 // ------------------------------------------------------------------------------------------- run 3 (one line under the run-2 line)
-// data/planetx/run3.json (pipeline/planetx_run3_summary.py); its EN/TR text lives in that file.
-// Shows only with ?extra=1 until the team lead has read it (15 Nov 2026; same rule as the 10,400-body test); drop R3_ON to show it.
-const R3_ON = new URLSearchParams(location.search).get("extra") === "1";
-const R3 = R3_ON ? await get("data/planetx/run3.json") : null;
+// data/planetx/run3.json (pipeline/planetx_run3_summary.py); its EN/TR text lives in that file. Shown to everyone since
+// 15 Nov 2026 (team lead's decision); it is called from renderAll().
 function renderRun3() {
   const L = R3 && R3.site_line;
   let el = $("pxRun3");
@@ -486,5 +496,3 @@ function renderRun3() {
   const links = L.links || {};
   el.innerHTML = esc(L[lang()] || L.en).replace(/\{(\w+)\}/g, (m, k) => (links[k] ? `<a href="${esc(links[k].url)}" rel="noopener">${esc(links[k].label)}</a>` : m));
 }
-renderRun3();
-onLang(renderRun3);
