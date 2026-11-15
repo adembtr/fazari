@@ -653,7 +653,7 @@ async function setBackground(key) {
   const prev = state.bg;
   state.bg = key;
   try {
-    btn.classList.add("loading");
+    btn.classList.add("bg-loading");      // not "loading": that class is the blink panel's absolute overlay (explore.css)
     const h = await getHips(key);
     if (key === "spherex") setSlice(h);
     if (state.bg !== key) return;
@@ -664,7 +664,7 @@ async function setBackground(key) {
     for (const b of document.querySelectorAll("#bgSwitch button")) b.setAttribute("aria-checked", String(b.id === "bg-" + prev));
     toast(e.message || T("ex.bg.fail"), true);
   } finally {
-    btn.classList.remove("loading");
+    btn.classList.remove("bg-loading");
     $("sliceRow").hidden = false;
     onViewChange();
   }
