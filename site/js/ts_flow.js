@@ -1,7 +1,9 @@
-// Single-column result layout ("tek sütun", ajan_durumu/tek_sutun_brif.md): ornek.html (also the explorer's result
-// panel) and sky.html read top to bottom in one column, every section always open:
+// Result layout of ornek.html (also the explorer's result panel) and sky.html. The sections of the single-column
+// layout ("tek sütun", ajan_durumu/tek_sutun_brif.md) are kept:
 //   A what is here · B over time (the image area #fzStage) · C verdict · D measurement (only with a source)
-//   · E spectrum · F brightness over time · G small print.
+//   · E spectrum · F brightness over time · G small print,
+// and then arranged as "C+" (buildCplus below, css/cplus.css): A becomes a one-line point card, B the picture card
+// on the left, C to F tabs of a right panel under the verdict bar, G a closed "Technical details" fold.
 // This is a CLASSIC script, loaded right after the page markup: the blocks are in their sections before the first
 // paint, so the old two-column layout never flashes. It only MOVES existing elements (ids never change); every
 // number it prints comes from the result's own files (meta.json, candidates.json, spectrum.json) or the catalogue.
@@ -121,7 +123,10 @@
       ["Legacy Survey", "https://www.legacysurvey.org/viewer?ra=" + f5(p.ra) + "&dec=" + f5(p.dec) + "&layer=ls-dr10&zoom=14&mark=" + f5(p.ra) + "," + f5(p.dec),
         T("ts.l.legacy", "deep optical images")],
     ];
-    return L.map(function (x) { return '<a href="' + esc(x[1]) + '" target="_blank" rel="noopener noreferrer" title="' + esc(x[2]) + '">' + esc(x[0]) + "</a>"; }).join("");
+    var a = function (x) { return '<a class="ts-chip ts-lk" href="' + esc(x[1]) + '" target="_blank" rel="noopener noreferrer" title="' + esc(x[2]) + '">' + esc(x[0]) + "</a>"; };
+    // SIMBAD and WiseView on the line, the other three under "Others"
+    return a(L[0]) + a(L[3]) + '<details class="ts-more"><summary class="ts-chip ts-lk">' + esc(T("cp.more", "Others")) + '</summary><div class="ts-menu">' +
+      [L[1], L[2], L[4]].map(a).join("") + "</div></details>";
   }
   var perYear = function (v) { return T("ts.rate", "{v}″ per year", { v: loc((+v).toFixed(v < 10 ? 2 : 1)) }); };
   function catHtml(r) {
@@ -202,18 +207,38 @@
     }
     var s = sexa(r.here.ra, r.here.dec);
     var f4 = function (v) { return loc((+v).toFixed(4)); };
-    var rows = [
-      [T("ts.a.cat", "In the star catalogue"), catHtml(r) + (r.free && srcState.off ? "<br>" + offHtml() : "")],
-      [T("ts.a.pos", "Position"), '<b class="ts-nb">' + esc(s.ra) + '</b> <b class="ts-nb">' + esc(s.dec) + '</b> · <span class="ts-nb">RA ' + esc(f4(r.here.ra)) + '°</span> <span class="ts-nb">Dec ' + esc((r.here.dec >= 0 ? "+" : "−") + f4(Math.abs(r.here.dec))) + "°</span>"],
-      ["SPHEREx", r.n ? "<b>" + esc(T(r.n === 1 ? "ts.a.img.one" : "ts.a.img.other", r.n === 1 ? "{n} image" : "{n} images", { n: r.n })) + "</b> · " +
-        esc(T(r.eps.length === 1 ? "ts.a.vis.one" : "ts.a.vis.other", r.eps.length === 1 ? "{n} visit" : "{n} visits", { n: r.eps.length })) +
-        (r.eps.length ? " · " + esc(month(r.eps[0])) + (r.eps.length > 1 ? " – " + esc(month(r.eps[r.eps.length - 1])) : "") : "") +
-        (r.m.preview ? " · " + esc(T("ts.a.preview", "a quick first look; the full result follows")) : "") : esc(T("ts.a.noImg", "no images yet"))],
-      [T("ts.a.else", "Check elsewhere"), '<span class="ts-links">' + linksHtml(r) + "</span>"],
-    ];
+    var plain = function (h) { return String(h).replace(/<[^>]+>/g, ""); };
+    var chip = function (html, title) { return '<span class="ts-chip"' + (title ? ' title="' + title + '"' : "") + ">" + html + "</span>"; };
+    var parts = ['<b class="ts-coord" title="RA ' + esc(f4(r.here.ra)) + "° Dec " + esc((r.here.dec >= 0 ? "+" : "−") + f4(Math.abs(r.here.dec))) + '°">' +
+      '<span class="ts-nb">' + esc(s.ra) + '</span> <span class="ts-nb">' + esc(s.dec) + "</span></b>"];
+    parts.push(chip(catChip(r), plain(catHtml(r))));
+    if (r.free && srcState.off && srcState.GR) parts.push(chip(esc(T("cp.off", "The star {off} was measured", { off: srcState.GR.offTxt(srcState.off) })), plain(offHtml())));
+    parts.push(chip(r.n ? "<b>" + esc(T(r.n === 1 ? "ts.a.img.one" : "ts.a.img.other", r.n === 1 ? "{n} image" : "{n} images", { n: r.n })) + "</b> · " +
+        esc(T(r.eps.length === 1 ? "ts.a.vis.one" : "ts.a.vis.other", r.eps.length === 1 ? "{n} visit" : "{n} visits", { n: r.eps.length })) : esc(T("ts.a.noImg", "no images yet")),
+      r.eps.length ? esc(month(r.eps[0])) + (r.eps.length > 1 ? " – " + esc(month(r.eps[r.eps.length - 1])) : "") : ""));
+    parts.push(linksHtml(r));
     var box = $("tsFacts");
-    setHtml(box, rows.map(function (x) { return "<dt>" + esc(x[0]) + "</dt><dd>" + x[1] + "</dd>"; }).join(""));
+    var open = box && box.querySelector("details.ts-more[open]");     // the "Others" menu stays open through a repaint
+    var html = parts.join("");
+    if (open) html = html.replace('<details class="ts-more">', '<details class="ts-more" open="">');
+    setHtml(box, html);
     setHidden(box, false);
+  }
+  /** The catalogue chip of the point card: short; the full sentence is its title. */
+  function catChip(r) {
+    var g = r.g, K = function (id) { return "<b>Gaia DR3 …" + esc(String(id).slice(-6)) + "</b>"; };
+    var lab = function (h) { return esc(T("cp.cat", "Catalogue")) + ": " + h; };
+    var mv = function (v) { return v >= 0.005 ? esc(perYear(v)) : esc(T("cp.cat.known", "known star")); };
+    if (!r.free) {
+      if (g.source_id) return lab(K(g.source_id)) + " · " + mv(r.pm);
+      if (g.label) return lab("<b>" + esc(g.label) + "</b>") + " · " + mv(r.pm);
+      return esc(T("cp.cat.none", "No catalogue entry"));
+    }
+    var c = catState.val;
+    if (c === undefined) return '<span class="ts-wait">' + esc(T("cp.cat.ask", "Asking the catalogue…")) + "</span>";
+    if (c === null) return esc(T("cp.cat.fail", "Catalogue did not answer"));
+    if (c.hit) return lab(K(c.hit.id)) + " · " + esc(T("cp.cat.known", "known star"));
+    return esc(T("cp.cat.empty", "Nothing catalogued at this point"));
   }
 
   // ---- C: the limit, big ("anything faster than about X per year would have shown") ------------------------------
@@ -467,7 +492,7 @@
     if (!r) return;
     // A: what is here
     var lg = I18() ? I18().lang() : "en";
-    var name = r.run.target ? (I18() ? I18().tname(r.run.target.name) : r.run.target.name) : T("ts.a.kickPoint", "The point you picked");
+    var name = r.run.target ? (I18() ? I18().tname(r.run.target.name) : r.run.target.name) : "";      // a free point: the card's label says it
     var nm = $("tsName"); if (nm && nm.textContent !== name) nm.textContent = name;
     var key = [lg, r.n, r.eps.length, r.here.ra, r.here.dec, r.ms.positions.length, catState.val === undefined ? "?" : catState.val ? "y" : "n", r.run.complete ? 1 : 0].join("|");
     if (key !== skySeen) { skySeen = key; paintA(); }
@@ -489,13 +514,268 @@
     }).catch(function (e) { console.warn("ts_flow: sky", e); });
   }
 
+
+  // =============================================================================================================
+  // Result layout "C+" (both pages): the point card on top; under it the picture card (left, about 64 %) and a
+  // panel that stays on screen while the page scrolls (right, about 36 %): the verdict bar, then tabs (Verdict,
+  // Spectrum, Difference, Brightness). Everything technical sits in a closed "Technical details" fold at the end.
+  // Phones and narrow windows: one column (point card, verdict bar, wavelengths, picture, seasons, settings, tabs,
+  // technical details). Only parents change; every id stays. Styles: css/cplus.css (html.ts-cp).
+  // =============================================================================================================
+  var TABS = [["vd", "cp.tab.vd", "Verdict"], ["spec", "cp.tab.spec", "Spectrum"], ["diff", "cp.tab.diff", "Difference"], ["bright", "cp.tab.bright", "Brightness"]];
+  var cpTab = "vd", cpUser = false;
+  function mk(tag, cls, id, html) { var e = D.createElement(tag); if (cls) e.className = cls; if (id) e.id = id; if (html) e.innerHTML = html; return e; }
+  var progHome = null;
+  function buildCplus() {
+    var F = $("tsFlow"), A = $("tsA"), B = $("tsB"), G = $("tsG");
+    if (!F || !A || !B || !G) return;
+    H.classList.add("ts-cp");
+    // the point card: one line; on its right the state of the result (and, on sky.html, the progress and Cancel)
+    A.classList.add("ts-pt");
+    var pr = mk("div", "ts-pr", "tsPr", '<span class="ts-state" id="tsState" hidden></span>');
+    A.appendChild(pr);
+    into(pr, $("tsAx"));
+    // two columns
+    var cols = mk("div", "ts-cols", "tsCols");
+    F.insertBefore(cols, B);
+    cols.appendChild(B);
+    B.classList.add("ts-lcard");
+    var R = mk("aside", "ts-rpanel", "tsR");
+    R.setAttribute("data-tab", cpTab);
+    cols.appendChild(R);
+    R.appendChild(mk("div", "ts-vdbar", "tsVdBar"));
+    var tabs = mk("div", "ts-tabs", "tsTabs");
+    tabs.setAttribute("role", "tablist");
+    TABS.forEach(function (t) {
+      var b = mk("button", "ts-tab", "tsTab-" + t[0]);
+      b.type = "button"; b.setAttribute("role", "tab"); b.setAttribute("data-tab", t[0]); b.setAttribute("aria-controls", "tsPane-" + t[0]);
+      b.innerHTML = '<i aria-hidden="true"></i><span data-i18n="' + t[1] + '">' + t[2] + "</span>";
+      tabs.appendChild(b);
+    });
+    R.appendChild(tabs);
+    var pane = function (id, els) {
+      var p = mk("div", "ts-pane", "tsPane-" + id); p.setAttribute("role", "tabpanel"); p.setAttribute("data-pane", id);
+      p.setAttribute("aria-labelledby", "tsTab-" + id);
+      els.forEach(function (e) { if (e) p.appendChild(e); });
+      R.appendChild(p); return p;
+    };
+    var more = mk("div", "ts-vdmore", "tsVdMore");
+    pane("vd", [more, $("tsC"), $("tsD")]);
+    pane("spec", [$("tsE")]);
+    pane("diff", [$("tsDiff")]);
+    pane("bright", [$("tsF")]);
+    // the picture card: wavelengths, picture, seasons, settings, saving
+    into(B, $("tsBins"), $("fzStage"));
+    var sea = mk("div", "ts-seas", "tsSeasons");
+    sea.setAttribute("role", "group"); sea.setAttribute("data-i18n-attr", "aria-label:cp.sea.aria"); sea.setAttribute("aria-label", "Seasons");
+    B.insertBefore(sea, $("fzStage").nextSibling);
+    var ctl = mk("div", "ts-cbar", "tsCtl");
+    B.insertBefore(ctl, sea.nextSibling);
+    var save = mk("div", "ts-save", "tsSave",
+      '<button type="button" id="tsPng" data-i18n="cp.png">Save this frame (PNG)</button>' +
+      '<button type="button" id="tsGif" data-i18n="cp.gif">Save GIF</button>' +
+      (isSky ? '<button type="button" id="tsLink" data-i18n="cp.link">Copy link</button>' : ""));
+    B.insertBefore(save, ctl.nextSibling);
+    if (!isSky) { into(B, $("tsView"), ctl); into(save, $("copyLink")); into(save, $("linkOut")); }
+    // technical details: a closed fold at the end
+    var det = mk("details", "ts-tech", "tsTech",
+      '<summary><b data-i18n="cp.tech">Technical details</b> <span data-i18n="cp.tech.sub">Downloads, calibration, season table, settings</span></summary>');
+    F.appendChild(det);
+    det.appendChild(G);
+    if (isSky) buildCplusSky(B, ctl, G);
+    setTab(cpTab);
+    D.addEventListener("click", cpClick);
+    tabs.addEventListener("keydown", function (e) {           // arrow keys move along the tabs
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      var vis = [].slice.call(tabs.querySelectorAll(".ts-tab:not([hidden])")), i = vis.indexOf(D.activeElement);
+      if (i < 0) return;
+      var n = vis[(i + (e.key === "ArrowRight" ? 1 : vis.length - 1)) % vis.length];
+      cpUser = true; setTab(n.getAttribute("data-tab")); n.focus(); e.preventDefault();
+    });
+  }
+  /** sky.html: the picture's own controls into the grouped settings bar; the date over the picture. */
+  function buildCplusSky(B, ctl, G) {
+    var cv = $("blink"), card = cv && cv.closest(".card");
+    if (!cv || !card) return;
+    var pic = mk("div", "ts-pic", "tsPic");
+    cv.before(pic); pic.appendChild(cv);
+    var info = q(".info", card);
+    into(pic, $("date"));
+    var grp = function (cls) { var g = mk("div", "ts-grp " + cls); ctl.appendChild(g); return g; };
+    var lab = function (id) { var e = $(id); return e ? e.closest("label") || e : null; };
+    var g1 = grp("ts-g-play"); into(g1, $("prev")); into(g1, $("play")); into(g1, $("next"));
+    var g2 = grp("ts-g-speed"); into(g2, lab("speed")); into(g2, $("speedv"));
+    var g3 = grp("ts-g-zoom"); into(g3, lab("zoom"));
+    var g4 = grp("ts-g-run");
+    var cap = lab("cap");
+    if (cap) {
+      into(g4, cap);
+      cap.setAttribute("data-i18n-attr", "title:cp.cap.tip");
+      cap.title = "Changing this loads the point again; more is deeper but slower.";
+      var re = mk("span", "ts-re", null, "↻");
+      re.setAttribute("aria-hidden", "true");
+      cap.appendChild(re);
+    }
+    var fov = lab("fov");                               // the field: also an input of the run, next to it (one selector on the page)
+    if (fov) { into(g4, fov); var re2 = mk("span", "ts-re", null, "↻"); re2.setAttribute("aria-hidden", "true"); fov.appendChild(re2); }
+    into(G, $("fovEst"));
+    var tso = $("tsOpt"); if (tso && !tso.childElementCount) tso.remove();
+    var g5 = grp("ts-g-show"); into(g5, lab("mark")); into(g5, lab("cent"));       // app.js adds "Raw pixels" after "cent"
+    // what is left of the picture card (the date line, the caption) is small print
+    if (info) into(G, info);
+    var capP = q(":scope > p.small", card); if (capP) into(G, capP);
+    var stage = $("stage"); if (stage && stage.closest(".stagerow")) progHome = { card: $("what").parentNode, row: stage.closest(".stagerow"), bar: q(".progressrow") };
+  }
+  function setTab(id) {
+    var R = $("tsR");
+    if (!R) return;
+    cpTab = id;
+    R.setAttribute("data-tab", id);
+    [].forEach.call(R.querySelectorAll(".ts-tab"), function (b) { var on = b.getAttribute("data-tab") === id; b.setAttribute("aria-selected", on ? "true" : "false"); b.tabIndex = on ? 0 : -1; });
+    try { D.dispatchEvent(new CustomEvent("fazari:cptab", { detail: { tab: id } })); } catch (e) { /* old browser */ }
+    // a chart drawn while its tab was closed has no width: draw it again now
+    var p = $("tsPane-" + id);
+    if (p) [].forEach.call(p.querySelectorAll(".spx"), function (x) { if (typeof x.__spxDraw === "function") safe("redraw", x.__spxDraw); });
+  }
+  window.__tsTab = function (id) { cpUser = true; setTab(id); };
+  function cpClick(e) {
+    var t = e.target && e.target.closest ? e.target : null;
+    if (!t) return;
+    var tab = t.closest(".ts-tab");
+    if (tab) { cpUser = true; setTab(tab.getAttribute("data-tab")); return; }
+    var sea = t.closest("[data-ts-sea]");
+    if (sea) { seasonGo(+sea.getAttribute("data-ts-sea"), sea.getAttribute("data-ep")); return; }
+    var b = t.closest("#tsPng, #tsGif, #tsLink");
+    if (b) { mod("./cp_save.js").then(function (m) { m[b.id === "tsPng" ? "savePng" : b.id === "tsGif" ? "saveGif" : "copyLink"](b); }).catch(function (x) { console.warn("ts_flow: save", x); }); return; }
+    var mv = t.closest("#tsVdMore [data-vd-other], #tsVdMore [data-vd-list]");      // the strip's own buttons do the work
+    if (mv) {
+      e.preventDefault();
+      var orig = q("#vdStrip " + (mv.hasAttribute("data-vd-list") ? "[data-vd-list]" : "[data-vd-other]"));
+      if (orig) orig.click();
+      return;
+    }
+    if (isSky && t.closest("#blink")) { cpUser = true; setTab("spec"); return; }     // a star tapped: its spectrum
+    var more = $("tsFacts") && $("tsFacts").querySelector("details.ts-more[open]");
+    if (more && !t.closest("details.ts-more")) more.open = false;
+  }
+  D.addEventListener("keydown", function (e) { if (e.key === "Escape") { var m = q("#tsFacts details.ts-more[open]"); if (m) m.open = false; } });
+
+  // ---- the season strip: one box per season (date, number of exposures); the one on screen in yellow --------------
+  var fmtDay = function (s) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || ""));
+    if (!m) return String(s || "");
+    var lg = I18() ? I18().lang() : "en";
+    try { return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).toLocaleDateString(lg === "tr" ? "tr-TR" : "en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }); }
+    catch (e) { return m[0]; }
+  };
+  var dayRange = function (a, b) { return !b || a === b ? fmtDay(a) : String(a).slice(0, 7) === String(b).slice(0, 7) ? String(+String(a).slice(8, 10)) + "–" + fmtDay(b) : fmtDay(a) + " – " + fmtDay(b); };
+  function seasonList() {
+    if (isSky) {
+      var s = skyNow(), cur = s && s.current;
+      if (!cur || !cur.frames) return null;
+      return { on: s.frameIdx % cur.frames.length, list: cur.frames.map(function (f) { return { ep: f.season, a: f.dateFirst, b: f.dateLast, n: f.n }; }) };
+    }
+    var api = window.__fzViewer;
+    if (!api || !api.meta || typeof api.current !== "function") return null;
+    var c; try { c = api.current(); } catch (e) { return null; }
+    var bin = (api.meta.wavelength_bins || []).filter(function (b) { return Math.abs(+b.wavelength_um - +c.bin_um) < 0.05; })[0];
+    if (!bin) return null;
+    var ep = c.frame && c.frame.epoch;
+    return { on: (bin.frames || []).map(function (f) { return f.epoch; }).indexOf(ep), list: (bin.frames || []).map(function (f) { return { ep: f.epoch, a: f.date_first, b: f.date_last, n: f.n_images }; }) };
+  }
+  function paintSeasons() {
+    var box = $("tsSeasons");
+    if (!box) return;
+    var L = seasonList();
+    if (!L || L.list.length < 2) { setHtml(box, ""); return; }
+    setHtml(box, L.list.map(function (x, i) {
+      var n = fin(x.n) ? T(+x.n === 1 ? "cp.sea.one" : "cp.sea.other", +x.n === 1 ? "{n} exposure" : "{n} exposures", { n: x.n }) : "";
+      return '<button type="button" class="ts-sea' + (i === L.on ? " on" : "") + '" data-ts-sea="' + i + '" data-ep="' + esc(x.ep) + '" aria-pressed="' + (i === L.on) + '">' +
+        "<b>" + esc(x.ep) + "</b><span>" + esc([x.a ? dayRange(x.a, x.b) : "", n].filter(Boolean).join(" · ")) + "</span></button>";
+    }).join(""));
+  }
+  function seasonGo(i, ep) {
+    if (isSky) { if (typeof window.__fzSkyGo === "function") window.__fzSkyGo(i); return; }
+    var api = window.__fzViewer;
+    if (!api || typeof api.goTo !== "function") return;
+    safe("season", function () { if (typeof api.pause === "function") api.pause(); api.goTo({ season: ep }); });
+    paintSeasons();
+  }
+  D.addEventListener("fazari:skyframe", function () { paintSeasons(); });
+  D.addEventListener("fazari:frame", function () { paintSeasons(); });
+
+  // ---- the state of the result (point card, right) and, on sky.html, the progress line beside it ------------------
+  function paintState() {
+    var el = $("tsState");
+    if (!el) return;
+    var txt = "", cls = "";
+    if (isSky) {
+      var s = skyNow(), run = s && s.run;
+      if (run && run.info) {
+        var m = (run.info.bins || []).filter(function (b) { return b.available; }).length, k = Object.keys(run.results || {}).length;
+        if (!run.complete && !run.finished) { txt = k ? T("cp.st.load", "Loading · {k} of {m} wavelengths", { k: k, m: m }) : T("cp.st.first", "First look"); cls = "busy"; }
+        else if (k) { txt = T(k === 1 ? "cp.st.full.one" : "cp.st.full.other", k === 1 ? "Full result · {n} wavelength" : "Full result · {n} wavelengths", { n: k }); cls = "full"; }
+      }
+    } else {
+      var api = window.__fzViewer, mm = api && api.meta;
+      if (mm) {
+        var nb = (mm.wavelength_bins || []).length;
+        if (H.classList.contains("pg-live")) { txt = T("cp.st.busy", "Loading…"); cls = "busy"; }
+        else if (mm.preview) { txt = T("cp.st.first", "First look"); cls = "busy"; }
+        else if (nb) { txt = T(nb === 1 ? "cp.st.full.one" : "cp.st.full.other", nb === 1 ? "Full result · {n} wavelength" : "Full result · {n} wavelengths", { n: nb }); cls = "full"; }
+      }
+    }
+    if (el.textContent !== txt) el.textContent = txt;
+    var c = "ts-state" + (cls ? " " + cls : "");
+    if (el.className !== c) el.className = c;
+    setHidden(el, !txt);
+    // sky.html: while the result is on screen, the progress and Cancel sit in the point card; else in their own card
+    if (isSky && progHome) {
+      var V = $("viewer"), open = !!(V && !V.hidden), pr = $("tsPr");
+      if (open) { into(pr, progHome.row); into(pr, progHome.bar); }
+      else {
+        if (progHome.row.parentNode !== progHome.card) progHome.card.insertBefore(progHome.row, $("what").nextSibling);
+        if (progHome.bar.parentNode !== progHome.card) progHome.card.insertBefore(progHome.bar, progHome.row.nextSibling);
+      }
+    }
+  }
+
+  // ---- the verdict's longer lines under the Verdict tab (the strip itself stays the bar on top) --------------------
+  function mirrorVerdict() {
+    var vs = $("vdStrip"), box = $("tsVdMore");
+    if (!box) return;
+    if (!vs || vs.hidden || !$("tsVdBar") || vs.parentNode !== $("tsVdBar")) { setHtml(box, ""); return; }
+    var html = [".vd-what", ".vd-field", ".vd-lim", ".vd-mean", ".vd-act"].map(function (sel) {
+      var n = q(sel, vs);
+      return n && n.innerHTML.trim() ? '<p class="' + esc(n.className) + '">' + n.innerHTML + "</p>" : "";
+    }).join("");
+    setHtml(box, html);
+  }
+  /** Which tabs have something to show; a closed tab that empties gives way to the verdict. */
+  function paintTabs() {
+    var R = $("tsR");
+    if (!R) return;
+    var has = function (el) { return !!(el && !el.hidden); };
+    var diff = $("tsDiff");
+    var show = {
+      vd: true,
+      spec: has($("tsE")),
+      diff: !!(diff && q(":scope > .card:not([hidden])", diff)),
+      bright: has($("tsF")),
+    };
+    TABS.forEach(function (t) { setHidden($("tsTab-" + t[0]), !show[t[0]]); });
+    if (!show[cpTab]) setTab("vd");
+    paintSeasons(); paintState(); mirrorVerdict();
+  }
+
   var pending = false;
   function schedule() {
     if (pending) return;
     pending = true;
-    requestAnimationFrame(function () { pending = false; safe("tidy", isSky ? tidySky : tidyViewer); });
+    requestAnimationFrame(function () { pending = false; safe("tidy", isSky ? tidySky : tidyViewer); safe("cplus", paintTabs); });
   }
   safe("build", isSky ? buildSky : buildViewer);
+  safe("build C+", buildCplus);
   try { new MutationObserver(schedule).observe(D.body, { childList: true, subtree: true }); } catch (e) { /* ignore */ }
   D.addEventListener("fazari:lang", function () { setTimeout(function () { lastLang = null; schedule(); }, 40); });
   D.addEventListener("fazari:post", function () { limState.key = null; schedule(); });

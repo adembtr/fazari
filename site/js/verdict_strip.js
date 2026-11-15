@@ -313,7 +313,11 @@ async function mountOrnek() {
   const job = Q.get("job");
   const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
   const el = makeStrip();
-  const place = () => { const l = document.querySelector(".lead"); if (l && el.nextElementSibling !== l) l.before(el); };
+  const place = () => {
+    const bar = $("tsVdBar");                              // result layout (js/ts_flow.js): the verdict bar on top of the right panel
+    if (bar) { if (el.parentElement !== bar) bar.prepend(el); return; }
+    const l = document.querySelector(".lead"); if (l && el.nextElementSibling !== l) l.before(el);
+  };
   place();
   wireActions(el, "ornek");
   const S = { meta: null, metaUrl: null, job: null, cand: null, candBase: null, view: null, minH: 0 };
@@ -407,7 +411,7 @@ function mountSky() {
   const S = { engine: null, answer: null, astro: null, bins: [], complete: false, runRef: null };
   const place = () => {
     const card = $("pgCard");
-    const slot = H.classList.contains("ts-on") ? $("tsVd") : null;      // single-column layout (js/ts_flow.js): the verdict section
+    const slot = H.classList.contains("ts-on") ? $("tsVdBar") || $("tsVd") : null;      // result layout (js/ts_flow.js): the verdict bar
     if (slot) { if (card && el.parentElement !== slot) slot.prepend(el); return !!card; }
     if (card && el.nextElementSibling !== card) card.before(el);
     return !!card;
