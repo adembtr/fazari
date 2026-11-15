@@ -276,7 +276,8 @@ export class SkySession {
     ex.bytesRows = H;
     ex.reproj = out; ex.sat = satOut;
     ex.coverage = fin.length / N;
-    ex.f = null;   // drop the file object (headers stay cached in net.js)
+    ex.specFile = f;   // the opened file (headers, layer offsets; ~50 kB): the spectrum reads its rows without walking the headers again
+    ex.f = null;       // drop the file object (headers stay cached in net.js)
     return ex;
   }
 

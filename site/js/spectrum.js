@@ -520,26 +520,39 @@ export function toCsv(spec) {
 /**
  * Spectrum of a SkySession's source from the exposures it has processed (all loaded bins).
  * Gaia DR3 neighbours come from the session's cached Gaia query (gaia.js).
+ * Each exposure is measured once per session (session._specMemo: url -> promise of its row), so a call
+ * after every loaded wavelength only reads the new exposures, while their headers are still in the cache.
  */
 export async function spectrumForSession(session, { onProgress = () => {}, limit = 4 } = {}) {
   const [{ SpherexFile: SF }, { s3Source, mapLimit }, { gaiaStars }, { CALIB }] = await Promise.all([
     import("./fits.js"), import("./net.js"), import("./gaia.js"), import("./calib.js")]);
   const seen = new Set();
   const list = session.exposures.filter((e) => e.img && e.img.url && !seen.has(e.img.url) && seen.add(e.img.url));
-  let nbSky = [];
-  try {
-    const stars = await gaiaStars(session.ra0, session.dec0, CALIB.maxFieldRadius + 0.01, { gmax: CALIB.gmaxQuery, signal: session.signal });
-    const cd = Math.cos(session.dec0 * Math.PI / 180);
-    nbSky = stars.filter((s) => Math.hypot((s.ra - session.ra0) * cd, s.dec - session.dec0) * 3600 < SPEC.gaiaNbArcsec)
-      .map((s) => ({ ra: s.ra, dec: s.dec, pmra: s.pmra, pmdec: s.pmdec, gaia: true }));
-  } catch (_) { /* no neighbours */ }
+  session._specNb ||= gaiaStars(session.ra0, session.dec0, CALIB.maxFieldRadius + 0.01, { gmax: CALIB.gmaxQuery, signal: session.signal })
+    .then((stars) => {
+      const cd = Math.cos(session.dec0 * Math.PI / 180);
+      return stars.filter((s) => Math.hypot((s.ra - session.ra0) * cd, s.dec - session.dec0) * 3600 < SPEC.gaiaNbArcsec)
+        .map((s) => ({ ra: s.ra, dec: s.dec, pmra: s.pmra, pmdec: s.pmdec, gaia: true }));
+    }, () => []);                                                    // no neighbours
+  const nbSky = await session._specNb;
+  const memo = session._specMemo ||= new Map();
+  const measure = (ex) => {
+    let p = memo.get(ex.img.url);
+    if (!p) {
+      p = (async () => {
+        const f = ex.specFile || new SF(s3Source(ex.img.url, { signal: session.signal }));   // sky.js keeps it opened
+        return measureFile(f, (mjd) => session.posAt(mjd), {
+          nbSky, meta: { file: ex.img.url.split("/").pop(), obs_id: ex.img.obs_id, collection: ex.img.collection, season: ex.season } });
+      })();
+      memo.set(ex.img.url, p);
+      p.catch(() => memo.delete(ex.img.url));                        // a failed read is tried again by the next call
+    }
+    return p;
+  };
   let done = 0;
   const infos = (await mapLimit(list, limit, async (ex) => {
     try {
-      const f = new SF(s3Source(ex.img.url, { signal: session.signal }));
-      const i = await measureFile(f, (mjd) => session.posAt(mjd), {
-        nbSky, meta: { file: ex.img.url.split("/").pop(), obs_id: ex.img.obs_id, collection: ex.img.collection, season: ex.season } });
-      return i;
+      return { ...(await measure(ex)) };                             // a copy: finishRows below writes into the rows
     } catch (e) {
       if (e.name === "AbortError") throw e;
       return null;

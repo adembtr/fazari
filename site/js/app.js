@@ -531,10 +531,15 @@ function showMotion() {
 }
 
 // ---- spectrum of the loaded exposures (spectrum.js in the worker, chart: spectrum_chart.js) -----------
+// It reads every exposure again (headers, the rows at the point, one PSF row): two to three minutes for 70 exposures
+// when it waits for the end of the run. So the run calls it after every loaded wavelength too: each call measures
+// only the new exposures (spectrum.js keeps the others), and the curve grows while the run goes on.
 async function showSpectrum() {
   const box = $("spectrum");
   if (!box || !run || !run.engine || run.engine.closed || typeof run.engine.spectrum !== "function") return;
   const myRun = run;
+  if (myRun.specBusy) { myRun.specAgain = true; return; }       // one at a time; the latest call runs after it
+  myRun.specBusy = true;
   try {
     const { result } = await run.engine.spectrum();
     if (run !== myRun) return;
@@ -545,6 +550,10 @@ async function showSpectrum() {
     box.dataset.n = result.summary.n_exposures;
     renderSpectrum(box, result, { csvUrl: run.spectrumUrl, csvName: `${String(result.target || "source").replace(/[^A-Za-z0-9]+/g, "_")}_spectrum.csv` });
   } catch (e) { if (e.name !== "AbortError") console.warn("spectrum failed:", e); }
+  finally {
+    myRun.specBusy = false;
+    if (myRun.specAgain && run === myRun) { myRun.specAgain = false; showSpectrum(); }
+  }
 }
 
 // ---- result for headless checks -----------------------------------------------------------------
@@ -779,6 +788,7 @@ async function go(text, opts = {}) {
           setStage("full", fullCount(), t("sk.stage.more"));
           setStatus(() => t("pg.bb.skyRun"), "warn");            // a wavelength arrived: an old "S3 busy" warning is over
           if (current && !current.preview) showMotion();
+          showSpectrum();                                            // the spectrum grows with every wavelength
         },
         show(um) { if (!run.results[um]) return; current = run.results[um]; frameIdx = 0; $("viewer").hidden = false; showFrame(); showDiff(); startBlink(); showMotion(); },
         redraw() { if (current) showFrame(); },
