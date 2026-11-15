@@ -30,6 +30,22 @@
 .fzt-box[data-side="above"] .fzt-arrow { bottom:-8px; border-left:0; border-top:0; }
 .fzt-box[data-side="none"] .fzt-arrow { display:none; }
 .fzt-live { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+/* the box beside a lit page (the "parts" step): the arrow on its side */
+.fzt-box[data-side="left"] .fzt-arrow { right:-8px; border-left:0; border-bottom:0; }
+.fzt-box[data-side="right"] .fzt-arrow { left:-8px; border-right:0; border-top:0; }
+/* numbered badges on the parts of a result, and the same numbers in the box */
+.fzt-badges { position:fixed; inset:0; z-index:93; pointer-events:none; }
+.fzt-badge { position:absolute; transform:translate(-50%, -50%); display:inline-flex; align-items:center; justify-content:center; gap:3px;
+  box-sizing:border-box; min-width:26px; height:26px; padding:0; border-radius:13px; background:#ffb347; color:#1a1300;
+  font:700 14px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; box-shadow:0 0 0 2px #141a2a, 0 2px 8px rgba(0,0,0,.6); }
+.fzt-badge[hidden] { display:none; }
+.fzt-badge[data-dir="up"], .fzt-badge[data-dir="down"] { padding:0 8px; }
+.fzt-badge i { font-style:normal; font-size:13px; }
+.fzt-badge i:empty { display:none; }
+.fzt-parts { display:flex; flex-direction:column; gap:5px; margin-top:2px; }
+.fzt-part { display:flex; align-items:flex-start; gap:8px; }
+.fzt-num { flex:none; display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; margin-top:1px; border-radius:50%;
+  background:#ffb347; color:#1a1300; font-size:12px; font-weight:700; line-height:1; }
 
 @media (max-width: 560px) {
   .fzt-box { width:calc(100vw - 16px); padding:12px 13px 10px; font-size:15px; }

@@ -1,5 +1,7 @@
 // Guided tour: a short walk through one prepared result (Barnard's Star) and then the sky map.
-// One thing is lit at a time; a small box with an arrow says one or two short sentences about it.
+// One thing is lit at a time; a small box with an arrow says one or two short sentences about it. The first step on
+// the result lights the whole page and puts numbered badges 1-4 on its parts (image, verdict, spectrum, links to
+// other archives), with one line for each number in the box.
 //
 //   window.FazariTour = { start(), stop(), active() }
 //   Every [data-tour-start] element on the page starts it (their `hidden` is removed when this module loads).
@@ -72,9 +74,38 @@ function motionText(v) {
     agree ? "The white arrow is the motion we measured: {v} per year, give or take {e}. The orange ring is where ESA's Gaia catalogue says the star is: it gives {p} per year. The two agree."
       : "The white arrow is the motion we measured: {v} per year, give or take {e}. The orange ring is where ESA's Gaia catalogue says the star is: it gives {p} per year.");
 }
+// The first step on the result: small numbered badges on four parts of the page (the C+ layout of js/ts_flow.js) and
+// one line for each in the box. The badges live on this page above the dimmed overlay, follow their parts (place())
+// and go when the step or the tour ends. A part outside the visible area keeps its badge at the edge, with an arrow.
+const PARTS = [
+  { n: 1, sel: ["#fzStage", "#stage"], name: "Image", text: "the SPHEREx pictures, visit by visit" },
+  { n: 2, sel: ["#vdStrip", '[data-tour="verdict"]'], name: "Verdict", text: "what we found, in one line" },
+  { n: 3, sel: ["#tsTab-spec", '[data-tour="spectrum"]'], name: "Spectrum", text: "its brightness in each infrared colour" },
+  { n: 4, sel: ["#tsFacts .ts-lk", "#tsFacts"], name: "Look elsewhere", text: "this spot in other sky archives" },
+];
+function partsHtml() {
+  return '<span class="fzt-parts" role="list">' + PARTS.map((p) => `<span class="fzt-part" role="listitem"><span class="fzt-num" aria-hidden="true">${p.n}</span>` +
+    `<span><b>${esc(t(`tour.parts.n${p.n}`, null, p.name))}</b>: ${esc(t(`tour.parts.d${p.n}`, null, p.text))}</span></span>`).join("") + "</span>";
+}
+/** The result from its top; on a short screen (a phone) the point card goes up until the picture's top shows above the
+ *  box, but never past the links row (4). */
+function scrollParts() {
+  const c = viewerCtx();
+  if (!c.win || !c.doc) return;
+  try {
+    c.win.scrollTo(0, 0);
+    const pick = (p) => p.sel.map((s) => c.doc.querySelector(s)).find(shown);
+    const img = pick(PARTS[0]), links = pick(PARTS[3]);
+    if (!img || !links) return;
+    const need = img.getBoundingClientRect().top - (c.win.innerHeight - 310);
+    if (need > 0) c.win.scrollTo(0, Math.min(need, Math.max(0, links.getBoundingClientRect().top - 26)));
+  } catch (_) {}
+}
 /** All steps in order. where: "viewer" (inside the result) or "top" (this page). enter(v): what the tour does on arriving. */
 function plan() {
   const S = [
+    { id: "parts", where: "viewer", sel: ["#tsFlow"], parts: PARTS, noScroll: true, beside: true, body: partsHtml,
+      enter() { scrollParts(); } },
     { id: "s1", where: "viewer", sel: ["#stage", '[data-tour="stage"]'],
       enter(v) { v.setView("film"); v.closeUp(); v.pause(); v.goTo({ season: v.seasons()[0] }); },
       body(v) { const ep = v.seasons()[0], name = tname((v.meta && v.meta.target) || "Barnard's Star");
@@ -109,6 +140,7 @@ function plan() {
   return S.filter((st) => st.where !== "top" || (st.sel.some((s) => document.querySelector(s)) && (!st.can || st.can())));
 }
 const EN = {
+  parts: ["The four parts of this page", ""],
   s1: ["A real picture from space", ""], s2: ["Play the film", "SPHEREx came back to the same spot months later. Press Play to see the visits one after the other."],
   s3: ["The star jumps", "The other stars stay where they are. This one changes place from visit to visit: it is moving across the sky."],
   s4: ["Our measurement and the catalogue", ""],
@@ -121,7 +153,7 @@ const EN = {
 };
 
 // ---- the overlay --------------------------------------------------------------------------------------------
-const T = { on: false, steps: [], i: 0, block: null, hole: null, box: null, timer: 0, from: null, target: null, frameDoc: null, busy: false };
+const T = { on: false, steps: [], i: 0, block: null, hole: null, box: null, badges: null, timer: 0, from: null, target: null, frameDoc: null, busy: false };
 function build() {
   ensureCss();
   T.block = document.createElement("div"); T.block.className = "fzt-block"; T.block.setAttribute("aria-hidden", "true");
@@ -133,7 +165,9 @@ function build() {
     `<div class="fzt-row"><button type="button" class="fzt-btn fzt-link" data-act="stop" id="fztSkip"></button><span class="fzt-sp"></span>` +
     `<button type="button" class="fzt-btn" data-act="back" id="fztBack"></button><button type="button" class="fzt-btn fzt-go" data-act="next" id="fztNext"></button></div>` +
     `<span class="fzt-live" aria-live="polite" id="fztLive"></span>`;
-  document.body.append(T.block, T.hole, T.box);
+  T.badges = document.createElement("div"); T.badges.className = "fzt-badges"; T.badges.setAttribute("aria-hidden", "true"); T.badges.hidden = true;
+  T.badges.innerHTML = PARTS.map((p) => `<span class="fzt-badge"><b>${p.n}</b><i></i></span>`).join("");
+  document.body.append(T.block, T.hole, T.box, T.badges);
   T.box.addEventListener("click", (e) => { const b = e.target.closest("[data-act]"); if (!b) return; e.stopPropagation(); if (b.dataset.act === "stop") stop(); else go(b.dataset.act === "back" ? -1 : 1); });
   T.block.addEventListener("click", (e) => { e.stopPropagation(); T.box.focus({ preventScroll: true }); });
 }
@@ -177,12 +211,23 @@ function place() {
     Object.assign(T.hole.style, { left: vw / 2 + "px", top: vh / 2 + "px" });
     T.box.dataset.side = "none";
     Object.assign(T.box.style, { left: Math.max(m, (vw - bw) / 2) + "px", top: Math.max(m, (vh - bh) / 2) + "px" });
+    placeBadges(st);
     return;
   }
   T.hole.classList.remove("fzt-none");
   Object.assign(T.hole.style, { left: r.x + "px", top: r.y + "px", width: r.w + "px", height: r.h + "px" });
   const below = vh - (r.y + r.h), above = r.y;
   let side, top;
+  if (st.beside) {                                         // a whole page lit: the box beside it, else at the bottom of the screen
+    const ar = T.box.querySelector(".fzt-arrow"), cy = r.y + r.h / 2, l = r.x - 12 - bw >= m ? r.x - 12 - bw : r.x + r.w + 12 + bw <= vw - m ? r.x + r.w + 12 : null;
+    side = l == null ? "none" : l < r.x ? "left" : "right";
+    top = l == null ? vh - bh - m : Math.min(Math.max(m, cy - bh / 2), vh - bh - m);
+    T.box.dataset.side = side;
+    Object.assign(T.box.style, { left: (l == null ? Math.min(Math.max(m, r.x + r.w / 2 - bw / 2), vw - bw - m) : l) + "px", top: top + "px" });
+    ar.style.left = ""; ar.style.top = Math.min(Math.max(16, cy - top - 7), bh - 30) + "px";
+    placeBadges(st);
+    return;
+  }
   if (below >= bh + 18) { side = "below"; top = r.y + r.h + 12; }
   else if (above >= bh + 18) { side = "above"; top = r.y - bh - 12; }
   else { side = "none"; top = r.y + r.h / 2 < vh / 2 ? vh - bh - m : m; }       // a big target: the box at the far edge of the screen
@@ -190,7 +235,37 @@ function place() {
   T.box.dataset.side = side;
   Object.assign(T.box.style, { left: left + "px", top: Math.min(Math.max(m, top), vh - bh - m) + "px" });
   const ar = T.box.querySelector(".fzt-arrow");
+  ar.style.top = "";
   ar.style.left = Math.min(Math.max(16, cx - left - 7), bw - 30) + "px";
+  placeBadges(st);
+}
+/** The numbered badges of a step with parts: at each part's top-left corner, kept inside the visible result and off the box. */
+function placeBadges(st) {
+  const box = T.badges;
+  if (!box) return;
+  const c = viewerCtx();
+  if (!st || !st.parts || !c.doc) { box.hidden = true; return; }
+  box.hidden = false;
+  const vw = window.innerWidth, vh = window.innerHeight, R = 13;
+  const f = c.frame ? c.frame.getBoundingClientRect() : { left: 0, top: 0, right: vw, bottom: vh };
+  const x0 = Math.max(0, f.left) + R + 2, x1 = Math.min(vw, f.right) - R - 2, y0 = Math.max(0, f.top) + R + 2, y1 = Math.min(vh, f.bottom) - R - 2;
+  const b = T.box.getBoundingClientRect(), placed = [];
+  st.parts.forEach((p, i) => {
+    const el = box.children[i], part = p.sel.map((s) => c.doc.querySelector(s)).find(shown);
+    if (!part) { el.hidden = true; return; }
+    const r = part.getBoundingClientRect(), ox = c.frame ? f.left : 0, oy = c.frame ? f.top : 0;
+    let x = Math.min(Math.max(x0, ox + r.left), x1), y = oy + r.top, dir = "";
+    if (y < y0) { y = y0; dir = "up"; } else if (y > y1) { y = y1; dir = "down"; }
+    if (x > b.left - R && x < b.right + R && y > b.top - R && y < b.bottom + R) {       // under the box: just past its edge
+      if (b.top - R - 4 >= y0) { if (oy + r.top > b.top) dir = "down"; y = b.top - R - 4; } else { if (oy + r.top < b.bottom) dir = "up"; y = b.bottom + R + 4; }
+    }
+    for (let k = 0; k < 6 && placed.some((q) => Math.abs(q[0] - x) < 2 * R + 14 && Math.abs(q[1] - y) < 2 * R + 2); k++) x = Math.min(x + 2 * R + 16, x1);   // two badges in one place: side by side
+    placed.push([x, y]);
+    el.hidden = false;
+    el.dataset.dir = dir;
+    el.querySelector("i").textContent = dir === "up" ? "↑" : dir === "down" ? "↓" : "";
+    el.style.left = x + "px"; el.style.top = y + "px";
+  });
 }
 /** Scroll the step's target into view. A small one (a button, a row) goes just above where the box will sit, so the
  *  picture over it stays on screen; a tall one (the picture) is centred. */
@@ -254,8 +329,8 @@ async function show(k, dir = 1) {
         try { c.doc.addEventListener("keydown", (e) => { if (T.on && e.key === "Escape") stop(); }, true); } catch (_) {}
       }
       paint();
-      intoView(st);
-      for (const ms of [450, 1100]) setTimeout(() => { if (T.on && T.steps[T.i] === st) { intoView(st); place(); } }, ms);      // the result page may still be settling (a wavelength just changed)
+      if (!st.noScroll) intoView(st);
+      for (const ms of [450, 1100]) setTimeout(() => { if (T.on && T.steps[T.i] === st) { if (!st.noScroll) intoView(st); place(); } }, ms);      // the result page may still be settling (a wavelength just changed)
       await sleep(30);
       place();
       (document.getElementById("fztNext") || T.box).focus({ preventScroll: true });
@@ -299,7 +374,7 @@ export function stop() {
   document.removeEventListener("keydown", onKey, true);
   window.removeEventListener("resize", place);
   window.removeEventListener("scroll", place, true);
-  for (const el of [T.block, T.hole, T.box]) if (el) el.hidden = true;
+  for (const el of [T.block, T.hole, T.box, T.badges]) if (el) el.hidden = true;
   document.documentElement.classList.remove("fzt-on");
   const v = viewer();
   try {                                                    // back to how the page starts: the film playing, or (reduced motion) the still "time as colour"
