@@ -7,7 +7,7 @@
 | AI tool | Used for | Not used for |
 |---|---|---|
 | Claude Code (Anthropic; Claude Opus 5.5 and Claude Fable 5.2 models) | Writing code, tests and documentation; code review; research notes | Sky images and measurements: these are computed from NASA SPHEREx data by the code |
-| Google Gemini | The team logo image (not in this repository; every copy shown carries a visible "AI-generated" watermark) | Anything in this repository or on the site |
+| Google Gemini | The team logo image (not in this repository; every copy shown is visibly labelled as AI-generated: a watermark on the project-page image, a caption on the slides) | Anything in this repository or on the site |
 
 Details: [Use of AI](#use-of-ai).
 
