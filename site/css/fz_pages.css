@@ -110,6 +110,12 @@ figcaption { font-size: 13.5px; color: var(--mut); margin-top: 8px; }
   .pg-head { padding: 26px 0 8px; }
   .pg-head .lead { font-size: 16.5px; }
   .pg-nav { margin-left: 0; width: 100%; order: 3; gap: 2px 12px; font-size: 14px; }
+  /* the sticky bar stays two short rows: the page links in one row that scrolls sideways (it took three rows, a fifth of a phone) */
+  .pg-top .pg-nav { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; white-space: nowrap;
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent); }
+  .pg-top .pg-nav::-webkit-scrollbar { display: none; }
+  .pg-top .pg-nav a { flex: none; }
+  .pg-top .pg-nav > :last-child { margin-right: 24px; }
   .pg-top .fz-lang { margin-left: auto; }
   .duo { grid-template-columns: 1fr; }
   .newhere ol { grid-template-columns: 1fr; }

@@ -24,6 +24,16 @@ const params = new URLSearchParams(location.search);
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const isPhone = () => matchMedia("(max-width: 720px)").matches;
 const PANEL_KEY = "fz-ex-panel";             // localStorage: the left panel folded ("shut") or not (desktop)
+const BG_KEY = "fz-ex-bg";                   // localStorage: the sky map the person picked last (Layers > Sky map)
+// The sky map: a link's ?bg= always wins, then the person's own last pick, else NASA's SPHEREx map. The sky opens on the
+// visible map (quick to load) and the SPHEREx map comes in over it once its tiles are there; if its server never
+// answers, the visible map simply stays.
+const BG_START = (() => {
+  const q = params.get("bg");
+  if (q && Object.hasOwn(SURVEYS, q)) return q;
+  try { const s = localStorage.getItem(BG_KEY); if (s && Object.hasOwn(SURVEYS, s)) return s; } catch { /* storage blocked */ }
+  return "spherex";
+})();
 
 const CAT_COLORS = {
   challenge: "#ffc94d", fast_stars: "#ff8a5c", brown_dwarfs: "#d49a6a", variable_stars: "#ffe066",
@@ -43,6 +53,9 @@ const POINT_FOV = {
 const SPHEREX_FADE = [3.0, 0.8];
 // Planetarium rule: we stand at the centre of the sphere, so the whole sky never fits on one screen.
 const MAX_FOV = 120;   // fov (deg) where the SPHEREx layer starts / finishes fading in
+// Opening view (no link target): the Milky Way between Aquila and Ophiuchus, where NASA's SPHEREx map is full and bright,
+// with Barnard's Star (one of the five targets) in the picture.
+const START_VIEW = { ra: 272, dec: -2, fov: 50 };
 
 const state = {
   A: null, al: null, cats: [], points: [], byId: new Map(), activeCat: null, selected: null,
@@ -197,7 +210,7 @@ async function startSky() {
     });
     // Map tiles of the view a zoom or flight ends on are fetched as soon as it starts (prefetch.js).
     if (params.get("tq") !== "0") {                     // ?tq=0: old behaviour (for timing comparisons)
-      state.prefetch = createPrefetch({ al, size: skySize, weights: layerWeightsAt, base: () => state.bg, frame: () => state.slice, minFov: minWidthFov });
+      state.prefetch = createPrefetch({ al, size: skySize, weights: layerWeightsAt, base: baseKey, frame: () => state.slice, minFov: minWidthFov });
       state.closeup.setPrefetch(state.prefetch);
     }
     setupOverlays();
@@ -225,6 +238,7 @@ async function startSky() {
       setTimeout(() => zoomTo(start.fov, 3.2), 350);
     } else al.setFoV(start.fov);
     preloadSpherex();
+    if (BG_START !== "visible" && BG_START !== "spherex") setBackground(BG_START, { quiet: true });   // SPHEREx: preloadSpherex()
   } catch (e) {
     console.warn("3D sky failed, switching to the flat map", e);
     if (state.al) return;              // the sky is up; a later step failed, keep it
@@ -234,14 +248,14 @@ async function startSky() {
 }
 
 function startView() {
-  // ?p=<point id> | ?ra=&dec=[&fov=] | default: Orion, seen from far away first.
+  // ?p=<point id> | ?ra=&dec=[&fov=] | default: START_VIEW, seen from far away first.
   const ra = Number(params.get("ra")), dec = Number(params.get("dec"));
   const fov = Number(params.get("fov")) || null;
-  if (params.get("p")) return { ra: 83.8, dec: -1, fov0: MAX_FOV, fov: 60, point: { id: params.get("p") } };
+  if (params.get("p")) return { ra: START_VIEW.ra, dec: START_VIEW.dec, fov0: MAX_FOV, fov: 60, point: { id: params.get("p") } };
   if (Number.isFinite(ra) && Number.isFinite(dec) && params.has("ra") && params.has("dec")) {
     return { ra, dec, fov0: MAX_FOV, fov: fov || 1, point: { id: null, name: "Shared spot", nameKey: "ex.name.shared", ra, dec, cat: null, manual: true, fov: fov || 1 } };
   }
-  return { ra: 83.8, dec: -1.0, fov0: MAX_FOV, fov: 70 };
+  return { ra: START_VIEW.ra, dec: START_VIEW.dec, fov0: MAX_FOV, fov: START_VIEW.fov };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -424,11 +438,20 @@ function minWidthFov() {
 // layer, close-up map). The tile queue loads (nearly) hidden maps last and prefetch.js skips them.
 function layerWeightsAt(fov, dec) {
   const cu = state.closeup?.weightFor(fov, dec) || { key: null, op: 0 };
-  const auto = state.spxReady && state.autoSpx && state.bg !== "spherex";
-  const [a, b] = SPHEREX_FADE;
-  const t = Math.max(0, Math.min(1, (a - fov) / (a - b)));
-  const spx = auto ? t * t * (3 - 2 * t) * (state.closeup ? state.closeup.spherexFactor(fov) : 1) : 0;
-  const out = { [state.bg]: (1 - spx) * (1 - cu.op) };
+  const keep = state.closeup ? state.closeup.spherexFactor(fov) : 1;
+  let spx = 0, under = 0;              // SPHEREx layer, and how much of the map under it shows
+  if (state.bg === "spherex") {
+    // the SPHEREx map is wanted at full weight even while it waits for its tiles; the visible map under it shows
+    // as much as the SPHEREx layer does not (all of it while a new part of the sky loads)
+    spx = keep; under = 1 - spxGate.op * keep;
+  } else {
+    const auto = state.spxReady && state.autoSpx;
+    const [a, b] = SPHEREX_FADE;
+    const t = Math.max(0, Math.min(1, (a - fov) / (a - b)));
+    spx = auto ? t * t * (3 - 2 * t) * keep : 0;
+    under = 1 - spx;
+  }
+  const out = { [baseKey()]: under * (1 - cu.op) };
   if (spx > 0) out.spherex = (out.spherex || 0) + spx * (1 - cu.op);
   if (cu.key) out[cu.key] = (out[cu.key] || 0) + cu.op;
   return out;
@@ -585,16 +608,70 @@ function setSlice(h) {
 }
 
 async function preloadSpherex() {
-  // Find a working SPHEREx map server early; the layer itself is only added once you zoom in.
+  // Find a working SPHEREx map server early. As the sky map (the default) its layer goes over the visible map now;
+  // otherwise it is only added once you zoom in.
   try {
     await surveyUrl("spherex");
     state.spxReady = true;
     onViewChange();
+    if (BG_START === "spherex" && !state.bgPicked && state.bg === "visible") {
+      // the visible map of the opening view first (IRSA's slow SPHEREx tiles would hold its downloads back: a black
+      // sky for seconds on a phone), then the SPHEREx layer over it
+      for (const t0 = performance.now(); performance.now() - t0 < 6000;) {
+        if (state.prefetch && state.prefetch.progress("visible") >= 0.95 && !state.al.isZooming?.()) break;
+        await new Promise((r) => setTimeout(r, 250));
+      }
+      if (!state.bgPicked && state.bg === "visible") setBackground("spherex", { quiet: true });
+    }
   } catch (e) {
     console.warn("SPHEREx HiPS unavailable", e);
     $("bg-spherex").disabled = true;
     $("bg-spherex").title = T("ex.spx.down");
+    if (state.bg === "spherex") fallBackToVisible();
   }
+}
+
+/** The key of the map in Aladin's base layer: SPHEREx as the sky map is an overlay over the visible map. */
+function baseKey() { return state.bg === "spherex" ? "visible" : state.bg; }
+
+function markBg(key) {
+  for (const b of document.querySelectorAll("#bgSwitch button")) b.setAttribute("aria-checked", String(b.id === "bg-" + key));
+}
+/** SPHEREx cannot be reached: the visible map, quietly (it is already under the SPHEREx layer). */
+function fallBackToVisible() {
+  state.bg = "visible";
+  markBg("visible");
+  ensureSpherexOverlay(false);
+  onViewChange();
+}
+
+// SPHEREx as the sky map. Its tiles come from IRSA (1.5-6 s each), and where Aladin has no tile yet it paints the
+// layer as a flat grey patch, even over the map below (the "grey wedge"). So the layer shows only once Aladin has the
+// tiles of the whole view (prefetch.js coverage), and gives way to the visible map under it while a new part of the
+// sky loads: under GATE_HIDE of the view covered for GATE_HIDE_MS hides it, all of it for GATE_SHOW_MS shows it.
+const GATE_SHOW_MS = 250, GATE_HIDE_MS = 500, GATE_FADE_MS = 450, GATE_HIDE = 0.9;
+const spxGate = { op: 0, t0: 0, okSince: 0, badSince: 0, last: 0, timer: 0,
+  reset(op = 0) { this.op = op; this.t0 = performance.now(); this.okSince = this.badSince = 0; this.last = 0; } };
+function stepSpxGate() {
+  const g = spxGate, now = performance.now();
+  const cov = state.prefetch ? state.prefetch.coverage("spherex") : null;   // null: not known (?tq=0): wait a few seconds
+  g.cov = cov;
+  const ok = cov == null ? now - g.t0 > 4000 : cov >= 1;
+  const bad = cov == null ? !ok : cov < GATE_HIDE;
+  if (ok) g.okSince ||= now; else g.okSince = 0;
+  if (bad) g.badSince ||= now; else g.badSince = 0;
+  const target = ok && now - g.okSince >= GATE_SHOW_MS ? 1 : bad && now - g.badSince >= GATE_HIDE_MS ? 0 : g.op;
+  const dt = g.last ? Math.min(100, now - g.last) : 16;
+  g.last = now;
+  if (target !== g.op) {
+    const step = dt / GATE_FADE_MS;
+    g.op = Math.abs(target - g.op) <= step ? target : g.op + Math.sign(target - g.op) * step;
+  }
+  // look again soon while fading, while tiles are on their way, or while waiting to decide
+  if (!g.timer && (g.op !== target || !ok || g.op < 1)) {
+    g.timer = setTimeout(() => { g.timer = 0; if (state.al && state.bg === "spherex") updateSpherexFade(state.al.getFov()[0]); }, g.op !== target ? 30 : 150);
+  }
+  return g.op;
 }
 
 let spxBusy = false;
@@ -605,9 +682,11 @@ async function ensureSpherexOverlay(want) {
     spxBusy = true;
     try {
       const h = await makeHips("spherex");
+      try { h.setOpacity(0); } catch { /* set on the next update */ }
       al.setOverlayImageLayer(h, "spherex");
       setSlice(h);
       state.spxOverlay = h;
+      spxGate.reset();
     } catch (e) { console.warn(e); } finally { spxBusy = false; }
     onViewChange();
   } else if (!want && state.spxOverlay) {
@@ -617,52 +696,67 @@ async function ensureSpherexOverlay(want) {
 }
 
 function updateSpherexFade(fov) {
-  const auto = state.spxReady && state.autoSpx && state.bg !== "spherex";
+  const chosen = state.bg === "spherex";                  // SPHEREx is the sky map (an overlay over the visible map)
+  const auto = state.spxReady && state.autoSpx && !chosen;
   const [a, b] = SPHEREX_FADE;
   // Closer in, the SPHEREx map (12.9" pixels) gives way to the sharp close-up map.
   const keep = state.closeup ? state.closeup.spherexFactor(fov) : 1;
+  const gone = keep === 0 && fov < CLOSEUP_FOV[1] * 0.6;   // well inside the close-up
   // Add the layer a bit before it starts to show, drop it again well after (hysteresis).
-  if (auto && fov < a * 1.25 && keep > 0 && !state.spxOverlay) ensureSpherexOverlay(true);
-  else if ((!auto || fov > a * 1.8 || (keep === 0 && fov < CLOSEUP_FOV[1] * 0.6)) && state.spxOverlay) ensureSpherexOverlay(false);
+  if (((chosen && !gone) || (auto && fov < a * 1.25 && keep > 0)) && !state.spxOverlay) ensureSpherexOverlay(true);
+  else if ((chosen ? gone : (!auto || fov > a * 1.8 || gone)) && state.spxOverlay) ensureSpherexOverlay(false);
   const h = state.spxOverlay;
   let op = 0;
-  if (h && auto) {
+  if (h && chosen) op = stepSpxGate() * keep;
+  else if (h && auto) {
     const t = Math.max(0, Math.min(1, (a - fov) / (a - b)));
     op = t * t * (3 - 2 * t) * keep;
   }
   if (h) { try { h.setOpacity(op); } catch { /* not ready yet */ } }
-  const showing = state.bg === "spherex" || op > 0.5;
+  const showing = op > 0.5;
   const badge = $("spxBadge");
   badge.hidden = !showing;
   if (showing) {
     const sl = SPHEREX_SLICES.find((s) => s.slice === state.slice);
     badge.querySelector("span").textContent = `${T("ex.spx.badge")}${sl ? " · " + iLoc(sl.label) : ""}`;
   }
-  const credits = [SURVEYS[state.bg].credit];
-  if (showing && state.bg !== "spherex") credits.push(SURVEYS.spherex.credit);
+  const credits = [SURVEYS[chosen && op >= 0.95 ? "spherex" : baseKey()].credit];
+  if (op > 0.05 && !credits.includes(SURVEYS.spherex.credit)) credits.push(SURVEYS.spherex.credit);
   const cc = state.closeup?.credit();
   if (cc && !credits.includes(cc)) credits.push(cc);
   $("creditSurvey").textContent = credits.map((c) => T("ex.credit." + String(c).split(":")[0], null, c)).join("; ");
   state.closeup?.render(op);
 }
 
-async function setBackground(key) {
+/**
+ * Switch the sky map. SPHEREx goes over the visible map as an overlay (updateSpherexFade shows it once its tiles are
+ * in); the other maps replace the base layer. quiet: the opening switch to the default or remembered map (no toast;
+ * if it fails the visible map simply stays).
+ */
+async function setBackground(key, { quiet = false } = {}) {
   if (!state.al) return;
   const btn = $("bg-" + key);
-  for (const b of document.querySelectorAll("#bgSwitch button")) b.setAttribute("aria-checked", String(b === btn));
+  markBg(key);
   const prev = state.bg;
   state.bg = key;
   try {
     btn.classList.add("bg-loading");      // not "loading": that class is the blink panel's absolute overlay (explore.css)
-    const h = await getHips(key);
-    if (key === "spherex") setSlice(h);
-    if (state.bg !== key) return;
-    state.al.setBaseImageLayer(h);
-    toast(`${T(`ex.sv.${key}.title`, null, SURVEYS[key].title)}: ${T(`ex.sv.${key}.blurb`, null, SURVEYS[key].blurb)}`);
+    if (key === "spherex") {
+      await surveyUrl("spherex");         // a server answers (else: back to the map before)
+      if (state.bg !== key) return;
+      // the visible map goes back under it (Aladin fails on setting the layer it already has: compared by name)
+      if (state.al.getBaseImageLayer()?.name !== SURVEYS.visible.title) state.al.setBaseImageLayer(await getHips("visible"));
+      if (state.spxOverlay) spxGate.reset(state.spxOverlay.getOpacity?.() || 0);
+    } else {
+      const h = await getHips(key);
+      if (state.bg !== key) return;
+      if (state.al.getBaseImageLayer()?.name !== SURVEYS[key].title) state.al.setBaseImageLayer(h);   // from SPHEREx to visible: already there
+    }
+    if (!quiet) toast(`${T(`ex.sv.${key}.title`, null, SURVEYS[key].title)}: ${T(`ex.sv.${key}.blurb`, null, SURVEYS[key].blurb)}`);
   } catch (e) {
-    state.bg = prev;
-    for (const b of document.querySelectorAll("#bgSwitch button")) b.setAttribute("aria-checked", String(b.id === "bg-" + prev));
-    toast(e.message || T("ex.bg.fail"), true);
+    if (state.bg === key) { state.bg = prev; markBg(prev); }
+    if (quiet) console.warn("Sky map unavailable, keeping the visible map", key, e);
+    else toast(e.message || T("ex.bg.fail"), true);
   } finally {
     btn.classList.remove("bg-loading");
     $("sliceRow").hidden = false;
@@ -766,6 +860,8 @@ function select(p, { fly = false, fov, fill = true } = {}) {
   else { q.set("ra", pos.ra.toFixed(5)); q.set("dec", pos.dec.toFixed(5)); }
   const fovQ = new URLSearchParams(location.search).get("fov");   // Field choice (fov_ui.js) stays in the link
   if (fovQ) q.set("fov", fovQ);
+  const bgQ = new URLSearchParams(location.search).get("bg");      // so does a sky map named in the link
+  if (bgQ) q.set("bg", bgQ);
   history.replaceState(null, "", "?" + q.toString());
 }
 
@@ -1280,12 +1376,27 @@ function wireUi() {
   for (const ex of document.querySelectorAll("[data-example]")) {
     ex.addEventListener("click", () => { $("q").value = ex.dataset.example; runSearch(ex.dataset.example); });
   }
-  for (const key of Object.keys(SURVEYS)) $("bg-" + key).addEventListener("click", () => setBackground(key));
-  $("btnLayers").addEventListener("click", () => {
+  for (const key of Object.keys(SURVEYS)) {
+    $("bg-" + key).addEventListener("click", () => {
+      state.bgPicked = true;              // the opening switch to SPHEREx no longer applies
+      try { localStorage.setItem(BG_KEY, key); } catch { /* storage blocked */ }
+      setBackground(key);
+    });
+  }
+  const toggleMapSettings = () => {
     const pop = $("layers"), open = pop.hidden;
     pop.hidden = !open;
     $("btnLayers").setAttribute("aria-expanded", String(open));
+  };
+  // Phones: the one Layers button opens the sheet at its Layers section (sky map, star layers, which map is shown);
+  // the rest of the map settings are one tap further ("More map settings").
+  $("btnLayers").addEventListener("click", () => {
+    if (!isPhone()) { toggleMapSettings(); return; }
+    if (document.body.dataset.sheet === "open" && $("layersBox").open) { setSheet("peek"); return; }
+    openLayers();
+    setTimeout(() => $("layersBox").scrollIntoView({ block: "start", behavior: reduceMotion ? "auto" : "smooth" }), 300);
   });
+  $("btnMapMore").addEventListener("click", toggleMapSettings);
   for (const id of ["tgMarkers"]) $(id).addEventListener("change", syncCatalogs);
   for (const id of ["tgEcliptic", "tgGalactic", "tgP9"]) $(id).addEventListener("change", syncLineToggles);
   $("tgCoverage").addEventListener("change", (e) => toggleCoverageLayer(e.target.checked));
@@ -1341,7 +1452,19 @@ function wireUi() {
   });
   $("blinkClose").addEventListener("click", closeBlink);
   $("blinkFrame").addEventListener("load", () => { $("blinkLoading").hidden = true; });
-  $("sheetToggle").addEventListener("click", () => setSheet(document.body.dataset.sheet === "open" ? "peek" : "open"));
+  // the sheet's handle: a tap toggles it; pulled up it opens, pulled down it folds
+  let pullY = null, pulled = false;
+  $("sheetToggle").addEventListener("touchstart", (e) => { pullY = e.touches[0].clientY; pulled = false; }, { passive: true });
+  $("sheetToggle").addEventListener("touchend", (e) => {
+    if (pullY == null) return;
+    const dy = e.changedTouches[0].clientY - pullY;
+    pullY = null;
+    if (Math.abs(dy) > 18) { pulled = true; setSheet(dy < 0 ? "open" : "peek"); }
+  }, { passive: true });
+  $("sheetToggle").addEventListener("click", () => {
+    if (pulled) { pulled = false; return; }                   // already handled as a pull
+    setSheet(document.body.dataset.sheet === "open" ? "peek" : "open");
+  });
   setSheet("peek");
   wirePanelFold();
 
@@ -1416,6 +1539,7 @@ function esc(s) {
 
 // For tests: window.__explore exposes state and a few actions.
 window.__explore = { MAX_FOV, state, openCategory, select, flyTo, runSearch, surprise, setBackground, openBlink, closeBlink, startLocalJob, openLayers,
+  spxGate,                                                        // SPHEREx as the sky map: shown once its tiles are in (tests)
   stopFlight: () => { flight++; state.al?.stopAnimation?.(); } };   // stopFlight: the opening demo (demo.js) ends a flight where it is
 let PG = null;                                                    // js/bins_bar.js: time line of a wavelength-by-wavelength run
 import("../js/bins_bar.js").then((m) => { PG = m; }).catch((e) => console.warn("bins_bar.js", e));

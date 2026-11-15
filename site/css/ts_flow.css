@@ -219,3 +219,10 @@ html.ts-on.ui-embedded.ui-page-sky .titlerow, html.ts-on.ui-embedded.ui-page-sky
   html.ts-on .ts-links a { min-height: 40px; padding: 5px 13px; }
   html.ts-on .ts-tourbtn { min-height: 42px; }
 }
+/* Phones: the picture fits the screen width. Its 300 px floor with the 1 : .68 shape made it 441 px wide, wider than
+   a 390 px phone (the scale bar, the zoom buttons and the next button were cut off); here a squarer shape instead. */
+@media (max-width: 640px) {
+  html.ts-on #fzStage { max-width: 100%; }
+  html.ts-on #fzStage > #stage { min-height: 0; aspect-ratio: 1 / .9; }
+  html.ts-on .ts-gsp table { display: block; max-width: 100%; overflow-x: auto; }   /* the season-bins table scrolls sideways */
+}

@@ -319,37 +319,54 @@ body.engine-local .status .eng i { background: var(--good); }
 #sky .aladin-logo-container { opacity: .85; }
 
 /* ---------------- phones ---------------- */
+/* The sky is the page: one thin row on top (search, language, tour, help), a round Layers button, a small compass and
+   scale, and the place list folded to one line at the bottom (pull or tap it up; open it covers less than half). */
+.tb-ico, .sheet-l, .ly-img, .ly-more { display: none; }
 @media (max-width: 720px) {
-  :root { --sheet-peek: 132px; --foot-h: 0px; }
+  :root { --sheet-peek: calc(46px + env(safe-area-inset-bottom)); --foot-h: 0px; --top-row: 40px; }
   #sky { bottom: var(--sheet-peek); }
-  .topbar { top: max(8px, env(safe-area-inset-top)); left: 8px; right: 8px; flex-wrap: wrap; gap: 6px; }
+  .topbar { top: max(6px, env(safe-area-inset-top)); left: 6px; right: 6px; flex-wrap: nowrap; gap: 5px; }
   .brand { display: none; }
-  #search { flex: 1 1 100%; max-width: none; order: 1; }
-  .tools { order: 2; margin-left: 0; width: 100%; justify-content: space-between; }
+  #search { flex: 1 1 0; min-width: 0; max-width: none; height: var(--top-row); padding: 2px 4px 2px 10px; }
+  #search button { display: none; }                          /* the keyboard's Go key searches */
+  #q { padding: 6px 2px; }
+  .tools { order: 2; margin-left: 0; width: auto; flex: none; gap: 5px; }
   .seg button { padding: 5px 8px; font-size: 13px; }
-  .icon-btn { padding: 6px 9px; }
+  .tools .icon-btn { width: var(--top-row); height: var(--top-row); padding: 0; justify-content: center; }
   .icon-btn .lbl { display: none; }
-  .msg { top: 158px; width: calc(100vw - 16px); }
-  .badge { top: auto; bottom: calc(var(--sheet-peek) + 34px); left: 10px; right: auto; font-size: 12px; }
-  .popover { top: 104px; right: 8px; left: 8px; width: auto; max-height: calc(100dvh - 120px); overflow-y: auto; }
-  .status { left: 10px; bottom: calc(var(--sheet-peek) + 8px); }
-  .status .tip { display: none; }
-  .flat-note { bottom: calc(var(--sheet-peek, 120px) + 74px); }
-  body[data-sheet="open"] .status, body.card-open .status { display: none; }
+  .tb-ico { display: block; }
+  /* the Layers button: one round button on the sky, under the top row on the right */
+  .tools #btnLayers { position: fixed; top: calc(max(6px, env(safe-area-inset-top)) + var(--top-row) + 8px); right: 6px; }
+  .msg { top: calc(max(6px, env(safe-area-inset-top)) + var(--top-row) + 6px); width: calc(100vw - 60px); left: 6px; transform: none; z-index: 21; }
+  .badge { top: auto; left: auto; right: 10px; bottom: calc(env(safe-area-inset-bottom) + 11px); z-index: 11; font-size: 11px; padding: 3px 9px; gap: 6px; pointer-events: none; }
+  .badge i { width: 8px; height: 8px; }
+  body[data-sheet="open"] .badge, body.card-open .badge { display: none; }
+  .popover { top: calc(max(6px, env(safe-area-inset-top)) + var(--top-row) + 6px); right: 6px; left: 6px; width: auto; max-height: calc(100dvh - 70px); overflow-y: auto; }
+  .status { display: none; }
+  .flat-note { bottom: calc(var(--sheet-peek) + 74px); }
   .foot { display: none; }
-  .compass { bottom: calc(var(--sheet-peek) + 40px); right: 8px; transform: scale(.75); transform-origin: bottom right; }
-  .scale { right: 8px; bottom: calc(var(--sheet-peek) + 108px); max-width: 200px; font-size: 11px; }
-  body[data-sheet="open"] .scale, body.card-open .scale { display: none; }
+  .compass { bottom: calc(var(--sheet-peek) + 40px); right: 4px; transform: scale(.5); transform-origin: bottom right; }
+  .scale { right: 8px; bottom: calc(var(--sheet-peek) + 88px); max-width: 160px; font-size: 10.5px; gap: 2px; }
+  .scale-img { display: none; }                               /* which map is shown: in Layers (#lyImg) */
+  .scale-move { font-size: 11px; padding: 4px 7px; }
+  body[data-sheet="open"] .scale, body.card-open .scale, body[data-sheet="open"] .compass, body.card-open .compass { display: none; }
   .credits-mini { display: block; }
   .examples { display: none; }
   .hint { display: none; }
+  .ly-img { display: block; margin: 0 0 6px; font-size: 12px; color: var(--mut); }
+  .ly-img:empty { display: none; }
+  .ly-more { display: inline-block; margin: 0 0 8px; font-size: 13.5px; }
 
-  .panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: var(--sheet-peek); max-height: none; border-radius: 18px 18px 0 0;
+  .panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: var(--sheet-peek); max-height: none; border-radius: 16px 16px 0 0;
     transition: height .28s ease; padding-bottom: env(safe-area-inset-bottom); }
-  body[data-sheet="open"] .panel { height: min(62dvh, 560px); z-index: 13; }   /* an open sheet sits over the place card (its Layers too) */
-  .sheet-handle { display: grid; place-items: center; height: 22px; width: 100%; background: none; border: 0; flex: none; }
-  .grip { width: 44px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .35); }
-  .panel-body { padding: 0 12px 12px; }
+  body[data-sheet="open"] .panel { height: min(48dvh, 440px); z-index: 13; }   /* open: less than half the screen; over the place card (its Layers too) */
+  .sheet-handle { display: grid; grid-template-columns: 1fr; justify-items: center; align-content: start; gap: 4px; height: 46px; width: 100%;
+    padding: 7px 14px 0; background: none; border: 0; flex: none; color: var(--fg); touch-action: none; }
+  .grip { width: 40px; height: 4px; border-radius: 3px; background: rgba(255, 255, 255, .35); }
+  .sheet-l { display: block; justify-self: start; font-size: 14px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: calc(100% - 170px); }
+  body[data-sheet="peek"] .panel-body { visibility: hidden; }  /* folded: nothing of the list peeks out, cut */
+  .panel-body { padding: 4px 12px 12px; }
   .panel-title { display: none; }
   .hint { font-size: 13px; margin-bottom: 8px; }
   .cats { display: flex; overflow-x: auto; gap: 7px; padding-bottom: 4px; scroll-snap-type: x proximity; scrollbar-width: none; }
@@ -359,11 +376,13 @@ body.engine-local .status .eng i { background: var(--good); }
   .cat.hl .nm::after { content: ""; }
   .cat .nm { white-space: nowrap; }
 
-  .card { left: 0; right: 0; bottom: 0; max-width: none; border-radius: 18px 18px 0 0; max-height: 64dvh; overflow-y: auto;
+  /* the place card: at most half the screen, scrolls inside, closes with its × */
+  .card { left: 0; right: 0; bottom: 0; max-width: none; border-radius: 16px 16px 0 0; max-height: min(50dvh, 420px); overflow-y: auto; overscroll-behavior: contain;
     padding-bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 12; }
+  .card .x { position: sticky; float: right; top: 0; margin: -4px -6px 0 6px; z-index: 1; background: rgba(22, 27, 43, .95); }
   .card h2 { font-size: 18px; }
   .actions .primary { flex: 1 1 100%; justify-content: center; }
-  .toast { top: 210px; width: calc(100vw - 16px); }
+  .toast { top: calc(max(6px, env(safe-area-inset-top)) + var(--top-row) + 10px); width: calc(100vw - 16px); }
 
   .blink { width: 100vw; border-left: 0; }
   .blink .ghost { display: none; }
@@ -381,10 +400,9 @@ body.engine-local .status .eng i { background: var(--good); }
 .topbar .lang-slot { display: flex; flex: none; }
 html[lang="tr"] .cat.hl .nm::after { content: "  ·  5 resmî hedef"; }
 @media (max-width: 720px) {
-  #search { flex: 1 1 0; min-width: 0; }
-  .topbar .lang-slot { order: 2; }
-  .topbar .fz-langsw button { padding: 5px 6px; min-width: 0; }
-  #search button { padding: 7px 13px; }
+  .topbar .lang-slot { order: 1; }
+  .topbar .fz-langsw { height: var(--top-row); }
+  .topbar .fz-langsw button { padding: 4px 5px; min-width: 0; font-size: 12px; }
 }
 @media (min-width: 721px) { html[lang="tr"] .cat .nm { padding-right: 9px; } }   /* long Turkish words clear the count badge */
 /* pieces of the simplified layout (site_sade; styled in css/ui_shell.css under html.ui): not part of ?ui=classic */

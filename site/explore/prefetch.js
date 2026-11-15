@@ -11,7 +11,7 @@
 // The same bookkeeping tells the close-up layer (closeup.js, ?cg=1 only) when its tiles are in.
 
 import { ang2pixNest } from "../js/skyindex.js";
-import { queueFetch, setTarget, setView, nextGeneration, busy, NOW, SOON } from "./tilequeue.js";
+import { queueFetch, setTarget, setView, nextGeneration, busy, hasTile, NOW, SOON } from "./tilequeue.js";
 import { surveyInfo, surveyUrl } from "./surveys.js";
 
 const HPX0_ARCSEC = 211076;   // HEALPix pixel size at order 0: sqrt(pi/3) rad
@@ -241,5 +241,33 @@ export function createPrefetch({ al, size, weights, base = () => "visible", fram
     return urls.size ? done / urls.size : 1;
   }
 
-  return { toward, view, viewChanged, progress, tileOrder };
+  /**
+   * Share (0-1) of the view on screen that Aladin can paint from tiles of map `key` it has received: at each sample
+   * point a tile of the order it draws now or a coarser one (it stands in while the finer one loads). Where it has
+   * none, Aladin paints a flat grey patch (the SPHEREx map, main.js). null when this cannot be known (?tq=0, map not
+   * resolved yet).
+   */
+  function coverage(key) {
+    const li = known.get(key);
+    if (!li) { layerInfo(key).catch(() => {}); return null; }
+    const [w, h] = size();
+    if (!w || !h) return null;
+    const fov = al.getFov()[0];
+    const pxArcsec = fov * 3600 / Math.max(1, w * (window.devicePixelRatio || 1));
+    const top = Math.max(0, Math.min(li.maxOrder, Math.ceil(Math.log2(HPX0_ARCSEC / pxArcsec)) - 9));   // as drawn now (no floor at 3)
+    const tail = (li.cube ? "_" + frame() : "") + "." + li.ext;
+    const map = (px, py) => { try { const q = al.pix2world(px, py); return q && Number.isFinite(q[0]) ? q : null; } catch { return null; } };
+    let n = 0, ok = 0;
+    for (const [ra, dec] of samples(map, w, h, w / 2, h / 2)) {
+      n++;
+      for (let o = top; o >= 0; o--) {
+        const has = hasTile(key, o, ang2pixNest(o, ra, dec), tail);
+        if (has === null) return null;
+        if (has) { ok++; break; }
+      }
+    }
+    return n ? ok / n : null;
+  }
+
+  return { toward, view, viewChanged, progress, coverage, tileOrder };
 }

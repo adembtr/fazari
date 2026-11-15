@@ -13,7 +13,6 @@
 /* ---- explorer (explore.html) ---- */
 /* Phones held sideways (low and narrow): one top row, smaller sheet, card on the right. */
 @media (max-width: 720px) and (max-height: 500px) and (orientation: landscape) {
-  :root { --sheet-peek: 104px; }
   .topbar { flex-wrap: nowrap; }
   .tools { width: auto; flex: none; }
   .msg { top: 58px; }

@@ -42,7 +42,7 @@ export function formatArcsec(v) {
 export function createCloseup({ A = null, al = null, state, pix2sky, size, onChange, onLimits }) {
   const ui = {
     root: $("scale"), bar: $("scaleBar"), lbl: $("scaleLbl"), pxRow: $("scalePx"), box: $("scaleBox"),
-    img: $("scaleImg"), move: $("scaleMove"), on: $("tgSharp"), mix: $("sharpMix"), mixOut: $("sharpMixOut"),
+    img: $("scaleImg"), img2: $("lyImg"), move: $("scaleMove"), on: $("tgSharp"), mix: $("sharpMix"), mixOut: $("sharpMixOut"),
   };
   let layer = null;            // { key, hips } : the close-up overlay currently in Aladin
   let busy = false;
@@ -68,8 +68,9 @@ export function createCloseup({ A = null, al = null, state, pix2sky, size, onCha
   function wanted(dec, fov) {
     if (!enabled()) return { key: null, op: 0, could: false };
     const key = keyAt(dec, fov);
-    if (state.bg === "visible") {
-      // Default map: the sharp map takes over. Far south the DSS2 background already is the sharpest.
+    if (state.bg === "visible" || state.bg === "spherex") {
+      // Visible or SPHEREx map (the default; its 12.9" pixels turn into blocks up close): the sharp map takes over.
+      // Far south the DSS2 map, which is under the SPHEREx layer too, already is the sharpest.
       const could = key !== "visible";
       return { key: could ? key : null, op: could ? closeupRamp(fov) : 0, could };
     }
@@ -147,7 +148,7 @@ export function createCloseup({ A = null, al = null, state, pix2sky, size, onCha
     const wSharp = layer ? sharpOp : 0;
     const wSpx = spxOp * (1 - wSharp);
     const wBase = (1 - spxOp) * (1 - wSharp);
-    out.push({ key: state.bg, w: wBase });
+    out.push({ key: state.bg === "spherex" ? "visible" : state.bg, w: wBase });   // SPHEREx as the sky map: the visible map is under it
     if (wSpx > 0) out.push({ key: "spherex", w: wSpx });
     if (wSharp > 0) out.push({ key: layer.key, w: wSharp });
     const merged = new Map();
@@ -180,6 +181,7 @@ export function createCloseup({ A = null, al = null, state, pix2sky, size, onCha
     const txt = layers.map((l) => { const s = surveyInfo(l.key); return `${T("ex.cu.short." + l.key, null, s.short)} (${s.years})`; });
     const spxShown = layers.some((l) => l.key === "spherex");
     ui.img.textContent = T("ex.cu.image", { maps: txt.join(" + ") }) + (spxShown ? T("ex.cu.mapPx", { px: iLoc(SPHEREX_MAP_PIXEL_ARCSEC) }) : "");
+    if (ui.img2 && ui.img2.textContent !== ui.img.textContent) ui.img2.textContent = ui.img.textContent;   // phones: in Layers, not on the sky
 
     // Fast movers: the background image is from another year than our (2026) marker.
     const p = state.selected;

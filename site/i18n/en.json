@@ -321,6 +321,7 @@
  "ex.bg.spherex.t": "SPHEREx all-sky map (NASA, DR1)",
  "ex.layers": "Layers",
  "ex.mapset": "Map settings",
+ "ex.mapset.more": "More map settings",
  "ex.guide": "How to read a blink",
  "ex.ly.markers": "Place markers",
  "ex.ly.ecl": "Ecliptic (asteroid lane)",

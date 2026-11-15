@@ -42,7 +42,10 @@
     <button type="submit" data-i18n="ex.q.go">Go</button>
   </form>
   <div class="tools">
-    <button type="button" class="icon-btn ts-tourbtn" data-tour-start hidden data-i18n="tour.start">Guided tour</button>
+    <button type="button" class="icon-btn ts-tourbtn" data-tour-start hidden title="Guided tour" data-i18n-attr="title:tour.start">
+      <svg class="tb-ico" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5L8 5.5Z" fill="currentColor"/></svg>
+      <span class="lbl" data-i18n="tour.start">Guided tour</span>
+    </button>
     <button id="btnLayers" class="icon-btn" aria-expanded="false" aria-controls="layers" title="Map settings" data-i18n-attr="title:ex.mapset">
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 3 2 8l10 5 10-5-10-5Z M2 13l10 5 10-5 M2 17.5l10 5 10-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
       <span class="lbl" data-i18n="ex.mapset">Map settings</span>
@@ -80,8 +83,9 @@
     <span class="pf-name" data-i18n="ex.panel.h">Explore the sky</span>
     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </button>
+  <!-- Phones: the bottom sheet's handle; folded it is one thin line ("Explore the sky"), tap or pull to open. -->
   <button id="sheetToggle" class="sheet-handle" aria-expanded="false" aria-controls="panelBody">
-    <span class="grip" aria-hidden="true"></span><span class="sr-only" data-i18n="ex.sheet">Show or hide the place list</span>
+    <span class="grip" aria-hidden="true"></span><span class="sheet-l" aria-hidden="true" data-i18n="ex.panel.h">Explore the sky</span><span class="sr-only" data-i18n="ex.sheet">Show or hide the place list</span>
   </button>
   <div id="panelBody" class="panel-body">
     <h2 class="panel-title" data-i18n="ex.panel.h">Explore the sky</h2>
@@ -132,6 +136,9 @@
           <p class="star-say" id="starSay" data-i18n="ts.ex.rings">These rings are known catalogue stars; we use them to check that the tool measures correctly. What we look for is something with no ring that still moves between images.</p>
         </div>
       </div>
+      <!-- Phones: which map is on screen (the line under the scale bar on larger screens) and the rest of the map settings. -->
+      <p id="lyImg" class="ly-img" aria-live="off"></p>
+      <button type="button" id="btnMapMore" class="linkish ly-more" aria-controls="layers" data-i18n="ex.mapset.more">More map settings</button>
     </details>
     <p class="howto"><button type="button" id="btnGuide2" class="linkish" data-i18n="ex.howto">How do I read a blink?</button></p>
     <p class="credits-mini"><span data-i18n="ex.cm.a">SPHEREx data: NASA/IPAC IRSA · Sky viewer: Aladin Lite (CDS) ·</span>

@@ -57,6 +57,9 @@ let target = null;             // zoom or flight in progress: { fov, orders: {ke
 let view = { fov: 180, weights: {}, base: null };
 let installed = false;
 let realFetch = (...a) => window.fetch(...a);
+// Tiles Aladin has received ("m|order|pix|tail", tail = cube frame and extension): hasTile(), for prefetch.js coverage().
+const TILE_AT = /\/Norder(\d+)\/Dir\d+\/Npix(\d+)([^/]*)$/;
+const drawn = new Set();
 const stats = { asks: 0, memory: 0, joined: 0, later: 0, held: 0, prefetch: 0, stale: 0, rerouted: 0, retried: 0, hedged: 0, failed: 0, direct: 0 };
 
 function hostOf(url) { try { return new URL(url, location.href).host; } catch { return null; } }
@@ -271,7 +274,7 @@ function startImg(job, base) {
   const url = base == null ? job.url : base + job.path, host = hostOf(url);
   const free = hold(job, host, job.cls === NOW);
   const img = job.img;
-  img.addEventListener("load", () => { free(true); if (base != null) routed.set(job.id, base); finish(job, { ok: true }); }, { once: true });
+  img.addEventListener("load", () => { free(true); if (base != null) routed.set(job.id, base); markDrawn(job); finish(job, { ok: true }); }, { once: true });
   img.addEventListener("error", () => { free(false); if (base != null && !job.retried && job.m != null && maps[job.m].bases.length > 1) retry(job, host); else finish(job, { ok: false }); }, { once: true });
   job.setSrc(url);
 }
@@ -356,10 +359,18 @@ function finish(job, res) {
   } else if (jobs.get(job.id) === job) jobs.delete(job.id);
 }
 
+function markDrawn(job) {
+  const t = job.m != null && job.path ? job.path.match(TILE_AT) : null;
+  if (!t) return;
+  if (drawn.size > 50000) drawn.clear();
+  drawn.add(`${job.m}|${t[1]}|${t[2]}|${t[3]}`);
+}
+
 function deliver(job, w) {
   const r = job.res;
   if (!r) { w.retry(); return; }                                          // skipped prefetch: fetch it for this ask
   if (r.error || !r.blob) { w.reject(r.error || new TypeError("Failed to fetch")); return; }
+  if (r.ok) markDrawn(job);
   w.resolve(new Response(r.blob, { status: r.status, statusText: r.statusText, headers: r.headers }));
 }
 
@@ -482,6 +493,16 @@ export function busy() {
   if (queue.some((j) => j.cls === NOW)) return true;
   for (const j of jobs.values()) if (j.state === "loading" && j.cls === NOW) return true;
   return false;
+}
+
+/**
+ * True when Aladin has received tile (order, pix) of map `key` (tail: what follows the pixel number in the file name,
+ * e.g. "_42.png" for frame 42 of a cube). prefetch.js coverage() uses it; null when the queue is off (?tq=0).
+ */
+export function hasTile(key, order, pix, tail) {
+  if (!installed) return null;
+  const m = maps.findIndex((x) => x.key === key);
+  return m >= 0 && drawn.has(`${m}|${order}|${pix}|${tail}`);
 }
 
 /** For tests: queue state. */

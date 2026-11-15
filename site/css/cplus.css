@@ -165,6 +165,8 @@ html.ts-cp .ts-tech > #tsG > .ts-h { display: none; }
   html.ts-cp .ts-cols .ts-seas, html.ts-cp .ts-cols .ts-cbar, html.ts-cp .ts-cols .ts-save, html.ts-cp .ts-cols .ts-bins, html.ts-cp .ts-cols #tsVdBar .vd { margin: 0; }
   html.ts-cp .ts-tabs { margin: 8px 0 0; }
   html.ts-cp .ts-pic { width: 100%; }
+  /* the items of the one column never get wider than it (the tab row was 399 px on a 360 px phone) */
+  html.ts-cp .ts-cols > *, html.ts-cp .ts-lcard > *, html.ts-cp .ts-rpanel > * { min-width: 0; max-width: 100%; }
 }
 @media (max-width: 640px) {
   html.ts-cp #tsA.ts-pt { padding: 10px 12px; gap: 6px 8px; }
