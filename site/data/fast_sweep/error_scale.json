@@ -1,0 +1,79 @@
+{
+ "what": "One multiplier k for the 2-D error bars of the fast-star sweep (test V12), from the 86 measured stars",
+ "added": "2026-11-15, after the fast-star sweep (extra information; no test was re-graded)",
+ "status_note": "V12 keeps its status: its rule (every measured star within 3 sigma) is applied to the raw error bars. k is extra information.",
+ "source": "site/data/fast_sweep/stars.csv",
+ "code": "pipeline/extra_checks.py errscale",
+ "repo_head_when_built": "1ebd6dd",
+ "built": "2026-11-15T08:56:18Z",
+ "n": 86,
+ "method": "k = sqrt(mean chi2 / 2) = RMS of the 2n normalised pull components (chi2/dof, 2 dof per star); chi2 = (dE/eE)^2 + (dN/eN)^2 (rho_EN = 0 in every fit); +- = 16-84 % bootstrap over the stars",
+ "k": 1.371,
+ "k_err": 0.128,
+ "k_ci68": [
+  1.235,
+  1.492
+ ],
+ "bootstrap": {
+  "n": 10000,
+  "seed": 20261115
+ },
+ "mean_chi2": 3.759,
+ "median_chi2": 1.397,
+ "expected_within_1_2_3sigma": [
+  58.7,
+  82.0,
+  85.7
+ ],
+ "raw_within_1_2_3sigma": [
+  52,
+  72,
+  81
+ ],
+ "scaled_within_1_2_3sigma": [
+  63,
+  81,
+  83
+ ],
+ "scaled_within_at_k_ci68": [
+  [
+   62,
+   78,
+   83
+  ],
+  [
+   68,
+   82,
+   84
+  ]
+ ],
+ "outside_3sigma_raw": 5,
+ "outside_3sigma_scaled": 3,
+ "k_from_median_chi2": 1.004,
+ "k_from_median_chi2_ci68": [
+  0.952,
+  1.164
+ ],
+ "k_needed_per_level": {
+  "1sigma": 1.13,
+  "2sigma": 1.65,
+  "3sigma": 1.94
+ },
+ "median_error_arcsec_yr_per_axis": {
+  "raw": 0.1286,
+  "scaled": 0.1763
+ },
+ "largest_chi2": [
+  11.86,
+  16.81,
+  23.28,
+  32.2,
+  44.68
+ ],
+ "barnard": {
+  "speed_arcsec_yr": 10.3681,
+  "err_raw": 0.1202,
+  "err_scaled": 0.1648,
+  "gaia": 10.3934
+ }
+}

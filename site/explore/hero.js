@@ -1,7 +1,8 @@
 // Opening hero of the Sky Explorer: one question and answer, a small looping blink of Barnard's Star
 // one year apart, four numbers from our own measurement, and one button into the sky.
 //
-// Every number is read from data/barnard/meta.json (pipeline output); nothing is hard-coded.
+// Every number is read from data/barnard/meta.json (pipeline output); nothing is hard-coded. The evidence line under
+// the four numbers comes from js/verify_line.js (data/fast_sweep/summary.json, data/verify/tests.json).
 // Shown once per viewer: dismissal is remembered in localStorage (if storage is blocked, it simply
 // shows again next time). On a first visit the opening demo (explore/demo.js) runs first and ends on this
 // card; with prefers-reduced-motion only the card is shown. Not shown for links that already say where to look (?ra=&dec=, ?p=, ?q=, layer
@@ -10,6 +11,7 @@
 // Hook in explore.html: <script type="module" src="explore/hero.js"></script>. Independent of main.js.
 
 import { t, onLang, lang, langButton } from "../js/i18n.js";
+import { fillLine } from "../js/verify_line.js";   // also puts the line under the "Evidence" card of the panel
 
 const DATA = "data/barnard/";
 const KEY = "fz-hero-dismissed";
@@ -125,6 +127,7 @@ function render(meta) {
             <small>${esc(t("hero.card.measured"))}, ${esc(t("hero.card.measuredSub", { from: month(n.from), to: month(n.to) }))}</small></li>
           <li class="gaia"><b>${esc(n.pm && n.pm.p != null ? arcsec(n.pm.p) + "/" + t("gr.yr") : arcsec(n.gaia))}</b><small data-i18n="hero.card.gaia">${esc(t("hero.card.gaia"))}</small></li>
         </ul>
+        <p class="vl-line fz-ver" id="fzVer" hidden></p>
         <div class="fz-actions">
           <button type="button" class="fz-go" data-close autofocus><span data-i18n="hero.explore">${esc(t("hero.explore"))}</span>
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -145,6 +148,7 @@ function render(meta) {
         <button type="button" class="fz-pp" aria-pressed="${!playing}">${esc(playing ? t("hero.pause") : t("hero.play"))}</button></figcaption></figure>` : ""}
     </div>`;
   dlg.querySelector(".fz-x").after(langButton("fz-lang"));
+  fillLine(dlg.querySelector("#fzVer"), "short");
   for (const b of dlg.querySelectorAll("[data-close]")) b.addEventListener("click", () => dlg.close("explore"));
   const s = dlg.querySelector(".fz-blinkbox svg");
   const pp = dlg.querySelector(".fz-pp");

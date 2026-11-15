@@ -179,6 +179,36 @@ Failures (stay in the table):
 - VARIANCE and ZODI are not read (synthetic, as in local/quick.py); per-exposure weights are therefore uniform.
 - The sweep process grows ~250 MB per star (not in the launcher; not investigated in the frozen code).
 
+## Added after the sweep (2026-11-15): one error-bar multiplier k
+
+Not part of the pre-registered rule and not a re-grade: V12 keeps its status, because its rule is applied to the
+raw error bars. This only asks how much larger one common factor would have to make the errors.
+Code: `python3 -I pipeline/extra_checks.py errscale` (standard library) on `stars.csv`; output
+`site/data/fast_sweep/error_scale.json`.
+
+- chi2 per star = (dE/eE)^2 + (dN/eN)^2 from the table's measured and Gaia motions and errors. This is the 2-D chi2
+  of `fast_sweep.py compare()`, because the fitted E/N correlation is 0 for all 86 stars (|rho_EN| < 1e-15 in the
+  run outputs); the recomputed 1 / 2 / 3 sigma counts equal the table's flags (52 / 72 / 81).
+- Method: **k = sqrt(mean chi2 / 2)**, the RMS of the 172 normalised pull components (chi2/dof with 2 dof per star).
+  The +- is the 16-84 % range of a bootstrap over the stars (10,000 resamples, seed 20261115).
+- Result: **k = 1.37 +- 0.13** (68 %: 1.24-1.49); mean chi2 3.76, median chi2 1.40.
+- Within 1 / 2 / 3 sigma, 86 stars:
+
+| error bars | 1 sigma | 2 sigma | 3 sigma |
+|---|---|---|---|
+| expected for correct errors | 58.7 | 82.0 | 85.7 |
+| raw (as in V12) | 52 | 72 | 81 |
+| scaled by k = 1.37 | 63 | 81 | 83 |
+| scaled by k = 1.24 / 1.49 (68 % range) | 62 / 68 | 78 / 82 | 83 / 84 |
+
+- Median error per axis: 0.129"/yr raw, 0.176"/yr scaled. Barnard's Star: 10.368 +- 0.120"/yr raw, +- 0.165 scaled
+  (Gaia 10.393).
+- What it shows: one factor does not describe these errors. The k that brings the 2-sigma count to its expected
+  value (1.37) makes the 1-sigma count too high (63 against 59) and still leaves 3 stars beyond 3 sigma (HD 132142,
+  Ross 578, LAWD 37: the dof = 0 fit and the two ~22 % slow stars of "Limits"). The k each level would need on its
+  own: 1.13 (1 sigma), 1.65 (2 sigma), 1.94 (3 sigma); from the median chi2 alone k = 1.00 (68 %: 0.95-1.16).
+  The core of the distribution is right and the tail is heavy, as stated in the results above.
+
 ## Two-line summary for the evidence page
 
 EN: We measured the motion of 86 of a pre-registered list of 90 fast stars in real SPHEREx images with one fixed

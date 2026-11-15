@@ -1,0 +1,85 @@
+{
+ "what": "Field-star offsets from Gaia DR3 after the Gaia alignment of pipeline/blink.py, per exposure",
+ "added": "2026-11-15, after the fast-star sweep (extra information; no test was re-graded)",
+ "target": "Barnard's Star",
+ "source": "cache/jobs/barnard-local/field_stars.csv",
+ "source_note": "field_stars.csv of a local engine run of blink.py; its per-exposure corrections (images.csv calib_east/north_arcsec) equal those of site/data/barnard/images.csv for all 358 exposures",
+ "code": "pipeline/extra_checks.py align",
+ "repo_head_when_built": "1ebd6dd",
+ "built": "2026-11-15T08:54:35Z",
+ "method": "offset = measured - Gaia - applied correction, per reference star with status 'used'; per exposure the median offset (E, N) and the star-to-star scatter sqrt((sE^2+sN^2)/2), s = 1.4826 MAD (>= 5 stars). Columns: median of the per-exposure medians (E, N); median and 90th percentile of the per-exposure offset length; median of the per-exposure scatter",
+ "pixel_arcsec": 6.2,
+ "stars_used": 12425,
+ "table": [
+  {
+   "group": "D1",
+   "exposures": 60,
+   "stars_per_exposure_median": 50.0,
+   "median_E_arcsec": 0.009,
+   "median_N_arcsec": 0.003,
+   "offset_median_arcsec": 0.095,
+   "offset_p90_arcsec": 0.201,
+   "scatter_median_arcsec_per_axis": 0.223
+  },
+  {
+   "group": "D2",
+   "exposures": 61,
+   "stars_per_exposure_median": 58,
+   "median_E_arcsec": 0.008,
+   "median_N_arcsec": 0.008,
+   "offset_median_arcsec": 0.086,
+   "offset_p90_arcsec": 0.188,
+   "scatter_median_arcsec_per_axis": 0.246
+  },
+  {
+   "group": "D3",
+   "exposures": 59,
+   "stars_per_exposure_median": 51,
+   "median_E_arcsec": 0.0,
+   "median_N_arcsec": 0.002,
+   "offset_median_arcsec": 0.192,
+   "offset_p90_arcsec": 0.37,
+   "scatter_median_arcsec_per_axis": 0.264
+  },
+  {
+   "group": "D4",
+   "exposures": 59,
+   "stars_per_exposure_median": 31,
+   "median_E_arcsec": -0.012,
+   "median_N_arcsec": 0.01,
+   "offset_median_arcsec": 0.114,
+   "offset_p90_arcsec": 0.226,
+   "scatter_median_arcsec_per_axis": 0.216
+  },
+  {
+   "group": "D5",
+   "exposures": 61,
+   "stars_per_exposure_median": 10,
+   "median_E_arcsec": 0.005,
+   "median_N_arcsec": -0.007,
+   "offset_median_arcsec": 0.101,
+   "offset_p90_arcsec": 0.161,
+   "scatter_median_arcsec_per_axis": 0.147
+  },
+  {
+   "group": "D6",
+   "exposures": 58,
+   "stars_per_exposure_median": 9.0,
+   "median_E_arcsec": 0.019,
+   "median_N_arcsec": 0.003,
+   "offset_median_arcsec": 0.111,
+   "offset_p90_arcsec": 0.254,
+   "scatter_median_arcsec_per_axis": 0.176
+  },
+  {
+   "group": "all",
+   "exposures": 358,
+   "stars_per_exposure_median": 38.0,
+   "median_E_arcsec": 0.004,
+   "median_N_arcsec": 0.003,
+   "offset_median_arcsec": 0.106,
+   "offset_p90_arcsec": 0.246,
+   "scatter_median_arcsec_per_axis": 0.218
+  }
+ ]
+}

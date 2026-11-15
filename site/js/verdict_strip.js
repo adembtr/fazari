@@ -12,6 +12,7 @@ import { t, lang, loc, month, onLang } from "./i18n.js";
 import * as GR from "./gr.js";
 import { plainSentence } from "./explain.js";
 import { answerText } from "./bins_bar.js";
+import "./verify_line.js";   // the "how we checked this method" line at the end of the Verdict tab
 
 const $ = (id) => document.getElementById(id);
 const H = document.documentElement;

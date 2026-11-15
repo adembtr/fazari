@@ -4,7 +4,7 @@
 // Nothing here is hard-coded per test: a new tests.json after a re-test updates the page with no code change.
 // A field missing from tests.json is simply not shown. Labels: site/i18n/{en,tr}.json keys "vf.*".
 
-import { t, lang, num, onLang, apply } from "./i18n.js";
+import { t, lang, num, onLang, apply, tname } from "./i18n.js";
 
 const BOX_ID = "vfBox";
 const SRC = "data/verify/tests.json";
@@ -67,6 +67,7 @@ function style() {
 #tests .vf-short b { color: #ff9a5a; font-weight: 700; }
 #tests .vf-item.fail .vf-mean b { color: #ff9a5a; }
 #tests .res.other { background: rgba(169, 179, 201, .08); color: var(--soft); border: 1px solid var(--line); }
+#tests .vfx { color: var(--fg); font-size: 14.5px; border-left: 2px solid var(--line); padding-left: 10px; }
 `;
   document.head.append(s);
 }
@@ -178,6 +179,53 @@ function shuffleLine() {
   p.hidden = false;
 }
 
+// ------------------------------------------------------------------------------------------------ added after the tests
+// Three checks added on 2026-11-15 from data already on disk (pipeline/extra_checks.py; nothing re-graded):
+//   data/fast_sweep/error_scale.json    one error-bar multiplier k for V12 (pipeline/FAST_SWEEP.md)
+//   data/wise0855/w2_check.json         WISE 0855-0714: SPHEREx flux in the W2 band vs AllWISE (pipeline/FAINT.md)
+//   data/verify/align_residuals.json    field-star residuals after the Gaia alignment (pipeline/ASTROMETRY.md)
+// Labels "vfx.*". A missing file shows nothing.
+const EXTRA = { k: "data/fast_sweep/error_scale.json", w2: "data/wise0855/w2_check.json", align: "data/verify/align_residuals.json" };
+let XK = null, XW2 = null, XAL = null;
+async function loadExtra() {
+  const get = (u) => fetch(u, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  [XK, XW2, XAL] = await Promise.all([get(EXTRA.k), get(EXTRA.w2), get(EXTRA.align)]);
+}
+const isSweep = (x) => /fast_sweep\/stars\.csv$/.test(x?.evidence || "");
+const isW0855 = (x) => /0855/.test(x?.title?.en || "");
+function kLine() {
+  const k = XK, f = (v, d) => num(+v, d);
+  if (!k || !(k.k > 0) || !Array.isArray(k.scaled_within_1_2_3sigma) || !k.median_error_arcsec_yr_per_axis) return "";
+  const [s1, s2, s3] = k.scaled_within_1_2_3sigma, [r1, r2, r3] = k.raw_within_1_2_3sigma || [], [x1, x2, x3] = k.expected_within_1_2_3sigma || [];
+  return `<p class="vf-res vfx">${esc(t("vfx.k", { k: f(k.k, 2), ke: f(k.k_err, 2), n: f(k.n, 0), yr: t("gr.yr"),
+    e0: f(k.median_error_arcsec_yr_per_axis.raw, 2), e1: f(k.median_error_arcsec_yr_per_axis.scaled, 2),
+    s1: f(s1, 0), s2: f(s2, 0), s3: f(s3, 0), r1: f(r1, 0), r2: f(r2, 0), r3: f(r3, 0), x1: f(x1, 0), x2: f(x2, 0), x3: f(x3, 0),
+    o: f(k.outside_3sigma_scaled, 0), km: f(k.k_from_median_chi2, 2) }))}
+    <a href="${EXTRA.k}" download="error_scale.json">error_scale.json ↓</a></p>`;
+}
+function w2Line() {
+  const w = XW2, f = (v, d) => num(+v, d);
+  if (!w || !w.spherex || !w.allwise || w.diff_mag == null) return "";
+  const d = +w.diff_mag, fainter = d > 0;
+  return `<p class="vf-res vfx">${esc(t("vfx.w2", { a: f(w.band_um[0], 1), b: f(w.band_um[1], 1), f: f(w.spherex.flux_ujy, 0), fe: f(w.spherex.flux_err_ujy, 0),
+    m: f(w.spherex.w2_vega_mag, 2), me: f(w.spherex.w2_vega_mag_err, 2), w: f(w.allwise.w2mpro, 2), we: f(w.allwise.w2sigmpro, 2),
+    d: f(Math.abs(d), 2), de: f(w.diff_mag_err, 2), dir: t(fainter ? "vfx.w2.fainter" : "vfx.w2.brighter"),
+    r: f(Math.abs(1 - w.flux_ratio_spherex_over_allwise) * 100, 0), more: t(fainter ? "vfx.w2.less" : "vfx.w2.more"), s: f(Math.abs(w.diff_sigma), 1) }))}
+    <a href="${EXTRA.w2}" download="w2_check.json">w2_check.json ↓</a></p>`;
+}
+/** Line under the measurement table (#vAlign in verify.html). */
+function alignLine() {
+  const p = document.getElementById("vAlign");
+  if (!p) return;
+  const a = XAL, all = a && Array.isArray(a.table) ? a.table.find((r) => r.group === "all") : null;
+  if (!all) { p.hidden = true; return; }
+  const sg = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + num(Math.abs(v), 3);
+  p.innerHTML = `${esc(t("vfx.align", { target: tname(a.target || ""), n: num(all.exposures), e: sg(all.median_E_arcsec), nn: sg(all.median_N_arcsec),
+    o: num(all.offset_median_arcsec, 2), p: num(all.offset_p90_arcsec, 2), s: num(all.scatter_median_arcsec_per_axis, 2), px: num(a.pixel_arcsec, 1) }))}
+    <a href="${EXTRA.align}" download="align_residuals.json">align_residuals.json ↓</a>`;
+  p.hidden = false;
+}
+
 // ------------------------------------------------------------------------------------------------ one test
 function item(x) {
   const k = stKey(x.status);
@@ -223,6 +271,7 @@ function item(x) {
     ${sf ? `<p class="vf-short">${esc(t("gr.vf.tested"))} ${esc(sf.what)} · <b>${esc(t("gr.vf.short"))}</b> ${esc(sf.short)}</p>` : ""}
     ${res ? `<p class="vf-res">${esc(res)}</p>` : ""}
     ${x === (DATA?.tests || []).find((y) => /barnard/i.test(y?.title?.en || "")) ? bandsLine() : ""}
+    ${isSweep(x) ? kLine() : ""}${isW0855(x) ? w2Line() : ""}
     ${mean}
     ${ev || more ? `<p class="vf-foot">${ev ? `<a href="${esc(ev)}" download="${esc(evName)}">${esc(t("vf.evidence"))}: ${esc(evName)} ↓</a>` : ""}${more ? `<button type="button" class="vf-mt" aria-controls="vfm-${esc(x.id)}" aria-expanded="${isDetailed()}">${esc(t("vf.more"))}</button>` : ""}</p>` : ""}
     ${more}
@@ -285,6 +334,7 @@ function render() {
   const box = document.getElementById(BOX_ID);
   if (!box) return;
   shuffleLine();
+  alignLine();
   if (!DATA || !Array.isArray(DATA.tests) || !DATA.tests.length) {
     box.innerHTML = `<p class="fine">${esc(t("vf.missing"))}</p>`;
     return;
@@ -322,6 +372,7 @@ async function main() {
     DATA = r.ok ? await r.json() : null;
   } catch (e) { DATA = null; }
   BROWS = await loadBands();
+  await loadExtra();
   render();
   onLang(() => render());
   document.addEventListener("fazari:ui-mode", () => {

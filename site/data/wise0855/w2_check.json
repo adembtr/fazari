@@ -1,0 +1,184 @@
+{
+ "what": "WISE 0855-0714: SPHEREx flux averaged over the WISE W2 band, as a W2 magnitude, against the AllWISE catalogue",
+ "added": "2026-11-15, after the fast-star sweep (extra information; no test was re-graded)",
+ "source": "site/data/wise0855/spectrum.json (binned spectrum, pipeline/spectrum.py)",
+ "code": "pipeline/extra_checks.py w2",
+ "repo_head_when_built": "1ebd6dd",
+ "built": "2026-11-15T08:54:35Z",
+ "band_um": [
+  4.0,
+  5.0
+ ],
+ "band_note": "top-hat over the SPHEREx bins inside 4.0-5.0 um (W2 response ~4.0-5.2 um; SPHEREx stops at 5.0 um; the 4.41-4.42 um gap between detectors D5 and D6 is left out of both sums); photon-counting weights; seasons pooled per bin",
+ "covered_fraction_of_band_ln": 0.99,
+ "zero_point": {
+  "lambda_iso_um": 4.6028,
+  "F0_jy": 171.787,
+  "F0_err_jy": 2.516,
+  "ref": "Wright et al. 2010, AJ 140, 1868; Jarrett et al. 2011, ApJ 735, 112 (nu^-2 calibration spectrum)"
+ },
+ "spherex": {
+  "flux_ujy": 493.3,
+  "flux_err_ujy": 23.4,
+  "w2_vega_mag": 13.855,
+  "w2_vega_mag_err": 0.052,
+  "n_bins": 11,
+  "seasons": [
+   "2025-05",
+   "2025-11",
+   "2026-05"
+  ],
+  "flux_ujy_energy_counting": 494.9
+ },
+ "allwise": {
+  "designation": "J085510.74-071442.5",
+  "ra": 133.7947597,
+  "dec": -7.2451456,
+  "w2mpro": 13.704,
+  "w2sigmpro": 0.033,
+  "w2snr": 32.4,
+  "ph_qual": "AABU",
+  "cc_flags": "0000",
+  "nb": 1,
+  "w2mjdmean": 55412.33,
+  "source": "AllWISE Source Catalog (Cutri et al. 2013, IRSA, doi:10.26131/IRSA1), Gator cone search 2026-11-15"
+ },
+ "allwise_flux_ujy": 566.7,
+ "diff_mag": 0.151,
+ "diff_mag_err": 0.061,
+ "diff_sigma": 2.46,
+ "flux_ratio_spherex_over_allwise": 0.87,
+ "flux_scale_check": "spectrum.json caveat: two unsaturated field stars agree with 2MASS and AllWISE W1/W2 to 0.93-1.06 (about +-6 %, not included in the +- above)",
+ "caveats": [
+  "AllWISE is from 2010 (mean W2 epoch MJD 55412), SPHEREx from 2025-2026; the object is known to vary at 4.5 um by a few per cent",
+  "the W2 response is replaced by a top-hat; the 5.0-5.2 um part of W2 is not seen by SPHEREx"
+ ],
+ "bins": [
+  {
+   "detector": "D5",
+   "lam_lo_um": 3.921,
+   "lam_hi_um": 4.014,
+   "seasons": [
+    "2025-11",
+    "2026-05"
+   ],
+   "flux_ujy": 144.2,
+   "flux_err_ujy": 32.8
+  },
+  {
+   "detector": "D5",
+   "lam_lo_um": 4.014,
+   "lam_hi_um": 4.11,
+   "seasons": [
+    "2025-05",
+    "2025-11"
+   ],
+   "flux_ujy": 217.2,
+   "flux_err_ujy": 33.6
+  },
+  {
+   "detector": "D5",
+   "lam_lo_um": 4.11,
+   "lam_hi_um": 4.208,
+   "seasons": [
+    "2025-05",
+    "2025-11",
+    "2026-05"
+   ],
+   "flux_ujy": 396.0,
+   "flux_err_ujy": 34.6
+  },
+  {
+   "detector": "D5",
+   "lam_lo_um": 4.208,
+   "lam_hi_um": 4.308,
+   "seasons": [
+    "2025-05",
+    "2025-11",
+    "2026-05"
+   ],
+   "flux_ujy": 506.3,
+   "flux_err_ujy": 38.0
+  },
+  {
+   "detector": "D5",
+   "lam_lo_um": 4.308,
+   "lam_hi_um": 4.41,
+   "seasons": [
+    "2025-05",
+    "2025-11",
+    "2026-05"
+   ],
+   "flux_ujy": 585.8,
+   "flux_err_ujy": 44.4
+  },
+  {
+   "detector": "D6",
+   "lam_lo_um": 4.42,
+   "lam_hi_um": 4.512,
+   "seasons": [
+    "2025-11",
+    "2026-05"
+   ],
+   "flux_ujy": 612.0,
+   "flux_err_ujy": 144.5
+  },
+  {
+   "detector": "D6",
+   "lam_lo_um": 4.512,
+   "lam_hi_um": 4.605,
+   "seasons": [
+    "2025-11",
+    "2026-05"
+   ],
+   "flux_ujy": 628.8,
+   "flux_err_ujy": 71.9
+  },
+  {
+   "detector": "D6",
+   "lam_lo_um": 4.605,
+   "lam_hi_um": 4.701,
+   "seasons": [
+    "2025-11",
+    "2026-05"
+   ],
+   "flux_ujy": 604.4,
+   "flux_err_ujy": 70.6
+  },
+  {
+   "detector": "D6",
+   "lam_lo_um": 4.701,
+   "lam_hi_um": 4.799,
+   "seasons": [
+    "2025-11",
+    "2026-05"
+   ],
+   "flux_ujy": 552.1,
+   "flux_err_ujy": 91.1
+  },
+  {
+   "detector": "D6",
+   "lam_lo_um": 4.799,
+   "lam_hi_um": 4.898,
+   "seasons": [
+    "2025-05",
+    "2025-11",
+    "2026-05"
+   ],
+   "flux_ujy": 400.2,
+   "flux_err_ujy": 61.7
+  },
+  {
+   "detector": "D6",
+   "lam_lo_um": 4.898,
+   "lam_hi_um": 5.0,
+   "seasons": [
+    "2025-05",
+    "2025-11",
+    "2026-05"
+   ],
+   "flux_ujy": 277.4,
+   "flux_err_ujy": 81.5
+  }
+ ]
+}

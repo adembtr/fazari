@@ -140,6 +140,36 @@ Barnard's Star shows why this matters.
   in that solution). The measured - Gaia offset of about +0.25 arcsec E, -0.5 arcsec N is the
   same before and after the field-star calibration.
 
+## Residuals after the alignment, per exposure (added 2026-11-15)
+
+How well do the reference stars sit on Gaia DR3 once the correction is applied? Barnard's Star, all 358 exposures,
+from the `field_stars.csv` export (below) of a local engine run (`cache/jobs/barnard-local/`, not in the repository;
+its per-exposure corrections in `images.csv` are identical to those of `site/data/barnard/images.csv`). No new run:
+`python3 -I pipeline/extra_checks.py align --field-stars <field_stars.csv>` -> `site/data/verify/align_residuals.json`.
+
+- Offset of a star = `east/north_arcsec - calib_east/north_arcsec` (measured - Gaia - applied correction), for the
+  12,425 rows with status `used` (clipped stars included).
+- Per exposure: the median offset (E, N) and the star-to-star scatter sqrt((sE^2 + sN^2) / 2), s = 1.4826 MAD
+  (exposures with >= 5 stars). The table gives, per detector, the median of the per-exposure medians, the median and
+  90th percentile of the per-exposure offset length, and the median per-exposure scatter. 1 pixel = 6.2".
+
+| detector | exposures | stars per exposure (median) | median E | median N | per-exposure offset, median | per-exposure offset, P90 | scatter per axis |
+|---|---|---|---|---|---|---|---|
+| D1 | 60 | 50 | +0.009" | +0.003" | 0.095" | 0.201" | 0.223" |
+| D2 | 61 | 58 | +0.008" | +0.008" | 0.086" | 0.188" | 0.246" |
+| D3 | 59 | 51 | +0.000" | +0.002" | 0.192" | 0.370" | 0.264" |
+| D4 | 59 | 31 | -0.012" | +0.010" | 0.114" | 0.226" | 0.216" |
+| D5 | 61 | 10 | +0.005" | -0.007" | 0.101" | 0.161" | 0.147" |
+| D6 | 58 | 9 | +0.019" | +0.003" | 0.111" | 0.254" | 0.176" |
+| all | 358 | 38 | +0.004" | +0.003" | 0.106" | 0.246" | 0.218" |
+
+- One number: after the alignment the field stars sit on Gaia to **+0.004" E, +0.003" N** (median over 358
+  exposures). The correction is one value per season x detector cell, so a single exposure keeps its own WCS
+  jitter: **0.11" median, 0.25" at the 90th percentile** (0.02-0.04 px). Within one exposure the stars scatter
+  0.22" per axis (centroid noise, catalogue and blend errors).
+- D3 has twice the per-exposure jitter of the others (0.19"); not investigated.
+- One target only (the other site targets have no field_stars.csv export on disk).
+
 ## Per-star export: field_stars.csv
 
 Format final (2026-11-14). Column names and meanings below are fixed; new columns are only

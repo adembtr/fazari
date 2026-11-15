@@ -266,6 +266,30 @@ The remaining candidates are weak (6–10σ) and most sit at the edge of the tri
 injection tests give ~0.5–1 such field peak per 0.15° field that is not a static residual. They
 are listed for follow-up only.
 
+### WISE 0855−0714: SPHEREx flux against AllWISE W2 (added 2026-11-15, after the tests)
+
+A brightness check of the faint target with data already in the repository: the binned spectrum of
+`pipeline/spectrum.py` (`site/data/wise0855/spectrum.json`), no new download or fit.
+`python3 -I pipeline/extra_checks.py w2` -> `site/data/wise0855/w2_check.json`.
+
+- Band: the W2 response (~4.0–5.2 µm) is replaced by a flat band over the SPHEREx bins inside
+  4.0–5.0 µm (SPHEREx stops at 5.0 µm; the 4.41–4.42 µm gap between D5 and D6 is left out). The three
+  seasons are pooled per bin (inverse-variance mean, error × sqrt(chi2r) when they disagree): 11 bins (the
+  3.92–4.01 µm bin only with its part above 4.0 µm), 144–629 µJy, peak at 4.5 µm.
+- W2-equivalent flux: the flux density at λ_iso = 4.6028 µm of a ν^-2 source that gives the same
+  photon count, F = Σ F_i ln(b_i/a_i) / Σ (b_i² − a_i²) / (2 λ_iso²); W2 = −2.5 log10(F / 171.787 Jy)
+  (zero point and λ_iso: Wright et al. 2010; Jarrett et al. 2011). Energy-counting weights change F by
+  < 1 % (495 instead of 493 µJy).
+- SPHEREx: **493 ± 23 µJy, W2 = 13.86 ± 0.05** (statistical only).
+- AllWISE Source Catalog (Cutri et al. 2013), J085510.74−071442.5, the only source within 15″ of the
+  2010 position (IRSA Gator, 2026-11-15): **W2 = 13.704 ± 0.033** (567 µJy), ph_qual A, cc_flags 0, nb 1,
+  mean W2 epoch MJD 55412 (2010).
+- Difference: SPHEREx is **0.15 ± 0.06 mag fainter** (13 % less flux, 2.5σ on the statistical errors).
+  Not included: the ±6 % flux scale of the spectrum (two field stars agree with 2MASS and AllWISE to
+  0.93–1.06; within that the difference is ~1.7σ), the flat-band approximation, the unseen 5.0–5.2 µm
+  part of W2, and 15 years between the two epochs for an object reported to vary by a few per cent at
+  4.5 µm. We do not explain the 13 % yet.
+
 ## Limits and open issues
 
 - **Motion accuracy**: positions are found reliably, motions only to ~2–3"/yr (faint) and up to
