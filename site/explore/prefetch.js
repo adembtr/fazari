@@ -269,5 +269,19 @@ export function createPrefetch({ al, size, weights, base = () => "visible", fram
     return n ? ok / n : null;
   }
 
-  return { toward, view, viewChanged, progress, coverage, tileOrder };
+  /** Pre-warm the tiles of the view on screen of maps not shown yet (keys), behind everything else. */
+  let layerSig = "";
+  function warmLayers(keys) {
+    const [w, h] = size();
+    if (!w || !keys.length) return;
+    const fov = al.getFov()[0];
+    const [ra0, dec0] = al.getRaDec();
+    const sig = `${keys.join()} ${ra0.toFixed(3)} ${dec0.toFixed(3)} ${fov.toPrecision(3)}`;
+    if (sig === layerSig) return;
+    layerSig = sig;
+    const map = (px, py) => { try { const q = al.pix2world(px, py); return q && Number.isFinite(q[0]) ? q : null; } catch { return null; } };
+    fetchView(samples(map, w, h, w / 2, h / 2), fov, Object.fromEntries(keys.map((k) => [k, 1])), SOON, keys.length > 1 ? 8 : MAX_TILES);   // all maps: the middle of the view
+  }
+
+  return { toward, view, viewChanged, progress, coverage, tileOrder, warmLayers };
 }

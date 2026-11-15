@@ -239,6 +239,9 @@ async function startSky() {
     }
     preloadSpherex();
     if (BG_START !== "visible" && BG_START !== "spherex") setBackground(BG_START, { quiet: true });   // SPHEREx: preloadSpherex()
+    // Which server answers for each sky map, found while nothing else loads (a "properties" file each): a switch later
+    // starts on its tiles at once instead of first waiting for this (ESA answered in ~4 s at times, Nov 15 2026).
+    setTimeout(() => { for (const k of Object.keys(SURVEYS)) surveyUrl(k).catch(() => {}); }, 4000);
   } catch (e) {
     console.warn("3D sky failed, switching to the flat map", e);
     if (state.al) return;              // the sky is up; a later step failed, keep it
@@ -741,6 +744,7 @@ function updateSpherexFade(fov) {
  * in); the other maps replace the base layer. quiet: the opening switch to the default or remembered map (no toast;
  * if it fails the visible map simply stays).
  */
+const SWITCH_WAIT_MS = 8000;
 async function setBackground(key, { quiet = false } = {}) {
   if (!state.al) return;
   const btn = $("bg-" + key);
@@ -758,7 +762,17 @@ async function setBackground(key, { quiet = false } = {}) {
     } else {
       const h = await getHips(key);
       if (state.bg !== key) return;
-      if (state.al.getBaseImageLayer()?.name !== SURVEYS[key].title) state.al.setBaseImageLayer(h);   // from SPHEREx to visible: already there
+      if (state.al.getBaseImageLayer()?.name !== SURVEYS[key].title) {
+        // The map on screen stays until the new map's tiles of this view are in memory (at most SWITCH_WAIT_MS), then
+        // the switch: Aladin drops the old map's picture at once, so switching first left the sky blank while the new
+        // tiles came in (2MASS at 18 deg: 10-20 s on a slow line, Nov 15 2026).
+        for (const t0 = performance.now(); state.prefetch && performance.now() - t0 < SWITCH_WAIT_MS;) {
+          if (state.prefetch.progress(key) >= 0.95) break;
+          await new Promise((r) => setTimeout(r, 150));
+          if (state.bg !== key) return;
+        }
+        state.al.setBaseImageLayer(h);   // from SPHEREx to visible: already there
+      }
     }
     if (!quiet) toast(`${T(`ex.sv.${key}.title`, null, SURVEYS[key].title)}: ${T(`ex.sv.${key}.blurb`, null, SURVEYS[key].blurb)}`);
   } catch (e) {
@@ -1457,7 +1471,13 @@ function wireUi() {
   for (const ex of document.querySelectorAll("[data-example]")) {
     ex.addEventListener("click", () => { $("q").value = ex.dataset.example; runSearch(ex.dataset.example); });
   }
+  // A map button pointed at or focused, or the Layers box opened: that map's tiles of this view start loading
+  // (behind everything on screen), so a switch does not start from a blank sky.
+  const warm = (keys) => { const k = keys.filter((x) => x !== state.bg); if (k.length) state.prefetch?.warmLayers(k); };
+  $("layersBox")?.addEventListener("toggle", () => { if ($("layersBox").open) warm(Object.keys(SURVEYS)); });
+  $("btnLayers").addEventListener("click", () => warm(Object.keys(SURVEYS)));
   for (const key of Object.keys(SURVEYS)) {
+    for (const t of ["pointerenter", "focus"]) $("bg-" + key).addEventListener(t, () => warm([key]));
     $("bg-" + key).addEventListener("click", () => {
       state.bgPicked = true;              // the opening switch to SPHEREx no longer applies
       try { localStorage.setItem(BG_KEY, key); } catch { /* storage blocked */ }
