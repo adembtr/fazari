@@ -76,9 +76,18 @@ export function pickMag(pxPerYear, minPx = MIN_ARROW_PX) {
   return NICE.find((m) => pxPerYear * m >= minPx) || NICE[NICE.length - 1];
 }
 
+/** True for this site's own static data/ folder given as an absolute URL (baseFromSrc on explore.html):
+ *  …/fazari/data/<target>/ on GitHub Pages, /data/<target>/ locally. Engine results (/jobs/<id>/) are not. */
+function siteData(base) {
+  try {
+    const u = new URL(String(base), location.href), root = new URL("../", import.meta.url);      // site/explore/ -> site/
+    return u.origin === root.origin && u.pathname.startsWith(root.pathname + "data/");
+  } catch (_) { return false; }
+}
+
 /** <base>candidates.json, or null (missing file, HTTP error, bad JSON). Never throws. */
 export async function loadCandidates(base) {
-  if (/^(\.\/)?data\//.test(String(base))) return null;   // static target folders (data/<target>/) have no candidates.json: no 404
+  if (/^(\.\/)?data\//.test(String(base)) || siteData(base)) return null;   // static target folders (data/<target>/) have no candidates.json: no 404
   try {
     const r = await fetch(base + "candidates.json", { cache: "no-cache" });
     if (!r.ok) return null;
