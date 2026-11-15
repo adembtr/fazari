@@ -4,8 +4,8 @@
 // Every number is read from data/barnard/meta.json (pipeline output); nothing is hard-coded. The evidence line under
 // the four numbers comes from js/verify_line.js (data/fast_sweep/summary.json, data/verify/tests.json).
 // Shown once per viewer: dismissal is remembered in localStorage (if storage is blocked, it simply
-// shows again next time). On a first visit the opening demo (explore/demo.js) runs first and ends on this
-// card; with prefers-reduced-motion only the card is shown. Not shown for links that already say where to look (?ra=&dec=, ?p=, ?q=, layer
+// shows again next time). On a first visit only this card opens (the sky stays still under it); the opening demo
+// (explore/demo.js) runs from ?hero=1 or the panel's link and ends on this card; with prefers-reduced-motion only the card is shown. Not shown for links that already say where to look (?ra=&dec=, ?p=, ?q=, layer
 // and engine options), so shared links open straight on the sky. ?hero=1 always shows it, ?hero=0 never. The panel gets a small link to open it again.
 //
 // Hook in explore.html: <script type="module" src="explore/hero.js"></script>. Independent of main.js.
@@ -223,7 +223,10 @@ const deepLink = ["ra", "dec", "p", "q", "target", "engine", "flat", "gaia", "fa
 const want = params.get("hero");
 addReopen();
 loadCss();
-if (want === "1" || want === "card" || (want !== "0" && !deepLink && !seen())) start();
+// A first visit opens on the card over a still sky (no automatic flight on opening); the demo runs from ?hero=1 or
+// the panel's link.
+if (want === "1") start();
+else if (want === "card" || (want !== "0" && !deepLink && !seen())) open();
 
 // For tests: ?hero=1 demo then card, ?hero=card the card only, ?hero=0 nothing.
 window.__fzHero = { open, start, stop: () => demo?.stop(), close: () => dlg?.close(), seen };

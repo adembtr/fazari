@@ -230,14 +230,13 @@ async function startSky() {
     performance.mark("fz-sky");
     intro.classList.add("gone");
     setTimeout(() => intro.remove(), 900);
-    // The "fly into the sphere" opening: start wide, then glide in.
+    // The sky opens still, on its final view (no zoom animation on opening): a shared spot opens on that spot, a
+    // named point jumps to it once the categories are in, the default view shows Barnard's Star in the Milky Way.
     if (start.point) {
       await catsReady;
       const p = start.point.id ? state.byId.get(start.point.id) || start.point : start.point;
-      select(p, { fly: true });
-    } else if (!reduceMotion) {
-      setTimeout(() => zoomTo(start.fov, 3.2), 350);
-    } else al.setFoV(start.fov);
+      select(p, { fly: !!start.point.id, instant: true });
+    }
     preloadSpherex();
     if (BG_START !== "visible" && BG_START !== "spherex") setBackground(BG_START, { quiet: true });   // SPHEREx: preloadSpherex()
   } catch (e) {
@@ -249,14 +248,14 @@ async function startSky() {
 }
 
 function startView() {
-  // ?p=<point id> | ?ra=&dec=[&fov=] | default: START_VIEW, seen from far away first.
+  // ?p=<point id> | ?ra=&dec=[&fov=] | default: START_VIEW. fov0: the field the sky opens with (no zoom animation).
   const ra = Number(params.get("ra")), dec = Number(params.get("dec"));
   const fov = Number(params.get("fov")) || null;
-  if (params.get("p")) return { ra: START_VIEW.ra, dec: START_VIEW.dec, fov0: MAX_FOV, fov: 60, point: { id: params.get("p") } };
+  if (params.get("p")) return { ra: START_VIEW.ra, dec: START_VIEW.dec, fov0: START_VIEW.fov, fov: 60, point: { id: params.get("p") } };
   if (Number.isFinite(ra) && Number.isFinite(dec) && params.has("ra") && params.has("dec")) {
-    return { ra, dec, fov0: MAX_FOV, fov: fov || 1, point: { id: null, name: "Shared spot", nameKey: "ex.name.shared", ra, dec, cat: null, manual: true, fov: fov || 1 } };
+    return { ra, dec, fov0: fov || 1, fov: fov || 1, point: { id: null, name: "Shared spot", nameKey: "ex.name.shared", ra, dec, cat: null, manual: true, fov: fov || 1 } };
   }
-  return { ra: START_VIEW.ra, dec: START_VIEW.dec, fov0: MAX_FOV, fov: START_VIEW.fov };
+  return { ra: START_VIEW.ra, dec: START_VIEW.dec, fov0: START_VIEW.fov, fov: START_VIEW.fov };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -498,10 +497,11 @@ function panTo(ra, dec, secs = 1.5) {
 }
 
 let flight = 0;
-async function flyTo(ra, dec, fov) {
+async function flyTo(ra, dec, fov, { instant = false } = {}) {
   const al = state.al;
   fov = Math.min(fov, al ? maxWidthFov() : MAX_FOV);
   if (!al) { state.flat?.goTo(ra, dec, fov); return; }
+  if (instant) { ++flight; al.gotoRaDec(ra, dec); al.setFoV(Math.max(minWidthFov(), fov)); return; }   // a jump, no animation
   const id = ++flight;
   const [cra, cdec] = al.getRaDec();
   const cur = al.getFov()[0];
@@ -849,7 +849,7 @@ function meanPos(pts) {
 // ---------------------------------------------------------------------------------------------
 // Selection card
 // ---------------------------------------------------------------------------------------------
-function select(p, { fly = false, fov, fill = true } = {}) {
+function select(p, { fly = false, fov, fill = true, instant = false } = {}) {
   const pos = markerPos(p);
   state.selected = { ...p, pos };
   // Step 2 of the flow: the coordinate box fills in with the spot you picked.
@@ -862,7 +862,7 @@ function select(p, { fly = false, fov, fill = true } = {}) {
   for (const b of document.querySelectorAll(".pt")) b.classList.toggle("on", b.dataset.pid === p.id);
   renderCard();
   const f = fov || p.fov || POINT_FOV[p.id] || CAT_FOV[p.cat] || 1;
-  if (fly) flyTo(pos.ra, pos.dec, f);
+  if (fly) flyTo(pos.ra, pos.dec, f, { instant });
   const q = new URLSearchParams();
   if (p.id && !p.manual) q.set("p", p.id);
   else { q.set("ra", pos.ra.toFixed(5)); q.set("dec", pos.dec.toFixed(5)); }
