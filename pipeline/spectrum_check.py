@@ -326,10 +326,13 @@ def mem_avail():
 
 
 def jobs_running():
-    out = subprocess.run(["pgrep", "-af", "find_distant_run3|inj_seeds|driver_amend"], capture_output=True, text=True).stdout
-    ls = [ln for ln in out.splitlines() if "python" in ln and "pgrep" not in ln]
-    run3 = any("find_distant_run3" in ln for ln in ls)
-    inj = any(("inj_seeds" in ln or "driver_amend" in ln) for ln in ls)
+    """(Planet X run 3 running, injection job running). Run 3 is a shell driver (run3.sh) that starts one
+    find_distant_run3.py process per field, so the driver counts too (no gap between fields)."""
+    out = subprocess.run(["ps", "-eo", "args"], capture_output=True, text=True).stdout.splitlines()
+    ls = [ln for ln in out if "pgrep" not in ln and "spectrum_check" not in ln and not ln.startswith("/bin/bash -c source")]
+    run3 = any(("find_distant_run3" in ln and "python" in ln) or ln.strip() == "bash run3.sh" or ln.endswith("/run3.sh")
+               for ln in ls)
+    inj = any(("inj_seeds" in ln or "driver_amend" in ln) and "python" in ln for ln in ls)
     return run3, inj
 
 
@@ -348,13 +351,17 @@ def wait_ok(statusf):
         elif mem_avail() < 6000:
             why = f"memory {mem_avail()} MB"
         else:
-            tp = pkg_temp()
-            if tp is not None and tp >= 90:
-                why = f"cpu {tp:.0f} C"
+            tps = []
+            for _ in range(3):                    # median of 3 samples 0.5 s apart (the run-3 driver uses 5 x 1 s):
+                tps.append(pkg_temp() or 0)       # a single read catches the short spike right after a star
+                time.sleep(0.5)
+            tp = sorted(tps)[1]
+            if tp >= 90:
+                why = f"cpu {tp:.0f} C (max {max(tps):.0f})"
         if why is None:
             return True, run3
         statusf(f"waiting: {why}")
-        time.sleep(30)
+        time.sleep(10)
 
 
 def cmd_measure(work, limit=None):
@@ -658,7 +665,48 @@ def cmd_report(work):
             o = {k: (round(v, 5) if isinstance(v, float) else v) for k, v in r.items()}
             o["season_ratios"] = ";".join(f"{k}:{v:.4f}" for k, v in sorted(r["season_ratios"].items()))
             w.writerow(o)
+    (work / "report_tables.md").write_text(render_md(summary))
     print(json.dumps(summary, indent=1))
+
+
+def render_md(sm):
+    """Markdown tables of the report (pasted into pipeline/SPECTRUM_CHECK.md)."""
+    out = []
+    for tier in ("full", "partial"):
+        out += [f"### {tier} coverage", "",
+                "| band | N | median R | +- (bootstrap) | robust scatter | pull width (no floor) | floor | verdict |",
+                "|---|---|---|---|---|---|---|---|"]
+        for b in BANDS:
+            st = sm["bands"].get(f"{b}/{tier}", {})
+            if "median" not in st:
+                out.append(f"| {b} | {st.get('n', 0)} | - | - | - | - | - | {'too few stars' if tier == 'full' else '-'} |")
+                continue
+            out.append(f"| {b} | {st['n']} | {st['median']:.3f} | {st['median_err']:.3f} | {st['scatter']:.3f} | "
+                       f"{st['pull_width_raw']:.2f} | {st['floor']:.3f} | {st['verdict']} |")
+        out += ["", "| band | rho(mag) p | rho(J-Ks) p | rho(det. radius) p | rho(G) p | bright / faint half | per season (median R, N) | w2 normalisation | AB offsets |",
+                "|---|---|---|---|---|---|---|---|---|"]
+        for b in BANDS:
+            st = sm["bands"].get(f"{b}/{tier}", {})
+            if "median" not in st:
+                continue
+            tr = lambda k: (f"{st[k][0]:+.2f} ({st[k][1]:.2g})" if k in st else "-")      # noqa: E731
+            sea = ", ".join(f"{k} {v[0]:.3f} ({v[1]})" for k, v in st["season_median"].items())
+            alt = f"{st['median_alt_reference']:.3f}" if st.get("median_alt_reference") else "-"
+            ab = f"{st['median_ab_offsets']:.3f}" if st.get("median_ab_offsets") else "-"
+            out.append(f"| {b} | {tr('trend_mag')} | {tr('trend_J-Ks')} | {tr('trend_det_radius')} | {tr('trend_G')} | "
+                       f"{st['median_bright_half']:.3f} / {st['median_faint_half']:.3f} | {sea} | {alt} | {ab} |")
+        out.append("")
+    out += ["### Cuts", "", "| step | stars |", "|---|---|"]
+    out += [f"| {k.replace('1_selected', '1 (selected, not removed):')} | {v} |" for k, v in sm["sample_cuts"].items()]
+    out += ["", "| band | dropped: " + " | ".join(["catalogue_quality", "no_allwise", "no_catalogue_mag", "saturated", "coverage"]) + " |",
+            "|---|---|---|---|---|---|"]
+    for b in BANDS:
+        d = sm["band_drops"][b]
+        out.append(f"| {b} | " + " | ".join(str(d.get(k, 0)) for k in ["catalogue_quality", "no_allwise",
+                                                                          "no_catalogue_mag", "saturated", "coverage"]) + " |")
+    out += ["", f"Planned {sm['planned']}, measured {sm['measured']}, engine failed {sm['engine_failed']}, "
+            f"no Gaia neighbour model {sm['no_gaia_model']}; fields measured: {len(sm['fields_measured'])}.", ""]
+    return "\n".join(out)
 
 
 def main():
