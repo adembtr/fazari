@@ -113,3 +113,13 @@ and pauses the process (SIGSTOP) while available memory < 6000 MB or the package
 - Uncertainty (new, for both the 10,400 and the 1128 bodies): bootstrap of the bodies within each V (2000 resamples,
   `numpy.random.default_rng(10000)`), 16-84 % range of the 50 % and 90 % points.
 - Other links in the injected runs (false-link probability <= 0.05, not an injected body) are counted and reported.
+
+## Amendment (2026-11-15 12:10 +03): stop condition
+
+Written at 12:10 +03, before the old stop time (15:30), while the run was going (4 of 20 blocks done: 350 AU of R2-nu+170,
+F1-aphelion, R2-nu+145, F2-ra45). Approved by Adem (~12:10, "Evet, böyle", relayed by the coordinator session).
+- Old: heavy compute stops at 15:30 +03 whatever is done. New: the run stops when all 20 blocks are done (estimated ~16:30 +03).
+- Reason: heat pauses (package temperature >= 90 C, other heavy jobs on the machine) make a run take ~70-90 s instead of the
+  estimated 42 s, so 15:30 would leave 3-5 blocks undone.
+- Nothing else changes: strips, order, seeds, body model, 52 bodies per run, magnitude grid, detection rules (distant-v3b) and
+  the limit method stay as above. If the run is stopped early anyway, only complete blocks count, as above.
