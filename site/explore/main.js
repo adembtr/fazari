@@ -214,6 +214,7 @@ async function startSky() {
       state.closeup.setPrefetch(state.prefetch);
     }
     setupOverlays();
+    import("./fieldsquare.js").then((m) => { state.fieldSquare = m.initFieldSquare({ state, hooks }); }).catch((e) => console.warn("Field square unavailable", e));   // the field a result covers, on the sky
     loadExtras();
     al.on("zoomChanged", () => onViewChange());
     al.on("positionChanged", () => onViewChange());

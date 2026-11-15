@@ -14,6 +14,8 @@ const selected = () => (window.__explore && window.__explore.state && window.__e
 
 let chosen = fovFromUrl();                 // what the user asked for (null = engine default)
 let last = "";
+let shown = null;                          // { fov, saved }: the width the selector shows now
+window.__fzFovShown = () => shown;         // the field square on the sky (fieldsquare.js) draws this width
 
 /** The field (degrees) the next result uses with the current engine; null = engine default. */
 export function currentFov() {
@@ -32,6 +34,10 @@ function render(force = false) {
   const key = [k, ph, value, saved, document.documentElement.lang].join("|");
   if (!force && key === last) return;
   last = key;
+  if (!shown || shown.fov !== value || shown.saved !== saved) {
+    shown = { fov: value, saved };
+    document.dispatchEvent(new CustomEvent("fazari:fov", { detail: shown }));
+  }
   fillFovSelect(sel, k, value, { phone: ph });
   sel.disabled = saved;
   est.textContent = fovEstimateText(k, value, { phone: ph && k !== "local", saved })
