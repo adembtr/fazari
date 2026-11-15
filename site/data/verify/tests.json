@@ -583,7 +583,40 @@
    "status": "fail",
    "evidence": "data/fast_sweep/stars.csv",
    "v0": null
+  },
+  {
+   "id": "V13",
+   "title": {
+    "en": "Parallax from the fast-star sweep (29 unsaturated stars, rule committed before the fit)",
+    "tr": "Hızlı yıldız taramasından paralaks (29 doymamış yıldız, kural uydurmadan önce commit'lendi)"
+   },
+   "result": {
+    "en": "The season positions of the fast-star sweep were fitted with position, proper motion and parallax (Earth's barycentric position; SPHEREx's low orbit adds < 0.03 mas). For the 29 unsaturated, judge-clean stars with 3 or 4 seasons the measured parallaxes are 0.88 +- 0.10 times Gaia DR3's, and 28 of 29 agree within 3 sigma (26 within 2 sigma, 14 within 1 sigma), so the test passes by its rule (pipeline/PARALLAX_SWEEP_RULE.md, commit 6549d13, pushed 2026-11-15 07:11 UTC before the fit code existed). Weak points stated: 3 seasons give 6 numbers for 5 parameters (dof = 1) for 25 of the 29 stars; the mean difference is -23 +- 7 mas and the scatter is 1.9 times the errors, a sign of a small error that flips with the telescope orientation. For the 51 saturated stars, left out by the rule for that reason, every parallax comes out too large (scale 3.4): wing-fit positions cannot measure a parallax.",
+    "tr": "Hızlı yıldız taramasının sezon konumlarına konum, öz hareket ve paralaks uyduruldu (Dünya'nın barisentrik konumu; SPHEREx'in alçak yörüngesi < 0,03 mas ekler). 3 veya 4 sezonlu, doymamış ve judge'ı temiz 29 yıldızda ölçülen paralakslar Gaia DR3'ün 0,88 ± 0,10 katı; 29 yıldızın 28'i 3 sigma içinde (26'sı 2 sigma, 14'ü 1 sigma içinde). Test kuralına göre geçiyor (pipeline/PARALLAX_SWEEP_RULE.md, commit 6549d13; uydurma kodu yazılmadan önce, 2026-11-15 07:11 UTC'de push edildi). Zayıf yanlar: 29 yıldızın 25'inde 3 sezon 5 parametre için 6 sayı verir (dof = 1); ortalama fark -23 ± 7 mas ve saçılma hataların 1,9 katı; bu, teleskop yönüyle ters dönen küçük bir hatanın işareti. Kuralın bu yüzden dışarıda bıraktığı 51 doymuş yıldızın hepsinde paralaks fazla büyük çıkıyor (ölçek 3,4): kanat uydurmalı konumlar paralaks ölçemez."
+   },
+   "numbers": {
+    "stars_primary": 29,
+    "scale_vs_gaia": 0.8827,
+    "scale_err": 0.0976,
+    "scale_err_formal": 0.0702,
+    "scale_chi2_per_dof": 1.933,
+    "within_1sigma": 14,
+    "within_2sigma": 26,
+    "within_3sigma": 28,
+    "weighted_mean_diff_mas": -23.24,
+    "weighted_mean_diff_err_mas": 6.92,
+    "median_parallax_err_mas": 40.6,
+    "stars_dof_1": 25,
+    "stars_dof_3": 4,
+    "saturated_stars_scale": 3.3859,
+    "saturated_stars_n": 51,
+    "criterion": "fail if |s-1| > 3 sigma_s or < 95 % of stars within 3 sigma; limit if sigma_s > 0.20 or N < 10; else pass. Rule pipeline/PARALLAX_SWEEP_RULE.md, commit 6549d13, pushed 2026-11-15T07:11:04Z, before the fit code existed",
+    "source": "site/data/fast_sweep/parallax_summary.json"
+   },
+   "status": "pass",
+   "evidence": "data/fast_sweep/parallax.csv",
+   "v0": null
   }
  ],
- "edited": "2026-11-14 18:10: V9 split into movers (V9) and brightness changes (V11); V3 parallax compared with Lazorenko & Sahlmann 2018. No result was re-measured. 2026-11-14 21:58: V7 re-run with the finder's own v1 decision rule (tests/shuffle.py uses DA.null_movers, 522d3ab): 0 fake movers in 1200 field-shuffles, status fail -> pass; the v0-rule numbers are kept (v0, v1_core_v0_rule). 2026-11-15 02:43: round v1.1 (independent tester, finder v1.1, commit a5de792; outputs in a local run folder, not in this repository): V1-V5, V7, V9, V10, V11 re-measured, V6 re-measured on a reduced set (see V6), V12 added (fast-star sweep, final summary). Thresholds and decision rules unchanged; V4 and V11 changed from fail to pass because the measurement changed. The v1 numbers of every re-measured test are kept under \"v1\"."
+ "edited": "2026-11-14 18:10: V9 split into movers (V9) and brightness changes (V11); V3 parallax compared with Lazorenko & Sahlmann 2018. No result was re-measured. 2026-11-14 21:58: V7 re-run with the finder's own v1 decision rule (tests/shuffle.py uses DA.null_movers, 522d3ab): 0 fake movers in 1200 field-shuffles, status fail -> pass; the v0-rule numbers are kept (v0, v1_core_v0_rule). 2026-11-15 02:43: round v1.1 (independent tester, finder v1.1, commit a5de792; outputs in a local run folder, not in this repository): V1-V5, V7, V9, V10, V11 re-measured, V6 re-measured on a reduced set (see V6), V12 added (fast-star sweep, final summary). Thresholds and decision rules unchanged; V4 and V11 changed from fail to pass because the measurement changed. The v1 numbers of every re-measured test are kept under \"v1\". 2026-11-15 10:14: V13 added (parallax from the fast-star sweep season positions; rule committed and pushed before the fit, pipeline/PARALLAX_SWEEP_RULE.md, 6549d13). No other test changed."
 }

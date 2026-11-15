@@ -1,0 +1,125 @@
+{
+ "what": "Parallaxes from the SPHEREx season positions of the fast-star sweep, compared with Gaia DR3",
+ "rule": "pipeline/PARALLAX_SWEEP_RULE.md (commit 6549d13, pushed 2026-11-15T07:11:04Z, before this code existed)",
+ "code": "pipeline/parallax_sweep.py",
+ "primary": {
+  "n": 29,
+  "scale": 0.8827,
+  "scale_err": 0.0976,
+  "scale_err_formal": 0.0702,
+  "chi2": 54.13,
+  "chi2_per_dof": 1.933,
+  "weighted_mean_diff_mas": -23.24,
+  "weighted_mean_diff_err_mas": 6.92,
+  "within_1sigma": 14,
+  "within_2sigma": 26,
+  "within_3sigma": 28,
+  "median_abs_z": 1.137,
+  "median_plx_err_mas": 40.6
+ },
+ "decision": "pass",
+ "decision_rule": "N >= 10; fail if |s-1| > 3 sigma_s or < 95% within 3 sigma; limit if sigma_s > 0.2; else pass",
+ "secondary": {
+  "primary_formal_errors_no_inflation": {
+   "n": 29,
+   "scale": 0.8756,
+   "scale_err": 0.0987,
+   "scale_err_formal": 0.0501,
+   "chi2": 108.49,
+   "chi2_per_dof": 3.875,
+   "weighted_mean_diff_mas": -24.95,
+   "weighted_mean_diff_err_mas": 5.09,
+   "within_1sigma": 10,
+   "within_2sigma": 20,
+   "within_3sigma": 25,
+   "median_abs_z": 1.634,
+   "median_plx_err_mas": 28.7
+  },
+  "primary_4_seasons": {
+   "n": 4,
+   "scale": 0.7692,
+   "scale_err": 0.3557,
+   "scale_err_formal": 0.1652,
+   "chi2": 13.91,
+   "chi2_per_dof": 4.636,
+   "weighted_mean_diff_mas": -46.77,
+   "weighted_mean_diff_err_mas": 17.07,
+   "within_1sigma": 2,
+   "within_2sigma": 3,
+   "within_3sigma": 3,
+   "median_abs_z": 1.131,
+   "median_plx_err_mas": 37.1
+  },
+  "primary_3_seasons": {
+   "n": 25,
+   "scale": 0.9077,
+   "scale_err": 0.0996,
+   "scale_err_formal": 0.0775,
+   "chi2": 39.65,
+   "chi2_per_dof": 1.652,
+   "weighted_mean_diff_mas": -18.61,
+   "weighted_mean_diff_err_mas": 7.57,
+   "within_1sigma": 12,
+   "within_2sigma": 23,
+   "within_3sigma": 25,
+   "median_abs_z": 1.137,
+   "median_plx_err_mas": 40.6
+  },
+  "saturated": {
+   "n": 51,
+   "scale": 3.3859,
+   "scale_err": 0.2835,
+   "scale_err_formal": 0.0426,
+   "chi2": 2216.63,
+   "chi2_per_dof": 44.333,
+   "weighted_mean_diff_mas": 617.44,
+   "weighted_mean_diff_err_mas": 9.29,
+   "within_1sigma": 0,
+   "within_2sigma": 1,
+   "within_3sigma": 5,
+   "median_abs_z": 8.668,
+   "median_plx_err_mas": 73.3
+  },
+  "all_judge_clean": {
+   "n": 80,
+   "scale": 2.7124,
+   "scale_err": 0.2317,
+   "scale_err_formal": 0.0364,
+   "chi2": 3200.91,
+   "chi2_per_dof": 40.518,
+   "weighted_mean_diff_mas": 205.3,
+   "weighted_mean_diff_err_mas": 5.55,
+   "within_1sigma": 14,
+   "within_2sigma": 27,
+   "within_3sigma": 33,
+   "median_abs_z": 4.452,
+   "median_plx_err_mas": 57.1
+  }
+ },
+ "excluded": [
+  {
+   "name": "G 254-24",
+   "why": "judge not clean"
+  },
+  {
+   "name": "G 215-50",
+   "why": "judge not clean"
+  },
+  {
+   "name": "Ross 578",
+   "why": "judge not clean"
+  },
+  {
+   "name": "LAWD 37",
+   "why": "judge not clean"
+  },
+  {
+   "name": "L 205-56",
+   "why": "judge not clean"
+  },
+  {
+   "name": "LP 409-28",
+   "why": "judge not clean"
+  }
+ ]
+}

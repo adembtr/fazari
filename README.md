@@ -46,9 +46,9 @@ Live site: https://adembtr.github.io/fazari/ (published from `main`; the newest 
 - **Sky explorer (`site/explore.html`):** done. Search or click any point; the in-browser engine builds a blink there
   on the static site, the local Python engine does more when it runs on the same computer (see
   [What runs where](#what-runs-where)). Field-of-view selector, FLAGS layer, English/Turkish on every page.
-- **Candidate finder v1.1 and known-asteroid recovery:** done, with an independent test round on v1.1. Of 12 numbered
-  verification tests 9 pass, 2 fail (V6, V12) and 1 reaches a limit (V8); see the summary at the top of
-  [`pipeline/ACCURACY.md`](pipeline/ACCURACY.md).
+- **Candidate finder v1.1 and known-asteroid recovery:** done, with an independent test round on v1.1. Of 13 numbered
+  verification tests 10 pass, 2 fail (V6, V12) and 1 reaches a limit (V8); see the summary at the top of
+  [`pipeline/ACCURACY.md`](pipeline/ACCURACY.md) (V1–V12) and [`pipeline/PARALLAX_SWEEP.md`](pipeline/PARALLAX_SWEEP.md) (V13).
 - **Open:** in the injection test the best bin recovers 97.8 % of the fake movers, below the 99 % target (V6); in the
   fast-star sweep 5 of 86 measured stars are more than 3σ from Gaia DR3 (V12). Every result is a
   candidate until checked.
@@ -86,7 +86,8 @@ Beyond the list:
 | English / Turkish on every page | `site/i18n/en.json`, `site/i18n/tr.json`, `site/js/i18n.js` | Done |
 | Comets in SPHEREx: three comets (3I/ATLAS, C/2025 R2 (SWAN), C/2025 A6 (Lemmon)) and Pluto as a labelled bonus, selected over all public SPHEREx images with JPL SBDB and Horizons, then measured in the SPHEREx pixels (position, motion, coma, brightness per wavelength); known objects, not discoveries | `site/comets.html`, `site/data/comets/`, [`pipeline/COMETS.md`](pipeline/COMETS.md) | Done |
 | Fast-star sweep: proper motions of Gaia DR3 fast stars measured in SPHEREx with one pre-registered procedure and compared with Gaia DR3 | [`pipeline/FAST_SWEEP.md`](pipeline/FAST_SWEEP.md), `site/data/fast_sweep/summary.json` | Done: 86 of 90 pre-registered stars measured, 4 failed (kept in the table); median difference to Gaia 7 % (5 % for the fastest 48; 0.17″/yr); 60.5 / 83.7 / 94.2 % within 1 / 2 / 3σ (ideal 68.3 / 95.4 / 99.7); smallest motion seen at 5σ 0.64″/yr; see [Fast-star sweep](#fast-star-sweep-90-pre-registered-stars) |
-| Numbered verification data (V1–V12) | [`site/data/verify/tests.json`](site/data/verify/tests.json), evidence in `site/data/verify/evidence/`; summary in [`pipeline/ACCURACY.md`](pipeline/ACCURACY.md) | Done (9 pass, 2 fail, 1 limit) |
+| Parallax from the fast-star sweep: position + proper motion + parallax fitted to the sweep's season positions, compared with Gaia DR3; rule committed and pushed before the fit | [`pipeline/PARALLAX_SWEEP.md`](pipeline/PARALLAX_SWEEP.md), rule [`pipeline/PARALLAX_SWEEP_RULE.md`](pipeline/PARALLAX_SWEEP_RULE.md), `site/data/fast_sweep/parallax.csv` | Done (test V13: pass): 29 unsaturated stars, measured = 0.88 ± 0.10 × Gaia, 28 of 29 within 3σ; dof = 1 for 25 of them; saturated stars (51) cannot measure parallax (scale 3.4, orientation-flipping wing-fit bias) |
+| Numbered verification data (V1–V13) | [`site/data/verify/tests.json`](site/data/verify/tests.json), evidence in `site/data/verify/evidence/`; summary in [`pipeline/ACCURACY.md`](pipeline/ACCURACY.md) | Done (10 pass, 2 fail, 1 limit; V13 added after the summary in ACCURACY.md) |
 
 ## What runs where
 
@@ -135,7 +136,7 @@ otherwise it uses the browser engine. It adds:
 - `site/comets.html` (+ `site/comets.js`) — comets in SPHEREx (three comets and Pluto), data in `site/data/comets/`; method and results in `pipeline/COMETS.md`.
 - `pipeline/FAST_SWEEP.md` — fast-star sweep (SPHEREx vs Gaia DR3 proper motions, pre-registered rule); output in `site/data/fast_sweep/` (final, 86 of 90 stars measured).
 - `pipeline/detect/` — candidate finder (see `pipeline/DETECTION.md`); `pipeline/finds.py` — finds list of the local engine.
-- `site/data/verify/tests.json` — numbered verification tests V1–V12, evidence in `site/data/verify/evidence/`.
+- `site/data/verify/tests.json` — numbered verification tests V1–V13, evidence in `site/data/verify/evidence/`.
 - `docs/img/` — screenshots used in this README.
 - `site/data/<target>/` — pipeline output: `frames/*.png`, `blink_*um.gif`, `diff_*um.png`, `images.csv` (per-exposure diagnostics), `meta.json` (read by the viewer). `gaia_field.json` — cached Gaia DR3 field stars (motion targets).
 
