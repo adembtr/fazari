@@ -135,6 +135,8 @@ of single-exposure difference imaging with undersampled 6" pixels.
 
 ## Re-run (for a later, separate run; not done here)
 
+Done on 2026-11-15, together with 24 new fields: [`ASTEROIDS_RERUN.md`](ASTEROIDS_RERUN.md).
+
 Everything needed is in the cache (the trial above read no byte from the network).
 
 ```

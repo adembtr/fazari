@@ -261,6 +261,10 @@ The 31 misses with V < 18 were re-examined one by one on 2026-11-15 from the cac
 [`ASTEROID_MISSES.md`](ASTEROID_MISSES.md). One cause was a defect of the fit stamp and is fixed in the code
 (`STAR_MASK_NSIG` in `detect/asteroids.py`); the numbers above were measured before that change and are not re-run.
 
+The test was re-run on 2026-11-15 with that fix (the same 24 fields, from the cache) and on 24 new fields chosen by the
+same rule: [`ASTEROIDS_RERUN.md`](ASTEROIDS_RERUN.md) (plan written before the run:
+[`ASTEROIDS_RERUN_PLAN.md`](ASTEROIDS_RERUN_PLAN.md)). The Results above are those of round v1 and stay as they are.
+
 ## Limits
 
 - **Detection depth.** One SPHEREx exposure (114 s) reaches a known asteroid of V ≈ 18-19 at 1.1-2.4 µm

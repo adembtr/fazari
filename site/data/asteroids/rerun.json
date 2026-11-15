@@ -1,0 +1,486 @@
+{
+ "v8_round_v1": {
+  "found_v17": 47,
+  "stack_v17": 48,
+  "either_v17": 48,
+  "known_v17": 53,
+  "found_v18": 101,
+  "stack_v18": 98,
+  "either_v18": 102,
+  "known_v18": 132,
+  "found_v19": 205,
+  "stack_v19": 192,
+  "either_v19": 217,
+  "known_v19": 451,
+  "found_v20": 217,
+  "stack_v20": 208,
+  "either_v20": 238,
+  "known_v20": 1400,
+  "fields": 24,
+  "false_single": 96,
+  "false_stack": 68,
+  "tracklets_tried": 135,
+  "tracklets_linked": 47,
+  "tracklets_wrong": 1,
+  "found_objects": 217,
+  "detections": 741,
+  "offset_px_median": 0.111,
+  "offset_px_p90": 0.337,
+  "frac_within_1px": 0.9919
+ },
+ "rerun_old_fields": {
+  "found_v17": 50,
+  "stack_v17": 49,
+  "either_v17": 50,
+  "known_v17": 53,
+  "found_v18": 106,
+  "stack_v18": 101,
+  "either_v18": 106,
+  "known_v18": 132,
+  "found_v19": 216,
+  "stack_v19": 199,
+  "either_v19": 227,
+  "known_v19": 451,
+  "found_v20": 228,
+  "stack_v20": 216,
+  "either_v20": 249,
+  "known_v20": 1400,
+  "fields": 24,
+  "false_single": 115,
+  "false_stack": 95,
+  "tracklets_tried": 143,
+  "tracklets_linked": 51,
+  "tracklets_wrong": 1,
+  "found_objects": 228,
+  "detections": 784,
+  "offset_px_median": 0.112,
+  "offset_px_p90": 0.334,
+  "frac_within_1px": 0.9923
+ },
+ "rerun_new_fields": {
+  "found_v17": 43,
+  "stack_v17": 41,
+  "either_v17": 43,
+  "known_v17": 44,
+  "found_v18": 108,
+  "stack_v18": 100,
+  "either_v18": 111,
+  "known_v18": 126,
+  "found_v19": 212,
+  "stack_v19": 209,
+  "either_v19": 239,
+  "known_v19": 472,
+  "found_v20": 226,
+  "stack_v20": 220,
+  "either_v20": 256,
+  "known_v20": 1433,
+  "fields": 24,
+  "false_single": 130,
+  "false_stack": 91,
+  "tracklets_tried": 105,
+  "tracklets_linked": 47,
+  "tracklets_wrong": 1,
+  "found_objects": 227,
+  "detections": 754,
+  "offset_px_median": 0.116,
+  "offset_px_p90": 0.378,
+  "frac_within_1px": 0.9894
+ },
+ "rerun_all_fields": {
+  "found_v17": 93,
+  "stack_v17": 90,
+  "either_v17": 93,
+  "known_v17": 97,
+  "found_v18": 214,
+  "stack_v18": 201,
+  "either_v18": 217,
+  "known_v18": 258,
+  "found_v19": 428,
+  "stack_v19": 408,
+  "either_v19": 466,
+  "known_v19": 923,
+  "found_v20": 454,
+  "stack_v20": 436,
+  "either_v20": 505,
+  "known_v20": 2833,
+  "fields": 48,
+  "false_single": 245,
+  "false_stack": 186,
+  "tracklets_tried": 248,
+  "tracklets_linked": 98,
+  "tracklets_wrong": 2,
+  "found_objects": 455,
+  "detections": 1538,
+  "offset_px_median": 0.114,
+  "offset_px_p90": 0.363,
+  "frac_within_1px": 0.9909
+ },
+ "files": {
+  "v8_round_v1": {
+   "F01": "F01_20261114T163133.json",
+   "F02": "F02_20261114T163133.json",
+   "F03": "F03_20261114T163133.json",
+   "F04": "F04_20261114T163232.json",
+   "F05": "F05_20261114T163241.json",
+   "F06": "F06_20261114T163244.json",
+   "F07": "F07_20261114T163358.json",
+   "F08": "F08_20261114T163337.json",
+   "F09": "F09_20261114T163432.json",
+   "F10": "F10_20261114T163527.json",
+   "F11": "F11_20261114T163425.json",
+   "F12": "F12_20261114T163511.json",
+   "F13": "F13_20261114T163618.json",
+   "F14": "F14_20261114T163506.json",
+   "F15": "F15_20261114T163555.json",
+   "F16": "F16_20261114T163709.json",
+   "F17": "F17_20261114T163551.json",
+   "F18": "F18_20261114T163716.json",
+   "F19": "F19_20261114T163817.json",
+   "F20": "F20_20261114T163624.json",
+   "F21": "F21_20261114T163815.json",
+   "F22": "F22_20261114T163855.json",
+   "F23": "F23_20261114T163756.json",
+   "F24": "F24_20261114T163854.json"
+  },
+  "rerun_old_fields": {
+   "F01": "F01_20261115T130512.json",
+   "F02": "F02_20261115T130625.json",
+   "F03": "F03_20261115T130718.json",
+   "F04": "F04_20261115T130818.json",
+   "F05": "F05_20261115T130920.json",
+   "F06": "F06_20261115T130959.json",
+   "F07": "F07_20261115T131117.json",
+   "F08": "F08_20261115T131236.json",
+   "F09": "F09_20261115T131314.json",
+   "F10": "F10_20261115T131350.json",
+   "F11": "F11_20261115T131445.json",
+   "F12": "F12_20261115T131526.json",
+   "F13": "F13_20261115T131611.json",
+   "F14": "F14_20261115T131649.json",
+   "F15": "F15_20261115T131732.json",
+   "F16": "F16_20261115T131830.json",
+   "F17": "F17_20261115T131911.json",
+   "F18": "F18_20261115T131946.json",
+   "F19": "F19_20261115T132021.json",
+   "F20": "F20_20261115T132058.json",
+   "F21": "F21_20261115T132153.json",
+   "F22": "F22_20261115T132231.json",
+   "F23": "F23_20261115T132356.json",
+   "F24": "F24_20261115T132454.json"
+  },
+  "rerun_new_fields": {
+   "F25": "F25.json",
+   "F26": "F26.json",
+   "F27": "F27.json",
+   "F28": "F28.json",
+   "F29": "F29.json",
+   "F30": "F30.json",
+   "F31": "F31.json",
+   "F32": "F32.json",
+   "F33": "F33.json",
+   "F34": "F34.json",
+   "F35": "F35.json",
+   "F36": "F36.json",
+   "F37": "F37.json",
+   "F38": "F38.json",
+   "F39": "F39.json",
+   "F40": "F40.json",
+   "F41": "F41.json",
+   "F42": "F42.json",
+   "F43": "F43.json",
+   "F44": "F44.json",
+   "F45": "F45.json",
+   "F46": "F46.json",
+   "F47": "F47.json",
+   "F48": "F48.json"
+  },
+  "rerun_all_fields": {
+   "F01": "F01_20261115T130512.json",
+   "F02": "F02_20261115T130625.json",
+   "F03": "F03_20261115T130718.json",
+   "F04": "F04_20261115T130818.json",
+   "F05": "F05_20261115T130920.json",
+   "F06": "F06_20261115T130959.json",
+   "F07": "F07_20261115T131117.json",
+   "F08": "F08_20261115T131236.json",
+   "F09": "F09_20261115T131314.json",
+   "F10": "F10_20261115T131350.json",
+   "F11": "F11_20261115T131445.json",
+   "F12": "F12_20261115T131526.json",
+   "F13": "F13_20261115T131611.json",
+   "F14": "F14_20261115T131649.json",
+   "F15": "F15_20261115T131732.json",
+   "F16": "F16_20261115T131830.json",
+   "F17": "F17_20261115T131911.json",
+   "F18": "F18_20261115T131946.json",
+   "F19": "F19_20261115T132021.json",
+   "F20": "F20_20261115T132058.json",
+   "F21": "F21_20261115T132153.json",
+   "F22": "F22_20261115T132231.json",
+   "F23": "F23_20261115T132356.json",
+   "F24": "F24_20261115T132454.json",
+   "F25": "F25.json",
+   "F26": "F26.json",
+   "F27": "F27.json",
+   "F28": "F28.json",
+   "F29": "F29.json",
+   "F30": "F30.json",
+   "F31": "F31.json",
+   "F32": "F32.json",
+   "F33": "F33.json",
+   "F34": "F34.json",
+   "F35": "F35.json",
+   "F36": "F36.json",
+   "F37": "F37.json",
+   "F38": "F38.json",
+   "F39": "F39.json",
+   "F40": "F40.json",
+   "F41": "F41.json",
+   "F42": "F42.json",
+   "F43": "F43.json",
+   "F44": "F44.json",
+   "F45": "F45.json",
+   "F46": "F46.json",
+   "F47": "F47.json",
+   "F48": "F48.json"
+  }
+ },
+ "not_done": {
+  "old": [],
+  "new": []
+ },
+ "changes_old_fields": [
+  {
+   "field": "F10",
+   "name": "Walraven",
+   "V": 15.0,
+   "change": "gained"
+  },
+  {
+   "field": "F15",
+   "name": "Rollandia",
+   "V": 15.0,
+   "change": "gained"
+  },
+  {
+   "field": "F04",
+   "name": "Klepesta",
+   "V": 16.9,
+   "change": "gained"
+  },
+  {
+   "field": "F20",
+   "name": "Yabuuti",
+   "V": 17.5,
+   "change": "gained"
+  },
+  {
+   "field": "F09",
+   "name": "Dzhanibekov",
+   "V": 17.8,
+   "change": "gained"
+  },
+  {
+   "field": "F02",
+   "name": "Michela",
+   "V": 18.0,
+   "change": "gained"
+  },
+  {
+   "field": "F23",
+   "name": "Abehiroshi",
+   "V": 18.0,
+   "change": "gained"
+  },
+  {
+   "field": "F17",
+   "name": "Terryalfriend",
+   "V": 18.1,
+   "change": "gained"
+  },
+  {
+   "field": "F23",
+   "name": "Polyakhova",
+   "V": 18.4,
+   "change": "gained"
+  },
+  {
+   "field": "F01",
+   "name": "1998 XW10",
+   "V": 18.5,
+   "change": "gained"
+  },
+  {
+   "field": "F19",
+   "name": "Dimpna",
+   "V": 18.5,
+   "change": "gained"
+  }
+ ],
+ "false_per_old_field": {
+  "F01": [
+   5,
+   5,
+   6,
+   9
+  ],
+  "F02": [
+   4,
+   4,
+   4,
+   4
+  ],
+  "F03": [
+   6,
+   6,
+   1,
+   1
+  ],
+  "F04": [
+   8,
+   11,
+   2,
+   3
+  ],
+  "F05": [
+   2,
+   2,
+   3,
+   4
+  ],
+  "F06": [
+   1,
+   3,
+   1,
+   1
+  ],
+  "F07": [
+   1,
+   6,
+   1,
+   2
+  ],
+  "F08": [
+   2,
+   2,
+   1,
+   1
+  ],
+  "F09": [
+   6,
+   6,
+   7,
+   7
+  ],
+  "F10": [
+   4,
+   5,
+   4,
+   5
+  ],
+  "F11": [
+   2,
+   2,
+   2,
+   3
+  ],
+  "F12": [
+   7,
+   7,
+   2,
+   3
+  ],
+  "F13": [
+   2,
+   2,
+   2,
+   5
+  ],
+  "F14": [
+   6,
+   7,
+   5,
+   6
+  ],
+  "F15": [
+   4,
+   6,
+   2,
+   7
+  ],
+  "F16": [
+   2,
+   3,
+   2,
+   4
+  ],
+  "F17": [
+   2,
+   2,
+   1,
+   1
+  ],
+  "F18": [
+   9,
+   11,
+   3,
+   4
+  ],
+  "F19": [
+   4,
+   4,
+   2,
+   3
+  ],
+  "F20": [
+   5,
+   5,
+   4,
+   4
+  ],
+  "F21": [
+   3,
+   4,
+   2,
+   3
+  ],
+  "F22": [
+   2,
+   2,
+   1,
+   2
+  ],
+  "F23": [
+   3,
+   4,
+   2,
+   3
+  ],
+  "F24": [
+   6,
+   6,
+   8,
+   10
+  ]
+ },
+ "since": "2026-11-15T13:05",
+ "generated": "2026-11-15T12:30:43Z",
+ "plan": "pipeline/ASTEROIDS_RERUN_PLAN.md (716d899)",
+ "results": "pipeline/ASTEROIDS_RERUN.md",
+ "change": "STAR_MASK_NSIG = 10 (round v1: None); thresholds unchanged",
+ "tracklets_not_done": [
+  "F36",
+  "F37",
+  "F38",
+  "F39",
+  "F40",
+  "F41",
+  "F42",
+  "F43",
+  "F44",
+  "F45",
+  "F46",
+  "F47",
+  "F48"
+ ]
+}
