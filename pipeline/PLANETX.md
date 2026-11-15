@@ -132,6 +132,19 @@ pushed to GitHub 10:03:55 +03 (commit 1efa576); first image byte read 10:04:12. 
 - Run 2 alone: 50 % at V 19.55, 90 % at V 18.67 (600 bodies), 2.41 deg^2 at 350 AU.
 - Both runs: **no body brighter than V 19.49 (50 %; 90 %: V 18.57) between 350 and 500 AU in 4.49 deg^2** (0.052 % of the band).
 
+<!-- inject10k: written by pipeline/planetx_inject10k_summary.py -->
+## 10,400-body injection test (15 Nov 2026, added after the run 2 pre-registration)
+
+Added after the run 2 pre-registration (1efa576), at Adem's request. Detection rules unchanged. Plan
+`pipeline/PLANETX_INJECT10K_PLAN.md` (pushed 11:07:12 +03, before the test ran; amendment 36ed43d at 12:09: run until all
+20 blocks are done); result `pipeline/PLANETX_INJECT10K.md`.
+- The same strips (F1-F5, R2 x 5), the same body model, 52 bodies per run, V 17.5-20 in 10 steps, 350 / 500 AU:
+  10,400 bodies in 20 complete blocks (10 strips). The candidate lists do not change.
+- 50 % found down to **V 19.44** (16-84 %: 19.43-19.45; 1128 bodies: V 19.49); 90 %: V 18.08 (1128 bodies: V 18.57).
+- **No body brighter than V 19.44 between 350 and 500 AU in 4.49 deg^2** (0.052 % of the band).
+- Density check: 52 bodies per run against 12 per run, found at V 18.5: 86 % against 92 % (z -2.34); V 19: 77 % against 80 % (z -0.94); V 19.4: 55 % against 60 % (z -1.39); V 19.7: 25 % against 24 % (z 0.31); V 20: 2 % against 5 % (z -2.0).
+<!-- /inject10k -->
+
 ## Measured, assumed, not verified
 
 - Measured: everything in the tables; distances of found bodies are right to ~1 AU.

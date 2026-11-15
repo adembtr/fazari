@@ -2,6 +2,7 @@
 //   data/planetx/summary.json   pipeline/find_distant.py results, assembled after the search
 //   (prediction, the five searched strips, candidates and their checks, injection-recovery limits).
 // Run 2: data/planetx/run2.json (pipeline/planetx_run2_summary.py), one line whose EN/TR text is in that file.
+// 10,400-body injection test (added after the run 2 pre-registration): data/planetx/inject10k.json, its own EN/TR text.
 // Static page: relative paths only. Text: i18n keys px.* (site/i18n/en.json, tr.json).
 
 import { t, apply, onLang, lang, langButton } from "./js/i18n.js";
@@ -370,6 +371,64 @@ function renderRun2() {
   el.innerHTML = esc(L[lang()] || L.en).replace(/\{(\w+)\}/g, (m, k) => (links[k] ? `<a href="${esc(links[k].url)}" rel="noopener">${esc(links[k].label)}</a>` : m));
 }
 
+// ------------------------------------------------------------------------------------------- 10,400-body injection test
+// Added after the run 2 pre-registration (data/planetx/inject10k.json, pipeline/planetx_inject10k_summary.py; EN/TR text in that file).
+let I10 = null;
+function i10Links(s) {
+  const links = (I10 && I10.links) || {};
+  return esc(s).replace(/\{(\w+)\}/g, (m, k) => (links[k] ? `<a href="${esc(links[k].url)}" rel="noopener">${esc(links[k].label)}</a>` : ""));
+}
+function renderI10() {
+  const sec = $("inj10k");
+  const T = I10 && I10.site_text && (I10.site_text[lang()] || I10.site_text.en);
+  let line = $("pxI10Line");
+  if (!T || !sec) { if (sec) sec.hidden = true; if (line) line.remove(); return; }
+  sec.hidden = false;
+  $("i10Title").innerHTML = `${esc(T.h)}<span class="px-tag">${esc(T.tag)}</span>`;
+  $("pxI10Sub").innerHTML = i10Links(T.sub);
+  if (!line) { line = document.createElement("p"); line.id = "pxI10Line"; line.className = "crit"; ($("pxRun2") || $("pxUpper")).after(line); }
+  line.innerHTML = i10Links(T.line + " " + (I10.links && I10.links.res ? T.line_links : T.line_links_plan));
+  // completeness curve: found fraction per V, this test against the 1128 bodies of runs 1 and 2
+  const cp = compact();
+  const W = cp ? 400 : 760, H = cp ? 320 : 360, L = cp ? 44 : 54, R = cp ? 12 : 24, Tp = 16, B = 48;
+  const v0 = 17.3, v1 = 20.45;
+  const X = (v) => L + (v - v0) / (v1 - v0) * (W - L - R);
+  const Y = (f) => Tp + (1 - f) * (H - Tp - B);
+  const old = "#a9b3c9";
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(T.h)}">`;
+  for (let f = 0; f <= 1.0001; f += 0.25) s += `<line class="gr" x1="${L}" x2="${W - R}" y1="${Y(f)}" y2="${Y(f)}"/><text x="${L - 7}" y="${Y(f) + 4}" text-anchor="end">${num(100 * f, 0)} %</text>`;
+  for (let v = 17.5; v <= 20.01; v += cp ? 1 : 0.5) s += `<line class="gr" y1="${Tp}" y2="${H - B}" x1="${X(v)}" x2="${X(v)}"/><text x="${X(v)}" y="${H - B + 17}" text-anchor="middle">${num(v, 1)}</text>`;
+  s += `<line class="ax" x1="${L}" x2="${W - R}" y1="${H - B}" y2="${H - B}"/><line class="ax" x1="${L}" x2="${L}" y1="${Tp}" y2="${H - B}"/>`;
+  s += `<text x="${(L + W - R) / 2}" y="${H - 8}" text-anchor="middle">${esc(T.x)}</text>`;
+  s += `<text transform="translate(${cp ? 11 : 14} ${(Tp + H - B) / 2}) rotate(-90)" text-anchor="middle">${esc(T.y)}</text>`;
+  for (const lv of [0.5, 0.9]) s += `<line x1="${L}" x2="${W - R}" y1="${Y(lv)}" y2="${Y(lv)}" stroke="${C.lim}" stroke-width="1" stroke-dasharray="4 4" opacity=".55"/>`;
+  const A = I10.limits.inject10k.all;
+  for (const [key, lv] of [["m50", 0.5], ["m90", 0.9]]) {
+    if (A[key] == null) continue;
+    s += `<line x1="${X(A[key])}" x2="${X(A[key])}" y1="${Y(lv)}" y2="${H - B}" stroke="${C.lim}" stroke-width="1.2" opacity=".7"/>`;
+    s += `<text class="lbl" x="${X(A[key]) + (key === "m50" ? 6 : -6)}" y="${Y(lv) - 7}" text-anchor="${key === "m50" ? "start" : "end"}" style="fill:${C.lim}">V ${num(A[key], 2)}</text>`;
+  }
+  const path = (pts) => pts.filter((p) => p.frac != null).map((p, i) => `${i ? "L" : "M"}${X(p.v).toFixed(1)} ${Y(p.frac).toFixed(1)}`).join("");
+  s += `<path d="${path(I10.curve_before)}" fill="none" stroke="${old}" stroke-width="1.3" opacity=".7"/>`;
+  for (const p of I10.curve_before) {
+    s += `<line x1="${X(p.v)}" x2="${X(p.v)}" y1="${Y(p.lo68)}" y2="${Y(p.hi68)}" stroke="${old}" stroke-width="1.2" opacity=".7"/>`;
+    s += `<circle cx="${X(p.v)}" cy="${Y(p.frac)}" r="3.6" fill="#070a13" stroke="${old}" stroke-width="1.4"><title>V ${num(p.v, 2)}: ${p.found}/${p.n}</title></circle>`;
+  }
+  s += `<path d="${path(I10.curve)}" fill="none" stroke="${C.lim}" stroke-width="2.2"/>`;
+  for (const p of I10.curve) {
+    s += `<line x1="${X(p.v)}" x2="${X(p.v)}" y1="${Y(p.lo68)}" y2="${Y(p.hi68)}" stroke="${C.lim}" stroke-width="2"/>`;
+    s += `<circle cx="${X(p.v)}" cy="${Y(p.frac)}" r="4" fill="${C.lim}"><title>V ${num(p.v, 2)}: ${p.found}/${p.n}</title></circle>`;
+  }
+  s += "</svg>";
+  $("pxI10Chart").innerHTML = s;
+  $("pxI10Key").innerHTML = [
+    `<li><i style="border-color:${C.lim}"></i>${esc(T.k_new)}</li>`,
+    `<li><i style="border-color:${old};border-top-width:1px"></i>${esc(T.k_old)}</li>`,
+    `<li><i class="dash" style="border-color:${C.lim};border-top-width:1px"></i>${esc(T.k_lvl)}</li>`,
+  ].join("");
+  $("pxI10Cap").textContent = T.cap;
+}
+
 // ------------------------------------------------------------------------------------------- honest notes, sources
 function renderHonest() {
   const T = S.totals, P = S.prediction;
@@ -398,14 +457,14 @@ function renderAll() {
   apply(document);
   document.title = t("px.title");
   if (!S) { $("pxAnswer").textContent = t("px.noData"); return; }
-  renderAnswer(); renderTiles(); renderJump(); renderChart(); renderMap(); renderFields(); renderResult(); renderRun2(); renderInj(); renderHonest();
+  renderAnswer(); renderTiles(); renderJump(); renderChart(); renderMap(); renderFields(); renderResult(); renderRun2(); renderI10(); renderInj(); renderHonest();
 }
 
 $("langSlot").appendChild(langButton("fz-lang"));
 let wasCompact = compact();
-window.addEventListener("resize", () => { if (S && compact() !== wasCompact) { wasCompact = compact(); renderChart(); renderMap(); } });
+window.addEventListener("resize", () => { if (S && compact() !== wasCompact) { wasCompact = compact(); renderChart(); renderMap(); renderI10(); } });
 onLang(() => { document.documentElement.lang = lang(); renderAll(); });
 document.documentElement.lang = lang();
-[S, R2] = await Promise.all([get("data/planetx/summary.json"), get("data/planetx/run2.json")]);
+[S, R2, I10] = await Promise.all([get("data/planetx/summary.json"), get("data/planetx/run2.json"), get("data/planetx/inject10k.json")]);
 renderAll();
 if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
