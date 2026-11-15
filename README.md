@@ -364,6 +364,8 @@ Before measuring anything we wrote down a list of 90 fast-moving stars: the 50 f
 the same angle, plus 40 picked at random across five speed ranges. We then measured every one of them in real
 SPHEREx images with a single fixed method, using ESA's Gaia catalogue only to line up the other stars in each image,
 never the star being measured. 86 of the 90 gave a motion; the 4 that did not are kept in the table with the reason.
+The time the list and rule were written (2026-11-14 17:06) is from our working notes; git first shows them in `522d3ab`
+(18:12), together with the first 14 results, so the order is our statement, not something git proves.
 The typical star agrees with Gaia to 7 % (5 % for the fastest 48), which is about 0.17 arcseconds per year. When we
 deliberately started the fit from a motion that was 10 % wrong, the answer typically moved by well under 1 % of that
 error, so the result comes from the images, not from Gaia. Our error bars are right for the typical star, but a few

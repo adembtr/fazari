@@ -28,6 +28,10 @@ Area searched: 2.08 deg^2 = 0.024 % of the predicted band (8640 deg^2).
 - Pre-registration (`ajan_durumu/uzak_cisim.md`): 20:48 prediction, five points on the median orbit of Brown & Batygin 2021, decision
   rule, byte budget, before any pixel was read; 21:53 freeze of v3 (md5 5b482cb2f98c75e30f454296f7188ce8) before the first unsealed run; 23:05
   addendum and freeze of v3b (md5 14dd135e1ec5f00771fcf26784a40f92) before it touched the real strips. The v3b pass is declared and NOT blind.
+- What git shows: the times above come from our working notes, which are not in this repository. This file and the search code
+  (`pipeline/detect/distant.py`, `pipeline/find_distant.py`) were first committed on 2026-11-15 00:16 +03 (`630fca7`), after the
+  search. The v3 file was never committed, so its md5 cannot be checked; the md5 of v3b matches `pipeline/detect/distant.py` as
+  committed.
 
 ## Fields already on disk (cutouts of 0.2 / 0.4 deg; flat spectrum, test orbits in every direction)
 

@@ -1,7 +1,7 @@
 {
  "schema": "fazari-verify-tests/1",
  "code_version": "a5de792 + note: round v1.1 tested candidate finder v1.1 as committed (f50d77d; a5de792 registers detector P, not used by these tests); pipeline/detect had no uncommitted change. V8 keeps the asteroid numbers of round v1 (not re-run). V12 was measured by the fast-star sweep with its frozen copy of the v1 detection core (1370ca11c5).",
- "thresholds_frozen": "TEST-READY v1 16:58 (ajan_durumu/algoritma.md; unchanged in round v1.1; V12: per-star criterion pre-registered in pipeline/FAST_SWEEP.md 2026-11-14 17:06, test rule fixed by the tester 2026-11-15 01:05 before the final sweep summary)",
+ "thresholds_frozen": "TEST-READY v1 16:58 (time from the team's working notes, which are not in this repository; git has no record of the thresholds before the tests ran; unchanged in round v1.1; V12: per-star criterion written in pipeline/FAST_SWEEP.md 2026-11-14 17:06 per the notes, first committed 18:12 (522d3ab) together with the first 14 results; test rule fixed by the tester 2026-11-15 01:05 before the final sweep summary)",
  "generated": "2026-11-14T23:43:30Z",
  "tests": [
   {
@@ -557,8 +557,8 @@
     "tr": "Hızlı yıldız taraması (90 Gaia hızlı yıldızı, önceden kayda geçirilmiş tek yöntem)"
    },
    "result": {
-    "en": "Of 90 pre-registered stars, 86 were measured (4 could not be: no drift fit: HD 125455B, omi02 Eri B, EGGR 536; target not in the Gaia field list: 2MASS J05325346+8246465). 81 of 86 agree with Gaia DR3 within 3 sigma, 72 within 2 sigma and 52 within 1 sigma (correct error bars would give about 86, 82 and 59); 5 stars are outside 3 sigma, so the test does not pass (pre-registered per-star criterion in pipeline/FAST_SWEEP.md: within 3 sigma; test rule, fixed by the tester before the final summary existed: every measured star meets it). Known and not fixed: 8 of 86 stars get a two-season fit with no degree of freedom (dof = 0), and LAWD 37 and Ross 578 come out about 22 % slow (pipeline/FAST_SWEEP.md, Limits). Median difference 7.1 % (0.1662\"/yr). Measured with the frozen v1 detection core (1370ca11c5), not with finder v1.1.",
-    "tr": "Önceden kayda geçirilmiş 90 yıldızdan 86 tanesi ölçüldü (4 tanesi ölçülemedi). 86 yıldızın 81 tanesi Gaia DR3 ile 3 sigma, 72 tanesi 2 sigma, 52 tanesi 1 sigma içinde uyuşuyor (doğru hata çubuklarıyla yaklaşık 86, 82 ve 59 beklenirdi); 5 yıldız 3 sigma dışında, bu yüzden test geçmiyor (pipeline/FAST_SWEEP.md'de önceden konan yıldız başına ölçüt: 3 sigma içinde; test kuralı, son özet çıkmadan önce test eden tarafından kondu: ölçülen her yıldız bu ölçütü sağlamalı). Bilinen ve düzeltilmemiş: 86 yıldızın 8 tanesinde iki sezonluk uyumun serbestlik derecesi yok (dof = 0); LAWD 37 ve Ross 578 yaklaşık %22 yavaş çıkıyor (pipeline/FAST_SWEEP.md, sınırlar). Ortanca fark %7,1 (0,1662\"/yıl). Bulucu v1.1 ile değil, dondurulmuş v1 tespit çekirdeğiyle (1370ca11c5) ölçüldü."
+    "en": "Of 90 pre-registered stars, 86 were measured (4 could not be: no drift fit: HD 125455B, omi02 Eri B, EGGR 536; target not in the Gaia field list: 2MASS J05325346+8246465). 81 of 86 agree with Gaia DR3 within 3 sigma, 72 within 2 sigma and 52 within 1 sigma (correct error bars would give about 86, 82 and 59); 5 stars are outside 3 sigma, so the test does not pass (per-star criterion written in pipeline/FAST_SWEEP.md before the sweep, by the team's notes; git shows it first with the first 14 results: within 3 sigma; test rule, fixed by the tester before the final summary existed: every measured star meets it). Known and not fixed: 8 of 86 stars get a two-season fit with no degree of freedom (dof = 0), and LAWD 37 and Ross 578 come out about 22 % slow (pipeline/FAST_SWEEP.md, Limits). Median difference 7.1 % (0.1662\"/yr). Measured with the frozen v1 detection core (1370ca11c5), not with finder v1.1.",
+    "tr": "Önceden kayda geçirilmiş 90 yıldızdan 86 tanesi ölçüldü (4 tanesi ölçülemedi). 86 yıldızın 81 tanesi Gaia DR3 ile 3 sigma, 72 tanesi 2 sigma, 52 tanesi 1 sigma içinde uyuşuyor (doğru hata çubuklarıyla yaklaşık 86, 82 ve 59 beklenirdi); 5 yıldız 3 sigma dışında, bu yüzden test geçmiyor (pipeline/FAST_SWEEP.md'de taramadan önce yazılan yıldız başına ölçüt, ekibin notlarına göre; git onu ilk 14 sonuçla birlikte gösteriyor: 3 sigma içinde; test kuralı, son özet çıkmadan önce test eden tarafından kondu: ölçülen her yıldız bu ölçütü sağlamalı). Bilinen ve düzeltilmemiş: 86 yıldızın 8 tanesinde iki sezonluk uyumun serbestlik derecesi yok (dof = 0); LAWD 37 ve Ross 578 yaklaşık %22 yavaş çıkıyor (pipeline/FAST_SWEEP.md, sınırlar). Ortanca fark %7,1 (0,1662\"/yıl). Bulucu v1.1 ile değil, dondurulmuş v1 tespit çekirdeğiyle (1370ca11c5) ölçüldü."
    },
    "numbers": {
     "sample_size": 90,
@@ -575,7 +575,7 @@
     "median_abs_diff_arcsec_yr": 0.1662,
     "median_error_arcsec_yr_per_axis": 0.1286,
     "median_independence_pull": 0.0032,
-    "criterion": "every measured star within 3 sigma of Gaia DR3 (2-D chi2 <= 11.83); rule pipeline/FAST_SWEEP.md, 2026-11-14 17:06",
+    "criterion": "every measured star within 3 sigma of Gaia DR3 (2-D chi2 <= 11.83); rule pipeline/FAST_SWEEP.md, 2026-11-14 17:06 per the team's notes (first commit 18:12, 522d3ab, with the first 14 results)",
     "code_version": "1370ca11c5",
     "source": "site/data/fast_sweep/summary.json",
     "source_built": "2026-11-15T01:43:58+0300"
@@ -585,5 +585,5 @@
    "v0": null
   }
  ],
- "edited": "2026-11-14 18:10: V9 split into movers (V9) and brightness changes (V11); V3 parallax compared with Lazorenko & Sahlmann 2018. No result was re-measured. 2026-11-14 21:58: V7 re-run with the finder's own v1 decision rule (tests/shuffle.py uses DA.null_movers, 522d3ab): 0 fake movers in 1200 field-shuffles, status fail -> pass; the v0-rule numbers are kept (v0, v1_core_v0_rule). 2026-11-15 02:43: round v1.1 (independent tester, finder v1.1, commit a5de792; outputs ajan_durumu/round_v11): V1-V5, V7, V9, V10, V11 re-measured, V6 re-measured on a reduced set (see V6), V12 added (fast-star sweep, final summary). Thresholds and decision rules unchanged; V4 and V11 changed from fail to pass because the measurement changed. The v1 numbers of every re-measured test are kept under \"v1\"."
+ "edited": "2026-11-14 18:10: V9 split into movers (V9) and brightness changes (V11); V3 parallax compared with Lazorenko & Sahlmann 2018. No result was re-measured. 2026-11-14 21:58: V7 re-run with the finder's own v1 decision rule (tests/shuffle.py uses DA.null_movers, 522d3ab): 0 fake movers in 1200 field-shuffles, status fail -> pass; the v0-rule numbers are kept (v0, v1_core_v0_rule). 2026-11-15 02:43: round v1.1 (independent tester, finder v1.1, commit a5de792; outputs in a local run folder, not in this repository): V1-V5, V7, V9, V10, V11 re-measured, V6 re-measured on a reduced set (see V6), V12 added (fast-star sweep, final summary). Thresholds and decision rules unchanged; V4 and V11 changed from fail to pass because the measurement changed. The v1 numbers of every re-measured test are kept under \"v1\"."
 }

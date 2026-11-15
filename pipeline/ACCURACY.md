@@ -6,7 +6,7 @@ Exactly the content of [`site/data/verify/tests.json`](../site/data/verify/tests
 Thresholds were frozen at TEST-READY v1 16:58, before the first round, and were not changed. Round v1.1 (15 Nov 2026)
 re-measured the finder tests with candidate finder v1.1 as committed (a5de792; finder v1.1 is
 f50d77d). Result: 9 pass, 2 fail (V6, V12), 1 limit (V8). V6 was re-run on 5 of its 20 injection runs (the runs of its best bin and two WISE 0855 runs); the other
-15 runs keep their finder v1 numbers. V8 keeps the asteroid numbers of round v1. V12 (fast-star sweep, pre-registered in
+15 runs keep their finder v1 numbers. V8 keeps the asteroid numbers of round v1. V12 (fast-star sweep, rule written before the sweep by our notes; first committed with the first 14 results, see
 [`FAST_SWEEP.md`](FAST_SWEEP.md)) was measured with the sweep's frozen copy of the v1 detection core. V4 and V11 changed
 from fail to pass: the WISE 0855 direction is now 0.8 sigma off (was 3.8) and RW Aurigae is found as a colour change;
 both v1.1 changes were written by the finder's author with these targets in view.

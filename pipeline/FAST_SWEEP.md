@@ -20,6 +20,10 @@ measured with one fixed procedure and compared with ESA Gaia DR3. Failures stay 
 
 ## Pre-registered rule (written 2026-11-14 17:06 +03, before any star was measured)
 
+> What git shows: the time 17:06 comes from our working notes. The rule's first commit is `522d3ab`
+> (2026-11-14 18:12 +03), together with the interim result of the first 14 stars, so git alone cannot show that
+> the rule was written before those stars were measured. The rule has not changed since that commit.
+
 - Universe: the 4,586 stars of `site/data/fast_stars.json.gz` (Gaia DR3, total motion > 0.5"/yr, bright
   enough for SPHEREx, 2+ seasons in the sky index) that have two seasons 365 +- 60 days apart (proxy for
   "same telescope orientation"): 4,412 stars.

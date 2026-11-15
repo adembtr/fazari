@@ -373,6 +373,7 @@ function renderHonest() {
     t("px.hon.seasons"),
     t("px.hon.cand"),
     ...(S.first_pass ? [t("px.hon.second")] : []),
+    t("px.hon.git"),
     t("px.hon.old", { before: num(S.before.m50_ab_flat, 1), n: S.before.exposures_per_season, d: hi.d_reach_m50_au != null ? num(hi.d_reach_m50_au, 0) : "–" }),
   ];
   $("pxHonest").innerHTML = items.map((x) => `<li>${esc(x)}</li>`).join("");
