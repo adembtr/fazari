@@ -67,7 +67,7 @@ function style() {
 #tests .vf-short b { color: #ff9a5a; font-weight: 700; }
 #tests .vf-item.fail .vf-mean b { color: #ff9a5a; }
 #tests .res.other { background: rgba(169, 179, 201, .08); color: var(--soft); border: 1px solid var(--line); }
-#tests .vfx { color: var(--fg); font-size: 14.5px; border-left: 2px solid var(--line); padding-left: 10px; }
+#tests .vfx, #tests .vf-later { color: var(--fg); font-size: 14.5px; border-left: 2px solid var(--line); padding-left: 10px; }
 `;
   document.head.append(s);
 }
@@ -229,14 +229,16 @@ function alignLine() {
   p.hidden = false;
 }
 
-/** Later re-runs kept in a test's own block with "extra_only": true (e.g. V6 "v11_new_seeds", pipeline/INJECTION_V11.md):
- *  their EN/TR sentence and evidence file, shown only with ?extra=1 until the team lead has read them. */
+/** Later re-runs kept in a test's own block (e.g. V6 "v11_new_seeds", pipeline/INJECTION_V11.md): their EN/TR sentence
+ *  and evidence file. "later": true shows the block to everyone; "extra_only": true shows it only with ?extra=1, until
+ *  the team lead has read it. */
 function laterLines(x) {
-  if (!EXTRA_ON || !x || typeof x !== "object") return "";
-  return Object.values(x).filter((b) => b && typeof b === "object" && b.extra_only === true && (b.result_en || b.result_tr)).map((b) => {
+  if (!x || typeof x !== "object") return "";
+  return Object.values(x).filter((b) => b && typeof b === "object" && (b.later === true || b.extra_only === true) &&
+    (EXTRA_ON || b.extra_only !== true) && (b.result_en || b.result_tr)).map((b) => {
     const s = plain(tx({ en: b.result_en, tr: b.result_tr }));
     const ev = typeof b.evidence === "string" ? b.evidence : "", evName = ev.split("/").pop();
-    return `<p class="vf-res vfx">${esc(s)}${ev ? ` <a href="${esc(ev)}" download="${esc(evName)}">${esc(evName)} ↓</a>` : ""}</p>`;
+    return `<p class="vf-res ${b.extra_only === true ? "vfx" : "vf-later"}">${esc(s)}${ev ? ` <a href="${esc(ev)}" download="${esc(evName)}">${esc(evName)} ↓</a>` : ""}</p>`;
   }).join("");
 }
 

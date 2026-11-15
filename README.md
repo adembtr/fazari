@@ -49,9 +49,9 @@ Live site: https://adembtr.github.io/fazari/ (published from `main`; the newest 
 - **Candidate finder v1.1 and known-asteroid recovery:** done, with an independent test round on v1.1. Of 13 numbered
   verification tests 10 pass, 2 fail (V6, V12) and 1 reaches a limit (V8); see the summary at the top of
   [`pipeline/ACCURACY.md`](pipeline/ACCURACY.md) (V1–V12) and [`pipeline/PARALLAX_SWEEP.md`](pipeline/PARALLAX_SWEEP.md) (V13).
-- **Open:** in the injection test the best bin recovers 97.8 % of the fake movers, below the 99 % target (V6); in the
-  fast-star sweep 5 of 86 measured stars are more than 3σ from Gaia DR3 (V12). Every result is a
-  candidate until checked.
+- **Open:** in the injection test the best bin recovers 95.1 % of the fake movers over two seeds (173/182; seed 1 alone
+  gave 97.8 %), below the 99 % target (V6); in the fast-star sweep 5 of 86 measured stars are more than 3σ from Gaia
+  DR3 (V12). Every result is a candidate until checked.
 
 ## Challenge request → In Fazari
 

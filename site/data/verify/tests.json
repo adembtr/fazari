@@ -250,8 +250,8 @@
     "tr": "Enjeksiyon testi (gerçek görüntülere eklenen sahte cisimler)"
    },
    "result": {
-    "en": "Reduced re-run with finder v1.1: 5 of the 20 injection runs of round v1 (Epsilon Indi B AB 12-14, WISE 0855 AB 14 and 18; seed 1, the same injected positions). Movers 155/225 recovered (v1 on the same runs 154/225), brightness changes 46/72 (v1 47/72), false candidates 17 (v1 32). Best bin 89/91 = 97.8 % (Epsilon Indi B, at least 0.3\"/yr, AB 12-14; v1 89/91), below the 99 % target. WISE 0855 field, AB 18, at least 1\"/yr: 16/24 (v1 15/24). The other 15 runs (all of the Barnard's Star field and the remaining magnitudes) were not re-run for v1.1; the round v1 totals over all 20 runs (473/868 movers, 158/287 brightness changes, 88 false candidates) were measured with finder v1 and are kept under \"v1\".",
-    "tr": "Bulucu v1.1 ile azaltılmış yeniden koşu: v1 turunun 20 enjeksiyon koşusundan 5 tanesi (Epsilon Indi B AB 12-14, WISE 0855 AB 14 ve 18; tohum 1, aynı eklenen konumlar). Hareketli 155/225 bulundu (aynı koşularda v1 154/225), parlaklık değişimi 46/72 (v1 47/72), sahte aday 17 (v1 32). En iyi aralık 89/91 = %97,8 (Epsilon Indi B, en az 0,3\"/yıl, AB 12-14; v1 89/91), %99 hedefinin altında. WISE 0855 alanı, AB 18, en az 1\"/yıl: 16/24 (v1 15/24). Diğer 15 koşu (Barnard Yıldızı alanının hepsi ve kalan parlaklıklar) v1.1 için yeniden koşulmadı; 20 koşunun v1 toplamları (868 hareketliden 473, 287 parlaklık değişiminden 158, 88 sahte aday) bulucu v1 ile ölçüldü ve \"v1\" altında duruyor."
+    "en": "Finder v1.1 on two seeds: seed 1 (reduced re-run, 5 runs) and new random positions with seeds 101 and 102 (18 runs, 15 Nov 2026; plan pushed before the first run). Best bin 173/182 = 95.1 % (Epsilon Indi B, at least 0.3\"/yr, AB 12-14, seeds 1 and 101; 95 % lower limit 91.5 %), below the 99 % target, so V6 fails. Earlier, with seed 1 alone, the same bin gave 89/91 = 97.8 % (v1 89/91); on the new positions of seed 101 it gives 84/91 = 92.3 %. Seed-1 re-run (5 of the 20 runs of round v1: Epsilon Indi B AB 12-14, WISE 0855 AB 14 and 18): movers 155/225 (v1 on the same runs 154/225), brightness changes 46/72 (v1 47/72), false candidates 17 (v1 32); WISE 0855 field, AB 18, at least 1\"/yr: 16/24 (v1 15/24). The round v1 totals over all 20 runs (473/868 movers, 158/287 brightness changes, 88 false candidates) were measured with finder v1 and are kept under \"v1\". The new-seed runs are in the line below.",
+    "tr": "Bulucu v1.1 iki tohumla: tohum 1 (azaltılmış yeniden koşu, 5 koşu) ve 101 ile 102 tohumlarının yeni rastgele konumları (18 koşu, 15 Kasım 2026; plan ilk koşudan önce kaydedildi). En iyi aralık 182'de 173 = %95,1 (Epsilon Indi B, en az 0,3\"/yıl, AB 12-14, tohum 1 ve 101; %95 alt sınır %91,5). Bu %99 hedefinin altında, yani V6 geçmiyor. Önceden, yalnız tohum 1 ile aynı aralık 91'de 89 = %97,8 vermişti (v1 89/91); 101 tohumunun yeni konumlarında 91'de 84 = %92,3. Tohum 1 yeniden koşusu (v1 turunun 20 koşusundan 5'i: Epsilon Indi B AB 12-14, WISE 0855 AB 14 ve 18): hareketli 155/225 (aynı koşularda v1 154/225), parlaklık değişimi 46/72 (v1 47/72), sahte aday 17 (v1 32); WISE 0855 alanı, AB 18, en az 1\"/yıl: 16/24 (v1 15/24). 20 koşunun v1 toplamları (868 hareketliden 473, 287 parlaklık değişiminden 158, 88 sahte aday) bulucu v1 ile ölçüldü ve \"v1\" altında duruyor. Yeni tohum koşuları alttaki satırda."
    },
    "numbers": {
     "rerun_runs": 5,
@@ -266,9 +266,9 @@
     "v1_same_runs_brightness_injected": 72,
     "rerun_false_candidates": 17,
     "v1_same_runs_false_candidates": 32,
-    "best_bin_recovered": 89,
-    "best_bin_injected": 91,
-    "best_bin_percent": 97.8,
+    "best_bin_recovered": 173,
+    "best_bin_injected": 182,
+    "best_bin_percent": 95.1,
     "best_bin_min_speed_arcsec_yr": 0.3,
     "best_bin_mag_lo": 12,
     "best_bin_mag_hi": 14,
@@ -377,8 +377,8 @@
     "plan": "pipeline/INJECTION_V11_PLAN.md (commit e9b5dec, pushed 2026-11-15 08:07:53 UTC)",
     "results": "pipeline/INJECTION_V11.md",
     "evidence": "data/verify/evidence/injection_v11.csv",
-    "extra_only": true,
-    "note": "finder v1.1 (code as in round v1.1) on new random positions, 15 Nov 2026 11:08-13:05 +03; shown on verify.html only with ?extra=1 until the team lead has read it"
+    "note": "finder v1.1 (code as in round v1.1) on new random positions, 15 Nov 2026 11:08-13:05 +03; shown on verify.html since 15 Nov 2026, after the team lead read it",
+    "later": true
    }
   },
   {
