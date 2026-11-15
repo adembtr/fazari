@@ -246,8 +246,8 @@ Requires Python 3 and [uv](https://docs.astral.sh/uv/).
 |---|---|---|---|---|---|---|---|
 | Barnard's Star | 10.361 ± 0.051 | 355.4° ± 0.3° | 10.393 at 355.6° | Gaia DR3 | V1 pass | 10.207″ ± 0.06″ (2025-08 → 2026-08) | 0.982 yr |
 | Epsilon Indi B | 4.678 ± 0.02 | 121.6° ± 0.2° | 4.684 at 121.8° | Gaia DR3 | V2 pass | 4.535″ ± 0.029″ (2025-10 → 2026-09) | 0.9647 yr |
-| WISE 0855-0714 | 8.429 ± 0.377 | 284.2° ± 2.5° | 8.152 at 274.7° | Kirkpatrick et al. 2021, ApJS 253, 7 (total proper motion) | V4 **fail** (direction 3.8σ off) | 8.419″ ± 0.558″ (2025-05 → 2026-05) | 0.9855 yr |
-| Luhman 16AB | 2.678 ± 0.059 | 274.3° ± 1.5° | 2.79 at 277.4° | SIMBAD via CDS Sesame, retrieved 2026-11-14 (no Gaia DR3 proper motion) | V3 pass | 2.75″ ± 0.058″ (2025-06 → 2026-06) | 0.9945 yr |
+| WISE 0855-0714 | 8.187 ± 0.567 | 277.6° ± 3.8° | 8.152 at 274.7° | Kirkpatrick et al. 2021, ApJS 253, 7 (total proper motion) | V4 pass (finder v1.1 re-measurement; v1 was 3.8σ off in direction, not an independent test) | 8.419″ ± 0.558″ (2025-05 → 2026-05) | 0.9855 yr |
+| Luhman 16AB | 2.816 ± 0.057 | 275.8° ± 1.4° | 2.79 at 277.4° | SIMBAD via CDS Sesame, retrieved 2026-11-14 (no Gaia DR3 proper motion) | V3 pass | 2.75″ ± 0.058″ (2025-06 → 2026-06) | 0.9945 yr |
 
 Sources:
 
