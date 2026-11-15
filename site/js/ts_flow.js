@@ -571,12 +571,22 @@
     B.insertBefore(sea, $("fzStage").nextSibling);
     var ctl = mk("div", "ts-cbar", "tsCtl");
     B.insertBefore(ctl, sea.nextSibling);
+    // saving and sharing (js/cp_save.js): the frame, the seasons as GIF and video, a one-page PDF report, the position
+    // and a link that opens the same view (on a phone with a share sheet: Share)
+    var canVid = typeof MediaRecorder === "function" && !!(HTMLCanvasElement.prototype.captureStream);
+    var share = !!(navigator.share && window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
     var save = mk("div", "ts-save", "tsSave",
       '<button type="button" id="tsPng" data-i18n="cp.png">Save this frame (PNG)</button>' +
       '<button type="button" id="tsGif" data-i18n="cp.gif">Save GIF</button>' +
-      (isSky ? '<button type="button" id="tsLink" data-i18n="cp.link">Copy link</button>' : ""));
+      '<button type="button" id="tsVid" data-i18n="cp.vid"' + (canVid ? "" : " hidden") + ">Save video</button>" +
+      '<button type="button" id="tsPdf" data-i18n="cp.pdf">PDF report</button>' +
+      '<button type="button" id="tsPos" data-i18n="cp.pos">Copy position</button>' +
+      '<button type="button" id="tsLink" data-i18n="' + (share ? "cp.share" : "cp.link") + '">' + (share ? "Share" : "Copy link") + "</button>");
     B.insertBefore(save, ctl.nextSibling);
-    if (!isSky) { into(B, $("tsView"), ctl); into(save, $("copyLink")); into(save, $("linkOut")); }
+    if (!isSky) {                                     // the viewer's own link button gives way to the one above (same link)
+      into(B, $("tsView"), ctl); into(save, $("copyLink")); into(save, $("linkOut"));
+      if ($("copyLink")) $("copyLink").hidden = true;
+    }
     // technical details: a closed fold at the end
     var det = mk("details", "ts-tech", "tsTech",
       '<summary><b data-i18n="cp.tech">Technical details</b> <span data-i18n="cp.tech.sub">Downloads, calibration, season table, settings</span></summary>');
@@ -638,6 +648,9 @@
     if (p) [].forEach.call(p.querySelectorAll(".spx"), function (x) { if (typeof x.__spxDraw === "function") safe("redraw", x.__spxDraw); });
   }
   window.__tsTab = function (id) { cpUser = true; setTab(id); };
+  var SAVE_KIND = { tsPng: "png", tsGif: "gif", tsVid: "video", tsPdf: "pdf", tsPos: "pos", tsLink: "link" };
+  // the explorer's "Download / Share" menu drives the result in its panel through this: resolves to { ok, msg }
+  window.__tsSave = function (what) { return mod("./cp_save.js").then(function (m) { return m.act(what, null); }); };
   function cpClick(e) {
     var t = e.target && e.target.closest ? e.target : null;
     if (!t) return;
@@ -645,8 +658,8 @@
     if (tab) { cpUser = true; setTab(tab.getAttribute("data-tab")); return; }
     var sea = t.closest("[data-ts-sea]");
     if (sea) { seasonGo(+sea.getAttribute("data-ts-sea"), sea.getAttribute("data-ep")); return; }
-    var b = t.closest("#tsPng, #tsGif, #tsLink");
-    if (b) { mod("./cp_save.js").then(function (m) { m[b.id === "tsPng" ? "savePng" : b.id === "tsGif" ? "saveGif" : "copyLink"](b); }).catch(function (x) { console.warn("ts_flow: save", x); }); return; }
+    var b = t.closest("#tsPng, #tsGif, #tsVid, #tsPdf, #tsPos, #tsLink");
+    if (b) { mod("./cp_save.js").then(function (m) { return m.act(SAVE_KIND[b.id], b); }).catch(function (x) { console.warn("ts_flow: save", x); }); return; }
     var mv = t.closest("#tsVdMore [data-vd-other], #tsVdMore [data-vd-list]");      // the strip's own buttons do the work
     if (mv) {
       e.preventDefault();
@@ -780,5 +793,15 @@
   D.addEventListener("fazari:lang", function () { setTimeout(function () { lastLang = null; schedule(); }, 40); });
   D.addEventListener("fazari:post", function () { limState.key = null; schedule(); });
   var tries = 0, iv = setInterval(function () { schedule(); if (++tries > 80 || (window.__fzViewer && lastMeta)) clearInterval(iv); }, 250);
-  window.__tsFlow = { tidy: schedule, info: resultInfo };
+  /** The facts of the point card as plain text (js/cp_save.js: the PDF report and "Copy position"). */
+  function pointFacts() {
+    var r = isSky ? skyInfo() : resultInfo();
+    if (!r || !fin(r.here.ra) || !fin(r.here.dec)) return null;
+    var plain = function (h) { var d = D.createElement("div"); d.innerHTML = String(h || ""); return d.textContent.replace(/\s+/g, " ").trim(); };
+    var nm = $("tsName"), ti = $("title"), kick = $("tsKick");
+    return { ra: +r.here.ra, dec: +r.here.dec, free: !!r.free, n: +r.n || 0, eps: (r.eps || []).slice(),
+      name: (nm && nm.textContent.trim()) || (ti && ti.textContent.trim()) || "", kick: kick ? kick.textContent.trim() : "",
+      cat: safe("cat", function () { return plain(catHtml(r)); }) || "", off: srcState.off ? plain(offHtml()) : "" };
+  }
+  window.__tsFlow = { tidy: schedule, info: resultInfo, point: pointFacts };
 })();

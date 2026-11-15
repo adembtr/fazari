@@ -1364,6 +1364,74 @@ function openLayers() {
   $("layersBox").open = true;
 }
 
+/** "Download / Share ▾" of the place card. Files come from the result open in the panel: its page makes them
+ *  (window.__tsSave of sky.html / ornek.html, js/cp_save.js) and says "not finished yet" while it measures. The
+ *  position and the link are this place's (on a phone with a share sheet: Share). */
+function wireShareMenu() {
+  const btn = $("btnShare"), menu = $("shareMenu");
+  if (!btn || !menu) return;
+  const vid = menu.querySelector('[data-sh="video"]'), lnk = menu.querySelector('[data-sh="link"]');
+  if (vid) vid.hidden = !(typeof MediaRecorder === "function" && HTMLCanvasElement.prototype.captureStream);
+  const phoneShare = !!(navigator.share && window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+  if (phoneShare && lnk) { lnk.setAttribute("data-i18n", "ex.sh.share"); lnk.textContent = T("ex.sh.share"); }
+  const place = () => {                                   // over the page, next to the button (the card scrolls on phones)
+    const r = btn.getBoundingClientRect(), w = menu.offsetWidth, h = menu.offsetHeight;
+    const left = Math.max(8, Math.min(r.left, innerWidth - w - 8));
+    let top = r.top - h - 6;
+    if (top < 8) top = Math.min(r.bottom + 6, innerHeight - h - 8);
+    menu.style.left = left + "px"; menu.style.top = Math.max(8, top) + "px";
+  };
+  const open = (on, keys = false) => {
+    menu.hidden = !on;
+    btn.setAttribute("aria-expanded", String(on));
+    if (on) { place(); if (keys) menu.querySelector("button:not([hidden])")?.focus({ preventScroll: true }); }   // from the keyboard: on the first item
+  };
+  btn.addEventListener("click", (e) => { e.stopPropagation(); open(menu.hidden, e.detail === 0); });
+  document.addEventListener("click", (e) => { if (!menu.hidden && !menu.contains(e.target) && !btn.contains(e.target)) open(false); });
+  document.addEventListener("keydown", (e) => {
+    if (menu.hidden) return;
+    if (e.key === "Escape") { e.stopImmediatePropagation(); open(false); btn.focus(); return; }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {          // arrow keys move along the items
+      const its = [...menu.querySelectorAll("button:not([hidden])")], i = its.indexOf(document.activeElement);
+      its[(i + (e.key === "ArrowDown" ? 1 : its.length - 1)) % its.length]?.focus();
+      e.preventDefault();
+    }
+  }, true);
+  window.addEventListener("resize", () => { if (!menu.hidden) open(false); });
+  menu.addEventListener("click", async (e) => {
+    const it = e.target.closest("[data-sh]");
+    if (!it) return;
+    open(false);
+    const what = it.dataset.sh, p = state.selected;
+    if (what === "pos" || what === "link") {
+      const cp = await import("../js/cp_save.js");
+      if (what === "pos") {
+        if (!p) return;
+        toast((await cp.copyText(cp.positionText(p.pos.ra, p.pos.dec))) ? T("cp.pos.ok") : T("cp.link.fail"));
+        return;
+      }
+      if (phoneShare) {
+        try { await navigator.share({ title: document.title, url: location.href }); return; }
+        catch (x) { if (x && x.name === "AbortError") return; }
+      }
+      if (await cp.copyText(location.href)) toast(T("ex.toast.copied")); else toast(location.href);
+      return;
+    }
+    // a file: from the result in the panel (none yet, or the local engine still at work: not finished)
+    let save = null;
+    try { const w = !$("blink").hidden && $("job").hidden ? $("blinkFrame").contentWindow : null; save = w && typeof w.__tsSave === "function" ? w.__tsSave : null; }
+    catch { save = null; }
+    if (!save) { toast(T("ex.sh.first")); return; }
+    const busy = { gif: "cp.gif.busy", video: "cp.vid.busy", pdf: "cp.pdf.busy" }[what];
+    if (busy) toast(T(busy));
+    try {
+      const r = await save(what);
+      if (r && r.msg) toast(r.msg, !r.ok);
+      else if (busy) { $("toast").className = "toast"; }
+    } catch (x) { console.warn("explore: save", x); toast(T("cp.fail"), true); }
+  });
+}
+
 function toast(text, err = false) {
   const t = $("toast");
   t.textContent = text;
@@ -1447,10 +1515,7 @@ function wireUi() {
     const fov = state.al ? state.al.getFov()[0] : 1;
     flyTo(p.pos.ra, p.pos.dec, Math.max(0.12, Math.min(fov / 4, 0.5)));
   });
-  $("btnShare").addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText(location.href); toast(T("ex.toast.copied")); }
-    catch { toast(location.href); }
-  });
+  wireShareMenu();
   $("blinkClose").addEventListener("click", closeBlink);
   $("blinkFrame").addEventListener("load", () => { $("blinkLoading").hidden = true; });
   // the sheet's handle: a tap toggles it; pulled up it opens, pulled down it folds

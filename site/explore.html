@@ -171,10 +171,22 @@
       <span data-i18n="ex.card.look">Fetch SPHEREx images here</span></button>
     <button id="btnGallery" class="secondary" hidden data-i18n="ex.card.gallery">Prepared blink</button>
     <button id="btnZoom" class="ghost" data-i18n="ex.card.zoom">Zoom in</button>
-    <button id="btnShare" class="ghost" data-i18n="ex.card.share">Copy link</button>
+    <button id="btnShare" class="ghost" aria-haspopup="menu" aria-expanded="false" aria-controls="shareMenu" data-i18n="ex.sh.btn">Download / Share ▾</button>
   </div>
   <p class="engine-tag"><span id="engineDot" aria-hidden="true"></span><span id="engineTag">In-browser engine</span></p>
 </section>
+
+<!-- "Download / Share" of the place card: the result in the panel as files (its page makes them: js/cp_save.js),
+     the position and the link of this place. Placed over the page (the card scrolls on phones). -->
+<div id="shareMenu" class="share-menu" role="menu" hidden aria-label="Download or share this place" data-i18n-attr="aria-label:ex.sh.aria">
+  <button type="button" role="menuitem" data-sh="png" data-i18n="ex.sh.png">Picture (PNG)</button>
+  <button type="button" role="menuitem" data-sh="gif" data-i18n="ex.sh.gif">Blink (GIF)</button>
+  <button type="button" role="menuitem" data-sh="video" data-i18n="ex.sh.vid">Video</button>
+  <button type="button" role="menuitem" data-sh="pdf" data-i18n="ex.sh.pdf">Report (PDF)</button>
+  <hr aria-hidden="true">
+  <button type="button" role="menuitem" data-sh="pos" data-i18n="ex.sh.pos">Copy position</button>
+  <button type="button" role="menuitem" data-sh="link" data-i18n="ex.sh.link">Copy link</button>
+</div>
 
 <!-- Compass: north and east on the sky, kept correct while you look around. -->
 <div id="compass" class="compass" role="img" aria-label="Compass: N points to the north celestial pole, E to the east" data-i18n-attr="aria-label:ex.cmp.aria">

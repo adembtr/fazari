@@ -291,7 +291,8 @@ html.ui.ui-page-explore .card.ts-ready #btnGallery[hidden] { display: inline-blo
 @container (max-width: 330px) {             /* the narrow strip beside the open result: the name and the one button */
   html.ui body.blink-open:not(.ui-blink-minimized) .card .note, html.ui body.blink-open:not(.ui-blink-minimized) .card .cov,
   html.ui body.blink-open:not(.ui-blink-minimized) .card .exo-info, html.ui body.blink-open:not(.ui-blink-minimized) .card .foot-legend,
-  html.ui body.blink-open:not(.ui-blink-minimized) .card .ts-card-more { display: none; }
+  html.ui body.blink-open:not(.ui-blink-minimized) .card .ts-card-more > :not(#btnShare) { display: none; }   /* only "Download / Share" stays: it saves the result beside it */
+  html.ui body.blink-open:not(.ui-blink-minimized) .card .ts-card-more { margin-top: 6px; padding-top: 0; border-top: 0; }
   html.ui body.blink-open:not(.ui-blink-minimized) .card h2 { font-size: 15.5px; margin-bottom: 8px; }
   html.ui body.blink-open:not(.ui-blink-minimized) .card .actions { display: block; }
   html.ui body.blink-open:not(.ui-blink-minimized) .card .actions > button { width: 100%; justify-content: center; font-size: 13.5px; line-height: 1.25; padding: 8px 10px; white-space: normal; }

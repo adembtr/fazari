@@ -1897,6 +1897,16 @@ export async function startViewer() {
     setRaw, raw: () => !!S.fv.raw,
     frames: () => (fvOn() ? S.fv.set : null),             // the processed frame set (shifts, sky levels: for checks)
     current: () => ({ frame: S.bin && S.bin.frames[S.idx], bin_um: S.bin && S.bin.wavelength_um }),
+    /** The marks over the picture (rings, track, arrow, labels; #ov) as drawn for visit i of the bin on screen (default:
+     *  the one on screen), as a copy of the SVG in picture pixels. Nothing on screen changes (js/cp_save.js PNG / GIF). */
+    overlayNode(i) {
+      const keep = S.idx;
+      try {
+        if (S.bin && Number.isInteger(i) && i >= 0 && i < S.bin.frames.length) S.idx = i;
+        drawOverlay();
+        return $("ov").cloneNode(true);
+      } finally { S.idx = keep; drawOverlay(); }
+    },
     setMarking(api) { S.marking = api || null; },
     fallbackSentence() {
       const box = $("explainSentence");
