@@ -470,3 +470,21 @@ const I10_ON = new URLSearchParams(location.search).get("extra") === "1";
 [S, R2, I10] = await Promise.all([get("data/planetx/summary.json"), get("data/planetx/run2.json"), I10_ON ? get("data/planetx/inject10k.json") : null]);
 renderAll();
 if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
+
+// ------------------------------------------------------------------------------------------- run 3 (one line under the run-2 line)
+// data/planetx/run3.json (pipeline/planetx_run3_summary.py); its EN/TR text lives in that file.
+// Shows only with ?extra=1 until the team lead has read it (15 Nov 2026; same rule as the 10,400-body test); drop R3_ON to show it.
+const R3_ON = new URLSearchParams(location.search).get("extra") === "1";
+const R3 = R3_ON ? await get("data/planetx/run3.json") : null;
+function renderRun3() {
+  const L = R3 && R3.site_line;
+  let el = $("pxRun3");
+  if (!L || !S) { if (el) el.remove(); return; }
+  const prev = $("pxRun2") || $("pxUpper");
+  if (!el) { el = document.createElement("p"); el.id = "pxRun3"; el.className = "crit"; }
+  if (el.previousElementSibling !== prev) prev.after(el);
+  const links = L.links || {};
+  el.innerHTML = esc(L[lang()] || L.en).replace(/\{(\w+)\}/g, (m, k) => (links[k] ? `<a href="${esc(links[k].url)}" rel="noopener">${esc(links[k].label)}</a>` : m));
+}
+renderRun3();
+onLang(renderRun3);

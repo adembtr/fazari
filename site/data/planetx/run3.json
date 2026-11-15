@@ -1298,5 +1298,24 @@
   "0.75": 375,
   "0.40": 320,
   "0.20": 269
+ },
+ "site_line": {
+  "en": "Run 3 (15 Nov 2026): rules registered {reg} at 12:15; search started 16:07; result {res} at 17:44 (GitHub push times, +03). Five new strips on the predicted orbit, 2.58 deg², no candidate. All three runs together: no body brighter than V 19.45 (50 % of test bodies found; 90 % at V 18.10) between 350 and 500 AU in 7.07 deg² (0.082 % of the predicted band).",
+  "tr": "3. arama (15 Kasım 2026): kurallar {reg} ile 12:15'te kaydedildi; arama 16:07'de başladı; sonuç {res}, 17:44 (GitHub push saatleri, +03). Öngörülen yörüngede beş yeni şerit, 2,58 deg², aday yok. Üç arama birlikte: 350-500 AU arasında 7,07 deg²'de (öngörülen kuşağın %0,082'si) V 19,45'ten parlak cisim yok (test cisimlerinin %50'si bulunuyor; %90'ı V 18,10'da).",
+  "links": {
+   "reg": {
+    "url": "https://github.com/adembtr/fazari/commit/09bd296722df4c067d0f464f43cf8c3ae2d910a8",
+    "label": "09bd296"
+   },
+   "res": {
+    "url": "https://github.com/adembtr/fazari/commit/d923aa62f78a8f983ce017c3c6d4d125345de033",
+    "label": "d923aa6"
+   }
+  },
+  "times": {
+   "registered_push": "2026-11-15T12:15:32+03:00",
+   "first_image_byte": "2026-11-15T16:07:36+03:00",
+   "result_push": "2026-11-15T17:44:46+03:00"
+  }
  }
 }
