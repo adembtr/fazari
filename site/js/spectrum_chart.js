@@ -41,7 +41,11 @@ const STYLE = `
 .spx .spx-note { font-size:.8rem; color:var(--mut); margin:4px 0 0; }
 .spx .spx-links a { color:#ffb347; font-size:.85rem; margin-right:12px; }
 .spx details table { font-size:.8rem; }
+.spx .spx-cmp { display:flex; flex-wrap:wrap; gap:2px 16px; font-size:.84rem; color:var(--fg); margin:2px 0 4px; }
+.spx .spx-cmp span::before { content:""; display:inline-block; width:16px; height:3px; border-radius:2px; margin-right:6px; vertical-align:3px; background:var(--c); }
 `;
+// compare view (the result layout of sky.html, js/ch_sky.js): the point in the middle and a tapped star in one chart
+const CMP_MAIN = "#ffc94d", CMP_OTHER = "#7fd4ff";
 
 function el(tag, attrs = {}, parent = null) {
   const e = document.createElementNS(NS, tag);
@@ -121,7 +125,10 @@ function draw(root, spec, state) {
   const sIdx = (s) => Math.max(0, seasons.indexOf(s));
   // saturated exposures without an estimate are not drawn as points (they are not measurements): the wavelength
   // ranges where every exposure is saturated become one grey band "too bright for the camera here"
-  const pts = viewPoints(spec, state.mode).filter((p) => p.kind !== "sat" && !state.off.has(p.season) && fin(p.x));
+  const cmp = state.cmp || null;
+  const colOf = (p) => (cmp ? (p.cmp ? CMP_OTHER : CMP_MAIN) : COLORS[sIdx(p.season) % COLORS.length]);
+  const both = (mode) => viewPoints(spec, mode).concat(cmp ? viewPoints(cmp, mode).map((p) => ({ ...p, cmp: true })) : []);
+  const pts = both(state.mode).filter((p) => p.kind !== "sat" && !state.off.has(p.season) && fin(p.x));
   const satBands = (() => {
     const all = viewPoints(spec, "exposures").filter((p) => !state.off.has(p.season) && fin(p.x) && p.kind !== "flag").sort((a, b) => a.x - b.x);
     const runs = []; let cur = null;
@@ -208,16 +215,16 @@ function draw(root, spec, state) {
   // marks: faint exposures behind the binned view, then the view's points
   const gData = el("g", {}, svg);
   if (state.mode === "binned") {
-    for (const p of viewPoints(spec, "exposures")) {
+    for (const p of both("exposures")) {
       if (state.off.has(p.season) || p.kind !== "det" || !fin(p.y) || (logOk && p.y <= 0)) continue;
-      el("circle", { cx: sx(p.x), cy: clampY(sy(p.y)), r: 1.6, fill: COLORS[sIdx(p.season) % COLORS.length], opacity: 0.3 }, gData);
+      el("circle", { cx: sx(p.x), cy: clampY(sy(p.y)), r: 1.6, fill: colOf(p), opacity: 0.3 }, gData);
     }
   }
   const hits = [];
   const r = state.mode === "binned" ? 4.5 : 3.2;
   const order = { flag: 0, sat: 0, ul: 1, wing: 2, det: 3 };
   for (const p of pts.slice().sort((a, b) => order[a.kind] - order[b.kind])) {
-    const c = COLORS[sIdx(p.season) % COLORS.length], shape = SHAPES[sIdx(p.season) % SHAPES.length];
+    const c = colOf(p), shape = SHAPES[sIdx(p.season) % SHAPES.length];
     const X = sx(p.x);
     const g = el("g", {}, gData);
     if (p.kind === "sat") {                      // saturated, no estimate: tick on the axis
@@ -313,7 +320,7 @@ function fillTip(tip, p, spec) {
 }
 
 /** Render a spectrum (format fazari-spectrum/1) into container `box`. */
-export function renderSpectrum(box, spec, { csvUrl = null, csvName = null, jsonUrl = null, title = "Spectrum", keep = null } = {}) {
+export function renderSpectrum(box, spec, { csvUrl = null, csvName = null, jsonUrl = null, title = "Spectrum", keep = null, compare = null, names = null } = {}) {
   if (!document.getElementById("spx-style")) {
     const st = document.createElement("style");
     st.id = "spx-style";
@@ -342,6 +349,7 @@ export function renderSpectrum(box, spec, { csvUrl = null, csvName = null, jsonU
   const drawn = det.concat((spec.points || []).filter((p) => p.status === "nondetection").map((p) => num(p.upper_limit_ujy)).filter((v) => v > 0));
   const wide = drawn.length > 3 && Math.max(...drawn) / Math.min(...drawn) > 10;
   const state = keep || { mode: anyBins ? "binned" : "exposures", log: wide || (!det.length && nSat > 0), off: new Set() };
+  state.cmp = compare && Array.isArray(compare.points) ? compare : null;    // a second spectrum in the same chart (blue)
   const seg = (labels, key, vals) => {
     const s = h("div", { class: "spx-seg", role: "group" }, null, head);
     labels.forEach((lab, k) => {
@@ -368,6 +376,11 @@ export function renderSpectrum(box, spec, { csvUrl = null, csvName = null, jsonU
       draw(box, spec, state);
     };
   });
+  if (state.cmp) {                               // which curve is which
+    const lg = h("div", { class: "spx-cmp" }, null, box);
+    h("span", { style: `--c:${CMP_MAIN}` }, (names && names[0]) || T("cp.sp.centre", "Point in the middle"), lg);
+    h("span", { style: `--c:${CMP_OTHER}` }, (names && names[1]) || T("cp.sp.tap", "Star with the blue ring"), lg);
+  }
   h("div", { class: "spx-plot" }, null, box);
   // key for the marker styles (identity of the seasons is in the chips above)
   const key = h("div", { class: "spx-key" }, null, box);
@@ -415,7 +428,7 @@ export function renderSpectrum(box, spec, { csvUrl = null, csvName = null, jsonU
     box.__spxRO.observe(box);
   }
   // language switch: render again with the same view (season bins / exposures, log, hidden seasons)
-  box.__spxArgs = { spec, opts: { csvUrl, csvName, jsonUrl, title, keep: state } };
+  box.__spxArgs = { spec, opts: { csvUrl, csvName, jsonUrl, title, keep: state, compare, names } };
   if (!box.__spxLang) {
     box.__spxLang = true;
     I18N.onLang(() => { const a = box.__spxArgs; if (a && box.isConnected) { const open = box.querySelector("details")?.open; renderSpectrum(box, a.spec, a.opts); if (open) box.querySelector("details").open = true; } });

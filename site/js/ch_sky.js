@@ -146,7 +146,7 @@ function mountSpec() {
   if (!after || $("chSpecCard")) return;
   specCard = document.createElement("div");
   specCard.className = "card ch-spec"; specCard.id = "chSpecCard";
-  specCard.innerHTML = `<h2 id="chSpecH"></h2><p class="ch-hint" id="chSpecHint"></p><div id="chSpecChart" hidden></div><p class="ch-cap" id="chSpecNote"></p>`;
+  specCard.innerHTML = `<h2 id="chSpecH"></h2><div class="ch-who" id="chSpecWho" hidden></div><p class="ch-hint" id="chSpecHint"></p><div id="chSpecChart" hidden></div><p class="ch-cap" id="chSpecNote"></p>`;
   after.after(specCard);
   const cv = $("blink");
   if (cv) {
@@ -156,6 +156,9 @@ function mountSpec() {
     ring = document.createElement("div"); ring.className = "ch-ring"; ring.id = "chRing";
     host.appendChild(ring);
     cv.addEventListener("click", onTap);
+    // result layout: the spectrum of the point in the middle comes late (js/app.js reads every exposure); then the
+    // tapped star is drawn next to it
+    try { new MutationObserver(() => { if (st.spec && document.documentElement.classList.contains("ts-cp")) paintSpec(); }).observe(after, { childList: true }); } catch (_) { /* old browser */ }
     window.addEventListener("resize", placeRing);
   }
   paintSpec();
@@ -195,7 +198,7 @@ async function onTap(ev) {
   [gx, gy] = sw > 0 ? [sx / sw, sy / sw] : [bx, by];
   const useTarget = !!(run.target && fr.gaiaXY && Math.hypot(fr.gaiaXY[0] - gx, fr.gaiaXY[1] - gy) <= 3);
   const [ra, dec] = run.grid.pixToSky(gx, gy);
-  st.sel = { run, gx, gy, ra, dec, useTarget };
+  st.sel = { run, gx, gy, ra, dec, useTarget, thumb: thumbAt(gx, gy) };
   placeRing();
   st.specBusy = true; st.specErr = null; paintSpec();
   const name = useTarget ? run.target.name : T("ch.sp.name", "Star at RA {ra}° Dec {dec}°", { ra: L(ra.toFixed(4)), dec: L(dec.toFixed(4)) });
@@ -209,8 +212,41 @@ async function onTap(ev) {
     st.specErr = T("ch.sp.fail", "Could not measure this star ({msg}).", { msg: e.message || String(e) });
   } finally { st.specBusy = false; paintSpec(); }
 }
+/** A small cut of the picture around the tapped star (the result layout shows it next to its name). */
+function thumbAt(gx, gy) {
+  try {
+    const { current } = S(), cv = $("blink");
+    const n = current.n, zoom = Number(($("zoom") || {}).value || 1), src = n / zoom, s0 = (n - src) / 2, k = cv.width / src;
+    const x = ((gx + 0.5) - s0) * k, y = ((gy + 0.5) - s0) * k, r = Math.max(12, 9 * k);
+    const c = document.createElement("canvas"); c.width = c.height = 88;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, 88, 88);
+    ctx.drawImage(cv, x - r, y - r, 2 * r, 2 * r, 0, 0, 88, 88);
+    ctx.strokeStyle = "#5ad1ff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(44, 44, 44 * 5 * k / r, 0, 2 * Math.PI); ctx.stroke();
+    return c.toDataURL("image/png");
+  } catch (_) { return null; }
+}
+/** Result layout (js/ts_flow.js, html.ts-cp): who is drawn in blue, and the way back to the point in the middle. */
+function paintWho() {
+  const who = $("chSpecWho");
+  if (!who) return;
+  const cp = document.documentElement.classList.contains("ts-cp");
+  specCard.classList.toggle("ch-cmp", cp && !!st.sel);
+  if (!cp || !st.sel) { who.hidden = true; who.textContent = ""; return; }
+  who.hidden = false;
+  who.innerHTML = (st.sel.thumb ? `<img class="ch-thumb" alt="" src="${esc(st.sel.thumb)}">` : "")
+    + `<div class="ch-who-t"><b>${esc(st.sel.useTarget && st.sel.run.target ? st.sel.run.target.name : T("cp.sp.tap", "Star with the blue ring"))}</b>`
+    + `<span>${esc(T("cp.sp.picked", "RA {ra}° Dec {dec}° · picked by tapping", { ra: L(st.sel.ra.toFixed(4)), dec: (st.sel.dec >= 0 ? "+" : "") + L(st.sel.dec.toFixed(4)) }))}</span></div>`
+    + `<button type="button" class="ch-back" id="chSpecBack">${esc(T("cp.sp.back", "Back to the middle"))}</button>`;
+  $("chSpecBack").onclick = () => {
+    st.sel = null; st.spec = null; st.specErr = null;
+    if (st.csvUrl) { URL.revokeObjectURL(st.csvUrl); st.csvUrl = null; }
+    placeRing(); paintSpec();
+  };
+}
 async function paintSpec() {
   if (!specCard) return;
+  paintWho();
   $("chSpecH").textContent = T("ch.sp.h", "Spectrum of any star here");
   const hint = $("chSpecHint"), chart = $("chSpecChart"), note = $("chSpecNote");
   hint.textContent = st.specBusy ? T("ch.sp.busy", "Measuring in every loaded image…")
@@ -222,8 +258,16 @@ async function paintSpec() {
   if (!st.spec) return;
   if (!st.csvUrl) st.csvUrl = URL.createObjectURL(new Blob([toCsv(st.spec)], { type: "text/csv" }));
   chart.hidden = false;
-  renderSpectrum(chart, st.spec, { title: T("ch.sp.title", "Instant spectrum: {name}", { name: st.spec.target }), csvUrl: st.csvUrl,
-                                   csvName: `${String(st.spec.target).replace(/[^A-Za-z0-9]+/g, "_")}_instant_spectrum.csv` });
+  const { run } = S(), mid = run && run.spectrum && (run.spectrum.points || []).length ? run.spectrum : null;
+  if (document.documentElement.classList.contains("ts-cp") && mid && !st.sel.useTarget) {
+    // result layout: one chart, the point in the middle (yellow) and the tapped star (blue)
+    hint.textContent = st.specErr || T("cp.sp.hint", "Tap another star in the image: this tab opens and its curve is drawn next to the middle one. Grey band: too bright for the camera.");
+    renderSpectrum(chart, mid, { title: T("cp.sp.h", "Spectrum: the middle and the tapped star"), csvUrl: run.spectrumUrl || null,
+                                 csvName: `${String(mid.target || "middle").replace(/[^A-Za-z0-9]+/g, "_")}_spectrum.csv`, compare: st.spec });
+  } else {
+    renderSpectrum(chart, st.spec, { title: T("ch.sp.title", "Instant spectrum: {name}", { name: st.spec.target }), csvUrl: st.csvUrl,
+                                     csvName: `${String(st.spec.target).replace(/[^A-Za-z0-9]+/g, "_")}_instant_spectrum.csv` });
+  }
   note.innerHTML = `<a href="${esc(st.csvUrl)}" download="${esc(String(st.spec.target).replace(/[^A-Za-z0-9]+/g, "_"))}_instant_spectrum.csv">${esc(T("ch.sp.csv", "Download CSV"))}</a> · `
     + esc(T("ch.sp.method", "Aperture photometry (15″ radius, 30–45″ background ring) in each loaded image at its own wavelength, corrected for the light outside the aperture; errors from empty apertures. AB = 23.9 − 2.5 log₁₀(flux/µJy). Saturated cores are not measured; a neighbour within ~20″ adds its light."))
     + ` <span class="ch-only-d">${esc(T("ch.sp.took", "Measured in {s} s from {n} images, 0 bytes downloaded.", { s: L((st.spec.__ms / 1000).toFixed(1)), n: st.spec.n_files }))}</span>`;
