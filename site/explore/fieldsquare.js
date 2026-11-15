@@ -6,7 +6,8 @@
 //     data/<target>/ (meta.json grid, north-up TAN: 180 px x 3″ = 0.15°). When it is the same square as the
 //     field, only one is drawn and its label says so.
 // Both go when the card closes or another point is picked. Thin lines with a dark edge, never a fill, so the
-// star in the middle stays clear; a small label at a corner once the square is big enough on screen.
+// star in the middle stays clear; a small label at a corner once the square is big enough on screen
+// ("Downloaded area · 0.3°"), and then "Measured point" beside the crosshair of the picked point.
 // Separate from candidates.js, whose pink dashed "Finder field" outline belongs to a result opened in the
 // blink panel (it is drawn only for results with candidates.json).
 //   initFieldSquare({ state, hooks }) -> { update(), info() }     state.A / state.al: Aladin namespace and view
@@ -105,9 +106,9 @@ export function initFieldSquare({ state, hooks }) {
   function drawLabels(source, ctx) {
     if (!cur) return;
     const pix = (c) => { try { const q = al.world2pix(c[0], c[1]); return q && Number.isFinite(q[0]) ? q : null; } catch (_) { return null; } };
-    const text = (s, x, y, color, base) => {
+    const text = (s, x, y, color, base, align = "left") => {
       ctx.font = "600 11px system-ui, -apple-system, 'Segoe UI', sans-serif";
-      ctx.textAlign = "left"; ctx.textBaseline = base;
+      ctx.textAlign = align; ctx.textBaseline = base;
       ctx.lineJoin = "round"; ctx.lineWidth = 3; ctx.strokeStyle = "rgba(4,6,12,.85)";
       ctx.strokeText(s, x, y);
       ctx.fillStyle = color; ctx.fillText(s, x, y);
@@ -115,9 +116,10 @@ export function initFieldSquare({ state, hooks }) {
     ctx.save();
     const [ne, nw] = cur.field.corners.map(pix);
     const fieldTop = ne && nw ? Math.min(ne[1], nw[1]) : null;
-    if (ne && nw && Math.hypot(nw[0] - ne[0], nw[1] - ne[1]) >= LABEL_MIN_PX) {
-      const s = cur.same ? T("ex.sq.same", { v: fmt(cur.field.w) }, `Field ${fmt(cur.field.w)}° · prepared blink`)
-        : T("ex.sq.field", { v: fmt(cur.field.w) }, `Field ${fmt(cur.field.w)}°`);
+    const big = ne && nw && Math.hypot(nw[0] - ne[0], nw[1] - ne[1]) >= LABEL_MIN_PX;
+    if (big) {
+      const s = cur.same ? T("ex.sq.same", { v: fmt(cur.field.w) }, `Downloaded area · ${fmt(cur.field.w)}° · prepared blink`)
+        : T("ex.sq.field", { v: fmt(cur.field.w) }, `Downloaded area · ${fmt(cur.field.w)}°`);
       text(s, Math.min(ne[0], nw[0]) + 1, fieldTop - 4, CYAN, "alphabetic");
     }
     if (cur.ready) {                     // above its top-left corner; below the square when that is too close to the field label
@@ -129,6 +131,12 @@ export function initFieldSquare({ state, hooks }) {
         else text(s, Math.min(rsw[0], rse[0]) + 1, Math.max(rsw[1], rse[1]) + 4, GOLD, "top");
       }
     }
+    // "Measured point" at the crosshair (main.js drawSelection: ring r 16, ticks out to 28 px), on its left: the
+    // target's name (Aladin label) is drawn to the right of the point, the square labels above the squares (and the
+    // prepared-blink one under its square when it is close to the field label), and the place card can cover the
+    // sky under the point.
+    const c = big ? pix([cur.ra, cur.dec]) : null;
+    if (c) text(T("ex.sq.point", null, "Measured point"), c[0] - 32, c[1], "#ffffff", "middle", "right");
     ctx.restore();
   }
 

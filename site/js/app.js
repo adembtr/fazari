@@ -310,6 +310,7 @@ function skyStatusLine(ctx, canvas) {
 function drawMotionArrow(ctx, canvas, toCanvas, frame) {
   const a = run && run.astro, P = a && a.positions;
   if (!current || current.preview || !P || P.length < 2 || run.pgNoArrow) return;   // pgNoArrow: bins_bar.js, the answer is too uncertain
+  if (satWaiting()) return;                                     // a saturated source while wavelengths load: no interim speed
   const A = P[0], Z = P[P.length - 1];
   const p = (a.pairs || []).find((q) => q.from === A.season && q.to === Z.season);
   if (!p || !significant(p.shift, p.err)) return;               // a shift inside its own noise is not drawn as motion
@@ -354,7 +355,8 @@ function drawMotionArrow(ctx, canvas, toCanvas, frame) {
     ctx.lineWidth = 3.2; ctx.strokeStyle = "rgba(5,7,13,.85)"; ctx.stroke(); ctx.fillStyle = "#ffffff"; ctx.fill();
   }
   const sp = speedOf(null, { s: p.shift, e: p.err, dt: p.dtYears, pa: p.pa });
-  const l1 = speedText(sp), l2 = drawn ? scaleText(1) : t("fz.arw.small", null, "too small to draw at this zoom"), f1 = Math.round(W / 34), f2 = Math.round(W / 44);
+  // while wavelengths load the second line says the speed is interim (the scale note returns with the final result)
+  const l1 = speedText(sp), l2 = !run.complete ? t("ts.t.interim", null, "interim estimate, not final") : drawn ? scaleText(1) : t("fz.arw.small", null, "too small to draw at this zoom"), f1 = Math.round(W / 34), f2 = Math.round(W / 44);
   ctx.font = `700 ${f1}px system-ui, sans-serif`;
   const bw = Math.max(ctx.measureText(l1).width, (ctx.font = `700 ${f2}px system-ui, sans-serif`, ctx.measureText(l2).width)), bh = f1 + f2 + 8;
   const clampX = (x0) => Math.min(Math.max(x0, 8), W - 8 - bw);
@@ -461,6 +463,13 @@ function showPreliminary(r) {
   }
   $("measure").innerHTML = html;
 }
+/** The measured source is saturated (the engine's flag, js/sky.js calibration.saturatedTarget) and wavelengths are still
+ *  loading: no interim speed anywhere (verdict strip, tiles, arrow, this card); the final result shows it as before. */
+function satWaiting() {
+  const c = run && run.astro && run.astro.calibration;
+  return !!(run && !run.complete && c && c.saturatedTarget);
+}
+
 function showMotion() {
   const el = $("measure");
   const a = run.astro;
@@ -484,7 +493,8 @@ function showMotion() {
     // (there the yearly parallax wobble nearly cancels); the shift itself follows as a second line
     const q = a.pairs.filter((x) => x.sameOrientation && x.dtYears > 0.3).sort((x, y) => Math.abs(x.dtYears - 1) - Math.abs(y.dtYears - 1))[0] || (p && p.dtYears > 0.3 ? p : null);
     const sp = q ? { v: q.shift / q.dtYears, e: q.err / q.dtYears, p: q.gaiaShift != null ? q.gaiaShift / q.dtYears : null } : null;
-    if (sp) {
+    if (satWaiting()) html += `<p class="big">${t("vd.wait.measuring0")}</p>`;
+    else if (sp) {
       html += `<p class="big">${t(sp.v < 3 * sp.e ? "gr.sk.noClear" : "gr.sk.speed", { who, v: GR.rateTxt(sp.v, sp.e), e: GR.rateTxt(sp.e, sp.e) })}${sp.p != null ? t("gr.sk.cat", { p: GR.rateTxt(sp.p, sp.e) }) : ""}</p>`
         + `<div id="grSkyNl">${GR.numberLine({ v: sp.v, e: sp.e, p: sp.p, refLabel: t("gr.sk.catLabel"), unit: t("gr.unit") })}</div>`
         + `<p class="small">${t("gr.sk.how", { from: q.from, to: q.to, dt: num(q.dtYears, 2) })}</p>`;
@@ -499,9 +509,11 @@ function showMotion() {
         });
       }
     }
-    html += `<p${sp ? "" : ' class="big"'}>${t("sk.m.shift", { who, from: p.from, to: p.to, shift: fmtArc(p.shift), pa: num(p.pa, 1), err: num(p.err, 2) })}`;
-    if (p.gaiaShift != null) html += t("sk.m.cat", { shift: fmtArc(p.gaiaShift), pa: num(p.gaiaPa, 1) });
-    html += "</p>";
+    if (!satWaiting()) {                               // a saturated source while wavelengths load: not even the shift yet
+      html += `<p${sp ? "" : ' class="big"'}>${t("sk.m.shift", { who, from: p.from, to: p.to, shift: fmtArc(p.shift), pa: num(p.pa, 1), err: num(p.err, 2) })}`;
+      if (p.gaiaShift != null) html += t("sk.m.cat", { shift: fmtArc(p.gaiaShift), pa: num(p.gaiaPa, 1) });
+      html += "</p>";
+    }
   }
   html += `<table><tr><th>${t("sk.m.th.season")}</th><th>${t("sk.m.th.date")}</th><th>N</th><th>${t("sk.m.th.angle")}</th>`
     + (run.target ? `<th>${t("sk.m.th.vsCat")}</th>` : `<th>${t("sk.m.th.vsCentre")}</th>`) + "</tr>";
@@ -816,6 +828,7 @@ async function go(text, opts = {}) {
     }
     if (myRun !== run) return;
     run.finished = true; run.complete = true;
+    if (current && !current.preview) { showMotion(); showFrame(); }   // the final numbers (a saturated source's speed waits for them)
     busy(false);
     const nb = Object.keys(run.results).length;
     const imgs = fullCount(), ns = current.frames.length, more = nb < avail.length;

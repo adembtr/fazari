@@ -91,6 +91,16 @@ const speedOfAnswer = (a) => {
   }
   return ok(a.speed_arcsec_yr) ? { v: +a.speed_arcsec_yr, e: ok(a.speed_err_arcsec_yr) ? +a.speed_err_arcsec_yr : null } : null;
 };
+/** The engine's own saturation flag for the measured source: browser js/sky.js astrometry().calibration.saturatedTarget
+ *  (a saturated core in any exposure), local pipeline/blink.py meta.json measured.detection (saturated_frac of a
+ *  wavelength bin or a season x detector cell). A saturated star's position is least reliable early on, so while
+ *  wavelengths load its speed is not shown (Wolf 359: 5.4-5.8″/yr from one wavelength, 4.9 ± 0.3 final, Gaia 4.7). */
+export function satTarget(astro, meta) {
+  const c = astro && astro.calibration;
+  if (c && c.saturatedTarget) return true;
+  const d = meta && meta.measured && meta.measured.detection;
+  return !!(d && [...(d.bins || []), ...(d.cells || [])].some((x) => x && +x.saturated_frac > 0));
+}
 /** A measured shift whose error came out as zero (e.g. a saturated star's wings): no error bar, so neither "moves"
  *  nor "did not move" can be stated (the engine keeps a floor instead; noted in ajan_durumu/hukum.md). */
 const noErrorBar = (meta) => { const ms = (meta && meta.measured) || {}; return ok(ms.shift_arcsec) && !(+ms.shift_err_arcsec > 0); };
@@ -337,13 +347,17 @@ function finalView(d, repaint) {
   return { kind, tag: confTag(d.code, d.sp), title: d.sp ? L("vd.moves.t", "It moves: {v}.", { v: speedTxt(d.sp.v, d.sp.e) }) : L("vd.moves.t0", "It moves."),
     cat: d.off ? offLine(d.off, m) : catLine(m), field: fieldHtml(d.cand) };
 }
-/** An interim strip while wavelengths load. a = the running answer (or null), k/m = loaded / all wavelengths. */
-function waitView(a, k, m, n, page = "ornek") {
+/** An interim strip while wavelengths load. a = the running answer (or null), k/m = loaded / all wavelengths;
+ *  sat = the measured source is saturated (satTarget): no interim speed, "Measuring…" instead. An interim speed says
+ *  that it is an interim estimate. The final strip (finalView) is unchanged. */
+function waitView(a, k, m, n, page = "ornek", sat = false) {
   const of = ofM(k, m), kind = a ? KIND[a.code] : null, sp = a ? speedOfAnswer(a) : null;
   const tag = L("vd.interim", "Interim");
   const info = n ? plural("vd.img", +n, "{n} image", "{n} images") : "";
   if (kind === "none") return { kind: "wait", tag, title: L("vd.wait.none", "Nothing moving so far ({of})", { of }), what: info ? L("vd.wait.so", "So far {info}; the answer is updated with every wavelength.", { info }) : "", mean: MEAN(), actions: actionsHtml(page, null) };
-  if (kind === "moves") return { kind: "wait", tag, title: sp ? L("vd.wait.moves", "So far: it moves, {v} ({of})", { v: speedTxt(sp.v, sp.e), of }) : L("vd.wait.moves0", "So far: it moves ({of})", { of }), what: info ? L("vd.wait.so", "So far {info}; the answer is updated with every wavelength.", { info }) : "" };
+  if (kind === "moves" && sat) return { kind: "wait", tag, title: L("vd.wait.measuring", "Measuring… ({of})", { of }),
+    what: L("vd.wait.sat", "The source at this point is saturated (too bright) in the images, so its speed is shown only with the final result.") };
+  if (kind === "moves") return { kind: "wait", tag, title: sp ? L("vd.wait.moves", "So far: it moves, {v} (interim estimate, not final; {of})", { v: speedTxt(sp.v, sp.e), of }) : L("vd.wait.moves0", "So far: it moves ({of})", { of }), what: info ? L("vd.wait.so", "So far {info}; the answer is updated with every wavelength.", { info }) : "" };
   if (kind === "unsure") return { kind: "wait", tag, title: L("vd.wait.unsure", "Not sure so far ({of})", { of }), what: answerText(a) };
   return { kind: "wait", tag, title: L("vd.wait.start", "Looking… the first answer comes with the first wavelength ({of})", { of }), what: "" };
 }
@@ -392,7 +406,7 @@ async function mountOrnek() {
       const m = p.bins.length, k = p.bins.filter((b) => b.state === "done").length;
       const a = p.answer || null;
       const n = a && ok(a.n_images) ? +a.n_images : p.bins.filter((b) => b.state === "done").reduce((s, b) => s + (b.images_done | 0), 0);
-      S.view = waitView(a, k, m, n);
+      S.view = waitView(a, k, m, n, "ornek", satTarget(null, S.meta));
       paint(el, S.view);
       stagePost(k, m, n, false);
       const h = el.offsetHeight;                           // no layout jumps: the strip never shrinks during a run
@@ -478,7 +492,7 @@ function mountSky() {
     const a = S.answer;
     H.classList.toggle("vd-guarded", !!(a && a.reason));
     const complete = !!run.complete;
-    if (!complete) { paint(el, waitView(noSource(a) ? { ...a, code: "not_detected" } : a, k, m, n, "sky")); post(k, m, n, false); return; }
+    if (!complete) { paint(el, waitView(noSource(a) ? { ...a, code: "not_detected" } : a, k, m, n, "sky", satTarget(S.astro || run.astro, null))); post(k, m, n, false); return; }
     if (!a) { paint(el, null); return; }
     const code = noSource(a) ? "not_detected" : a.code;
     const kind = KIND[code];

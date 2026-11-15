@@ -1,4 +1,5 @@
-// Field-of-view selector on the explorer's place card (#fovSel, #fovEst in explore.html).
+// Field-of-view selector on the explorer's place card (#fovSel, #fovNote, #fovEst in explore.html, inside the closed
+// "Advanced" section #fovAdv).
 // The choice lives in the address bar (?fov=0.3, so "Copy link" keeps it) and goes with the result:
 // the local engine gets it as cutout_deg (engine.js), the in-browser engine as sky.html?fov= (main.js
 // blinkUrl). No choice = the engine's default (local 0.2°, browser 0.15°; js/fov.js FOV_DEFAULT). Choices, defaults and the
@@ -42,7 +43,14 @@ function render(force = false) {
   sel.disabled = saved;
   est.textContent = fovEstimateText(k, value, { phone: ph && k !== "local", saved })
     + (ph && k !== "local" && !saved ? " " + t("pg.fov.phoneMax", null, `Phones: up to ${FOV_PHONE_MAX}°.`) : "");
-  sel.title = t("pg.fov.title");
+  // what a wider field does, per engine (checked in the code, 15 Nov 2026): it never changes what is measured (the
+  // marked point); it changes how many Gaia reference stars align the images. Browser (js/calib.js): reference stars
+  // only within 0.15° of the centre, so beyond a 0.3° square there are no more. Local (pipeline/blink.py): every
+  // reference star on the cutout (the Gaia query grows with it, footprint_radius).
+  const note = $("fovNote");
+  const nk = k === "local" ? "ex.fov.noteLocal" : "ex.fov.noteBrowser";
+  if (note) note.textContent = t(nk);
+  sel.title = t(nk);
   // the expected time, small, inside the big button (the size and details stay in the Field row)
   const look = $("btnLook");
   if (look) {

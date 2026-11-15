@@ -445,7 +445,11 @@
     var sp = skySpeed(r.run);
     if (!sp) { setHtml(box, ""); setHidden(box, true); H.classList.remove("ts-sky-speed"); return; }
     var tile = function (k, b, small, cls) { return '<div class="tile ' + cls + '"><span class="k">' + k + "</span><b>" + b + "</b><small>" + small + "</small></div>"; };
-    var html = tile(esc(T("vw.t.measured", "Measured by us")), esc(GR.rateTxt(sp.v, sp.e)), "± " + esc(GR.rateTxt(sp.e, sp.e)) + '<span class="x"> · ' + esc(T("gr.t.speed", "speed per year")) + "</span>", "hero");
+    // while wavelengths load: the speed is an interim estimate and says so; a saturated source (the engine's flag,
+    // js/sky.js calibration.saturatedTarget) shows no interim speed at all (js/verdict_strip.js satTarget)
+    var interim = !r.run.complete, cal = r.run.astro && r.run.astro.calibration, sat = interim && !!(cal && cal.saturatedTarget);
+    var html = sat ? tile(esc(T("vw.t.measured", "Measured by us")), esc(T("vd.wait.measuring0", "Measuring…")), esc(T("ts.t.satWait", "the speed comes with the final result")), "hero")
+      : tile(esc(T("vw.t.measured", "Measured by us")), esc(GR.rateTxt(sp.v, sp.e)), "± " + esc(GR.rateTxt(sp.e, sp.e)) + '<span class="x"> · ' + esc(interim ? T("ts.t.interim", "interim estimate, not final") : T("gr.t.speed", "speed per year")) + "</span>", "hero");
     if (sp.p != null) {
       var who = r.g.source_id ? "Gaia DR3" : (r.g.label || "Gaia DR3");
       html += tile(esc(T("vw.t.predicts", "{who} predicts", { who: who })), esc(GR.rateTxt(sp.p, sp.e)), "", "ref");

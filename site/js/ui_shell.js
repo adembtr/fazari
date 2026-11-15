@@ -398,13 +398,15 @@ function setupExplore() {
 
   // One state, nothing to open or close (site_sade): the left panel, the star layers and the Finds list are simply
   // there; no Simple / Detailed switch.
-  // The place card: title, one line, ONE main button; the coordinates, the field size and the two small actions
-  // (Zoom in, Copy link) sit on one quiet line under it. Only the parents change; main.js / fov_ui.js find them by id.
+  // The place card: title, one line, ONE main button; the coordinates, the two small actions (Zoom in, Download /
+  // Share) and the closed "Advanced" section (field size) sit on one quiet line under it. Only the parents change;
+  // main.js / fov_ui.js find them by id.
   safe("card", () => {
     const card = $("card"), acts = card && card.querySelector(".actions");
     if (!acts || $("tsCardMore")) return;
     const more = el("div", { class: "ts-card-more ui-shell-own", id: "tsCardMore" });
-    for (const n of [card.querySelector(".coords"), card.querySelector(".fov-row"), $("btnZoom"), $("btnShare")]) if (n) more.append(n);
+    // the field size sits in the closed "Advanced" section (#fovAdv), last on the line: open, it takes a line of its own
+    for (const n of [card.querySelector(".coords"), $("btnZoom"), $("btnShare"), $("fovAdv") || card.querySelector(".fov-row")]) if (n) more.append(n);
     acts.after(more);
     const look = $("btnLook"), gal = $("btnGallery");
     if (gal) gal.removeAttribute("data-i18n");               // its words here: "Show the result (ready)"

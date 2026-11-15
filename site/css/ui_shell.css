@@ -269,7 +269,13 @@ html.ui.ui-page-explore .card .actions:empty { display: none; }
 html.ui.ui-page-explore .ts-card-more { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px; margin-top: 10px; padding-top: 7px;
   border-top: 1px solid var(--ui-line); font-size: 12.5px; color: var(--ui-mut); }
 html.ui.ui-page-explore .ts-card-more .coords { margin: 0; font-size: 12.5px; gap: 0 10px; color: var(--ui-soft); }
-html.ui.ui-page-explore .ts-card-more .fov-row { margin: 0; font-size: 12.5px; gap: 4px 6px; flex-wrap: nowrap; }
+html.ui.ui-page-explore .card .card-point { margin: 0 0 9px; font-size: 12.5px; line-height: 1.4; color: var(--ui-mut); }
+html.ui.ui-page-explore .ts-card-more .fov-adv { margin: 0; font-size: 12.5px; }
+html.ui.ui-page-explore .ts-card-more .fov-adv > summary { padding: 3px 0; font-weight: 500; color: var(--ui-mut); }
+html.ui.ui-page-explore .ts-card-more .fov-adv[open] { flex-basis: 100%; }             /* open: a line of its own */
+html.ui.ui-page-explore .ts-card-more .fov-row { margin: 2px 0 0; font-size: 12.5px; gap: 4px 6px; }
+html.ui.ui-page-explore .ts-card-more .fov-note { font-size: 12px; color: var(--ui-mut); }
+html.ui.ui-page-explore .ts-card-more .fov-adv select { max-width: 16em; }          /* a line of its own: room for "(default)" */
 html.ui.ui-page-explore .ts-card-more .fov-row label { font-weight: 500; }
 html.ui.ui-page-explore .ts-card-more .fov-row select { padding: 1px 4px; font-size: 12.5px; max-width: 9.5em; }
 html.ui.ui-page-explore .ts-card-more .ghost, html.ui.ui-page-explore .card.ts-ready .ts-card-more #btnLook {
@@ -281,7 +287,8 @@ html.ui.ui-page-explore .card.ts-ready .ts-card-more #btnLook .look-eta { font-s
 html.ui.ui-page-explore .card.ts-ready #btnGallery { border: 0; background: var(--acc); color: var(--acc-ink); font-weight: 750; padding: 10px 18px; font-size: 15.5px;
   box-shadow: 0 4px 18px rgba(255, 201, 77, .35); }
 html.ui.ui-page-explore .card.ts-ready #btnGallery[hidden] { display: inline-block !important; visibility: hidden; }   /* its place is kept while the files are checked */
-@media (pointer: coarse) { html.ui.ui-page-explore .ts-card-more .ghost, html.ui.ui-page-explore .card.ts-ready .ts-card-more #btnLook { padding: 10px 2px; } }
+@media (pointer: coarse) { html.ui.ui-page-explore .ts-card-more .ghost, html.ui.ui-page-explore .card.ts-ready .ts-card-more #btnLook,
+  html.ui.ui-page-explore .ts-card-more .fov-adv > summary { padding: 10px 2px; } }
 /* never under the result panel: with the panel open the card moves into the free strip of sky and gets smaller;
    where there is no such strip (a laptop or a phone: the panel fills it) the card steps aside until the panel closes */
 @media (min-width: 1400px) {
@@ -291,6 +298,7 @@ html.ui.ui-page-explore .card.ts-ready #btnGallery[hidden] { display: inline-blo
 @container (max-width: 330px) {             /* the narrow strip beside the open result: the name and the one button */
   html.ui body.blink-open:not(.ui-blink-minimized) .card .note, html.ui body.blink-open:not(.ui-blink-minimized) .card .cov,
   html.ui body.blink-open:not(.ui-blink-minimized) .card .exo-info, html.ui body.blink-open:not(.ui-blink-minimized) .card .foot-legend,
+  html.ui body.blink-open:not(.ui-blink-minimized) .card .card-point,
   html.ui body.blink-open:not(.ui-blink-minimized) .card .ts-card-more > :not(#btnShare) { display: none; }   /* only "Download / Share" stays: it saves the result beside it */
   html.ui body.blink-open:not(.ui-blink-minimized) .card .ts-card-more { margin-top: 6px; padding-top: 0; border-top: 0; }
   html.ui body.blink-open:not(.ui-blink-minimized) .card h2 { font-size: 15.5px; margin-bottom: 8px; }
