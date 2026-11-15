@@ -92,19 +92,6 @@ a { color: var(--blue); }
   border-radius: 999px; padding: 7px 12px; white-space: nowrap; }
 .icon-btn[aria-expanded="true"] { border-color: var(--blue); }
 
-.steps { position: fixed; z-index: 10; top: 64px; left: 50%; transform: translateX(-50%); margin: 0; padding: 4px; list-style: none;
-  pointer-events: none;   /* hints only: touches and drags go through to the sky (a pinch starting here must reach Aladin) */
-  display: flex; gap: 4px; background: rgba(10, 14, 26, .78); border: 1px solid var(--line); border-radius: 999px;
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); font-size: 13px; white-space: nowrap; }
-.steps li { display: flex; align-items: center; gap: 6px; padding: 3px 11px 3px 4px; border-radius: 999px; color: var(--mut); transition: background .3s, color .3s; }
-.steps i { font-style: normal; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font-size: 11.5px; font-weight: 800;
-  border: 1.5px solid currentColor; flex: none; }
-.steps b { font-weight: 700; }
-.steps li.on { background: var(--acc); color: var(--acc-ink); }
-.steps li.on i { background: var(--acc-ink); color: var(--acc); border-color: var(--acc-ink); }
-.steps li.done { color: #cfe9da; }
-.steps li.done i { background: var(--good); color: #032012; border-color: var(--good); font-size: 0; }
-.steps li.done i::before { content: "✓"; font-size: 12px; }
 .examples { margin: 0 0 10px; font-size: 12.5px; color: var(--mut); display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
 .examples button { background: rgba(255, 255, 255, .05); border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; font-size: 12.5px; color: var(--fg); }
 .msg { top: 104px; left: 50%; transform: translateX(-50%); margin: 0; padding: 8px 14px; font-size: 14px; max-width: min(92vw, 560px); }
@@ -124,7 +111,35 @@ a { color: var(--blue); }
 .panel { top: 70px; left: 10px; max-height: calc(100dvh - 70px - var(--foot-h) - 16px); width: var(--panel-w); display: flex; flex-direction: column; overflow: hidden; }
 .panel-body { overflow-y: auto; padding: 14px 14px 10px; overscroll-behavior: contain; }
 .sheet-handle { display: none; }
-.panel-title { font-size: 18px; margin: 0 0 2px; }
+/* desktop: fold the panel to its title bar (main.js setPanelShut); not on phones, where the sheet folds */
+.panel-fold { position: absolute; top: 12px; right: 12px; z-index: 3; width: 34px; height: 34px; display: grid; place-items: center; padding: 0;
+  border-radius: 50%; background: #161b2b; border: 1px solid var(--line); color: var(--mut); }
+.panel-fold:hover { color: #fff; border-color: rgba(160, 180, 230, .45); }
+.panel-fold .pf-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (min-width: 721px) {
+  body.panel-shut .panel { width: auto; }
+  body.panel-shut .panel-body { display: none; }
+  body.panel-shut .panel-fold { position: static; width: auto; height: auto; min-height: 44px; display: flex; gap: 8px; padding: 9px 12px 9px 16px;
+    border: 0; border-radius: var(--radius); background: none; color: var(--fg); font-size: 16px; font-weight: 700; }
+  body.panel-shut .panel-fold .pf-name { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+  body.panel-shut .panel-fold svg { transform: rotate(180deg); }
+  body.panel-shut .card, body.panel-shut .status { left: 24px; }
+}
+@media (max-width: 720px) { .panel-fold { display: none; } }
+
+/* Layers (closed at first): the sky map and the star layers, inside the panel under the categories */
+.ly-box { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+.ly-box > summary { display: flex; align-items: center; gap: 8px; min-height: 36px; cursor: pointer; font-size: 15px; font-weight: 700; list-style: none; }
+.ly-box > summary::-webkit-details-marker { display: none; }
+.ly-box > summary::after { content: ""; margin-left: auto; width: 8px; height: 8px; border: solid var(--mut); border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-2px, -2px); transition: transform .2s ease; }
+.ly-box[open] > summary::after { transform: rotate(225deg) translate(-2px, -2px); }
+.ly-box > summary:hover { color: #fff; }
+.ly-group { margin: 6px 0 10px; }
+.ly-h { margin: 0 0 6px; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--mut); }
+.ly-box .seg { flex-wrap: wrap; border-radius: 12px; }
+.ly-box .seg button { flex: 1 1 auto; padding: 6px 8px; font-size: 13.5px; border-radius: 9px; }
+.panel-title { font-size: 18px; margin: 0 0 2px; padding-right: 34px; }
 .hint { color: var(--mut); margin: 0 0 10px; font-size: 14px; }
 .cats { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
 .cat { --c: #9fb4ff; position: relative; display: flex; align-items: center; gap: 8px; text-align: left;
@@ -314,11 +329,6 @@ body.engine-local .status .eng i { background: var(--good); }
   .seg button { padding: 5px 8px; font-size: 13px; }
   .icon-btn { padding: 6px 9px; }
   .icon-btn .lbl { display: none; }
-  .steps { top: 104px; left: 8px; right: 8px; transform: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px;
-    border-radius: 12px; font-size: 11px; white-space: normal; padding: 3px; }
-  .steps li { flex-direction: column; gap: 1px; padding: 3px 2px; border-radius: 9px; text-align: center; line-height: 1.15; }
-  .steps i { width: 17px; height: 17px; font-size: 10px; }
-  .steps b { font-weight: 700; }
   .msg { top: 158px; width: calc(100vw - 16px); }
   .badge { top: auto; bottom: calc(var(--sheet-peek) + 34px); left: 10px; right: auto; font-size: 12px; }
   .popover { top: 104px; right: 8px; left: 8px; width: auto; max-height: calc(100dvh - 120px); overflow-y: auto; }
@@ -336,7 +346,7 @@ body.engine-local .status .eng i { background: var(--good); }
 
   .panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: var(--sheet-peek); max-height: none; border-radius: 18px 18px 0 0;
     transition: height .28s ease; padding-bottom: env(safe-area-inset-bottom); }
-  body[data-sheet="open"] .panel { height: min(62dvh, 560px); }
+  body[data-sheet="open"] .panel { height: min(62dvh, 560px); z-index: 13; }   /* an open sheet sits over the place card (its Layers too) */
   .sheet-handle { display: grid; place-items: center; height: 22px; width: 100%; background: none; border: 0; flex: none; }
   .grip { width: 44px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .35); }
   .panel-body { padding: 0 12px 12px; }
@@ -378,4 +388,4 @@ html[lang="tr"] .cat.hl .nm::after { content: "  ·  5 resmî hedef"; }
 }
 @media (min-width: 721px) { html[lang="tr"] .cat .nm { padding-right: 9px; } }   /* long Turkish words clear the count badge */
 /* pieces of the simplified layout (site_sade; styled in css/ui_shell.css under html.ui): not part of ?ui=classic */
-.st-new, .star-say, .ex-nav { display: none; }
+.star-say, .ex-nav { display: none; }

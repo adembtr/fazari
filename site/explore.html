@@ -42,16 +42,10 @@
     <button type="submit" data-i18n="ex.q.go">Go</button>
   </form>
   <div class="tools">
-    <div id="bgSwitch" class="seg" role="radiogroup" aria-label="Sky map" data-i18n-attr="aria-label:ex.bg.aria">
-      <button id="bg-visible" role="radio" aria-checked="true" title="Visible light (DSS2)" data-i18n="ex.bg.visible" data-i18n-attr="title:ex.bg.visible.t">Visible</button>
-      <button id="bg-twomass" role="radio" aria-checked="false" title="Near-infrared (2MASS)" data-i18n="ex.bg.twomass" data-i18n-attr="title:ex.bg.twomass.t">Near-IR</button>
-      <button id="bg-wise" role="radio" aria-checked="false" title="Mid-infrared (AllWISE)" data-i18n-attr="title:ex.bg.wise.t">WISE</button>
-      <button id="bg-spherex" role="radio" aria-checked="false" title="SPHEREx all-sky map (NASA, DR1)" data-i18n-attr="title:ex.bg.spherex.t">SPHEREx</button>
-    </div>
     <button type="button" class="icon-btn ts-tourbtn" data-tour-start hidden data-i18n="tour.start">Guided tour</button>
-    <button id="btnLayers" class="icon-btn" aria-expanded="false" aria-controls="layers" title="Layers" data-i18n-attr="title:ex.layers" data-tour="map-layers">
+    <button id="btnLayers" class="icon-btn" aria-expanded="false" aria-controls="layers" title="Map settings" data-i18n-attr="title:ex.mapset">
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 3 2 8l10 5 10-5-10-5Z M2 13l10 5 10-5 M2 17.5l10 5 10-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-      <span class="lbl" data-i18n="ex.layers">Layers</span>
+      <span class="lbl" data-i18n="ex.mapset">Map settings</span>
     </button>
     <button id="btnGuide" class="icon-btn" title="How to read a blink" data-i18n-attr="title:ex.guide">
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9.3 9.4a2.8 2.8 0 1 1 3.8 2.6c-.7.3-1.1.9-1.1 1.6v.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17.3" r="1.1" fill="currentColor"/></svg>
@@ -60,16 +54,10 @@
   </div>
 </header>
 
-<ol id="steps" class="steps" aria-label="How it works, in 4 steps" data-i18n-attr="aria-label:ex.steps.aria">
-  <li data-step="1" class="on"><i aria-hidden="true">1</i><span data-i18n-html="ex.step1"><b>Drag &amp; zoom</b> the sky</span></li>
-  <li data-step="2"><i aria-hidden="true">2</i><span class="st-old" data-i18n-html="ex.step2"><b>Tap</b> a point</span><span class="st-new" data-i18n-html="ts.ex.s1"><b>Pick a point</b>: click the sky or search</span></li>
-  <li data-step="3"><i aria-hidden="true">3</i><span class="st-old" data-i18n-html="ex.step3"><b>Fetch</b> SPHEREx images</span><span class="st-new" data-i18n-html="ts.ex.s2"><b>Press</b> the yellow button</span></li>
-  <li data-step="4"><i aria-hidden="true">4</i><span class="st-old" data-i18n-html="ex.step4"><b>Watch</b> the blink</span><span class="st-new" data-i18n-html="ts.ex.s3"><b>Read</b> the result</span></li>
-</ol>
 <p id="searchMsg" class="msg" role="status" aria-live="polite" hidden></p>
 
 <div id="layers" class="popover" hidden>
-  <h2 data-i18n="ex.layers">Layers</h2>
+  <h2 data-i18n="ex.mapset">Map settings</h2>
   <label><input type="checkbox" id="tgMarkers" checked> <span data-i18n="ex.ly.markers">Place markers</span></label>
   <label><input type="checkbox" id="tgEcliptic" checked> <span class="sw" style="--c:#ffd36e"></span> <span data-i18n="ex.ly.ecl">Ecliptic (asteroid lane)</span></label>
   <label><input type="checkbox" id="tgGalactic" checked> <span class="sw" style="--c:#9fc8ff"></span> <span data-i18n="ex.ly.gal">Milky Way plane</span></label>
@@ -87,6 +75,11 @@
 </div>
 
 <aside id="panel" class="panel" aria-label="Explore by category" data-i18n-attr="aria-label:ex.panel.aria">
+  <!-- Desktop: fold the panel down to a small title bar (main.js wirePanelFold; remembered in localStorage). -->
+  <button id="panelFold" type="button" class="panel-fold" aria-expanded="true" aria-controls="panelBody" title="Hide the panel">
+    <span class="pf-name" data-i18n="ex.panel.h">Explore the sky</span>
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
   <button id="sheetToggle" class="sheet-handle" aria-expanded="false" aria-controls="panelBody">
     <span class="grip" aria-hidden="true"></span><span class="sr-only" data-i18n="ex.sheet">Show or hide the place list</span>
   </button>
@@ -96,6 +89,18 @@
     <p id="qHelp" class="examples"><span data-i18n="ex.examples">Or type in the box:</span> <button type="button" data-example="Barnard's Star" data-i18n="tname.Barnard's Star">Barnard's Star</button>
       <button type="button" data-example="M 31">M 31</button> <button type="button" data-example="269.45 +4.69">269.45 +4.69</button>
       <button type="button" data-example="05 35 17 -05 23 28">05 35 17 −05 23 28</button></p>
+    <!-- "Start here": the other pages of the site as small cards, first in the panel (site_sade; styled in css/ui_shell.css).
+         The test count is the number of tests in data/verify/tests.json. -->
+    <nav class="ts-nav ex-nav" id="tsNav" aria-labelledby="exNavH">
+      <h3 class="ts-nav-l" id="exNavH" data-i18n="ex.nav.h">Start here</h3>
+      <a href="ornek.html?data=data/barnard/"><span class="xn-ico" aria-hidden="true">🎯</span><b data-i18n="ts.nav.targets">Five targets</b><small data-i18n="ex.nav.targets">The 5 targets, ready</small></a>
+      <a href="verify.html"><span class="xn-ico" aria-hidden="true">✅</span><b data-i18n="ts.nav.evidence">Evidence</b><small data-i18n="ex.nav.evidence">12 accuracy tests</small></a>
+      <a href="planetx.html"><span class="xn-ico" aria-hidden="true">🪐</span><b data-i18n="px.nav">Planet X</b><small data-i18n="ex.nav.px">Planet Nine search</small></a>
+      <a href="asteroids.html"><span class="xn-ico" aria-hidden="true">🪨</span><b data-i18n="ts.nav.ast">Asteroids</b><small data-i18n="ex.nav.ast">Found in SPHEREx</small></a>
+      <a href="comets.html"><span class="xn-ico" aria-hidden="true">☄️</span><b data-i18n="ts.nav.comets">Comets</b><small data-i18n="ex.nav.comets">3I/ATLAS and others</small></a>
+      <a href="story.html"><span class="xn-ico" aria-hidden="true">📖</span><b data-i18n="ts.nav.story">Story</b><small data-i18n="ex.nav.story">In plain words</small></a>
+      <a href="vr.html" class="xn-wide"><span class="xn-ico" aria-hidden="true">🥽</span><b data-i18n="ts.nav.vr">Inside the sky (VR)</b><small data-i18n="ex.nav.vr">Run time forward: fast stars move</small></a>
+    </nav>
     <div id="cats" class="cats" role="group" aria-label="Categories" data-i18n-attr="aria-label:ex.cats.aria"><p class="hint" data-i18n="ex.cats.loading">Loading categories…</p></div>
     <section id="catDetail" class="cat-detail" hidden aria-live="polite">
       <h3 id="catTitle"></h3>
@@ -103,17 +108,32 @@
       <p id="catDisclaimer" class="disclaimer" hidden></p>
       <ul id="points" class="points"></ul>
     </section>
+    <!-- Layers (closed at first): the sky map under everything, and the star layers (explore/starsnow.js, faststars.js;
+         planets.js and candidates.js add their chips to #starTools). -->
+    <details id="layersBox" class="ly-box" data-tour="map-layers">
+      <summary data-i18n="ex.layers">Layers</summary>
+      <div class="ly-group">
+        <h3 id="lyMapH" class="ly-h" data-i18n="ex.bg.aria">Sky map</h3>
+        <div id="bgSwitch" class="seg" role="radiogroup" aria-labelledby="lyMapH">
+          <button id="bg-visible" role="radio" aria-checked="true" title="Visible light (DSS2)" data-i18n="ex.bg.visible" data-i18n-attr="title:ex.bg.visible.t">Visible</button>
+          <button id="bg-twomass" role="radio" aria-checked="false" title="Near-infrared (2MASS)" data-i18n="ex.bg.twomass" data-i18n-attr="title:ex.bg.twomass.t">Near-IR</button>
+          <button id="bg-wise" role="radio" aria-checked="false" title="Mid-infrared (AllWISE)" data-i18n-attr="title:ex.bg.wise.t">WISE</button>
+          <button id="bg-spherex" role="radio" aria-checked="false" title="SPHEREx all-sky map (NASA, DR1)" data-i18n-attr="title:ex.bg.spherex.t">SPHEREx</button>
+        </div>
+      </div>
+      <div class="ly-group">
+        <h3 id="lyStarsH" class="ly-h" data-i18n="ex.ly.stars">Stars</h3>
+        <div id="starTools" class="star-tools" role="group" aria-label="Star layers" data-i18n-attr="aria-label:ex.stars.aria" data-tour="layers">
+          <button type="button" id="tgStarsNow" class="chip" aria-pressed="false" title="Gaia DR3 stars where they are in 2026. The sky maps are older, so fast-moving stars sit off their image." data-i18n-attr="title:ex.ss.title">
+            <i aria-hidden="true"></i><span data-i18n="ex.ss.name">Stars now (Gaia 2026)</span><small>zoom in below 1°</small></button>
+          <button type="button" id="tgFast" class="chip" aria-pressed="false" title="Gaia DR3 stars that move more than 0.5″ a year and that SPHEREx should see" data-i18n-attr="title:ex.fs.title">
+            <i aria-hidden="true"></i><span data-i18n="ex.fs.name">Fast stars</span><small data-i18n="ex.fs.sub">over 0.5″ a year</small></button>
+          <div id="fastLegend" class="fast-legend" hidden></div>
+          <p class="star-say" id="starSay" data-i18n="ts.ex.rings">These rings are known catalogue stars; we use them to check that the tool measures correctly. What we look for is something with no ring that still moves between images.</p>
+        </div>
+      </div>
+    </details>
     <p class="howto"><button type="button" id="btnGuide2" class="linkish" data-i18n="ex.howto">How do I read a blink?</button></p>
-    <nav class="ts-nav ex-nav" id="tsNav" aria-label="Pages" data-i18n-attr="aria-label:ts.nav.aria"><!-- the other pages of the site (single-column layout, site_sade) -->
-      <span class="ts-nav-l" data-i18n="ts.nav.more">More to see</span>
-      <a href="ornek.html?data=data/barnard/" data-i18n="ts.nav.targets">Five targets</a>
-      <a href="verify.html" data-i18n="ts.nav.evidence">Evidence</a>
-      <a href="planetx.html" data-i18n="px.nav">Planet X</a>
-      <a href="asteroids.html" data-i18n="ts.nav.ast">Asteroids</a>
-      <a href="comets.html" data-i18n="ts.nav.comets">Comets</a>
-      <a href="story.html" data-i18n="ts.nav.story">Story</a>
-      <a href="vr.html" data-i18n="ts.nav.vr">Inside the sky (VR)</a>
-    </nav>
     <p class="credits-mini"><span data-i18n="ex.cm.a">SPHEREx data: NASA/IPAC IRSA · Sky viewer: Aladin Lite (CDS) ·</span>
       <button type="button" class="linkish" data-open-about data-i18n="ex.credits">Credits</button> <span data-i18n="ex.cm.b">· Not endorsed by NASA.</span></p>
   </div>
@@ -170,16 +190,6 @@
 </div>
 
 <div id="spxBadge" class="badge" hidden><i aria-hidden="true"></i><span>SPHEREx infrared map</span></div>
-
-<!-- Star layers: Gaia DR3 stars where they are in 2026 (explore/starsnow.js) and fast stars (explore/faststars.js). -->
-<div id="starTools" class="star-tools" role="group" aria-label="Star layers" data-i18n-attr="aria-label:ex.stars.aria" data-tour="layers">
-  <button type="button" id="tgStarsNow" class="chip" aria-pressed="false" title="Gaia DR3 stars where they are in 2026. The sky maps are older, so fast-moving stars sit off their image." data-i18n-attr="title:ex.ss.title">
-    <i aria-hidden="true"></i><span data-i18n="ex.ss.name">Stars now (Gaia 2026)</span><small>zoom in below 1°</small></button>
-  <button type="button" id="tgFast" class="chip" aria-pressed="false" title="Gaia DR3 stars that move more than 0.5″ a year and that SPHEREx should see" data-i18n-attr="title:ex.fs.title">
-    <i aria-hidden="true"></i><span data-i18n="ex.fs.name">Fast stars</span><small data-i18n="ex.fs.sub">over 0.5″ a year</small></button>
-  <div id="fastLegend" class="fast-legend" hidden></div>
-  <p class="star-say" id="starSay" data-i18n="ts.ex.rings">These rings are known catalogue stars; we use them to check that the tool measures correctly. What we look for is something with no ring that still moves between images.</p>
-</div>
 
 <div class="status" aria-hidden="true">
   <span><span data-i18n="ex.st.at">Looking at</span> <b id="stRa">–</b> <b id="stDec">–</b></span>

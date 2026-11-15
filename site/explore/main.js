@@ -23,6 +23,7 @@ const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const isPhone = () => matchMedia("(max-width: 720px)").matches;
+const PANEL_KEY = "fz-ex-panel";             // localStorage: the left panel folded ("shut") or not (desktop)
 
 const CAT_COLORS = {
   challenge: "#ffc94d", fast_stars: "#ff8a5c", brown_dwarfs: "#d49a6a", variable_stars: "#ffe066",
@@ -46,7 +47,7 @@ const MAX_FOV = 120;   // fov (deg) where the SPHEREx layer starts / finishes fa
 const state = {
   A: null, al: null, cats: [], points: [], byId: new Map(), activeCat: null, selected: null,
   bg: "visible", autoSpx: true, slice: 42, hips: {}, spxOverlay: null, spxReady: false, catalogs: {},
-  selCat: null, overlays: {}, coverage: null, ang2pix: null, objectClickedAt: 0, step: 1, flat: null, engine: { kind: "browser" }, job: null,
+  selCat: null, overlays: {}, coverage: null, ang2pix: null, objectClickedAt: 0, flat: null, engine: { kind: "browser" }, job: null,
 };
 
 // ---------------------------------------------------------------------------------------------
@@ -752,7 +753,6 @@ function select(p, { fly = false, fov, fill = true } = {}) {
   // Step 2 of the flow: the coordinate box fills in with the spot you picked.
   if (fill) { $("q").value = `${pos.ra.toFixed(5)} ${pos.dec >= 0 ? "+" : ""}${pos.dec.toFixed(5)}`; unsay(); }
   state.flat?.setSelection(pos);
-  if (state.step < 3) setStep(3);
   if (isPhone()) setSheet("peek");
   drawFootprints();
   state.selCat?.removeAll();
@@ -876,7 +876,6 @@ function showPanel(title) {
   panelTitle = title;                          // a string, or a function (re-run on a language switch)
   $("blinkTitle").textContent = typeof title === "function" ? title() : title;
   panel.hidden = false;
-  setStep(4);
   requestAnimationFrame(() => panel.classList.add("in"));
   document.body.classList.add("blink-open");
   $("blinkClose").focus();
@@ -1240,19 +1239,32 @@ function surpriseQuick() {
 // ---------------------------------------------------------------------------------------------
 // UI wiring
 // ---------------------------------------------------------------------------------------------
-function setStep(n) {
-  if (document.body.classList.contains("fz-demo-on")) return;   // the opening demo's flights are not the user's steps
-  state.step = n;
-  for (const li of document.querySelectorAll("#steps li")) {
-    const k = Number(li.dataset.step);
-    li.classList.toggle("on", k === n);
-    li.classList.toggle("done", k < n);
-  }
-}
-
 function setSheet(mode) {
   document.body.dataset.sheet = mode;
   $("sheetToggle").setAttribute("aria-expanded", String(mode === "open"));
+}
+
+// Desktop: the left panel folds down to its title bar ("Explore the sky ▸"); the choice is remembered in this browser.
+// Phones keep the bottom sheet (#sheetToggle); there the fold button is not shown and the class has no effect.
+function setPanelShut(shut, { save = true } = {}) {
+  document.body.classList.toggle("panel-shut", shut);
+  const b = $("panelFold");
+  b.setAttribute("aria-expanded", String(!shut));
+  b.title = T(shut ? "ex.panel.show" : "ex.panel.hide");
+  if (save) { try { localStorage.setItem(PANEL_KEY, shut ? "shut" : "open"); } catch { /* storage blocked */ } }
+}
+function wirePanelFold() {
+  let shut = false;
+  try { shut = localStorage.getItem(PANEL_KEY) === "shut"; } catch { /* storage blocked */ }
+  setPanelShut(shut, { save: false });
+  $("panelFold").addEventListener("click", () => setPanelShut(!document.body.classList.contains("panel-shut")));
+  onLang(() => setPanelShut(document.body.classList.contains("panel-shut"), { save: false }));
+}
+/** Show the Layers section: the panel (or the phone sheet) open, the section open (used by the guided tour). */
+function openLayers() {
+  if (isPhone()) setSheet("open");
+  else if (document.body.classList.contains("panel-shut")) setPanelShut(false, { save: false });
+  $("layersBox").open = true;
 }
 
 function toast(text, err = false) {
@@ -1331,6 +1343,7 @@ function wireUi() {
   $("blinkFrame").addEventListener("load", () => { $("blinkLoading").hidden = true; });
   $("sheetToggle").addEventListener("click", () => setSheet(document.body.dataset.sheet === "open" ? "peek" : "open"));
   setSheet("peek");
+  wirePanelFold();
 
   document.addEventListener("keydown", (e) => {
     const typing = /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName);
@@ -1361,11 +1374,6 @@ function wireUi() {
       select({ id: null, name: "Your spot", nameKey: "ex.name.yourSpot", ra, dec, cat: null, manual: true });
     }
   });
-
-  // Step 1 -> 2 as soon as the person moves the sky themselves.
-  $("sky").addEventListener("pointerdown", () => { if (state.step < 2) setStep(2); }, { passive: true });
-  // capture: Aladin stops the wheel event on its canvas, so a bubbling listener here never ran.
-  $("sky").addEventListener("wheel", () => { if (state.step < 2) setStep(2); }, { capture: true, passive: true });
 }
 
 // Language switch (js/i18n.js): re-render text only. The selection, the coordinate box, the open
@@ -1407,7 +1415,7 @@ function esc(s) {
 }
 
 // For tests: window.__explore exposes state and a few actions.
-window.__explore = { MAX_FOV, state, openCategory, select, flyTo, runSearch, surprise, setBackground, openBlink, closeBlink, startLocalJob,
+window.__explore = { MAX_FOV, state, openCategory, select, flyTo, runSearch, surprise, setBackground, openBlink, closeBlink, startLocalJob, openLayers,
   stopFlight: () => { flight++; state.al?.stopAnimation?.(); } };   // stopFlight: the opening demo (demo.js) ends a flight where it is
 let PG = null;                                                    // js/bins_bar.js: time line of a wavelength-by-wavelength run
 import("../js/bins_bar.js").then((m) => { PG = m; }).catch((e) => console.warn("bins_bar.js", e));

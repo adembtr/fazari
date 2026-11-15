@@ -1,8 +1,6 @@
-/* Star layers: "Stars now (Gaia 2026)" (starsnow.js) and fast stars (faststars.js). */
-.star-tools { position: fixed; z-index: 10; top: 104px; right: 10px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
-  pointer-events: none; }
-.star-tools > * { pointer-events: auto; }
-body.blink-open .star-tools, body.flat-mode .star-tools { display: none; }
+/* Star layers: "Stars now (Gaia 2026)" (starsnow.js) and fast stars (faststars.js), in the panel's Layers section. */
+.star-tools { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+body.flat-mode .star-tools { display: none; }
 .chip { --c: #9fe0ff; display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; text-align: left;
   background: var(--glass, rgba(12, 16, 28, .82)); border: 1px solid var(--line, rgba(160, 180, 230, .18)); border-radius: 14px;
   padding: 6px 12px 6px 9px; font-size: 13.5px; font-weight: 650; color: var(--fg, #eef1f8); min-width: 0;
@@ -13,6 +11,9 @@ body.blink-open .star-tools, body.flat-mode .star-tools { display: none; }
 .chip small:empty { display: none; }
 .chip[aria-pressed="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 16%, rgba(12, 16, 28, .9)); }
 .chip[aria-pressed="true"] i { background: var(--c); box-shadow: 0 0 10px var(--c); }
+.star-tools .chip { box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(255, 255, 255, .04); }
+.star-tools .chip:hover { background: rgba(255, 255, 255, .08); }
+.star-tools .chip[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 16%, transparent); }
 #tgFast { --c: #ffad5c; }
 #tgFast i { border-color: transparent; background: radial-gradient(circle, #fff 0 22%, #ffad5c 38%, rgba(255, 173, 92, 0) 72%); }
 #tgFast[aria-pressed="true"] i { box-shadow: none; }
@@ -44,11 +45,9 @@ body.blink-open .star-tools, body.flat-mode .star-tools { display: none; }
 .vis.no { background: rgba(255, 110, 110, .18); color: #ffb3b3; }
 
 @media (max-width: 720px) {
-  .star-tools { top: 160px; right: 8px; }
   .chip { font-size: 12px; padding: 5px 10px 5px 8px; }
   .chip small { font-size: 10.5px; }
   .fast-legend { font-size: 11.5px; min-width: 0; }
   .fast-legend .fl-src { display: none; }
-  body[data-sheet="open"] .star-tools { display: none; }
   .fs-grid div { grid-template-columns: 1fr; gap: 0; }
 }

@@ -171,10 +171,6 @@ html.ui .ui-ex-lead { margin: 4px 0 12px; font-size: 15px; line-height: 1.42; co
 html.ui.ui-page-explore .panel-title { font-size: 20px; letter-spacing: -.005em; padding-right: 34px; }
 html.ui[data-ui-mode="simple"].ui-page-explore #panelBody > .hint { display: none; }
 html.ui[data-ui-mode="simple"].ui-page-explore #panelBody > .examples { display: none; }
-html.ui .ui-panel-hide { position: absolute; top: 12px; right: 12px; z-index: 3; width: 34px; height: 34px; display: grid; place-items: center;
-  border-radius: 50%; background: rgba(255, 255, 255, .06); border: 1px solid var(--ui-line); color: var(--ui-soft); }
-html.ui .ui-panel-hide:hover { color: #fff; border-color: rgba(160, 180, 230, .45); }
-html.ui .ui-panel-open { display: none; }
 @media (min-width: 721px) {
   html.ui.ui-page-explore .cats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   html.ui.ui-page-explore .cat { min-width: 0; }
@@ -185,24 +181,9 @@ html.ui .ui-panel-open { display: none; }
 html.ui .ui-mode-panel { margin: 12px 0 6px; }
 html.ui.ui-page-explore #findsList.ui-fold > .ui-fold-btn { top: 6px; right: 0; }
 html.ui.ui-page-explore #findsList.ui-fold > .ui-fold-head { padding-right: 90px; }
-@media (min-width: 721px) {
-  html.ui body.ui-panel-shut .panel { display: none; }
-  html.ui body.ui-panel-shut .ui-panel-open { display: inline-flex; position: fixed; z-index: 10; top: 70px; left: 10px; align-items: center; gap: 8px;
-    min-height: 44px; padding: 8px 16px 8px 12px; border-radius: 999px; background: var(--glass, rgba(12, 16, 28, .82)); border: 1px solid var(--ui-line);
-    color: var(--ui-fg); font-weight: 650; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 10px 30px rgba(0, 0, 0, .4); }
-  html.ui body.ui-panel-shut .card { left: 24px; }
-  html.ui body.ui-panel-shut .status { left: 24px; }
-}
 @media (max-width: 720px) {
-  html.ui .ui-panel-hide { display: none; }
   html.ui .ui-ex-lead { display: none; }
 }
-
-/* star layers fold */
-html.ui .ui-stars-btn { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 6px 12px; border-radius: 999px;
-  background: var(--glass-strong, rgba(12, 16, 28, .94)); border: 1px solid var(--ui-line); color: var(--ui-soft); font-size: 13.5px; font-weight: 600; }
-html.ui .ui-stars-btn[aria-expanded="true"] svg:last-child { transform: rotate(180deg); }
-html.ui .star-tools.ui-stars-shut > :not(.ui-stars-btn) { display: none !important; }
 
 /* result panel: minimize to a tab */
 html.ui .ui-blink-min { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%;
@@ -238,7 +219,7 @@ html.ui.ui-page-ast .ui-run > .ui-fold-btn { top: 12px; right: 0; }
 @media (pointer: coarse) {
   html.ui .ui-fold-btn, html.ui .ui-pill, html.ui .ui-stars-btn { min-height: 44px; }
   html.ui .ui-mode button { min-height: 40px; padding: 6px 14px; }
-  html.ui .ui-panel-hide, html.ui .ui-blink-min { width: 44px; height: 44px; }
+  html.ui .ui-blink-min { width: 44px; height: 44px; }
 }
 
 /* ---------- Simple mode: as few things as possible (the answer, the blink, one next action) ----------
@@ -265,7 +246,6 @@ html.ui[data-ui-mode="simple"].ui-page-viewer .lower { grid-template-columns: mi
 html.ui[data-ui-mode="simple"].ui-page-viewer #spectrumPanel, html.ui[data-ui-mode="simple"].ui-page-viewer #faintcard { margin-top: 0; }
 html.ui[data-ui-mode="simple"].ui-page-viewer #explainStrip details:not([open]) { background: none; border-color: transparent; border-bottom-color: var(--ui-line); border-radius: 0; padding-left: 0; }
 /* explorer */
-html.ui[data-ui-mode="simple"].ui-page-explore #bgSwitch,
 html.ui[data-ui-mode="simple"].ui-page-explore .status,
 html.ui.ui-page-explore #card .kicker,
 html.ui.ui-page-explore #card .engine-tag,
@@ -274,19 +254,7 @@ html.ui.ui-page-explore #card .coords .deg,
 html.ui.ui-page-explore #card #cardMoved,
 html.ui.ui-page-explore #card #cardFast { display: none !important; }
 
-/* ---------- Explorer, one state (site_sade): one clear flow, nothing to open or close ----------
-   Steps: three chips (pick a point, press the button, read the result); the old first chip is not shown. */
-html.ui.ui-page-explore .st-old { display: none; }
-html.ui.ui-page-explore .st-new { display: inline; }
-html.ui.ui-page-explore #steps { counter-reset: tsstep; }
-html.ui.ui-page-explore #steps li[data-step="1"] { display: none; }
-html.ui.ui-page-explore #steps li:not([data-step="1"]) { counter-increment: tsstep; }
-html.ui.ui-page-explore #steps li:not(.done) i { font-size: 0; }
-html.ui.ui-page-explore #steps li:not(.done) i::before { content: counter(tsstep); font-size: 11.5px; }
-html.ui.ui-page-explore #steps li[data-step="1"].on + li { background: var(--acc); color: var(--acc-ink); }
-html.ui.ui-page-explore #steps li[data-step="1"].on + li i { background: var(--acc-ink); color: var(--acc); border-color: var(--acc-ink); }
-@media (max-width: 720px) { html.ui.ui-page-explore #steps { grid-template-columns: repeat(3, 1fr); } }
-
+/* ---------- Explorer, one state (site_sade) ---------- */
 /* Place card: small and tidy. Title, one line, ONE main button; under a thin rule one quiet line with the
    coordinates, the field size and the two small actions (always visible: nothing to open). */
 html.ui.ui-page-explore .card { container-type: inline-size; max-width: 430px; padding: 12px 14px 10px; }
@@ -338,29 +306,30 @@ html.ui.ui-page-explore .card .exo-info .exo-honest { margin-top: 2px; font-size
   html.ui.ui-page-explore .ts-card-more #btnZoom, html.ui.ui-page-explore .ts-card-more .coords, html.ui.ui-page-explore .card .exo-info .exo-honest { display: none; }
   html.ui.ui-page-explore .ts-card-more { gap: 0 14px; }
 }
-@media (max-width: 480px) { html.ui.ui-page-explore .star-tools .chip small { display: none; } }
 
 /* category tiles: the name is enough (the small count sat on top of long names) */
 html.ui.ui-page-explore .cat .ct { display: none; }
 html.ui.ui-page-explore[lang="tr"] .cat .nm { padding-right: 0; }
 
-/* star layers: always visible; one short line says what the rings are (shown while a layer is on) */
-html.ui.ui-page-explore .star-say { margin: 0; max-width: 250px; padding: 8px 11px; border-radius: 12px; font-size: 12.5px; line-height: 1.4; color: #dfe6f7;
-  background: var(--glass, rgba(12, 16, 28, .82)); border: 1px solid var(--ui-line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+/* star layers (Layers section of the panel): one short line says what the rings are (shown while a layer is on) */
+html.ui.ui-page-explore .star-say { margin: 0; padding: 8px 11px; border-radius: 12px; font-size: 12.5px; line-height: 1.4; color: #dfe6f7;
+  background: rgba(255, 255, 255, .04); border: 1px solid var(--ui-line); }
 html.ui.ui-page-explore .star-tools:has(.chip[aria-pressed="true"]) .star-say { display: block; }
-@media (max-width: 720px) { html.ui.ui-page-explore .star-say { max-width: 200px; font-size: 11.5px; padding: 6px 9px; } }
+@media (max-width: 720px) { html.ui.ui-page-explore .star-say { font-size: 11.5px; padding: 6px 9px; } }
 
-/* the other pages of the site, at the foot of the panel */
-html.ui.ui-page-explore .ex-nav { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin: 12px 0 2px; padding-top: 10px; border-top: 1px solid var(--ui-line); }
-@media (min-width: 721px) {                  /* always in view: it stays at the foot of the panel while the list scrolls */
-  html.ui.ui-page-explore .ex-nav { position: sticky; bottom: -10px; z-index: 2; margin: 12px -14px -10px; padding: 9px 14px 11px; background: #0c101c; }
-  html.ui.ui-page-explore .panel-body > .howto { display: none; }             /* the same button is in the top bar */
-}
-html.ui.ui-page-explore .ex-nav .ts-nav-l { flex-basis: 100%; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--ui-mut); }
-html.ui.ui-page-explore .ex-nav a { font-size: 13px; color: var(--ui-soft); text-decoration: none; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--ui-line); background: var(--ui-card); }
-html.ui.ui-page-explore .ex-nav a:hover { color: #fff; border-color: rgba(160, 180, 230, .45); }
+/* "Start here": the other pages of the site as small cards, first in the panel (2 columns, one icon, name, short line) */
+html.ui.ui-page-explore .ex-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin: 0 0 12px; }
+@media (min-width: 721px) { html.ui.ui-page-explore .panel-body > .howto { display: none; } }   /* the same button is in the top bar */
+html.ui.ui-page-explore .ex-nav .ts-nav-l { grid-column: 1 / -1; margin: 0; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--ui-mut); }
+html.ui.ui-page-explore .ex-nav a { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 6px; align-items: center; min-width: 0;
+  padding: 4px 6px 5px; border-radius: 10px; border: 1px solid var(--ui-line); background: var(--ui-card); color: var(--ui-fg, #eef1f8); text-decoration: none; }
+html.ui.ui-page-explore .ex-nav a:hover { border-color: rgba(160, 180, 230, .45); background: rgba(255, 255, 255, .07); }
+html.ui.ui-page-explore .ex-nav .xn-ico { grid-row: span 2; font-size: 15px; line-height: 1; }
+html.ui.ui-page-explore .ex-nav b { font-size: 12px; font-weight: 650; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html.ui.ui-page-explore .ex-nav small { font-size: 11px; line-height: 1.25; color: var(--ui-mut); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+html.ui.ui-page-explore .ex-nav .xn-wide { grid-column: 1 / -1; }
 html.ui .ts-tourbtn.icon-btn { background: var(--ui-ours); color: #1a1300; border-color: transparent; font-weight: 700; }
-@media (pointer: coarse) { html.ui.ui-page-explore .ex-nav a { padding: 9px 12px; } }
+@media (pointer: coarse) { html.ui.ui-page-explore .ex-nav a { min-height: 44px; } }
 
 /* sky.html (in-browser engine): Simple shows the progress bar, the blink and the answer; technical lines in Detailed */
 html.ui.ui-page-sky .titlerow { gap: 6px 12px; }

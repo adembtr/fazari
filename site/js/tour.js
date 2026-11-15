@@ -101,7 +101,9 @@ function plan() {
     { id: "s7", where: "top", sel: ['[data-tour="search"]'] },
     { id: "s7b", where: "top", sel: ['[data-tour="fetch-button"]', '[data-tour="point-card"]'], can: () => !!(star() || picked()),
       prep() { const p = star(); if (p && !picked()) X.select(p, { fly: false, fill: false }); } },
-    { id: "s8", where: "top", sel: ['[data-tour="layers"]', '[data-tour="map-layers"]'] },
+    // the star layers sit in the panel's Layers section (closed at first): open the panel (or the phone's sheet) and the section
+    { id: "s8", where: "top", sel: ['[data-tour="layers"]', '[data-tour="map-layers"]'],
+      prep() { if (X && X.openLayers) X.openLayers(); } },
   );
   // steps that cannot be shown on this page are left out before the first one, so "Step 3 of 9" stays true
   return S.filter((st) => st.where !== "top" || (st.sel.some((s) => document.querySelector(s)) && (!st.can || st.can())));
@@ -114,7 +116,7 @@ const EN = {
   s6: ["The answer in one sentence", "Here the page says plainly what it found, how sure it is, and how small a motion it could still have seen at this spot."],
   s7: ["Now pick your own spot", "Type a name or coordinates here, or click anywhere on the sky map. A card opens for that spot; its big button gets the SPHEREx pictures."],
   s7b: ["The big button", "A card like this opens for the spot you pick. Its big button gets the SPHEREx pictures of that spot and plays them like the film you just saw."],
-  s8: ["The rings on the map", "These rings are known catalogue stars; we use them to check that the tool measures correctly. What we look for is something with no ring that still moves between pictures: a candidate to check, nothing more."],
+  s8: ["Rings on known stars", "Under Layers, these buttons put rings on known catalogue stars; we use them to check that the tool measures correctly. What we look for is something with no ring that still moves between pictures: a candidate to check, nothing more."],
   end: ["Your turn", "Open the sky map, pick any spot and watch what moves there."],
 };
 
