@@ -85,6 +85,12 @@ CHI2_SNR = 25.0                     # ... times (1 + (S/N / CHI2_SNR)^2): the EP
 Z_STACK = 5.0                       # visit-stack detection threshold
 CHI2_MAX_STACK = 6.0                # the stack PSF is broadened by the resampling and the motion
 SUB_CHI2_MAX = 6.0                  # flux consistency of the sub-exposures (cosmic-ray test)
+STAR_MASK_NSIG = 10.0               # EPSF fit: stamp pixels (outside the central 3 x 3) where the reference is brighter than
+#                                     this many times the difference noise belong to a neighbouring star, whose undersampled
+#                                     residual (up to ~30-100 % of its pixels) would make the candidate's chi2 "not PSF-shaped";
+#                                     they and their direct neighbours are left out of the fit. None = old behaviour (whole
+#                                     7 x 7 stamp). Added 2026-11-15 after pipeline/ASTEROID_MISSES.md; the V8 numbers were
+#                                     measured without it (None).
 OBJ_WORKERS = 6                     # objects processed at once (network-bound)
 DETECTORS = (2, 3)                  # target detectors (1.1-2.4 um; D1 has airglow, D4-6 are faint for asteroids)
 OUT_SITE = BL.ROOT / "site" / "data" / "asteroids"
@@ -246,7 +252,7 @@ def stack_detect(bs, exps):
     mx = maximum_filter(a, size=3, mode="constant", cval=-np.inf)
     ys, xs = np.nonzero((a == mx) & (a >= Z_STACK))
     for x, y in zip(xs, ys):
-        f = fit_psf(Ds, Vs * zs * zs, psf0, float(x), float(y))
+        f = fit_psf(Ds, Vs * zs * zs, psf0, float(x), float(y), exclude=b0.get("star"))
         if f is None or f["at_bound"] or f["flux"] <= 0:
             continue
         sr = static_ratio(b0["R"], Ds, x, y)
@@ -262,7 +268,7 @@ def stack_detect(bs, exps):
             fc = forced(b, xk, yk)
             if fc:
                 fl.append((fc["flux"], fc["eflux"]))
-            fk = fit_psf(b["D"], b["var"], b["_psf"], xk, yk)
+            fk = fit_psf(b["D"], b["var"], b["_psf"], xk, yk, exclude=b.get("star"))
             if fk and not fk["at_bound"] and fk["flux"] > 0 and fk["snr"] >= 3.0 and \
                     math.hypot(fk["x"] - xk, fk["y"] - yk) < 1.0:
                 Xk, Yk = b["origin"][0] + fk["x"], b["origin"][1] + fk["y"]
@@ -397,8 +403,10 @@ def matched_filter(D, var, K):
     return F, Z
 
 
-def fit_psf(D, var, psf, x, y, R=FIT_R, iters=12, h=0.02):
+def fit_psf(D, var, psf, x, y, R=FIT_R, iters=12, h=0.02, exclude=None):
     """EPSF fit (flux, dx, dy, background) at box position (x, y): dict or None.
+    exclude: optional boolean array of D's shape; those stamp pixels outside the central 3 x 3 are not
+    used (pixels of a neighbouring bright star, see STAR_MASK_NSIG).
     Gauss-Newton on the position (EPSF derivatives by finite differences, one batched kernel
     evaluation per iteration), flux and background solved linearly; position bounded to +-1.5 px
     from the start pixel. Errors from the normal matrix, scaled by max(1, reduced chi2)."""
@@ -411,6 +419,10 @@ def fit_psf(D, var, psf, x, y, R=FIT_R, iters=12, h=0.02):
     good = np.isfinite(d) & np.isfinite(v) & (v > 0)
     if good.sum() < 0.6 * d.size or not good[R - 1:R + 2, R - 1:R + 2].all():
         return None
+    if exclude is not None:
+        ex = exclude[iy - R:iy + R + 1, ix - R:ix + R + 1].copy()
+        ex[R - 1:R + 2, R - 1:R + 2] = False
+        good &= ~ex
     w = 1 / np.sqrt(v[good])
     dd = d[good] * w
     one = w
@@ -486,13 +498,16 @@ def detect_box(tgt, refs, xc, yc, half=BOX // 2):
     zs = 1.4826 * np.median(np.abs(zv - np.median(zv))) if zv.size > 50 else 1.0
     zs = float(min(3.0, max(0.8, zs)))
     Zn = Z / zs
+    # pixels of a neighbouring star and their direct neighbours (the residual of an undersampled star spreads by up to
+    # one pixel with the pixel phase), left out of the EPSF fits of the candidates (STAR_MASK_NSIG)
+    star = binary_dilation(np.isfinite(R) & (R > STAR_MASK_NSIG * s), iterations=1) if STAR_MASK_NSIG else None
     out.update(noise=float(s), z_scale=zs, area_px=int(valid.sum()), psf=psf.kind, T=T, R=R, D=D, var=var * zs * zs,
-               Zn=Zn, _psf=psf)
+               Zn=Zn, _psf=psf, star=star)
     a = np.where(valid, Zn, -np.inf)
     mx = maximum_filter(a, size=3, mode="constant", cval=-np.inf)
     ys, xs = np.nonzero((a == mx) & (a >= Z_DET))
     for x, y in zip(xs, ys):
-        f = fit_psf(D, var * zs * zs, psf, float(x), float(y))
+        f = fit_psf(D, var * zs * zs, psf, float(x), float(y), exclude=star)
         if f is None or f["at_bound"] or f["flux"] <= 0 or snr_raw(f) < 0.8 * Z_DET:
             continue
         sr = static_ratio(R, D, x, y)

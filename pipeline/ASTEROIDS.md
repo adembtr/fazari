@@ -257,6 +257,10 @@ Every missed object with V < 18:
 
 The full list (V ≤ 20.5) with reasons is in `site/data/asteroids/summary.json` (`missed`).
 
+The 31 misses with V < 18 were re-examined one by one on 2026-11-15 from the cached boxes (no new data):
+[`ASTEROID_MISSES.md`](ASTEROID_MISSES.md). One cause was a defect of the fit stamp and is fixed in the code
+(`STAR_MASK_NSIG` in `detect/asteroids.py`); the numbers above were measured before that change and are not re-run.
+
 ## Limits
 
 - **Detection depth.** One SPHEREx exposure (114 s) reaches a known asteroid of V ≈ 18-19 at 1.1-2.4 µm
